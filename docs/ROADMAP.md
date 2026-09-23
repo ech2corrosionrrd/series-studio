@@ -1,0 +1,171 @@
+# Series Lab — план розвитку
+
+Продукт: **Series Lab** (by W3IR) · локальна майстерня `Lab → Studio → Release`  
+Папка на диску може лишатись `series-studio`; хост продукту (майбутнє): [studio.w3ir.io](https://studio.w3ir.io)
+
+Джерела ідей: `C:\Промт` (nft-prompt-builder) + `C:\Gremlins\gremlin-nft` (health workshop UX)  
+**Не** є форком GFAM; lore / treasury / mint з головної — поза scope Lab.
+
+## Принципи
+
+1. **Етапи з власністю полів** — Огляд = ідентичність; Основа = базова картинка(и); Конструктор = промпт+трейти; без дублів форм.
+2. **Оптимально / широко** — на кожному етапі короткий шлях + advanced.
+3. **З Промт** — промпт, якість, шаблони, експорт; **не** Streamlit, SIWE, кредити, ops.
+4. **З health/gremlin** — UX майстерні (рецепти/генерація/відбір); **не** gnft-логін, Legendary boost, AI-critic v1.
+5. DNA/рецепти — **детерміновані** (seed); LLM не є «мозком» серії.
+6. Термін продукту: **базова картинка(и) серії** (primary = головна базова). Ніколи «мати» / mother у UX.
+
+## Фази
+
+| Фаза | Статус | Зміст |
+|------|--------|--------|
+| **Lab core** | ✅ | rng · traits · recipes · validate CLI · schemas · demo preset |
+| **Studio UI** | ✅ | вкладки 1–7 + Ресурси/Довідка · i18n uk/en · keys з Промт `.env` |
+| **Health-патерн 4–6** | ✅ | рецепти-таблиця+редактор · estimate→generate · keep/redo |
+| **Промт bridge · хвиля 1** | ✅ | паки/шаблони · styleLock · lint · rarity · trait rules · light QA |
+| **Промт bridge · хвиля 2** | ✅ | mint-ready ZIP · upscale · NFT checklist · workspace autosave |
+| **Промт bridge · хвиля 3** | ✅ | редактор опцій рис у Конструкторі (знімок серії) |
+| **Промт bridge · хвиля 4** | ✅ | матеріально різні паки (pfp / mascot / fine-art / abstract) |
+| **Health UX · хвиля 5** | ✅ | порівняння двох наборів у Відборі (side-by-side) |
+| **Студійний UX · хвиля 6** | ✅ | Regenerate Redo · line-specific base · Trait pack library manager |
+| **Vision Assist · хвиля 7** | ✅ | Image-to-Preset / vision-розбір базової картинки (styleLock + traits) |
+| **Генерація · хвиля 8** | ✅ | Background batch queue · SSE прогрес · паралелізм генерацій |
+| **Релізні метадані · хвиля 9** | ✅ | Bitcoin Ordinals manifest · OpenSea display_type (boost, number, date) |
+| **Headless CLI · хвиля 10** | ✅ | Headless batch render pipeline (`series render`) · dry-run · cost estimation |
+| **AI Auto-Triage · хвиля 11** | ✅ | AI Auto-Triage & Smart Critic (`/api/qa/triage`, `series triage`) · score & badges |
+| **Storage Dispatcher · хвиля 12** | ✅ | IPFS / Arweave Dispatcher (`series pin`, Pinata upload, `imageUriPrefix`, preview) |
+| **Launchpad Presets · хвиля 13** | ✅ | Launchpad Presets & Multi-Standard Export (`formatForLaunchpad`, `manifest.csv`, `series manifest`) |
+| **Release & Deploy Hub · хвиля 14** | ✅ | Release & Deployment Hub (`sugar.json`, `thirdweb.json`, launchpad deep links, release guide) |
+| **Dynamic Media · хвиля 15** | ✅ | Dynamic Media Pipeline (`animation_url`, video/audio/3D support, `properties.category`, files) |
+| **Showcase & Scorecard · хвиля 16** | ✅ | Collection Showcase & Trait Rarity Scorecard (`calculateRarityScores`, standalone HTML visual proof) |
+| **Prompt Matrix · хвиля 17** | ✅ | Multi-Engine Prompt Matrix & LoRA / Model Tags (`src/matrix.mjs`, Flux, Midjourney, SDXL) |
+| **Release (marketplace claim)** | ⏳ | claim/листинг на маркетплейсі — свідомий крок поза ядром Lab |
+| **SaaS міст** | ⏳ | кредити/гаманець/IPFS лишаються в Промт / ai.w3ir.io |
+
+Деталі запозичень з Промт — [FROM-PROMT.md](./FROM-PROMT.md). Етапи — [STAGES.md](./STAGES.md). API — [API.md](./API.md).
+
+## Хвиля 1 (реалізовано)
+
+1. Паки рис у `libraries/traits/` (pfp-core, brand-mascot, fine-art, abstract-series).
+2. **styleLock** у пресеті (ракурс / світло / настрій / фіксатори) — Конструктор.
+3. **Prompt lint + blocklist** марок перед `/api/generate` і `/api/base/generate`.
+4. **Rarity report** після build на Рецептах (очікуваний % vs факт).
+5. **Trait rules** (несумісні пари) при Apply / редакторі рецепту.
+6. **Light image QA** у Відборі (файл існує, мін. розмір, magic bytes) — без Claude.
+
+## Хвиля 2 (реалізовано)
+
+1. **Mint-ready ZIP** — `POST /api/export/bundle` → `out/bundles/*.zip` (ERC-721 / Metaplex), імена `N.png` / `N.json`.
+2. **Upscale 2×** — опційно через `sharp` (optionalDependency); без sharp ZIP все одно збирається.
+3. **NFT checklist** — `GET /api/checklist` + картка в UI Експорт.
+4. **Workspace autosave** — `workspace/current.json` (gitignored), restore на boot.
+
+## Хвиля 3 (реалізовано)
+
+1. **Редактор опцій рис** у Конструкторі — картка «Оптимально · опції рис».
+2. Редагує **знімок** `preset.traits.items[].options` (`value` / `weight` / `prompt`): Add · Remove · Duplicate.
+3. Вибір ключа з чернетки (або кнопка «Опції» в чеклисті пака).
+4. Persist через наявний **Save prompt+traits** (`/api/preset/save`); без окремого «wide library authoring».
+5. Валідація: `weight > 0`, унікальний `value`, порожній `prompt` — попередження в UI.
+6. Pure helpers: `normalizeOptions` / `validateOptions` / `duplicateOption` · `test/wave3.test.mjs`.
+
+## Хвиля 4 (реалізовано)
+
+1. **Паки матеріально різні** — `libraries/traits/`: pfp-core (portrait baseline), brand-mascot (flat vector), fine-art (painterly), abstract-series (shape/motif).
+2. Унікальні `items` + prompts під тип колекції; ~6–10 ключів, ~5–9 опцій.
+3. `defaults.changeKeys/extraKeys` + `rules.conflicts` (2–3 пари) на кожному паку.
+4. Шаблони `templates/` синхронізовані зі словниками паків (changeKeys / items / conflicts).
+5. Smoke: `test/wave4.test.mjs` — key sets різняться; conflict refs валідні; mini-build рецептів.
+
+## Хвиля 5 (реалізовано)
+
+1. **Порівняти з** (`#v-dir2`) на Відборі — опційний другий набір поруч (як gremlin-ref).
+2. Side-by-side tiles для edition, що є в будь-якому наборі; відсутня сторона — placeholder.
+3. ✓/↻ лишаються лише для **основного** набору (`#v-dir`); підказка в hint.
+4. Якщо наборів < 2 — селект порівняння приховано.
+5. Pure helper `mergeEditions(a,b)` · `src/gallery.mjs` · `test/wave5.test.mjs`.
+
+## Хвиля 6 (Studio Workshop UX & Fast Iterations)
+
+1. **Regenerate Redo** — масове швидке перегенерування відхилених (`marks[edition] === 'redo'`) номерів з вибором seed / strength.
+2. **Line-Specific Base Images** — підтримка окремих базових референсів під кожну лінію (`base-<line>.*` або `primary.*`) під час рендеру.
+3. **Trait Pack Library Manager** — створення нових паків, експорт поточних рис серії в `libraries/traits/<id>.json`, збереження та видалення паків через UI/API.
+
+## Хвиля 7 (Vision Assist & AI Preset Extractor)
+
+1. **Vision Image-to-Preset (`POST /api/base/analyze`)** — аналіз базового референсу через OpenAI GPT-4o / Claude Vision з вилученням структури `styleLock` (ракурс, світло, настрій, кадрування) та стартових рис для Конструктора.
+
+## Хвиля 8 (Batch Queue, Concurrency & Stream)
+
+1. **Progress Streaming (SSE/Polling)** — стрімінг прогресу рендеру зображень у реальному часі.
+2. **Паралельність генерацій** — пул конкурентних запитів (2–3 паралельні виклики) для пришвидшення роботи.
+
+## Хвиля 9 (Bitcoin Ordinals & Metadata Extensions)
+
+1. **Bitcoin Ordinals Export** — генерація маніфестів інскрипцій (`id`, `name`, `image`, `properties.edition`, `properties.collection`, `properties.files`) та ZIP-архівів для біткоін-ордіналів.
+2. **OpenSea Display Types** — підтримка числових та статистичних атрибутів (`display_type`: `number`, `boost_number`, `boost_percentage`, `date`, `max_value`) для ігрових і статистичних характеристик.
+
+## Хвиля 10 (Headless CLI Batch Render Pipeline)
+
+1. **CLI Render Pipeline (`series render <preset.json>`)** — повноцінний автономний рендер-конвеєр для CI/CD або фонових воркеров з підтримкою прапорів `-e/--engine`, `-s/--strength`, `-o/--out`, `-c/--concurrency`, `--limit`, `--dry-run`.
+2. **Cost Estimation & Prompt Linting** — попередній розрахунок орієнтовної вартості генерації та лінтинг промптів перед початком рендеру.
+
+## Хвиля 11 (AI Auto-Triage & Smart Critic)
+
+1. **AI Auto-Triage (`POST /api/qa/triage`, `series triage`)** — автоматичний аналіз якості та відповідності згенерованих картинок (евристичний + GPT-4o / Claude Vision).
+2. **Score & Badges** — виставлення оцінок (1–10), тегів виявлених дефектів (`distorted_face`, `bad_anatomy`, `missing_trait`, `blurry`), підказок та 1-клік авто-застосування `keep`/`redo`.
+
+## Хвиля 12 (IPFS / Arweave Storage Dispatcher)
+
+1. **Storage URI Prefix (`imageUriPrefix`)** — підтримка префіксів децентралізованого зберігання (`ipfs://<CID>/`, `ar://<txId>/`, `https://...`) у всіх форматах метаданих (ERC-721, Metaplex, Ordinals) та ZIP-архівах.
+2. **Pinata IPFS Integration & Live Preview (`POST /api/storage/pin`, `series pin`)** — пряме 1-клік завантаження наборів у Pinata IPFS з автоматичною підстановкою CID та інтерактивним прев'ю `1.json`.
+
+## Хвиля 13 (Launchpad Presets & Multi-Standard Export Profiles)
+
+1. **Launchpad Profiles (`LAUNCHPAD_PROFILES`, `formatForLaunchpad`)** — готові нативні профілі для провідних лаунчпадів:
+   - **OpenSea Studio**: стандартний ERC-721 + `display_type` атрибути + CSV маніфест для гуртового імпорту.
+   - **Magic Eden Drops**: Metaplex / EVM Drop формат з масивом роялті (`creators: [{ address, share }]`) та `seller_fee_basis_points`.
+   - **LaunchMyNFT**: Metaplex-сумісний формат з підтримкою 0-based індексації (`0.png`, `0.json`).
+   - **Bitcoin Ordinals / Inscriptions**: маніфести інскрипцій з `collection` та `edition` прив'язкою.
+2. **Bulk CSV Manifest (`exportManifestCsv`, `GET /api/export/manifest.csv`, `series manifest`)** — генерація стандартизованого CSV маніфесту для прямого завантаження в OpenSea Studio / launchpad-портали та включення `manifest.csv` у корінь mint-ready ZIP.
+3. **CLI Manifest Generator (`node bin/series.mjs manifest`)** — генерація CSV маніфестів безпосередньо з командного рядка з прапорами `--profile`, `--zero-index`, `--image-prefix`.
+
+## Хвиля 15 (Dynamic Media Pipeline — Video / Animation / 3D)
+
+1. **Dynamic Asset Auto-Discovery (`findEditionMedia`)** — підтримка додаткових медіафайлів (`.mp4`, `.webm`, `.mov`, `.gif`, `.glb`, `.gltf`, `.html`) поруч зі статичними обкладинками.
+2. **Metadata & Manifest Integration** — генерація поля `animation_url`, коректне заповнення Metaplex `properties.category` (`"video"`, `"vr"`, `"html"`, `"image"`) та масиву `properties.files` з MIME-типами.
+3. **ZIP Packaging** — автоматичне пакування відео та 3D файлів у папку `images/` у mint-ready ZIP.
+4. **Studio & CLI Support** — поле префіксу анімацій `#x-anim-prefix` в UI та прапорець `--anim-prefix` у CLI.
+
+## Хвиля 16 (Collection Showcase & Trait Rarity Scorecard)
+
+1. **Deterministic Rarity Scoring (`calculateRarityScores`)** — розрахунок частотності трейтів, індивідуальних оцінок рідкості ($1/F$), сумарного балу токена та рейтингу (#1..N).
+2. **Tier Classifications (`getRarityTier`, `RARITY_TIERS`)** — розбивка на рангові категорії: Mythic (Top 2%), Legendary (Top 10%), Epic (Top 25%), Rare (Top 50%), Common (Bottom 50%).
+3. **Standalone HTML Visual Proof (`generateShowcaseHtml`)** — генерація повністю автономного інтерактивного HTML-файлу з темним дизайном, пошуком, фільтрами за рідкістю, матрицею DNA та картками токенів.
+4. **API & CLI Export** — маршрут `GET /api/export/showcase.html` та CLI команда `series showcase <archive.json> [-o showcase.html]`.
+
+## Хвиля 17 (Multi-Engine Prompt Matrix & LoRA / Model Tags)
+
+1. **Engine Matrix Transformer (`src/matrix.mjs`)** — адаптація промптів під особливості синтаксису генераторів: Flux (LoRA тригери + natural language), SDXL (`<lora:name:weight>` + quality tags), Midjourney (параметричні прапорці `--v 6.1 --stylize`), Kontext та OpenAI.
+2. **Batch Matrix Generator (`buildEnginePromptMatrix`, `exportEngineMatrixCsv`)** — побудова повної матриці промптів для колекції та експорт у CSV для мультиплатформенного рендеру.
+
+## Відкладено (справді deferred)
+
+- **AI critic** (Claude) як обов'язковий автоматичний гейт
+- **Legendary boost** / gnft-специфіка
+- **Marketplace claim** з майстерні (Magic Eden тощо)
+- **SaaS billing bridge** (Helio, freemium, SIWE)
+- Публічний **GitHub**-репозиторій (якщо ще приватний)
+
+## Поза Lab core (свідомо)
+
+Streamlit UI · SIWE/гаманці як обовʼязок · Helio/credits · B2B API · ops alerts · повний LLM archetype matrix як серійний RNG · GFAM lore · мінт з головної кнопки.
+
+## Локальний запуск
+
+`start-lab.bat` / `npm start` → http://127.0.0.1:5344/studio/  
+Тести: `npm test`. CLI: `bin/series.mjs` validate / build / diff-seed.
+
+## Документація
+
+Індекс: [README.md](./README.md) (усі файли `docs/`).

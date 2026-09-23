@@ -1,0 +1,320 @@
+{
+  "schema": "series-trait-pack/v0",
+  "id": "abstract-series",
+  "name": "Abstract series",
+  "description": "Abstract / graphic motif dictionary: shape, motif, colour field, texture, rhythm, contrast. No character hair or outfit traits.",
+  "tags": [
+    "abstract",
+    "graphic",
+    "motif",
+    "nonfigurative"
+  ],
+  "items": [
+    {
+      "key": "shape",
+      "type": "Shape",
+      "options": [
+        {
+          "value": "Circle Field",
+          "weight": 16,
+          "prompt": "dominant circular shapes in an abstract field"
+        },
+        {
+          "value": "Sharp Triangles",
+          "weight": 14,
+          "prompt": "sharp triangular shapes interlocking"
+        },
+        {
+          "value": "Soft Blobs",
+          "weight": 14,
+          "prompt": "soft amorphous blob shapes"
+        },
+        {
+          "value": "Grid Rectangles",
+          "weight": 12,
+          "prompt": "grid of rectangles and bars"
+        },
+        {
+          "value": "Arc Curves",
+          "weight": 12,
+          "prompt": "sweeping arc and curve shapes"
+        },
+        {
+          "value": "Diamond Lattice",
+          "weight": 10,
+          "prompt": "diamond lattice geometric shapes"
+        },
+        {
+          "value": "Fragment Shatter",
+          "weight": 12,
+          "prompt": "fragmented shattered planar shapes"
+        },
+        {
+          "value": "Spiral Coil",
+          "weight": 10,
+          "prompt": "spiral coil shapes drawing the eye inward"
+        }
+      ]
+    },
+    {
+      "key": "motif",
+      "type": "Motif",
+      "options": [
+        {
+          "value": "Orbit Rings",
+          "weight": 14,
+          "prompt": "orbit-ring motif repeating across the composition"
+        },
+        {
+          "value": "Slash Marks",
+          "weight": 12,
+          "prompt": "diagonal slash-mark motif"
+        },
+        {
+          "value": "Dot Constellation",
+          "weight": 14,
+          "prompt": "dot constellation motif"
+        },
+        {
+          "value": "Wave Bands",
+          "weight": 12,
+          "prompt": "horizontal wave-band motif"
+        },
+        {
+          "value": "Chevron Stack",
+          "weight": 12,
+          "prompt": "stacked chevron motif"
+        },
+        {
+          "value": "Frame Nest",
+          "weight": 12,
+          "prompt": "nested frame motif"
+        },
+        {
+          "value": "Seed Scatter",
+          "weight": 12,
+          "prompt": "scattered seed-like motif"
+        },
+        {
+          "value": "Cross Hatch",
+          "weight": 12,
+          "prompt": "cross-hatch line motif"
+        }
+      ]
+    },
+    {
+      "key": "colorField",
+      "type": "Color Field",
+      "options": [
+        {
+          "value": "Deep Ultramarine",
+          "weight": 14,
+          "prompt": "deep ultramarine colour field"
+        },
+        {
+          "value": "Cadmium Warm",
+          "weight": 12,
+          "prompt": "warm cadmium orange-red colour field"
+        },
+        {
+          "value": "Acid Lime",
+          "weight": 12,
+          "prompt": "acid lime colour field"
+        },
+        {
+          "value": "Midnight Void",
+          "weight": 14,
+          "prompt": "near-black midnight colour field"
+        },
+        {
+          "value": "Blush Rose",
+          "weight": 12,
+          "prompt": "blush rose colour field"
+        },
+        {
+          "value": "Electric Cyan",
+          "weight": 12,
+          "prompt": "electric cyan colour field"
+        },
+        {
+          "value": "Sand Neutral",
+          "weight": 12,
+          "prompt": "sand-neutral beige colour field"
+        },
+        {
+          "value": "Violet Dusk",
+          "weight": 12,
+          "prompt": "violet dusk colour field"
+        }
+      ]
+    },
+    {
+      "key": "texture",
+      "type": "Texture",
+      "options": [
+        {
+          "value": "Smooth Flat",
+          "weight": 16,
+          "prompt": "smooth flat digital texture"
+        },
+        {
+          "value": "Grain Noise",
+          "weight": 14,
+          "prompt": "fine grain noise texture"
+        },
+        {
+          "value": "Paper Fibers",
+          "weight": 12,
+          "prompt": "paper fiber texture"
+        },
+        {
+          "value": "Rough Canvas",
+          "weight": 12,
+          "prompt": "rough canvas weave texture"
+        },
+        {
+          "value": "Glitch Speckle",
+          "weight": 10,
+          "prompt": "subtle glitch speckle texture"
+        },
+        {
+          "value": "Ink Bleed",
+          "weight": 12,
+          "prompt": "ink-bleed edge texture"
+        },
+        {
+          "value": "Metallic Sheen",
+          "weight": 10,
+          "prompt": "soft metallic sheen texture"
+        },
+        {
+          "value": "Matte Chalk",
+          "weight": 14,
+          "prompt": "matte chalk dry texture"
+        }
+      ]
+    },
+    {
+      "key": "rhythm",
+      "type": "Rhythm",
+      "options": [
+        {
+          "value": "Steady Pulse",
+          "weight": 16,
+          "prompt": "steady even visual pulse and spacing"
+        },
+        {
+          "value": "Staccato Hits",
+          "weight": 14,
+          "prompt": "staccato abrupt visual hits"
+        },
+        {
+          "value": "Slow Drift",
+          "weight": 14,
+          "prompt": "slow drifting visual rhythm"
+        },
+        {
+          "value": "Cascade Down",
+          "weight": 12,
+          "prompt": "cascading downward visual rhythm"
+        },
+        {
+          "value": "Radial Burst",
+          "weight": 12,
+          "prompt": "radial burst rhythm from center"
+        },
+        {
+          "value": "Alternating Beat",
+          "weight": 12,
+          "prompt": "alternating left-right visual beat"
+        },
+        {
+          "value": "Dense Cluster",
+          "weight": 10,
+          "prompt": "dense clustered rhythm with tight packing"
+        },
+        {
+          "value": "Sparse Breath",
+          "weight": 10,
+          "prompt": "sparse breathing rhythm with open gaps"
+        }
+      ]
+    },
+    {
+      "key": "contrast",
+      "type": "Contrast",
+      "options": [
+        {
+          "value": "High Punch",
+          "weight": 16,
+          "prompt": "high punch contrast between forms and field"
+        },
+        {
+          "value": "Soft Low",
+          "weight": 14,
+          "prompt": "soft low contrast, gentle separations"
+        },
+        {
+          "value": "Hard Edge",
+          "weight": 14,
+          "prompt": "hard-edge contrast with crisp boundaries"
+        },
+        {
+          "value": "Value Extreme",
+          "weight": 12,
+          "prompt": "extreme light-dark value contrast"
+        },
+        {
+          "value": "Hue Clash",
+          "weight": 12,
+          "prompt": "deliberate complementary hue clash contrast"
+        },
+        {
+          "value": "Near Tone",
+          "weight": 12,
+          "prompt": "near-tone subtle contrast"
+        },
+        {
+          "value": "Silhouette Cut",
+          "weight": 10,
+          "prompt": "silhouette cut-out contrast against the field"
+        },
+        {
+          "value": "Glow Rim",
+          "weight": 10,
+          "prompt": "glow-rim contrast along shape edges"
+        }
+      ]
+    }
+  ],
+  "defaults": {
+    "changeKeys": [
+      "shape",
+      "motif",
+      "colorField",
+      "texture",
+      "rhythm",
+      "contrast"
+    ],
+    "extraKeys": []
+  },
+  "rules": {
+    "conflicts": [
+      {
+        "a": "shape:Soft Blobs",
+        "b": "contrast:Hard Edge",
+        "note": "Soft blobs fight hard-edge contrast"
+      },
+      {
+        "a": "rhythm:Sparse Breath",
+        "b": "motif:Cross Hatch",
+        "note": "Sparse rhythm clashes with dense cross-hatch motif"
+      },
+      {
+        "a": "colorField:Midnight Void",
+        "b": "contrast:Soft Low",
+        "note": "Near-black field needs stronger contrast than soft-low"
+      }
+    ]
+  }
+}

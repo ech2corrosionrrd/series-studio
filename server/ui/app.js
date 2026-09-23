@@ -1,0 +1,2392 @@
+/**
+ * Series Lab Studio UI — tabs, Lab APIs, i18n (uk/en).
+ * Prompts/recipe content stay English for generators.
+ */
+import { initI18n, setLocale, getLocale, t, applyI18n } from "./i18n.js";
+
+const state = {
+  presets: [],
+  templates: [],
+  packs: [],
+  recipes: [],
+  traitMeta: [],
+  archiveFile: null,
+  archiveOut: null,
+  archives: [],
+  editingIndex: null,
+  draftTraits: null,
+  draftFull: null,
+  activePackId: null,
+  selectedTraitKey: null,
+  baseFile: null,
+  health: null,
+  marks: loadMarks(), // legacy flat; gallery prefers per-set disk marks
+  galleryDir: null,
+  galleryDir2: null,
+  galleryImages: [],
+  galleryImages2: [],
+  galleryMarks: {},
+  galleryTriage: {},
+  gallerySets: [],
+  renderPlan: null,
+  lastSet: null,
+  rarity: null,
+};
+
+function loadMarks() {
+  try {
+    return JSON.parse(localStorage.getItem("series-lab-marks") || "{}");
+  } catch {
+    return {};
+  }
+}
+function saveMarks() {
+  localStorage.setItem("series-lab-marks", JSON.stringify(state.marks));
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+    ...opts,
+  });
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text };
+  }
+  if (!res.ok) {
+    if (data.code === "lint" && Array.isArray(data.hits) && data.hits.length) {
+      throw new Error(t("lint.blocked", { hits: data.hits.join(", ") }));
+    }
+    if (Array.isArray(data.conflicts) && data.conflicts.length) {
+      const detail = data.conflicts
+        .map((c) => `${c.a} ↔ ${c.b}${c.note ? ` (${c.note})` : ""}`)
+        .join("; ");
+      throw new Error(t("recipes.conflict", { detail }));
+    }
+    const err = data.error || data.errors || res.statusText;
+    throw new Error(typeof err === "string" ? err : JSON.stringify(err));
+  }
+  return data;
+}
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach((el) => el.classList.toggle("on", el.id === `tab-${name}`));
+  document.querySelectorAll("#tabs button").forEach((btn) => {
+    btn.classList.toggle("on", btn.dataset.tab === name);
+  });
+  if (name === "export") {
+    fillExportSets();
+    fillArchiveSelect();
+  }
+  try {
+    history.replaceState(null, "", `#${name}`);
+  } catch {
+    /* ignore */
+  }
+  if (name === "recipes") ensureRecipesLoaded();
+  if (name === "gallery") ensureGalleryLoaded();
+  if (name === "render") lockGenerate(true);
+}
+
+async function ensureGalleryLoaded() {
+  await loadGallerySets();
+  if (state.galleryDir) await loadGalleryDir(state.galleryDir);
+  else renderGallery();
+}
+
+function setupTabs() {
+  document.querySelectorAll("#tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => showTab(btn.dataset.tab));
+  });
+  const hash = (location.hash || "").replace(/^#/, "");
+  if (hash && $(`tab-${hash}`)) showTab(hash);
+}
+
+function setupHints() {
+  const box = $("hints-on");
+  const saved = localStorage.getItem("series-lab-hints");
+  if (saved === "0") {
+    box.checked = false;
+    document.body.classList.add("no-hints");
+  }
+  box.addEventListener("change", () => {
+    document.body.classList.toggle("no-hints", !box.checked);
+    localStorage.setItem("series-lab-hints", box.checked ? "1" : "0");
+  });
+}
+
+function setupLang() {
+  const sync = () => {
+    document.querySelectorAll(".lang-btn").forEach((b) => {
+      b.classList.toggle("on", b.dataset.locale === getLocale());
+    });
+  };
+  document.querySelectorAll(".lang-btn").forEach((b) => {
+    b.addEventListener("click", () => {
+      setLocale(b.dataset.locale);
+      sync();
+      refreshDynamicCopy();
+    });
+  });
+  sync();
+  window.addEventListener("series-lab:locale", () => {
+    sync();
+    refreshDynamicCopy();
+  });
+}
+
+function refreshDynamicCopy() {
+  renderSteps();
+  renderFacts();
+  renderCtorSummary();
+  renderTemplates();
+  renderPacks();
+  renderTraitChecklist();
+  renderPackSummary();
+  renderOptionsEditor();
+  renderRecipeTable();
+  renderResources();
+  syncCompareSelect();
+  renderGallery();
+  fillPresetSelects();
+  fillArchiveSelect();
+  const stub = $("g-plan-out");
+  if (stub && !stub.dataset.dirty) stub.textContent = t("render.stub");
+  const allOpt = $("r-line")?.querySelector('option[value=""]');
+  if (allOpt) allOpt.textContent = t("recipes.allLines");
+}
+
+/* ---------- Overview ---------- */
+function renderSteps() {
+  const el = $("steps");
+  if (!el) return;
+  const hasBase = !!state.health?.base?.exists || (state.baseFiles && state.baseFiles.length > 0);
+  const hasPreset = state.presets.length > 0;
+  const hasArchive = state.archives.length > 0 || state.recipes.length > 0;
+  const hasCollection =
+    Boolean($("o-name")?.value?.trim() && $("o-seed")?.value?.trim() && Number($("o-size")?.value) > 0) ||
+    hasPreset;
+  const steps = [
+    { tab: "home", key: "home", done: hasCollection },
+    { tab: "base", key: "base", done: hasBase },
+    { tab: "ctor", key: "ctor", done: hasPreset },
+    { tab: "recipes", key: "recipes", done: hasArchive },
+    { tab: "render", key: "render", done: false },
+    { tab: "gallery", key: "gallery", done: false },
+    { tab: "export", key: "export", done: hasArchive },
+  ];
+  let nextSet = false;
+  el.innerHTML = "";
+  for (const s of steps) {
+    const li = document.createElement("li");
+    if (s.done) li.classList.add("done");
+    else if (!nextSet) {
+      li.classList.add("next");
+      nextSet = true;
+    }
+    li.innerHTML = `<b>${t(`home.step.${s.key}`)}</b><span>${t(`home.step.${s.key}.desc`)}</span>`;
+    li.addEventListener("click", () => showTab(s.tab));
+    el.appendChild(li);
+  }
+}
+
+function renderFacts() {
+  const dl = $("facts");
+  if (!dl) return;
+  const p = state.presets[0];
+  const arch = state.archives[0];
+  const liveName = $("o-name")?.value?.trim() || p?.name;
+  const liveId = $("o-id")?.value?.trim() || p?.id;
+  const liveSize = $("o-size")?.value || p?.size;
+  const liveSeed = $("o-seed")?.value?.trim() || p?.seed;
+  const rows = [
+    [t("home.fact.preset"), liveName || liveId ? `${liveName || "—"} (${liveId || p?.file || "—"})` : t("home.fact.none")],
+    [t("home.fact.size"), liveSize ?? t("home.fact.none")],
+    [t("home.fact.seed"), liveSeed || t("home.fact.none")],
+    [t("home.fact.archive"), arch ? arch.file : state.archiveOut || t("home.fact.none")],
+  ];
+  dl.innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(String(v))}</dd>`).join("");
+}
+
+
+function renderCtorSummary() {
+  const dl = $("ctor-summary");
+  if (!dl) return;
+  const rows = [
+    [t("home.field.name"), $("o-name")?.value?.trim() || $("c-name")?.value?.trim() || "—"],
+    [t("home.field.id"), $("o-id")?.value?.trim() || $("c-id")?.value?.trim() || "—"],
+    [t("home.field.size"), $("o-size")?.value || $("c-size")?.value || "—"],
+    [t("home.field.seed"), $("o-seed")?.value?.trim() || $("c-seed")?.value?.trim() || "—"],
+    [t("home.field.engine"), $("o-engine")?.value || $("c-engine")?.value || "—"],
+    [t("home.field.strength"), $("o-strength")?.value || $("c-strength")?.value || "—"],
+  ];
+  dl.innerHTML = rows.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(String(v))}</dd>`).join("");
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ---------- Presets / templates ---------- */
+async function loadPresets() {
+  const data = await api("/api/presets");
+  state.presets = data.presets || [];
+  fillPresetSelects();
+}
+
+function fillPresetSelects() {
+  for (const id of ["ctor-file", "r-preset"]) {
+    const sel = $(id);
+    if (!sel) continue;
+    const cur = sel.value;
+    sel.innerHTML = state.presets
+      .map((p) => `<option value="${escapeHtml(p.file)}">${escapeHtml(p.name || p.id)} (${escapeHtml(p.file)})</option>`)
+      .join("");
+    if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+  }
+}
+
+async function loadTemplates() {
+  const data = await api("/api/templates");
+  state.templates = data.templates || [];
+  renderTemplates();
+}
+
+function renderTemplates() {
+  const grid = $("tpl-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  for (const tpl of state.templates) {
+    const card = document.createElement("div");
+    card.className = "tpl-card";
+    const title = tpl.titleUk && getLocale() === "uk" ? tpl.titleUk : tpl.name;
+    card.innerHTML = `<b>${escapeHtml(title)}</b>
+      <span class="tpl-blurb">${escapeHtml(tpl.blurb || tpl.id)}</span>
+      <span class="muted small">${escapeHtml(tpl.id)} · size ${tpl.size}</span>
+      <button type="button" class="btn small" data-id="${escapeHtml(tpl.id)}">${t("base.use")}</button>`;
+    card.querySelector("button").addEventListener("click", () => useTemplate(tpl.id));
+    grid.appendChild(card);
+  }
+}
+
+async function useTemplate(id) {
+  const data = await api(`/api/templates/${encodeURIComponent(id)}`);
+  const preset = data.preset;
+  state.draftFull = preset;
+  state.draftTraits = preset.traits;
+  fillConstructor(preset);
+  if ($("o-id")) {
+    delete $("o-id").dataset.touched;
+    delete $("o-seed").dataset.touched;
+  }
+  showTab("ctor");
+  if ($("ctor-msg")) {
+    $("ctor-msg").textContent = `${t("ctor.msg.loaded")}: ${preset.id}`;
+    $("ctor-msg").className = "small ok-msg";
+  }
+  renderFacts();
+  renderCtorSummary();
+  renderSteps();
+}
+
+
+/* ---------- Trait packs (library → snapshot) ---------- */
+function deepCopyTraits(items) {
+  return JSON.parse(JSON.stringify(Array.isArray(items) ? items : []));
+}
+
+function splitKeyField(s) {
+  return String(s || "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function setKeyFields(changeKeys, extraKeys) {
+  if ($("c-change")) $("c-change").value = (changeKeys || []).join(", ");
+  if ($("c-extra")) $("c-extra").value = (extraKeys || []).join(", ");
+}
+
+function countOptions(items) {
+  return (items || []).reduce((n, t) => n + (Array.isArray(t?.options) ? t.options.length : 0), 0);
+}
+
+async function loadTraitPacks() {
+  const data = await api("/api/trait-packs");
+  state.packs = data.packs || [];
+  renderPacks();
+  renderPackSummary();
+  renderTraitChecklist();
+  renderOptionsEditor();
+}
+
+function renderPacks() {
+  const grid = $("pack-grid");
+  if (!grid) return;
+  grid.innerHTML = "";
+  if (!state.packs.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted small";
+    empty.textContent = t("ctor.packs.empty");
+    grid.appendChild(empty);
+    return;
+  }
+  for (const pack of state.packs) {
+    const card = document.createElement("div");
+    card.className = "tpl-card pack-card";
+    if (state.activePackId === pack.id) card.classList.add("on");
+    const keysN = pack.keys?.length ?? 0;
+    const optsN = pack.optionsTotal ?? Object.values(pack.optionCounts || {}).reduce((a, b) => a + b, 0);
+    const tags = (pack.tags || []).join(", ");
+    card.innerHTML = `<b>${escapeHtml(pack.name || pack.id)}</b>
+      <span class="tpl-blurb">${escapeHtml(pack.description || "")}</span>
+      <span class="muted small">${escapeHtml(pack.id)} · ${keysN} ${t("ctor.packs.keys")} · ${optsN} ${t("ctor.packs.options")}${tags ? ` · ${escapeHtml(tags)}` : ""}</span>
+      <button type="button" class="btn small" data-id="${escapeHtml(pack.id)}">${t("ctor.packs.apply")}</button>`;
+    card.querySelector("button").addEventListener("click", () => applyTraitPack(pack.id));
+    grid.appendChild(card);
+  }
+}
+
+function renderPackSummary() {
+  const el = $("pack-summary");
+  if (!el) return;
+  const items = state.draftTraits?.items || [];
+  const n = items.length;
+  const m = countOptions(items);
+  if (!n) {
+    el.textContent = t("ctor.packs.summaryEmpty");
+    return;
+  }
+  el.textContent = t("ctor.packs.summary", { n: String(n), m: String(m) });
+}
+
+function renderTraitChecklist() {
+  const wrap = $("pack-checklist-wrap");
+  const box = $("pack-checklist");
+  if (!wrap || !box) return;
+  const items = state.draftTraits?.items || [];
+  if (!items.length) {
+    wrap.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  wrap.hidden = false;
+  const change = new Set(splitKeyField($("c-change")?.value));
+  const extra = new Set(splitKeyField($("c-extra")?.value));
+  box.innerHTML = "";
+  for (const trait of items) {
+    const key = trait.key;
+    if (!key) continue;
+    const opts = Array.isArray(trait.options) ? trait.options.length : 0;
+    const inChange = change.has(key);
+    const inExtra = extra.has(key);
+    const enabled = inChange || inExtra;
+    const selected = state.selectedTraitKey === key;
+    const row = document.createElement("div");
+    row.className = `pack-key${enabled ? "" : " off"}${selected ? " selected" : ""}`;
+    const role = inExtra && !inChange ? t("ctor.packs.roleExtra") : inChange ? t("ctor.packs.roleChange") : t("ctor.packs.roleUnused");
+    row.innerHTML = `<label style="display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;min-width:0">
+      <input type="checkbox" data-key="${escapeHtml(key)}" ${enabled ? "checked" : ""}>
+      <span class="pack-key-name">${escapeHtml(key)}</span>
+      <span class="muted small">${escapeHtml(trait.type || "")} · ${opts} ${t("ctor.packs.options")} · ${escapeHtml(role)}</span>
+    </label>
+    <button type="button" class="btn small pack-key-edit" data-edit-key="${escapeHtml(key)}">${escapeHtml(t("ctor.options.editKey"))}</button>`;
+    row.querySelector("input").addEventListener("change", (ev) => toggleTraitKey(key, ev.target.checked));
+    row.querySelector("button[data-edit-key]").addEventListener("click", () => {
+      selectTraitKey(key);
+      $("ctor-options-card")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    box.appendChild(row);
+  }
+}
+
+function toggleTraitKey(key, enabled) {
+  let change = splitKeyField($("c-change")?.value);
+  let extra = splitKeyField($("c-extra")?.value);
+  if (enabled) {
+    extra = extra.filter((k) => k !== key);
+    if (!change.includes(key)) change.push(key);
+  } else {
+    change = change.filter((k) => k !== key);
+    extra = extra.filter((k) => k !== key);
+  }
+  setKeyFields(change, extra);
+  // keep items; only membership changes
+  renderTraitChecklist();
+  renderPackSummary();
+  renderOptionsEditor();
+}
+
+async function applyTraitPack(id) {
+  try {
+    const data = await api(`/api/trait-packs/${encodeURIComponent(id)}`);
+    const pack = data.pack;
+    if (!pack?.items) throw new Error(t("ctor.packs.bad"));
+    // Snapshot: deep-copy items into draft — not a live link to the library
+    state.draftTraits = { items: deepCopyTraits(pack.items) };
+    const packRules = pack.rules && typeof pack.rules === "object"
+      ? structuredClone(pack.rules)
+      : { conflicts: [] };
+    if (state.draftFull) {
+      state.draftFull = {
+        ...state.draftFull,
+        traits: state.draftTraits,
+        rules: packRules,
+      };
+    } else {
+      state.draftFull = {
+        schema: "series-preset/v0",
+        base: { path: "input/primary.png" },
+        lines: { a: { who: "series subject", base: "input/primary.png", quota: 1 } },
+        traits: state.draftTraits,
+        rules: packRules,
+        waves: null,
+      };
+    }
+    state.activePackId = pack.id || id;
+    const defs = pack.defaults || {};
+    const allKeys = (pack.items || []).map((t) => t.key).filter(Boolean);
+    const changeKeys = Array.isArray(defs.changeKeys) && defs.changeKeys.length ? defs.changeKeys : allKeys;
+    const extraKeys = Array.isArray(defs.extraKeys) ? defs.extraKeys : [];
+    // Do NOT overwrite Overview identity (c-* mirrors / o-*)
+    setKeyFields(changeKeys, extraKeys);
+    if (!state.selectedTraitKey || !allKeys.includes(state.selectedTraitKey)) {
+      state.selectedTraitKey = allKeys[0] || null;
+    }
+    renderPacks();
+    renderPackSummary();
+    renderTraitChecklist();
+    renderOptionsEditor();
+    if ($("ctor-msg")) {
+      $("ctor-msg").textContent = `${t("ctor.packs.applied")}: ${pack.name || pack.id}`;
+      $("ctor-msg").className = "small ok-msg";
+    }
+  } catch (e) {
+    if ($("ctor-msg")) {
+      $("ctor-msg").textContent = e.message;
+      $("ctor-msg").className = "small err-msg";
+    }
+  }
+}
+
+/* ---------- Wave 3 · options editor (series snapshot only) ---------- */
+function normalizeOptionClient(raw) {
+  const o = raw && typeof raw === "object" ? raw : {};
+  const value = String(o.value ?? "").trim();
+  let weight = Number(o.weight);
+  if (!Number.isFinite(weight)) weight = 1;
+  const prompt = String(o.prompt ?? "");
+  const out = { value, weight, prompt };
+  if (Array.isArray(o.lines) && o.lines.length) out.lines = o.lines.map((x) => String(x));
+  if (typeof o.since === "number" && o.since >= 1) out.since = o.since;
+  return out;
+}
+
+function validateOptionsClient(list) {
+  const errors = [];
+  const warnings = [];
+  const options = Array.isArray(list) ? list : [];
+  if (!options.length) {
+    errors.push(t("ctor.options.err.none"));
+    return { ok: false, errors, warnings };
+  }
+  const seen = new Map();
+  options.forEach((raw, i) => {
+    const o = normalizeOptionClient(raw);
+    if (!o.value) errors.push(t("ctor.options.err.value", { i: String(i + 1) }));
+    if (!Number.isFinite(o.weight) || o.weight <= 0) {
+      errors.push(t("ctor.options.err.weight", { i: String(i + 1) }));
+    }
+    if (!String(o.prompt ?? "").trim()) {
+      warnings.push(t("ctor.options.warn.prompt", { i: String(i + 1) }));
+    }
+    if (o.value) {
+      if (seen.has(o.value)) {
+        errors.push(t("ctor.options.err.dup", { value: o.value }));
+      } else {
+        seen.set(o.value, i);
+      }
+    }
+  });
+  return { ok: errors.length === 0, errors, warnings };
+}
+
+function ensureDraftTraits() {
+  if (!state.draftTraits || !Array.isArray(state.draftTraits.items)) {
+    state.draftTraits = { items: [] };
+  }
+  if (state.draftFull) state.draftFull.traits = state.draftTraits;
+  return state.draftTraits;
+}
+
+function findTrait(key) {
+  const items = state.draftTraits?.items || [];
+  return items.find((t) => t.key === key) || null;
+}
+
+function selectTraitKey(key) {
+  state.selectedTraitKey = key || null;
+  renderTraitChecklist();
+  renderOptionsEditor();
+}
+
+function renderOptionsEditor() {
+  const sel = $("opt-trait-key");
+  const wrap = $("opt-editor-wrap");
+  const empty = $("opt-empty");
+  const countEl = $("opt-count");
+  const tbody = $("opt-tbody");
+  const msg = $("opt-msg");
+  if (!sel || !wrap || !tbody) return;
+
+  const items = state.draftTraits?.items || [];
+  const keys = items.map((t) => t.key).filter(Boolean);
+  const prev = state.selectedTraitKey;
+  sel.innerHTML = "";
+  if (!keys.length) {
+    state.selectedTraitKey = null;
+    wrap.hidden = true;
+    if (empty) empty.hidden = false;
+    if (countEl) countEl.textContent = "";
+    if (msg) msg.textContent = "";
+    return;
+  }
+  if (empty) empty.hidden = true;
+  if (!prev || !keys.includes(prev)) state.selectedTraitKey = keys[0];
+  for (const key of keys) {
+    const trait = findTrait(key);
+    const n = Array.isArray(trait?.options) ? trait.options.length : 0;
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = `${key} (${n})`;
+    if (key === state.selectedTraitKey) opt.selected = true;
+    sel.appendChild(opt);
+  }
+
+  const trait = findTrait(state.selectedTraitKey);
+  if (!trait) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  if (!Array.isArray(trait.options)) trait.options = [];
+  const n = trait.options.length;
+  if (countEl) countEl.textContent = t("ctor.options.count", { n: String(n), key: state.selectedTraitKey });
+
+  tbody.innerHTML = "";
+  trait.options.forEach((raw, idx) => {
+    const o = normalizeOptionClient(raw);
+    // keep normalized shape in draft
+    trait.options[idx] = { ...raw, ...o };
+    const tr = document.createElement("tr");
+    const promptWarn = !String(o.prompt || "").trim();
+    tr.innerHTML = `
+      <td><input type="text" data-field="value" data-idx="${idx}" value="${escapeHtml(o.value)}" autocomplete="off"></td>
+      <td><input class="opt-weight" type="number" min="0.01" step="any" data-field="weight" data-idx="${idx}" value="${escapeHtml(String(o.weight))}"></td>
+      <td>
+        <textarea data-field="prompt" data-idx="${idx}" rows="2">${escapeHtml(o.prompt)}</textarea>
+        ${promptWarn ? `<span class="muted small opt-warn">${escapeHtml(t("ctor.options.warn.promptShort"))}</span>` : ""}
+      </td>
+      <td class="opt-actions">
+        <button type="button" class="btn small" data-act="dup" data-idx="${idx}" title="${escapeHtml(t("ctor.options.dup"))}">${escapeHtml(t("ctor.options.dup"))}</button>
+        <button type="button" class="btn small" data-act="rm" data-idx="${idx}" title="${escapeHtml(t("ctor.options.rm"))}">${escapeHtml(t("ctor.options.rm"))}</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  const check = validateOptionsClient(trait.options);
+  if (msg) {
+    if (!check.ok) {
+      msg.textContent = check.errors.join(" · ");
+      msg.className = "small err-msg";
+    } else if (check.warnings.length) {
+      msg.textContent = check.warnings.join(" · ");
+      msg.className = "small opt-warn";
+    } else {
+      msg.textContent = t("ctor.options.ok");
+      msg.className = "small ok-msg";
+    }
+  }
+}
+
+function updateOptionField(idx, field, value) {
+  ensureDraftTraits();
+  const trait = findTrait(state.selectedTraitKey);
+  if (!trait || !Array.isArray(trait.options) || !trait.options[idx]) return;
+  const cur = { ...normalizeOptionClient(trait.options[idx]) };
+  if (field === "weight") {
+    const n = Number(value);
+    cur.weight = Number.isFinite(n) ? n : 0;
+  } else if (field === "value") {
+    cur.value = String(value ?? "").trim();
+  } else if (field === "prompt") {
+    cur.prompt = String(value ?? "");
+  }
+  trait.options[idx] = cur;
+  if (state.draftFull) state.draftFull.traits = state.draftTraits;
+  renderPackSummary();
+  // refresh validation + count without full rebuild of focused field when typing prompt
+  renderOptionsEditor();
+}
+
+function addOptionRow() {
+  ensureDraftTraits();
+  const trait = findTrait(state.selectedTraitKey);
+  if (!trait) return;
+  if (!Array.isArray(trait.options)) trait.options = [];
+  const taken = new Set(trait.options.map((o) => String(o?.value || "")));
+  let value = "New option";
+  let n = 2;
+  while (taken.has(value)) {
+    value = `New option ${n}`;
+    n += 1;
+  }
+  trait.options.push({ value, weight: 1, prompt: "" });
+  if (state.draftFull) state.draftFull.traits = state.draftTraits;
+  renderPackSummary();
+  renderTraitChecklist();
+  renderOptionsEditor();
+}
+
+function removeOptionRow(idx) {
+  ensureDraftTraits();
+  const trait = findTrait(state.selectedTraitKey);
+  if (!trait?.options?.[idx]) return;
+  trait.options.splice(idx, 1);
+  if (state.draftFull) state.draftFull.traits = state.draftTraits;
+  renderPackSummary();
+  renderTraitChecklist();
+  renderOptionsEditor();
+}
+
+function duplicateOptionRow(idx) {
+  ensureDraftTraits();
+  const trait = findTrait(state.selectedTraitKey);
+  if (!trait?.options?.[idx]) return;
+  const base = normalizeOptionClient(trait.options[idx]);
+  const taken = new Set(trait.options.map((o) => String(o?.value || "")));
+  let value = base.value ? `${base.value} copy` : "option copy";
+  let n = 2;
+  while (taken.has(value)) {
+    value = `${base.value || "option"} copy ${n}`;
+    n += 1;
+  }
+  trait.options.splice(idx + 1, 0, { ...base, value });
+  if (state.draftFull) state.draftFull.traits = state.draftTraits;
+  renderPackSummary();
+  renderTraitChecklist();
+  renderOptionsEditor();
+}
+
+function setupOptionsEditor() {
+  const sel = $("opt-trait-key");
+  if (!sel) return;
+  sel.addEventListener("change", () => {
+    selectTraitKey(sel.value || null);
+  });
+  $("opt-add")?.addEventListener("click", () => addOptionRow());
+  $("opt-tbody")?.addEventListener("change", (ev) => {
+    const el = ev.target;
+    if (!el || !el.dataset || el.dataset.idx == null) return;
+    if (!["value", "weight", "prompt"].includes(el.dataset.field)) return;
+    updateOptionField(Number(el.dataset.idx), el.dataset.field, el.value);
+  });
+  $("opt-tbody")?.addEventListener("input", (ev) => {
+    const el = ev.target;
+    if (!el || el.dataset?.field !== "prompt") return;
+    // live-update draft without full re-render (keep caret)
+    ensureDraftTraits();
+    const trait = findTrait(state.selectedTraitKey);
+    const idx = Number(el.dataset.idx);
+    if (!trait?.options?.[idx]) return;
+    trait.options[idx] = { ...normalizeOptionClient(trait.options[idx]), prompt: el.value };
+    if (state.draftFull) state.draftFull.traits = state.draftTraits;
+  });
+  $("opt-tbody")?.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("button[data-act]");
+    if (!btn) return;
+    const idx = Number(btn.dataset.idx);
+    if (btn.dataset.act === "rm") removeOptionRow(idx);
+    if (btn.dataset.act === "dup") duplicateOptionRow(idx);
+  });
+}
+
+function fillOverview(preset) {
+  if (!$("o-id")) return;
+  $("o-id").value = preset.id || "";
+  $("o-name").value = preset.name || "";
+  $("o-seed").value = preset.seed || "";
+  $("o-size").value = preset.size || 1;
+  const eng = preset.engine?.default || "kontext";
+  $("o-engine").value = eng;
+  const str = Number(preset.engine?.strength ?? 0.45);
+  $("o-strength").value = str;
+  $("o-strength-v").textContent = String(str);
+}
+
+function syncOverviewFromCtor() {
+  if (!$("o-id") || !$("c-id")) return;
+  $("o-id").value = $("c-id").value;
+  $("o-name").value = $("c-name").value;
+  $("o-seed").value = $("c-seed").value;
+  $("o-size").value = $("c-size").value;
+  $("o-engine").value = $("c-engine").value;
+  $("o-strength").value = $("c-strength").value;
+  $("o-strength-v").textContent = $("c-strength-v").textContent;
+}
+
+function syncCtorFromOverview() {
+  if (!$("o-id") || !$("c-id")) return;
+  $("c-id").value = $("o-id").value;
+  $("c-name").value = $("o-name").value;
+  $("c-seed").value = $("o-seed").value;
+  $("c-size").value = $("o-size").value;
+  $("c-engine").value = $("o-engine").value;
+  $("c-strength").value = $("o-strength").value;
+  $("c-strength-v").textContent = String($("o-strength").value);
+}
+
+function fillConstructor(preset) {
+  $("c-id").value = preset.id || "";
+  $("c-name").value = preset.name || "";
+  $("c-seed").value = preset.seed || "";
+  $("c-size").value = preset.size || 1;
+  const eng = preset.engine?.default || "kontext";
+  $("c-engine").value = eng;
+  const str = Number(preset.engine?.strength ?? 0.45);
+  $("c-strength").value = str;
+  $("c-strength-v").textContent = String(str);
+  fillOverview(preset);
+  const keep = preset.promptTemplate?.keep;
+  $("c-keep").value = Array.isArray(keep) ? keep.join("\n") : keep || "";
+  $("c-change").value = (preset.promptTemplate?.changeKeys || []).join(", ");
+  $("c-extra").value = (preset.promptTemplate?.extraKeys || []).join(", ");
+  $("c-suffix").value = preset.promptTemplate?.suffix || "";
+  fillStyleLock(preset.styleLock);
+  state.draftTraits = preset.traits;
+  state.draftFull = preset;
+  renderBaseLines(preset);
+  renderCtorSummary();
+  renderPackSummary();
+  renderTraitChecklist();
+  if (!state.selectedTraitKey && state.draftTraits?.items?.length) {
+    state.selectedTraitKey = state.draftTraits.items[0]?.key || null;
+  }
+  renderOptionsEditor();
+}
+
+function readConstructor() {
+  syncCtorFromOverview();
+  const base = state.draftFull || {
+    schema: "series-preset/v0",
+    base: { path: "input/primary.png" },
+    lines: {
+      a: { who: "series subject", base: "input/primary.png", quota: 1 },
+    },
+    traits: state.draftTraits || { items: [] },
+    rules: { forbiddenPairs: [] },
+    waves: null,
+  };
+  const size = Number($("c-size").value) || 1;
+  const id = $("c-id").value.trim();
+  const keepLines = $("c-keep").value
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const splitKeys = (s) =>
+    s
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+  const lines = base.lines ? { ...base.lines } : { a: { who: "series subject", quota: size } };
+  const ids = Object.keys(lines);
+  if (ids.length) {
+    const baseQ = Math.floor(size / ids.length);
+    let rem = size - baseQ * ids.length;
+    for (const lid of ids) {
+      const q = baseQ + (rem > 0 ? 1 : 0);
+      if (rem > 0) rem--;
+      lines[lid] = { ...lines[lid], quota: q };
+    }
+  }
+  return {
+    ...base,
+    schema: "series-preset/v0",
+    id,
+    name: $("c-name").value.trim() || id,
+    seed: $("c-seed").value.trim() || id,
+    size,
+    lines,
+    promptTemplate: {
+      ...(base.promptTemplate || {}),
+      keep: keepLines.length ? keepLines : ["Edit this image of a {who}."],
+      changeKeys: splitKeys($("c-change").value),
+      extraKeys: splitKeys($("c-extra").value),
+      suffix: $("c-suffix").value,
+    },
+    styleLock: readStyleLock(),
+    traits: state.draftTraits || base.traits,
+    rules: base.rules || { conflicts: [] },
+    engine: {
+      default: $("c-engine").value,
+      strength: Number($("c-strength").value),
+    },
+  };
+}
+
+function fillStyleLock(lock) {
+  const sl = lock && typeof lock === "object" ? lock : {};
+  if ($("c-sl-angle")) $("c-sl-angle").value = sl.angle || "";
+  if ($("c-sl-light")) $("c-sl-light").value = sl.light || "";
+  if ($("c-sl-mood")) $("c-sl-mood").value = sl.mood || "";
+  if ($("c-sl-framing")) $("c-sl-framing").value = sl.framing || "";
+  if ($("c-sl-extra")) {
+    const extra = Array.isArray(sl.extraKeep) ? sl.extraKeep : [];
+    $("c-sl-extra").value = extra.join("\n");
+  }
+}
+
+function readStyleLock() {
+  const angle = ($("c-sl-angle")?.value || "").trim();
+  const light = ($("c-sl-light")?.value || "").trim();
+  const mood = ($("c-sl-mood")?.value || "").trim();
+  const framing = ($("c-sl-framing")?.value || "").trim();
+  const extraKeep = ($("c-sl-extra")?.value || "")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!angle && !light && !mood && !framing && !extraKeep.length) {
+    return undefined;
+  }
+  return { angle, light, mood, framing, extraKeep };
+}
+
+
+function slugifyId(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 64);
+}
+
+function setupOverview() {
+  if (!$("o-name")) return;
+  $("o-strength").addEventListener("input", () => {
+    $("o-strength-v").textContent = $("o-strength").value;
+    syncCtorFromOverview();
+  });
+  $("o-name").addEventListener("input", () => {
+    const name = $("o-name").value.trim();
+    if (!$("o-id").dataset.touched) {
+      const slug = slugifyId(name);
+      if (slug) $("o-id").value = slug;
+      if (slug && !$("o-seed").dataset.touched) $("o-seed").value = `${slug}-v1`;
+    }
+    syncCtorFromOverview();
+    renderFacts();
+    renderCtorSummary();
+    renderSteps();
+  });
+  $("o-id").addEventListener("input", () => {
+    $("o-id").dataset.touched = "1";
+    syncCtorFromOverview();
+    renderFacts();
+    renderCtorSummary();
+    renderSteps();
+  });
+  $("o-seed").addEventListener("input", () => {
+    $("o-seed").dataset.touched = "1";
+    syncCtorFromOverview();
+    renderFacts();
+    renderCtorSummary();
+    renderSteps();
+  });
+  for (const id of ["o-size", "o-engine"]) {
+    $(id).addEventListener("input", () => {
+      syncCtorFromOverview();
+      renderFacts();
+      renderCtorSummary();
+      renderSteps();
+    });
+  }
+  $("o-save").addEventListener("click", async () => {
+    try {
+      syncCtorFromOverview();
+      const name = $("o-name").value.trim();
+      const id = $("o-id").value.trim() || slugifyId(name);
+      if (!id && !name) throw new Error(t("home.msg.need"));
+      if (!$("o-id").value.trim()) $("o-id").value = id;
+      syncCtorFromOverview();
+      const preset = readConstructor();
+      if (!preset.id) throw new Error(t("home.msg.need"));
+            const data = await api("/api/preset/save", {
+        method: "POST",
+        body: JSON.stringify({ preset }),
+      });
+      $("o-msg").textContent = `${t("home.msg.saved")}: ${data.file}`;
+      $("o-msg").className = "small ok-msg";
+      await loadPresets();
+      if (data.file) {
+        if ($("ctor-file")) $("ctor-file").value = data.file;
+        if ($("r-preset")) $("r-preset").value = data.file;
+      }
+      renderFacts();
+      renderCtorSummary();
+      renderSteps();
+      scheduleWorkspaceSave();
+    } catch (e) {
+      $("o-msg").textContent = e.message;
+      $("o-msg").className = "small err-msg";
+    }
+  });
+  $("o-next")?.addEventListener("click", () => {
+    syncCtorFromOverview();
+    showTab("base");
+  });
+}
+
+function setupConstructor() {
+  $("ctor-goto-home")?.addEventListener("click", () => showTab("home"));
+  $("ctor-next")?.addEventListener("click", () => {
+    syncCtorFromOverview();
+    showTab("recipes");
+  });
+  $("c-strength")?.addEventListener("input", () => {
+    if ($("c-strength-v")) $("c-strength-v").textContent = $("c-strength").value;
+  });
+  for (const id of ["c-change", "c-extra"]) {
+    $(id)?.addEventListener("input", () => renderTraitChecklist());
+  }
+  setupOptionsEditor();
+  $("ctor-load")?.addEventListener("click", async () => {
+    try {
+      const file = $("ctor-file").value;
+      const data = await api(`/api/preset?file=${encodeURIComponent(file)}`);
+      fillConstructor(data.preset);
+      $("ctor-msg").textContent = `${t("ctor.msg.loaded")}: ${file}`;
+      $("ctor-msg").className = "small ok-msg";
+    } catch (e) {
+      $("ctor-msg").textContent = e.message;
+      $("ctor-msg").className = "small err-msg";
+    }
+  });
+  $("ctor-validate")?.addEventListener("click", async () => {
+    try {
+      const preset = readConstructor();
+      const items = preset.traits?.items || [];
+      const optIssues = [];
+      for (const trait of items) {
+        const v = validateOptionsClient(trait.options || []);
+        if (!v.ok) optIssues.push(`${trait.key}: ${v.errors.join("; ")}`);
+      }
+      if (optIssues.length) {
+        $("ctor-msg").textContent = `${t("ctor.msg.invalid")}: ${optIssues.join(" · ")}`;
+        $("ctor-msg").className = "small err-msg";
+        renderOptionsEditor();
+        return;
+      }
+      const data = await api("/api/validate", { method: "POST", body: JSON.stringify({ preset }) });
+      $("ctor-msg").textContent = `${t("ctor.msg.ok")} · ${data.id} · size=${data.size}`;
+      $("ctor-msg").className = "small ok-msg";
+    } catch (e) {
+      $("ctor-msg").textContent = `${t("ctor.msg.invalid")}: ${e.message}`;
+      $("ctor-msg").className = "small err-msg";
+    }
+  });
+  $("ctor-save")?.addEventListener("click", async () => {
+    try {
+      const preset = readConstructor();
+      if (!preset.id) throw new Error(t("ctor.msg.needId"));
+      const items = preset.traits?.items || [];
+      for (const trait of items) {
+        const v = validateOptionsClient(trait.options || []);
+        if (!v.ok) throw new Error(`${trait.key}: ${v.errors.join("; ")}`);
+      }
+      const data = await api("/api/preset/save", { method: "POST", body: JSON.stringify({ preset }) });
+      $("ctor-msg").textContent = `${t("ctor.msg.saved")}: ${data.file}`;
+      $("ctor-msg").className = "small ok-msg";
+      await loadPresets();
+      if ($("r-preset")) $("r-preset").value = data.file;
+      if ($("ctor-file")) $("ctor-file").value = data.file;
+      renderFacts();
+      renderSteps();
+      scheduleWorkspaceSave();
+    } catch (e) {
+      $("ctor-msg").textContent = e.message;
+      $("ctor-msg").className = "small err-msg";
+    }
+  });
+  $("ctor-save-pack-lib")?.addEventListener("click", async () => {
+    const msg = $("ctor-pack-msg");
+    try {
+      const curId = $("c-id")?.value?.trim() || "custom-pack";
+      const id = prompt(t("ctor.pack.prompt_id") || "Enter ID for pack:", slugifyId(curId));
+      if (!id) return;
+      const preset = readConstructor();
+      const data = await api("/api/trait-packs/export-from-preset", {
+        method: "POST",
+        body: JSON.stringify({ preset, id, name: $("c-name")?.value || id }),
+      });
+      if (msg) {
+        msg.textContent = t("ctor.pack.exported", { id: data.id }) || `Pack saved: ${data.id}`;
+        msg.className = "small ok-msg";
+      }
+      await loadTraitPacks();
+    } catch (e) {
+      if (msg) {
+        msg.textContent = e.message;
+        msg.className = "small err-msg";
+      }
+    }
+  });
+}
+
+/* ---------- Base ---------- */
+function fileToB64(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const s = String(fr.result || "");
+      const i = s.indexOf(",");
+      resolve(i >= 0 ? s.slice(i + 1) : s);
+    };
+    fr.onerror = () => reject(fr.error || new Error("read failed"));
+    fr.readAsDataURL(file);
+  });
+}
+
+function renderBaseGallery(files) {
+  const grid = $("base-gallery");
+  if (!grid) return;
+  grid.innerHTML = "";
+  if (!files?.length) {
+    grid.innerHTML = `<p class="muted small">${t("base.gallery.empty")}</p>`;
+    return;
+  }
+  for (const f of files) {
+    const tile = document.createElement("div");
+    tile.className = `base-tile${f.primary ? " primary" : ""}`;
+    const roleLabel = t(`base.role.${f.role}`) || f.role;
+    tile.innerHTML = `
+      <img src="/input/${encodeURIComponent(f.file)}?t=${Date.now()}" alt="">
+      <div class="meta"><b>${escapeHtml(f.file)}</b> ${escapeHtml(roleLabel)}${f.line ? ` · ${escapeHtml(f.line)}` : ""}</div>
+      <div class="btns">
+        ${f.primary ? "" : `<button type="button" class="btn small" data-act="primary" data-file="${escapeHtml(f.file)}">${t("base.setPrimary")}</button>`}
+        <button type="button" class="btn small" data-act="del" data-file="${escapeHtml(f.file)}">${t("base.delete")}</button>
+      </div>`;
+    tile.querySelector('[data-act="primary"]')?.addEventListener("click", async () => {
+      await api("/api/base/primary", { method: "POST", body: JSON.stringify({ file: f.file }) });
+      await refreshBaseStatus();
+    });
+    tile.querySelector('[data-act="del"]')?.addEventListener("click", async () => {
+      await api("/api/base/delete", { method: "POST", body: JSON.stringify({ file: f.file }) });
+      await refreshBaseStatus();
+    });
+    grid.appendChild(tile);
+  }
+}
+
+async function refreshBaseStatus() {
+  try {
+    const data = await api("/api/base/list");
+    state.baseFiles = data.files || [];
+    renderBaseGallery(state.baseFiles);
+    if (state.health) {
+      state.health.base = {
+        exists: state.baseFiles.some((f) => f.primary) || state.baseFiles.length > 0,
+        file: state.baseFiles.find((f) => f.primary)?.file || state.baseFiles[0]?.file,
+        count: state.baseFiles.length,
+      };
+    }
+    renderSteps();
+  } catch {
+    /* ignore */
+  }
+}
+
+function setupBase() {
+  $("base-role")?.addEventListener("change", () => {
+    const role = $("base-role").value;
+    if ($("base-line-wrap")) $("base-line-wrap").hidden = role !== "line";
+  });
+  $("base-upload")?.addEventListener("click", async () => {
+    try {
+      const input = $("base-file");
+      const files = [...(input?.files || [])];
+      if (!files.length) throw new Error(t("base.msg.needFiles"));
+      let last = null;
+      for (const file of files) {
+        const data = await fileToB64(file);
+        last = await api("/api/base/upload", {
+          method: "POST",
+          body: JSON.stringify({
+            filename: file.name,
+            data,
+            role: $("base-role")?.value || "primary",
+            line: $("base-line-id")?.value || "a",
+          }),
+        });
+      }
+      $("base-msg").textContent = t("base.msg.uploaded");
+      $("base-msg").className = "small ok-msg";
+      await refreshBaseStatus();
+    } catch (e) {
+      $("base-msg").textContent = e.message;
+      $("base-msg").className = "small err-msg";
+    }
+  });
+  $("base-wish-save")?.addEventListener("click", async () => {
+    try {
+      await api("/api/base/wish", {
+        method: "POST",
+        body: JSON.stringify({ wish: $("base-wish")?.value || "" }),
+      });
+      $("base-msg").textContent = t("base.wish.saved");
+      $("base-msg").className = "small ok-msg";
+    } catch (e) {
+      $("base-msg").textContent = e.message;
+      $("base-msg").className = "small err-msg";
+    }
+  });
+  $("base-wish-str")?.addEventListener("input", () => {
+    if ($("base-wish-str-v")) $("base-wish-str-v").textContent = $("base-wish-str").value;
+  });
+  $("base-wish-gen")?.addEventListener("click", async () => {
+    try {
+      $("base-wish-gen").disabled = true;
+      const data = await api("/api/base/generate", {
+        method: "POST",
+        body: JSON.stringify({
+          wish: $("base-wish")?.value || "",
+          engine: $("base-wish-engine")?.value,
+          strength: Number($("base-wish-str")?.value),
+          useRef: Boolean($("base-wish-ref")?.checked),
+          makePrimary: Boolean($("base-wish-primary")?.checked),
+        }),
+      });
+      if ($("base-wish-out")) {
+        $("base-wish-out").hidden = false;
+        $("base-wish-out").textContent = JSON.stringify(data, null, 2);
+      }
+      $("base-msg").textContent = data.ok ? t("base.wish.done") : (data.message || t("base.wish.fail"));
+      $("base-msg").className = data.ok ? "small ok-msg" : "small err-msg";
+      await refreshBaseStatus();
+    } catch (e) {
+      $("base-msg").textContent = e.message;
+      $("base-msg").className = "small err-msg";
+    } finally {
+      $("base-wish-gen").disabled = false;
+    }
+  });
+
+  $("base-vision-analyze")?.addEventListener("click", async () => {
+    const btn = $("base-vision-analyze");
+    const status = $("base-vision-status");
+    const box = $("base-vision-box");
+    try {
+      if (btn) btn.disabled = true;
+      if (status) status.textContent = t("base.vision.analyzing");
+      const data = await api("/api/base/analyze", { method: "POST", body: JSON.stringify({}) });
+      state.lastVisionResult = data.data;
+      if (status) status.textContent = t("base.vision.provider", { provider: data.provider || "AI" });
+      if ($("base-vision-summary")) $("base-vision-summary").textContent = data.data.summary || "";
+      if ($("base-vision-out")) $("base-vision-out").textContent = JSON.stringify(data.data, null, 2);
+      if (box) box.hidden = false;
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  $("base-vision-apply")?.addEventListener("click", () => {
+    const v = state.lastVisionResult;
+    if (!v) return;
+    if (v.styleLock) {
+      fillStyleLock(v.styleLock);
+      if (state.draftFull) state.draftFull.styleLock = v.styleLock;
+    }
+    if (Array.isArray(v.suggestedTraits) && v.suggestedTraits.length) {
+      ensureDraftTraits();
+      const existingKeys = new Set((state.draftTraits.items || []).map((t) => t.key));
+      for (const st of v.suggestedTraits) {
+        if (!existingKeys.has(st.key)) {
+          state.draftTraits.items.push(st);
+        }
+      }
+      if (state.draftFull) state.draftFull.traits = state.draftTraits;
+    }
+    renderTraitChecklist();
+    renderPackSummary();
+    renderOptionsEditor();
+    renderFacts();
+    renderSteps();
+    const status = $("base-vision-status");
+    if (status) status.textContent = t("base.vision.done");
+    showTab("ctor");
+  });
+
+  $("base-next")?.addEventListener("click", () => showTab("ctor"));
+}
+
+/* ---------- Recipes ---------- */
+function renderRarity(rarity) {
+  const box = $("r-rarity-table");
+  if (!box) return;
+  if (!rarity?.traits?.length) {
+    box.innerHTML = "";
+    return;
+  }
+  let html = `<table class="table"><thead><tr>
+    <th>${t("recipes.rarity.th.trait")}</th><th>${t("recipes.rarity.th.value")}</th>
+    <th>${t("recipes.rarity.th.count")}</th><th>${t("recipes.rarity.th.actual")}</th>
+    <th>${t("recipes.rarity.th.expected")}</th></tr></thead><tbody>`;
+  for (const trait of rarity.traits) {
+    for (const opt of trait.options || []) {
+      html += `<tr><td>${escapeHtml(trait.key)}</td><td>${escapeHtml(opt.value)}</td>
+        <td>${opt.count}</td><td>${opt.actual}%</td><td>${opt.expected}%</td></tr>`;
+    }
+  }
+  html += "</tbody></table>";
+  box.innerHTML = html;
+}
+
+function renderRecipeTable() {
+  const table = $("r-table");
+  if (!table) return;
+  const q = ($("r-search")?.value || "").toLowerCase();
+  const line = $("r-line")?.value || "";
+  let rows = state.recipes || [];
+  if (line) rows = rows.filter((r) => r.line === line);
+  if (q) rows = rows.filter((r) => JSON.stringify(r).toLowerCase().includes(q));
+  if ($("r-count")) $("r-count").textContent = String(rows.length);
+  table.innerHTML = `<thead><tr><th>#</th><th>line</th><th>dna</th><th></th></tr></thead><tbody>` +
+    rows.map((r) => `<tr data-i="${r.index}">
+      <td>${r.edition}</td><td>${escapeHtml(r.line)}</td>
+      <td class="mono small">${escapeHtml(r.dna || "")}</td>
+      <td><button type="button" class="btn small" data-ed="${r.index}">${t("recipes.edit") || "Edit"}</button></td>
+    </tr>`).join("") + "</tbody>";
+  table.querySelectorAll("button[data-ed]").forEach((btn) => {
+    btn.addEventListener("click", () => openRecipeEditor(Number(btn.dataset.ed)));
+  });
+}
+
+function openRecipeEditor(index) {
+  const recipe = state.recipes.find((r) => r.index === index);
+  if (!recipe) return;
+  state.editingIndex = index;
+  if ($("r-editor")) $("r-editor").hidden = false;
+  if ($("r-ed-title")) $("r-ed-title").textContent = `#${recipe.edition}`;
+  if ($("r-prompt")) $("r-prompt").value = recipe.prompt || "";
+  if ($("r-ed-note")) $("r-ed-note").value = recipe.note || "";
+  const fields = $("r-ed-fields");
+  if (fields) {
+    fields.innerHTML = Object.entries(recipe.traits || {})
+      .map(([k, v]) => `<label class="small">${escapeHtml(k)}<input data-k="${escapeHtml(k)}" value="${escapeHtml(v)}" /></label>`)
+      .join("");
+  }
+}
+
+async function loadRecipesArchive(file) {
+  if (!file) return;
+  const data = await api(`/api/recipes?file=${encodeURIComponent(file)}`);
+  state.recipes = data.recipes || data.archive?.recipes || [];
+  state.archiveFile = file;
+  state.archiveOut = `out/${file}`;
+  renderRecipeTable();
+  if (data.rarity) renderRarity(data.rarity);
+  else {
+    try {
+      const rar = await api(`/api/rarity?file=${encodeURIComponent(file)}`);
+      renderRarity(rar.rarity || rar);
+    } catch { /* ignore */ }
+  }
+  fillArchiveSelect();
+}
+
+async function loadArchives() {
+  const data = await api("/api/archive/list");
+  state.archives = data.archives || [];
+  fillArchiveSelect();
+  const sel = $("r-preset");
+  if (sel && state.presets?.length) {
+    /* keep */
+  }
+  return state.archives;
+}
+
+function fillArchiveSelect() {
+  const sel = $("x-file");
+  if (!sel) return;
+  const cur = sel.value;
+  if (!state.archives.length) {
+    sel.innerHTML = `<option value="">${t("export.none")}</option>`;
+    updateJsonLink();
+    return;
+  }
+  sel.innerHTML = state.archives
+    .map((a) => `<option value="${escapeHtml(a.file)}">${escapeHtml(a.file)} (${a.size ?? "?"})</option>`)
+    .join("");
+  if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+  updateJsonLink();
+}
+
+function updateJsonLink() {
+  const a = $("x-json");
+  const file = $("x-file")?.value;
+  if (!a) return;
+  if (!file) {
+    a.removeAttribute("href");
+    return;
+  }
+  a.href = `/api/archive/file?file=${encodeURIComponent(file)}`;
+  a.setAttribute("download", file);
+}
+
+function setupRecipes() {
+  $("r-build")?.addEventListener("click", async () => {
+    try {
+      const file = $("r-preset")?.value;
+      const data = await api("/api/build", { method: "POST", body: JSON.stringify({ file }) });
+      state.archiveOut = data.out;
+      const outFile = String(data.out || "").replace(/^out\//, "");
+      await loadArchives();
+      await loadRecipesArchive(outFile || null);
+      renderFacts();
+      renderSteps();
+      if ($("r-count")) $("r-count").textContent = t("recipes.built", { n: data.size, out: data.out });
+      const dup = $("r-dupes");
+      if (dup) {
+        if (data.duplicates?.length) {
+          dup.hidden = false;
+          dup.textContent = t("recipes.dupes", { n: data.duplicates.length });
+        } else {
+          dup.hidden = true;
+        }
+      }
+      if (data.rarity) renderRarity(data.rarity);
+      scheduleWorkspaceSave({ lastArchive: outFile });
+    } catch (e) {
+      alert(e.message);
+    }
+  });
+  $("r-diff")?.addEventListener("click", async () => {
+    try {
+      const file = $("r-preset")?.value;
+      const data = await api("/api/diff-seed", { method: "POST", body: JSON.stringify({ file }) });
+      alert(JSON.stringify(data, null, 2));
+    } catch (e) {
+      alert(e.message);
+    }
+  });
+  $("r-search")?.addEventListener("input", renderRecipeTable);
+  $("r-line")?.addEventListener("change", renderRecipeTable);
+  $("r-ed-save")?.addEventListener("click", async () => {
+    try {
+      if (state.editingIndex == null) return;
+      const traits = {};
+      $("r-ed-fields")?.querySelectorAll("input[data-k]")?.forEach((inp) => {
+        traits[inp.dataset.k] = inp.value;
+      });
+      const body = {
+        file: state.archiveFile,
+        index: state.editingIndex,
+        traits,
+        note: $("r-ed-note")?.value || "",
+        prompt: $("r-prompt")?.value || undefined,
+      };
+      await api("/api/recipe", { method: "POST", body: JSON.stringify(body) });
+      await loadRecipesArchive(state.archiveFile);
+      if ($("r-ed-msg")) $("r-ed-msg").textContent = t("recipes.saved") || "Saved";
+    } catch (e) {
+      if ($("r-ed-msg")) $("r-ed-msg").textContent = e.message;
+    }
+  });
+  $("r-ed-reset")?.addEventListener("click", () => {
+    if (state.editingIndex != null) openRecipeEditor(state.editingIndex);
+  });
+}
+
+/* ---------- Render / Generate ---------- */
+function setupRender() {
+  $("g-strength")?.addEventListener("input", () => {
+    if ($("g-strength-v")) $("g-strength-v").textContent = $("g-strength").value;
+  });
+  $("g-estimate")?.addEventListener("click", async () => {
+    try {
+      const data = await api("/api/estimate", {
+        method: "POST",
+        body: JSON.stringify({
+          file: state.archiveFile || $("x-file")?.value,
+          engine: $("g-engine")?.value,
+          strength: Number($("g-strength")?.value),
+          mode: document.querySelector('input[name="g-sel"]:checked')?.value || "pilot",
+          pilot: Number($("g-pilot")?.value),
+          first: Number($("g-first")?.value),
+          only: $("g-only")?.value,
+        }),
+      });
+      if ($("g-plan-out")) {
+        $("g-plan-out").dataset.dirty = "1";
+        $("g-plan-out").textContent = JSON.stringify(data, null, 2);
+      }
+    } catch (e) {
+      if ($("g-plan-out")) $("g-plan-out").textContent = e.message;
+    }
+  });
+  $("g-run")?.addEventListener("click", async () => {
+    const progressWrap = $("g-progress-wrap");
+    const progressBar = $("g-progress-bar");
+    const progressText = $("g-progress-text");
+    const progressPct = $("g-progress-pct");
+    const thumbs = $("g-thumbs");
+
+    try {
+      $("g-run").disabled = true;
+      if (progressWrap) progressWrap.hidden = false;
+      if (progressBar) progressBar.style.width = "0%";
+      if (progressPct) progressPct.textContent = "0%";
+      if (progressText) progressText.textContent = t("render.streaming");
+      if ($("g-result")) $("g-result").hidden = false;
+      if (thumbs) thumbs.innerHTML = "";
+
+      const payload = {
+        file: state.archiveFile || $("x-file")?.value,
+        engine: $("g-engine")?.value,
+        strength: Number($("g-strength")?.value),
+        mode: document.querySelector('input[name="g-sel"]:checked')?.value || "pilot",
+        pilot: Number($("g-pilot")?.value),
+        first: Number($("g-first")?.value),
+        only: $("g-only")?.value,
+        force: Boolean($("g-force")?.checked),
+        concurrency: Number($("g-concurrency")?.value || 2),
+        stream: true,
+      };
+
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || errJson.errors || `HTTP ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      let lastDone = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+        for (const block of lines) {
+          const match = block.match(/^data:\s*(.+)$/m);
+          if (!match) continue;
+          try {
+            const ev = JSON.parse(match[1]);
+            if (ev.type === "start") {
+              if (progressText) progressText.textContent = `0 / ${ev.total}`;
+            } else if (ev.type === "progress") {
+              const pct = Math.round((ev.completed / ev.total) * 100);
+              if (progressBar) progressBar.style.width = `${pct}%`;
+              if (progressPct) progressPct.textContent = `${pct}%`;
+              if (progressText) progressText.textContent = `${ev.completed} / ${ev.total}`;
+              if (ev.result?.url && thumbs) {
+                const a = document.createElement("a");
+                a.href = ev.result.url;
+                a.target = "_blank";
+                a.innerHTML = `<img src="${ev.result.url}" alt="#${ev.result.edition}" />`;
+                thumbs.appendChild(a);
+              }
+            } else if (ev.type === "done") {
+              lastDone = ev;
+            }
+          } catch {
+            /* ignore parse error on partial chunks */
+          }
+        }
+      }
+
+      if (lastDone) {
+        if (lastDone.set) {
+          state.lastSet = lastDone.set;
+          scheduleWorkspaceSave({ lastSet: lastDone.set });
+          await loadGallerySets();
+        }
+        if (progressText) progressText.textContent = t("render.done", { n: lastDone.count, set: lastDone.set }) || `Done: ${lastDone.count}`;
+        if (progressBar) progressBar.style.width = "100%";
+        if (progressPct) progressPct.textContent = "100%";
+      }
+    } catch (e) {
+      if (progressText) progressText.textContent = e.message;
+    } finally {
+      $("g-run").disabled = false;
+    }
+  });
+  $("g-open-gallery")?.addEventListener("click", () => showTab("gallery"));
+}
+
+/* ---------- Gallery ---------- */
+/** Merge two image lists by edition (Wave 5). Mirrors src/gallery.mjs. */
+function mergeEditions(a, b) {
+  const map = new Map();
+  const ingest = (list, side) => {
+    if (!Array.isArray(list)) return;
+    for (const img of list) {
+      if (img == null || img.edition == null || img.edition === "") continue;
+      const ed = Number(img.edition);
+      if (!Number.isFinite(ed)) continue;
+      let row = map.get(ed);
+      if (!row) {
+        row = { edition: ed, a: null, b: null };
+        map.set(ed, row);
+      }
+      row[side] = img;
+    }
+  };
+  ingest(a, "a");
+  ingest(b, "b");
+  return [...map.values()].sort((x, y) => x.edition - y.edition);
+}
+
+function syncCompareSelect() {
+  const wrap = $("v-dir2-wrap");
+  const sel2 = $("v-dir2");
+  const sets = state.gallerySets || [];
+  if (!wrap || !sel2) return;
+  const canCompare = sets.length >= 2;
+  wrap.hidden = !canCompare;
+  if (!canCompare) {
+    sel2.innerHTML = `<option value="">${t("gallery.compare.none")}</option>`;
+    sel2.value = "";
+    state.galleryDir2 = null;
+    state.galleryImages2 = [];
+    return;
+  }
+  const primary = state.galleryDir || $("v-dir")?.value || "";
+  const keep2 = state.galleryDir2 || sel2.value || "";
+  const opts = sets
+    .filter((s) => s.dir !== primary)
+    .map((s) => `<option value="${escapeHtml(s.dir)}">${escapeHtml(s.dir)} (${s.count})</option>`)
+    .join("");
+  sel2.innerHTML = `<option value="">${t("gallery.compare.none")}</option>${opts}`;
+  if (keep2 && keep2 !== primary && [...sel2.options].some((o) => o.value === keep2)) {
+    sel2.value = keep2;
+    state.galleryDir2 = keep2;
+  } else {
+    sel2.value = "";
+    state.galleryDir2 = null;
+    state.galleryImages2 = [];
+  }
+}
+
+async function loadGallerySets() {
+  try {
+    const data = await api("/api/sets");
+    const sel = $("v-dir");
+    if (!sel) return;
+    const sets = data.sets || [];
+    state.gallerySets = sets;
+    const keep = state.galleryDir || sel.value;
+    if (!sets.length) {
+      sel.innerHTML = `<option value="">${t("gallery.noSets")}</option>`;
+      state.galleryDir = null;
+      syncCompareSelect();
+      return;
+    }
+    sel.innerHTML = sets.map((s) =>
+      `<option value="${escapeHtml(s.dir)}">${escapeHtml(s.dir)} (${s.count})</option>`
+    ).join("");
+    if (keep && [...sel.options].some((o) => o.value === keep)) sel.value = keep;
+    else if (sets[0]) sel.value = sets[0].dir;
+    state.galleryDir = sel.value;
+    syncCompareSelect();
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+async function loadGalleryDir2(dir2) {
+  if (!dir2 || dir2 === state.galleryDir) {
+    state.galleryDir2 = null;
+    state.galleryImages2 = [];
+    return;
+  }
+  try {
+    const data = await api(`/api/set?dir=${encodeURIComponent(dir2)}`);
+    state.galleryDir2 = data.dir;
+    state.galleryImages2 = data.images || [];
+  } catch (e) {
+    console.warn(e);
+    state.galleryDir2 = dir2;
+    state.galleryImages2 = [];
+  }
+}
+
+async function loadGalleryDir(dir) {
+  const empty = $("v-empty");
+  const grid = $("v-grid");
+  if (!dir) {
+    if (empty) {
+      empty.hidden = false;
+      empty.textContent = t("gallery.empty");
+    }
+    if (grid) grid.innerHTML = "";
+    if ($("v-stats")) $("v-stats").textContent = "";
+    state.galleryImages = [];
+    state.galleryMarks = {};
+    state.galleryImages2 = [];
+    return;
+  }
+  try {
+    const data = await api(`/api/set?dir=${encodeURIComponent(dir)}`);
+    state.galleryDir = data.dir;
+    state.galleryImages = data.images || [];
+    state.galleryMarks = data.marks || {};
+    await loadGalleryDir2($("v-dir2")?.value || state.galleryDir2);
+    renderGallery();
+  } catch (e) {
+    if (empty) {
+      empty.hidden = false;
+      empty.textContent = e.message;
+    }
+    if (grid) grid.innerHTML = "";
+  }
+}
+
+function sideHtml(img, dirLabel) {
+  if (!img?.url) {
+    return `<div class="missing">${escapeHtml(t("gallery.missing", { dir: dirLabel || "—" }))}</div>`;
+  }
+  const qa = img.qa?.ok === false
+    ? `<span class="qa-badge" title="${escapeHtml((img.qa.issues || []).join(", "))}">${t("gallery.qa.badge")}</span>`
+    : "";
+  return `<div class="side"><img src="${escapeHtml(img.url)}" alt="" data-url="${escapeHtml(img.url)}" /><span class="side-lab">${escapeHtml(dirLabel || "")}${qa}</span></div>`;
+}
+
+function renderGallery() {
+  const empty = $("v-empty");
+  const grid = $("v-grid");
+  if (!grid) return;
+  const images = state.galleryImages || [];
+  const images2 = state.galleryImages2 || [];
+  const marks = state.galleryMarks || {};
+  const dir = state.galleryDir || "";
+  const dir2 = state.galleryDir2 || "";
+  const comparing = Boolean(dir2 && dir2 !== dir);
+
+  const rows = comparing
+    ? mergeEditions(images, images2)
+    : images.map((img) => ({ edition: Number(img.edition), a: img, b: null }));
+
+  if (!rows.length) {
+    if (empty) {
+      empty.hidden = false;
+      empty.textContent = t("gallery.empty");
+    }
+    grid.innerHTML = "";
+    grid.classList.remove("pair");
+    if ($("v-stats")) $("v-stats").textContent = "";
+    return;
+  }
+  if (empty) empty.hidden = true;
+
+  let keep = 0, redo = 0, none = 0;
+  for (const img of images) {
+    const m = marks[String(img.edition)] || "";
+    if (m === "keep") keep++;
+    else if (m === "redo") redo++;
+    else none++;
+  }
+
+  const filter = $("v-filter")?.value || "";
+  grid.classList.toggle("pair", comparing);
+  grid.innerHTML = "";
+
+  for (const row of rows) {
+    const key = String(row.edition);
+    const mark = marks[key] || "";
+    if (filter === "keep" && mark !== "keep") continue;
+    if (filter === "redo" && mark !== "redo") continue;
+    if (filter === "none" && mark) continue;
+
+    const tile = document.createElement("div");
+    tile.className = `tile ${mark}`;
+    if (row.a?.qa?.ok === false) tile.classList.add("qa-bad");
+
+    const triage = state.galleryTriage[key];
+    let triageBadge = "";
+    if (triage) {
+      const bg = triage.verdict === "keep" ? "#10b981" : triage.verdict === "redo" ? "#ef4444" : "#f59e0b";
+      const tooltip = escapeHtml(`${triage.reason}\nIssues: ${(triage.issues || []).join(", ")}`);
+      triageBadge = `<span class="triage-badge" title="${tooltip}" style="cursor:help; margin-left:6px; font-size:10px; padding:2px 6px; border-radius:8px; font-weight:bold; background:${bg}; color:#fff">${triage.score}/10 ${triage.verdict.toUpperCase()}</span>`;
+    }
+
+    if (comparing) {
+      tile.innerHTML = `
+        <div class="imgs">${sideHtml(row.a, dir)}${sideHtml(row.b, dir2)}</div>
+        <div class="meta"><b>#${row.edition}</b>${triageBadge}</div>
+        <div class="btns">
+          <button type="button" class="btn small b-keep">${t("gallery.keep")}</button>
+          <button type="button" class="btn small b-redo">${t("gallery.redo")}</button>
+        </div>`;
+      tile.querySelectorAll("img").forEach((el) => {
+        el.addEventListener("click", () => openLightbox(el.dataset.url || el.src));
+      });
+    } else {
+      const img = row.a;
+      const qa = img?.qa?.ok === false
+        ? `<span class="qa-badge">${t("gallery.qa.badge")}</span>`
+        : "";
+      tile.innerHTML = `
+        <img src="${escapeHtml(img.url)}" alt="#${img.edition}" />
+        <div class="meta">#${img.edition} ${qa}${triageBadge}</div>
+        <div class="btns">
+          <button type="button" class="btn small b-keep">${t("gallery.keep")}</button>
+          <button type="button" class="btn small b-redo">${t("gallery.redo")}</button>
+        </div>`;
+      tile.querySelector("img").addEventListener("click", () => openLightbox(img.url));
+    }
+
+    tile.querySelector(".b-keep").addEventListener("click", () => toggleMark(row.edition, "keep"));
+    tile.querySelector(".b-redo").addEventListener("click", () => toggleMark(row.edition, "redo"));
+    grid.appendChild(tile);
+  }
+  if ($("v-stats")) $("v-stats").textContent = t("gallery.stats", { keep, redo, none });
+}
+
+async function toggleMark(edition, kind) {
+  if (!state.galleryDir) return;
+  const key = String(edition);
+  const cur = state.galleryMarks[key] || "";
+  const next = cur === kind ? "" : kind;
+  try {
+    const data = await api("/api/marks", {
+      method: "POST",
+      body: JSON.stringify({ dir: state.galleryDir, edition, mark: next || null }),
+    });
+    state.galleryMarks = data.marks || {};
+    renderGallery();
+    scheduleWorkspaceSave({ lastSet: state.galleryDir });
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+function openLightbox(url) {
+  const box = $("v-lightbox");
+  const img = $("v-lightbox-img");
+  if (!box || !img) return;
+  img.src = url;
+  box.hidden = false;
+}
+
+function setupGallery() {
+  $("v-filter")?.addEventListener("change", renderGallery);
+  $("v-dir")?.addEventListener("change", () => {
+    state.galleryDir = $("v-dir").value;
+    syncCompareSelect();
+    loadGalleryDir(state.galleryDir);
+  });
+  $("v-dir2")?.addEventListener("change", async () => {
+    const v = $("v-dir2").value || "";
+    state.galleryDir2 = v || null;
+    await loadGalleryDir2(v);
+    renderGallery();
+  });
+  $("v-lightbox-close")?.addEventListener("click", () => {
+    if ($("v-lightbox")) $("v-lightbox").hidden = true;
+  });
+  $("v-redo")?.addEventListener("click", () => {
+    const marks = state.galleryMarks || {};
+    const eds = Object.entries(marks)
+      .filter(([, v]) => v === "redo")
+      .map(([k]) => k);
+    const only = document.querySelector('input[name="g-sel"][value="only"]');
+    if (only) only.checked = true;
+    if ($("g-only")) $("g-only").value = eds.join(",");
+    if ($("g-force")) $("g-force").checked = true;
+    showTab("render");
+    if ($("g-plan-out")) $("g-plan-out").textContent = t("render.redoList", { list: eds.join(", ") });
+  });
+  $("v-quick-redo")?.addEventListener("click", async () => {
+    const btn = $("v-quick-redo");
+    const status = $("v-redo-status");
+    const marks = state.galleryMarks || {};
+    const eds = Object.entries(marks)
+      .filter(([, v]) => v === "redo")
+      .map(([k]) => Number(k))
+      .filter((n) => Number.isInteger(n) && n > 0);
+    if (!eds.length) {
+      if (status) status.textContent = t("gallery.redo.none");
+      return;
+    }
+    try {
+      if (btn) btn.disabled = true;
+      if (status) status.textContent = t("gallery.redo.running");
+      const data = await api("/api/generate", {
+        method: "POST",
+        body: JSON.stringify({
+          mode: "redo",
+          dir: state.galleryDir,
+          engine: $("g-engine")?.value || $("o-engine")?.value || "kontext",
+          strength: Number($("g-strength")?.value || $("o-strength")?.value || 0.45),
+          force: true,
+          file: state.archiveFile || $("x-file")?.value,
+        }),
+      });
+      if (status) status.textContent = t("gallery.redo.done", { count: data.count || eds.length });
+      if (state.galleryDir) await loadGalleryDir(state.galleryDir);
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  $("v-triage-run")?.addEventListener("click", async () => {
+    const btn = $("v-triage-run");
+    const status = $("v-triage-status");
+    const applyBtn = $("v-triage-apply");
+    if (!state.galleryDir) return;
+
+    try {
+      if (btn) btn.disabled = true;
+      if (status) status.textContent = t("gallery.triage.running");
+      const mode = $("v-triage-mode")?.value || "unmarked";
+      const provider = $("v-triage-provider")?.value || "heuristic";
+      const autoApply = Boolean($("v-triage-auto-apply")?.checked);
+
+      const data = await api("/api/qa/triage", {
+        method: "POST",
+        body: JSON.stringify({
+          dir: state.galleryDir,
+          mode,
+          provider,
+          autoApplyMarks: autoApply,
+          archiveFile: state.archiveFile || $("x-file")?.value,
+        }),
+      });
+
+      for (const item of (data.results || [])) {
+        if (item.edition != null) {
+          state.galleryTriage[String(item.edition)] = item;
+        }
+      }
+
+      if (autoApply && data.marks) {
+        state.galleryMarks = data.marks;
+        if (applyBtn) applyBtn.style.display = "none";
+      } else if (applyBtn && (data.results || []).length > 0) {
+        applyBtn.style.display = "inline-block";
+        applyBtn.textContent = t("gallery.triage.applyBtn", { count: data.results.length });
+      }
+
+      if (status) {
+        status.textContent = t("gallery.triage.done", { count: data.evaluated, provider: data.provider });
+      }
+      renderGallery();
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  $("v-triage-apply")?.addEventListener("click", async () => {
+    const applyBtn = $("v-triage-apply");
+    const status = $("v-triage-status");
+    if (!state.galleryDir) return;
+
+    const newMarks = { ...(state.galleryMarks || {}) };
+    let count = 0;
+    for (const [ed, triage] of Object.entries(state.galleryTriage || {})) {
+      if (triage.verdict === "keep" || triage.verdict === "redo") {
+        newMarks[ed] = triage.verdict;
+        count++;
+      }
+    }
+
+    try {
+      const data = await api("/api/marks", {
+        method: "POST",
+        body: JSON.stringify({ dir: state.galleryDir, marks: newMarks }),
+      });
+      state.galleryMarks = data.marks || newMarks;
+      if (applyBtn) applyBtn.style.display = "none";
+      if (status) status.textContent = t("gallery.triage.applied", { count });
+      renderGallery();
+      scheduleWorkspaceSave({ lastSet: state.galleryDir });
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    }
+  });
+}
+
+/* ---------- Export + workspace + checklist ---------- */
+async function fillExportSets() {
+  const sel = $("x-set");
+  if (!sel) return;
+  try {
+    const data = await api("/api/sets");
+    const sets = data.sets || [];
+    const cur = sel.value || state.galleryDir || state.lastSet || "";
+    if (!sets.length) {
+      sel.innerHTML = `<option value="">${t("export.bundle.noSets")}</option>`;
+      return;
+    }
+    sel.innerHTML = sets
+      .map((s) => `<option value="${escapeHtml(s.dir)}">${escapeHtml(s.dir)} (${s.count})</option>`)
+      .join("");
+    if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+  } catch (e) {
+    sel.innerHTML = `<option value="">${escapeHtml(e.message)}</option>`;
+  }
+}
+
+let workspaceTimer = null;
+function scheduleWorkspaceSave(patch) {
+  clearTimeout(workspaceTimer);
+  workspaceTimer = setTimeout(() => saveWorkspace(patch).catch(() => {}), 400);
+}
+
+async function saveWorkspace(patch = {}) {
+  const body = {
+    locale: getLocale(),
+    presetId: $("o-id")?.value?.trim() || $("c-id")?.value?.trim() || null,
+    lastArchive: $("x-file")?.value || state.archiveFile || state.archives[0]?.file || null,
+    lastSet: $("x-set")?.value || state.galleryDir || state.lastSet || null,
+    overview: {
+      name: $("o-name")?.value || "",
+      id: $("o-id")?.value || "",
+      seed: $("o-seed")?.value || "",
+      size: $("o-size")?.value || "",
+      engine: $("o-engine")?.value || "",
+      strength: $("o-strength")?.value || "",
+    },
+    ...patch,
+  };
+  await api("/api/workspace", { method: "POST", body: JSON.stringify(body) });
+}
+
+async function restoreWorkspace() {
+  try {
+    const data = await api("/api/workspace");
+    if (!data.exists || !data.workspace) return;
+    const w = data.workspace;
+    const ov = w.overview || {};
+    if (ov.name && $("o-name") && !$("o-name").value) $("o-name").value = ov.name;
+    if (ov.id && $("o-id") && !$("o-id").value) $("o-id").value = ov.id;
+    if (ov.seed && $("o-seed") && !$("o-seed").value) $("o-seed").value = ov.seed;
+    if (ov.size && $("o-size") && !$("o-size").value) $("o-size").value = ov.size;
+    if (ov.engine && $("o-engine")) $("o-engine").value = ov.engine;
+    if (ov.strength && $("o-strength")) {
+      $("o-strength").value = ov.strength;
+      if ($("o-strength-v")) $("o-strength-v").textContent = String(ov.strength);
+    }
+    syncCtorFromOverview();
+    if (w.lastArchive && $("x-file") && [...($("x-file").options || [])].some((o) => o.value === w.lastArchive)) {
+      $("x-file").value = w.lastArchive;
+      updateJsonLink();
+    }
+    if (w.lastSet) {
+      state.galleryDir = w.lastSet;
+      state.lastSet = w.lastSet;
+      if ($("x-set") && [...($("x-set").options || [])].some((o) => o.value === w.lastSet)) {
+        $("x-set").value = w.lastSet;
+      }
+      if ($("v-dir") && [...($("v-dir").options || [])].some((o) => o.value === w.lastSet)) {
+        $("v-dir").value = w.lastSet;
+        await loadGalleryDir(w.lastSet);
+      }
+    }
+    console.info(t("workspace.restored"));
+  } catch {
+    /* ignore */
+  }
+}
+
+async function renderChecklist() {
+  const list = $("x-checklist-list");
+  const msg = $("x-checklist-msg");
+  if (!list) return;
+  const archive = $("x-file")?.value;
+  const set = $("x-set")?.value;
+  if (!archive) {
+    if (msg) msg.textContent = t("export.none");
+    return;
+  }
+  try {
+    if (msg) msg.textContent = "…";
+    const q = new URLSearchParams({ archive });
+    if (set) q.set("set", set);
+    const data = await api(`/api/checklist?${q}`);
+    list.innerHTML = (data.items || [])
+      .map((it) => {
+        const icon = it.level === "ok" ? "✓" : it.level === "warn" ? "⚠" : "✗";
+        const cls = it.level === "ok" ? "ok" : it.level === "warn" ? "warn" : "fail";
+        return `<li class="check ${cls}"><span class="icon">${icon}</span> <b>${escapeHtml(it.label)}</b> — <span class="muted">${escapeHtml(it.detail || "")}</span></li>`;
+      })
+      .join("");
+    if (msg) msg.textContent = t("export.checklist.done", { n: (data.items || []).length });
+  } catch (e) {
+    if (msg) msg.textContent = e.message;
+    list.innerHTML = "";
+  }
+}
+
+async function updateMetadataPreview() {
+  const box = $("x-meta-preview");
+  if (!box) return;
+  const archive = $("x-file")?.value;
+  if (!archive) {
+    box.textContent = "{}";
+    return;
+  }
+  try {
+    const profile = $("x-profile")?.value || "opensea";
+    const data = await api("/api/export/preview-meta", {
+      method: "POST",
+      body: JSON.stringify({
+        archive,
+        profile,
+        creatorAddress: $("x-creator-address")?.value?.trim() || "",
+        zeroIndexed: Boolean($("x-zero-index")?.checked),
+        imageUriPrefix: $("x-uri-prefix")?.value?.trim() || "",
+        animationUriPrefix: $("x-anim-prefix")?.value?.trim() || "",
+        namePrefix: $("x-namePrefix")?.value || "Series #",
+        symbol: $("x-symbol")?.value || "LAB",
+        sellerFeeBasisPoints: Number($("x-fee")?.value ?? 500),
+        description: $("x-desc")?.value || "",
+      }),
+    });
+    box.textContent = JSON.stringify(data.preview, null, 2);
+  } catch (e) {
+    box.textContent = JSON.stringify({ error: e.message }, null, 2);
+  }
+}
+
+function setupExport() {
+  $("x-file")?.addEventListener("change", () => {
+    updateJsonLink();
+    updateMetadataPreview();
+    scheduleWorkspaceSave();
+  });
+  $("x-profile")?.addEventListener("change", () => {
+    const prof = $("x-profile")?.value;
+    if (prof === "ordinalsbot" && $("x-fee")) {
+      $("x-fee").value = "0";
+    }
+    updateMetadataPreview();
+  });
+  $("x-creator-address")?.addEventListener("input", updateMetadataPreview);
+  $("x-zero-index")?.addEventListener("change", updateMetadataPreview);
+  $("x-uri-prefix")?.addEventListener("input", updateMetadataPreview);
+  $("x-anim-prefix")?.addEventListener("input", updateMetadataPreview);
+  $("x-namePrefix")?.addEventListener("input", updateMetadataPreview);
+  $("x-symbol")?.addEventListener("input", updateMetadataPreview);
+  $("x-fee")?.addEventListener("input", updateMetadataPreview);
+  $("x-desc")?.addEventListener("input", updateMetadataPreview);
+
+  $("x-pin-pinata")?.addEventListener("click", async () => {
+    const btn = $("x-pin-pinata");
+    const status = $("x-pin-status");
+    const set = $("x-set")?.value;
+    if (!set) {
+      if (status) status.textContent = t("export.bundle.noSets");
+      return;
+    }
+    try {
+      if (btn) btn.disabled = true;
+      if (status) status.textContent = t("export.bundle.pinning");
+      const name = ($("x-namePrefix")?.value || "series").trim().replace(/\s*#$/, "");
+      const data = await api("/api/storage/pin", {
+        method: "POST",
+        body: JSON.stringify({ dir: set, name }),
+      });
+      if (data.ipfsUri && $("x-uri-prefix")) {
+        $("x-uri-prefix").value = data.ipfsUri;
+      }
+      if (status) {
+        status.textContent = t("export.bundle.pinned", { cid: data.ipfsHash });
+      }
+      updateMetadataPreview();
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  $("x-manifest-csv")?.addEventListener("click", () => {
+    const file = $("x-file")?.value;
+    if (!file) {
+      $("x-msg").textContent = t("export.none");
+      return;
+    }
+    const profile = $("x-profile")?.value || "opensea";
+    const zeroIndexed = Boolean($("x-zero-index")?.checked);
+    const uri = $("x-uri-prefix")?.value?.trim() || "";
+    const animUri = $("x-anim-prefix")?.value?.trim() || "";
+    const namePrefix = $("x-namePrefix")?.value || "";
+    const desc = $("x-desc")?.value || "";
+    const q = new URLSearchParams({
+      archive: file,
+      profile,
+      zeroIndexed: String(zeroIndexed),
+      imageUriPrefix: uri,
+      animationUriPrefix: animUri,
+      namePrefix,
+      description: desc,
+    });
+    window.location.href = `/api/export/manifest.csv?${q}`;
+    $("x-msg").textContent = t("export.ok");
+  });
+
+  $("x-csv")?.addEventListener("click", () => {
+    const file = $("x-file").value;
+    if (!file) {
+      $("x-msg").textContent = t("export.none");
+      return;
+    }
+    window.location.href = `/api/export/csv?file=${encodeURIComponent(file)}`;
+    $("x-msg").textContent = t("export.ok");
+  });
+  $("x-txt")?.addEventListener("click", () => {
+    const file = $("x-file").value;
+    if (!file) {
+      $("x-msg").textContent = t("export.none");
+      return;
+    }
+    window.location.href = `/api/export/txt?file=${encodeURIComponent(file)}`;
+    $("x-msg").textContent = t("export.ok");
+  });
+  $("x-showcase")?.addEventListener("click", () => {
+    const file = $("x-file")?.value;
+    if (!file) {
+      $("x-msg").textContent = t("export.none");
+      return;
+    }
+    const q = new URLSearchParams({ archive: file });
+    window.open(`/api/export/showcase.html?${q}`, "_blank");
+  });
+  $("x-bundle")?.addEventListener("click", async () => {
+    const msg = $("x-bundle-msg");
+    const dl = $("x-download");
+    try {
+      const archive = $("x-file")?.value;
+      const set = $("x-set")?.value;
+      if (!archive) throw new Error(t("export.none"));
+      if (!set) throw new Error(t("export.bundle.noSets"));
+      if (msg) msg.textContent = "…";
+      if (dl) dl.hidden = true;
+      const data = await api("/api/export/bundle", {
+        method: "POST",
+        body: JSON.stringify({
+          archive,
+          set,
+          profile: $("x-profile")?.value || "opensea",
+          creatorAddress: $("x-creator-address")?.value?.trim() || "",
+          zeroIndexed: Boolean($("x-zero-index")?.checked),
+          onlyKeep: Boolean($("x-onlyKeep")?.checked),
+          upscale: Boolean($("x-upscale")?.checked),
+          namePrefix: $("x-namePrefix")?.value || "Series #",
+          symbol: $("x-symbol")?.value || "LAB",
+          sellerFeeBasisPoints: Number($("x-fee")?.value ?? 500),
+          description: $("x-desc")?.value || "",
+          imageUriPrefix: $("x-uri-prefix")?.value?.trim() || "",
+          animationUriPrefix: $("x-anim-prefix")?.value?.trim() || "",
+          locale: getLocale(),
+        }),
+      });
+      if (msg) {
+        msg.textContent = t("export.bundle.ok", {
+          n: data.count,
+          missing: (data.missing || []).length,
+        });
+        msg.className = "small ok-msg";
+      }
+      if (dl && data.downloadUrl) {
+        dl.href = data.downloadUrl;
+        dl.download = data.file || "bundle.zip";
+        dl.hidden = false;
+      }
+      scheduleWorkspaceSave({ lastArchive: archive, lastSet: set });
+    } catch (e) {
+      if (msg) {
+        msg.textContent = e.message;
+        msg.className = "small err-msg";
+      }
+    }
+  });
+  $("x-checklist")?.addEventListener("click", () => renderChecklist());
+  $("x-set")?.addEventListener("change", () => {
+    updateMetadataPreview();
+    scheduleWorkspaceSave();
+  });
+
+  $("rel-config-btn")?.addEventListener("click", () => {
+    const profile = $("x-profile")?.value || "opensea";
+    const archive = $("x-file")?.value || "";
+    const creator = $("x-creator-address")?.value?.trim() || "";
+    const zeroIndexed = Boolean($("x-zero-index")?.checked);
+    const imageUriPrefix = $("x-uri-prefix")?.value?.trim() || "";
+    const animationUriPrefix = $("x-anim-prefix")?.value?.trim() || "";
+    const symbol = $("x-symbol")?.value || "LAB";
+    const fee = $("x-fee")?.value || "500";
+    const namePrefix = $("x-namePrefix")?.value || "";
+
+    const q = new URLSearchParams({
+      profile,
+      archive,
+      creatorAddress: creator,
+      zeroIndexed: String(zeroIndexed),
+      imageUriPrefix,
+      animationUriPrefix,
+      symbol,
+      sellerFeeBasisPoints: fee,
+      namePrefix,
+    });
+    window.location.href = `/api/release/config?${q}`;
+  });
+
+  $("x-profile")?.addEventListener("change", () => {
+    updateReleaseHub();
+  });
+
+  setTimeout(() => {
+    updateMetadataPreview();
+    updateReleaseHub();
+  }, 200);
+}
+
+async function updateReleaseHub() {
+  const portalBtn = $("rel-portal-btn");
+  const testnetBtn = $("rel-testnet-btn");
+  const tipsList = $("rel-tips-list");
+  if (!portalBtn) return;
+
+  const profile = $("x-profile")?.value || "opensea";
+  const archive = $("x-file")?.value;
+  try {
+    const q = new URLSearchParams({ profile });
+    if (archive) q.set("archive", archive);
+    const data = await api(`/api/release/portals?${q}`);
+    const portal = data.portal;
+    if (portal) {
+      portalBtn.href = portal.portalUrl;
+      portalBtn.textContent = `🌐 ${portal.name}`;
+      if (testnetBtn) {
+        testnetBtn.href = portal.testnetPortalUrl;
+      }
+      if (tipsList) {
+        tipsList.innerHTML = (portal.tips || []).map((t) => `<li>${escapeHtml(t)}</li>`).join("");
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+
+/* ---------- Resources ---------- */
+async function renderResources() {
+  const grid = $("res-grid");
+  if (!grid) return;
+  let keys = [];
+  let note = "";
+  let keysFile = "";
+  try {
+    const data = await api("/api/resources");
+    keys = data.keys || [];
+    note = data.note || "";
+    keysFile = data.keysFile || "";
+  } catch {
+    keys = [
+      { name: "OPENAI_API_KEY", present: false },
+      { name: "REPLICATE_API_TOKEN", present: false },
+      { name: "STABILITY_API_KEY", present: false },
+      { name: "POLLINATIONS_API_KEY", present: false },
+    ];
+  }
+  grid.innerHTML = "";
+  if (keysFile || note) {
+    const info = document.createElement("p");
+    info.className = "muted small";
+    info.textContent = keysFile ? `${t("res.from")}: ${keysFile}` : note;
+    grid.appendChild(info);
+  }
+  for (const k of keys) {
+    const card = document.createElement("div");
+    card.className = `card res ${k.present ? "ok" : "warn"}`;
+    card.innerHTML = `<h3>${escapeHtml(k.name)}</h3>
+      <div class="res-value">${k.present ? t("res.present") : t("res.missing")}</div>
+      <p class="muted small">${k.note ? escapeHtml(k.note) : t("res.checklist")}</p>`;
+    grid.appendChild(card);
+  }
+}
+
+/* ---------- Boot ---------- */
+async function boot() {
+  initI18n();
+  setupTabs();
+  setupHints();
+  setupLang();
+  setupBase();
+  setupOverview();
+  setupConstructor();
+  setupRecipes();
+  setupRender();
+  setupGallery();
+  setupExport();
+
+  try {
+    state.health = await api("/api/health");
+    $("me").textContent = `lab · :${state.health.port || 5344}`;
+  } catch {
+    $("me").textContent = "offline";
+  }
+
+    await Promise.all([loadPresets(), loadTemplates(), loadArchives(), refreshBaseStatus()]);
+  if (state.presets[0]) {
+    try {
+      const data = await api(`/api/preset?file=${encodeURIComponent(state.presets[0].file)}`);
+      fillConstructor(data.preset);
+    } catch {
+      /* ignore */
+    }
+  }
+  if (state.archives.length) {
+    try { await loadRecipesArchive(state.archives[0].file); } catch { /* ignore */ }
+  }
+  renderSteps();
+  renderFacts();
+  renderCtorSummary();
+  await loadGallerySets();
+  if (state.galleryDir) await loadGalleryDir(state.galleryDir);
+  else renderGallery();
+  await renderResources();
+  await fillExportSets();
+  await restoreWorkspace();
+  applyI18n(document);
+}
+
+boot().catch((e) => {
+  console.error(e);
+  $("me").textContent = String(e.message || e);
+});

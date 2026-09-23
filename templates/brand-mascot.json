@@ -1,0 +1,388 @@
+{
+  "schema": "series-preset/v0",
+  "id": "brand-mascot",
+  "name": "Brand Mascot",
+  "seed": "template-brand-mascot-v1",
+  "size": 36,
+  "base": {
+    "path": "input/mother.png",
+    "note": "Дружній маскот бренду з чітким силуетом і простими трейтами."
+  },
+  "lines": {
+    "a": {
+      "who": "friendly brand mascot character",
+      "base": "input/mother.png",
+      "quota": 18
+    },
+    "b": {
+      "who": "friendly brand mascot character",
+      "base": "input/mother.png",
+      "quota": 18
+    }
+  },
+  "promptTemplate": {
+    "keep": [
+      "Edit this image of a {who}. Keep: the same character silhouette and proportions",
+      "flat vector brand-mascot look, bold outline, no photoreal face",
+      "centered full torso framing",
+      "bright even product lighting, logo-friendly"
+    ],
+    "changeKeys": [
+      "silhouette",
+      "primaryColor",
+      "accentColor",
+      "pose",
+      "prop",
+      "backgroundSimple",
+      "expression"
+    ],
+    "extraKeys": [],
+    "suffix": "No text, no logos, no watermark; single flat vector mascot only."
+  },
+  "traits": {
+    "items": [
+      {
+        "key": "silhouette",
+        "type": "Silhouette",
+        "options": [
+          {
+            "value": "Round Buddy",
+            "weight": 18,
+            "prompt": "flat vector mascot with a round friendly buddy silhouette, bold outline, no photoreal face"
+          },
+          {
+            "value": "Tall Slim",
+            "weight": 14,
+            "prompt": "flat vector mascot with a tall slim silhouette, clean geometric limbs, no photoreal face"
+          },
+          {
+            "value": "Chunky Block",
+            "weight": 14,
+            "prompt": "flat vector mascot with a chunky blocky silhouette, simple shapes, no photoreal face"
+          },
+          {
+            "value": "Bean Soft",
+            "weight": 12,
+            "prompt": "flat vector mascot with a soft bean-shaped body silhouette, no photoreal face"
+          },
+          {
+            "value": "Animal Cute",
+            "weight": 14,
+            "prompt": "flat vector cute animal mascot silhouette, simplified features, no photoreal face"
+          },
+          {
+            "value": "Star Sprite",
+            "weight": 10,
+            "prompt": "flat vector star-shaped sprite silhouette, playful and logo-ready, no photoreal face"
+          },
+          {
+            "value": "Hero Cape",
+            "weight": 10,
+            "prompt": "flat vector hero mascot silhouette with a simple cape shape, no photoreal face"
+          },
+          {
+            "value": "Robot Box",
+            "weight": 8,
+            "prompt": "flat vector boxy robot mascot silhouette, rounded corners, no photoreal face"
+          }
+        ]
+      },
+      {
+        "key": "primaryColor",
+        "type": "Primary Color",
+        "options": [
+          {
+            "value": "Brand Blue",
+            "weight": 16,
+            "prompt": "primary fill in solid brand blue, flat vector colour"
+          },
+          {
+            "value": "Sunny Yellow",
+            "weight": 14,
+            "prompt": "primary fill in solid sunny yellow, flat vector colour"
+          },
+          {
+            "value": "Coral Red",
+            "weight": 14,
+            "prompt": "primary fill in solid coral red, flat vector colour"
+          },
+          {
+            "value": "Mint Green",
+            "weight": 12,
+            "prompt": "primary fill in solid mint green, flat vector colour"
+          },
+          {
+            "value": "Violet Pop",
+            "weight": 12,
+            "prompt": "primary fill in solid violet, flat vector colour"
+          },
+          {
+            "value": "Orange Punch",
+            "weight": 12,
+            "prompt": "primary fill in solid punchy orange, flat vector colour"
+          },
+          {
+            "value": "Charcoal",
+            "weight": 10,
+            "prompt": "primary fill in solid charcoal grey, flat vector colour"
+          },
+          {
+            "value": "Sky Cyan",
+            "weight": 10,
+            "prompt": "primary fill in solid sky cyan, flat vector colour"
+          }
+        ]
+      },
+      {
+        "key": "accentColor",
+        "type": "Accent Color",
+        "options": [
+          {
+            "value": "White Trim",
+            "weight": 18,
+            "prompt": "white accent trim and highlights on the flat vector mascot"
+          },
+          {
+            "value": "Black Outline",
+            "weight": 16,
+            "prompt": "bold black outline accent framing the flat vector mascot"
+          },
+          {
+            "value": "Gold Spot",
+            "weight": 12,
+            "prompt": "small gold accent spots on the flat vector mascot"
+          },
+          {
+            "value": "Pink Pop",
+            "weight": 12,
+            "prompt": "bright pink accent details on the flat vector mascot"
+          },
+          {
+            "value": "Teal Edge",
+            "weight": 12,
+            "prompt": "teal accent edges on the flat vector mascot"
+          },
+          {
+            "value": "Cream Soft",
+            "weight": 14,
+            "prompt": "soft cream accent fills on the flat vector mascot"
+          },
+          {
+            "value": "Lime Flash",
+            "weight": 8,
+            "prompt": "lime flash accent marks on the flat vector mascot"
+          },
+          {
+            "value": "Navy Detail",
+            "weight": 8,
+            "prompt": "navy accent details on the flat vector mascot"
+          }
+        ]
+      },
+      {
+        "key": "pose",
+        "type": "Pose",
+        "options": [
+          {
+            "value": "Wave Hello",
+            "weight": 18,
+            "prompt": "friendly wave-hello pose, flat vector, centered"
+          },
+          {
+            "value": "Arms Open",
+            "weight": 14,
+            "prompt": "arms-open welcome pose, flat vector, centered"
+          },
+          {
+            "value": "Thumbs Up",
+            "weight": 14,
+            "prompt": "thumbs-up pose, flat vector, centered"
+          },
+          {
+            "value": "Jump Joy",
+            "weight": 12,
+            "prompt": "small joyful jump pose, flat vector, centered"
+          },
+          {
+            "value": "Point Forward",
+            "weight": 12,
+            "prompt": "pointing-forward pose, flat vector, centered"
+          },
+          {
+            "value": "Sit Cute",
+            "weight": 12,
+            "prompt": "cute seated pose, flat vector, centered"
+          },
+          {
+            "value": "Run Side",
+            "weight": 10,
+            "prompt": "side-run pose with simple motion, flat vector, centered"
+          },
+          {
+            "value": "Power Stance",
+            "weight": 8,
+            "prompt": "confident power stance, flat vector, centered"
+          }
+        ]
+      },
+      {
+        "key": "prop",
+        "type": "Prop",
+        "options": [
+          {
+            "value": "None",
+            "weight": 22,
+            "prompt": "no prop, mascot only, flat vector"
+          },
+          {
+            "value": "Star Badge",
+            "weight": 14,
+            "prompt": "holding a simple star badge prop, flat vector, no logo text"
+          },
+          {
+            "value": "Gift Box",
+            "weight": 12,
+            "prompt": "holding a small gift box prop, flat vector"
+          },
+          {
+            "value": "Coffee Cup",
+            "weight": 12,
+            "prompt": "holding a plain coffee cup prop, flat vector, no brand marks"
+          },
+          {
+            "value": "Megaphone",
+            "weight": 10,
+            "prompt": "holding a simple megaphone prop, flat vector"
+          },
+          {
+            "value": "Balloon",
+            "weight": 12,
+            "prompt": "holding a single round balloon prop, flat vector"
+          },
+          {
+            "value": "Flag Pole",
+            "weight": 10,
+            "prompt": "holding a blank flag on a pole, flat vector, no text"
+          },
+          {
+            "value": "Spark Wand",
+            "weight": 8,
+            "prompt": "holding a sparkle wand prop, flat vector"
+          }
+        ]
+      },
+      {
+        "key": "backgroundSimple",
+        "type": "Background",
+        "options": [
+          {
+            "value": "Solid White",
+            "weight": 20,
+            "prompt": "solid white logo-friendly background"
+          },
+          {
+            "value": "Soft Pastel",
+            "weight": 16,
+            "prompt": "soft pastel solid background, flat and clean"
+          },
+          {
+            "value": "Brand Circle",
+            "weight": 14,
+            "prompt": "simple solid circle behind the mascot on a clean field"
+          },
+          {
+            "value": "Two-Tone Split",
+            "weight": 12,
+            "prompt": "simple two-tone horizontal split background, flat"
+          },
+          {
+            "value": "Dot Pattern",
+            "weight": 12,
+            "prompt": "subtle sparse dot pattern background, flat vector"
+          },
+          {
+            "value": "Gradient Soft",
+            "weight": 14,
+            "prompt": "very soft two-stop gradient background, logo-safe"
+          },
+          {
+            "value": "Transparent Feel",
+            "weight": 12,
+            "prompt": "plain light grey field suggesting a transparent logo plate"
+          }
+        ]
+      },
+      {
+        "key": "expression",
+        "type": "Expression",
+        "options": [
+          {
+            "value": "Happy",
+            "weight": 22,
+            "prompt": "simple happy face marks (dots and curve), flat vector, not photoreal"
+          },
+          {
+            "value": "Excited",
+            "weight": 16,
+            "prompt": "simple excited face marks, flat vector, not photoreal"
+          },
+          {
+            "value": "Calm Smile",
+            "weight": 16,
+            "prompt": "simple calm smile marks, flat vector, not photoreal"
+          },
+          {
+            "value": "Winky",
+            "weight": 12,
+            "prompt": "simple wink expression marks, flat vector, not photoreal"
+          },
+          {
+            "value": "Curious",
+            "weight": 12,
+            "prompt": "simple curious expression marks, flat vector, not photoreal"
+          },
+          {
+            "value": "Proud",
+            "weight": 12,
+            "prompt": "simple proud expression marks, flat vector, not photoreal"
+          },
+          {
+            "value": "Surprised",
+            "weight": 10,
+            "prompt": "simple surprised expression marks, flat vector, not photoreal"
+          }
+        ]
+      }
+    ]
+  },
+  "engine": {
+    "default": "kontext",
+    "strength": 0.55
+  },
+  "rules": {
+    "forbiddenPairs": [],
+    "conflicts": [
+      {
+        "a": "prop:Megaphone",
+        "b": "pose:Sit Cute",
+        "note": "Megaphone reads awkward in a seated cute pose"
+      },
+      {
+        "a": "prop:Flag Pole",
+        "b": "pose:Jump Joy",
+        "note": "Flag pole clashes with a jump pose"
+      },
+      {
+        "a": "silhouette:Star Sprite",
+        "b": "prop:Gift Box",
+        "note": "Star sprite silhouette leaves little room for a gift box"
+      }
+    ]
+  },
+  "waves": null,
+  "_meta": {
+    "titleUk": "Бренд-маскот",
+    "blurb": "Дружній маскот бренду з чітким силуетом і простими трейтами.",
+    "template": true
+  }
+}

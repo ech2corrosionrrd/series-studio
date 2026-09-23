@@ -1,0 +1,166 @@
+{
+  "schema": "series-trait-pack/v0",
+  "id": "pfp-core",
+  "name": "PFP core",
+  "description": "Portrait PFP baseline: hair, colour, face accents, outfit, skin, studio backdrop. Snapshot into a series preset — not a live link.",
+  "tags": ["pfp", "portrait", "core"],
+  "items": [
+    {
+      "key": "hair",
+      "type": "Hair",
+      "options": [
+        { "value": "Short Crop", "weight": 14, "prompt": "a neat short crop haircut, clean silhouette" },
+        { "value": "Wavy Medium", "weight": 14, "prompt": "medium-length soft waves framing the face" },
+        { "value": "Straight Long", "weight": 12, "prompt": "straight long hair past the shoulders" },
+        { "value": "Buzz", "weight": 10, "prompt": "a clean buzz cut" },
+        { "value": "Ponytail", "weight": 12, "prompt": "a sleek high ponytail" },
+        { "value": "Bob", "weight": 12, "prompt": "a clean chin-length bob" },
+        { "value": "Braided", "weight": 10, "prompt": "a single neat braid over one shoulder" },
+        { "value": "Undercut", "weight": 8, "prompt": "an undercut with longer hair on top" },
+        { "value": "Afro Short", "weight": 8, "prompt": "a short rounded afro" }
+      ]
+    },
+    {
+      "key": "hairColor",
+      "type": "Hair Color",
+      "options": [
+        { "value": "Black", "weight": 18, "prompt": "natural black hair colour" },
+        { "value": "Dark Brown", "weight": 16, "prompt": "dark brown hair colour" },
+        { "value": "Chestnut", "weight": 14, "prompt": "warm chestnut brown hair colour" },
+        { "value": "Blonde", "weight": 12, "prompt": "natural blonde hair colour" },
+        { "value": "Auburn", "weight": 10, "prompt": "auburn red-brown hair colour" },
+        { "value": "Silver", "weight": 8, "prompt": "soft silver-grey hair colour" },
+        { "value": "Ash", "weight": 10, "prompt": "cool ash-brown hair colour" },
+        { "value": "Copper", "weight": 6, "prompt": "bright copper hair colour" },
+        { "value": "Deep Blue", "weight": 6, "prompt": "deep blue dyed hair colour" }
+      ]
+    },
+    {
+      "key": "eyewear",
+      "type": "Eyewear",
+      "options": [
+        { "value": "None", "weight": 28, "prompt": "no eyewear, both eyes clearly visible" },
+        { "value": "Round Glasses", "weight": 16, "prompt": "thin round metal-frame glasses" },
+        { "value": "Square Frames", "weight": 14, "prompt": "modern square acetate glasses" },
+        { "value": "Clear Frames", "weight": 12, "prompt": "clear transparent frame glasses" },
+        { "value": "Soft Shades", "weight": 12, "prompt": "soft tinted studio sunglasses" },
+        { "value": "Half-Rim", "weight": 10, "prompt": "classic half-rim reading glasses" },
+        { "value": "Cat-Eye", "weight": 8, "prompt": "subtle cat-eye glasses" }
+      ]
+    },
+    {
+      "key": "expression",
+      "type": "Expression",
+      "options": [
+        { "value": "Neutral", "weight": 22, "prompt": "a calm neutral expression" },
+        { "value": "Soft Smile", "weight": 20, "prompt": "a soft closed-mouth smile" },
+        { "value": "Slight Grin", "weight": 14, "prompt": "a slight confident grin" },
+        { "value": "Thoughtful", "weight": 14, "prompt": "a thoughtful quiet expression" },
+        { "value": "Focused", "weight": 12, "prompt": "a focused serious look" },
+        { "value": "Warm", "weight": 10, "prompt": "a warm friendly expression" },
+        { "value": "Reserved", "weight": 8, "prompt": "a reserved composed expression" }
+      ]
+    },
+    {
+      "key": "accessory",
+      "type": "Accessory",
+      "options": [
+        { "value": "None", "weight": 24, "prompt": "no facial accessory" },
+        { "value": "Stud Earrings", "weight": 16, "prompt": "small silver stud earrings" },
+        { "value": "Hoop Earrings", "weight": 14, "prompt": "small thin hoop earrings" },
+        { "value": "Nose Stud", "weight": 12, "prompt": "a tiny silver nose stud" },
+        { "value": "Pearl Studs", "weight": 12, "prompt": "small pearl stud earrings" },
+        { "value": "Bar Earrings", "weight": 10, "prompt": "minimal geometric bar earrings" },
+        { "value": "Single Hoop", "weight": 12, "prompt": "a single thin hoop in one ear" }
+      ]
+    },
+    {
+      "key": "neck",
+      "type": "Neck",
+      "options": [
+        { "value": "Bare", "weight": 26, "prompt": "nothing around the neck" },
+        { "value": "Thin Chain", "weight": 16, "prompt": "a thin silver chain necklace" },
+        { "value": "Pendant", "weight": 14, "prompt": "a small simple pendant necklace" },
+        { "value": "Choker", "weight": 12, "prompt": "a slim fabric choker" },
+        { "value": "Layered Chains", "weight": 12, "prompt": "two delicate layered chains" },
+        { "value": "Collar", "weight": 10, "prompt": "a clean high collar visible at the neck" },
+        { "value": "Scarf Knot", "weight": 10, "prompt": "a soft scarf loosely knotted at the neck" }
+      ]
+    },
+    {
+      "key": "outfit",
+      "type": "Outfit",
+      "options": [
+        { "value": "Black Tee", "weight": 16, "prompt": "a plain black crew-neck tee" },
+        { "value": "White Shirt", "weight": 14, "prompt": "a crisp white button-up shirt" },
+        { "value": "Knit Sweater", "weight": 14, "prompt": "a soft neutral knit sweater" },
+        { "value": "Denim Jacket", "weight": 12, "prompt": "a light denim jacket" },
+        { "value": "Blazer", "weight": 12, "prompt": "a tailored charcoal blazer" },
+        { "value": "Hoodie", "weight": 12, "prompt": "a plain grey hoodie" },
+        { "value": "Turtleneck", "weight": 10, "prompt": "a fitted black turtleneck" },
+        { "value": "Linen Shirt", "weight": 10, "prompt": "a light linen open-collar shirt" }
+      ]
+    },
+    {
+      "key": "skinTone",
+      "type": "Skin Tone",
+      "options": [
+        { "value": "Fair", "weight": 16, "prompt": "fair natural skin tone" },
+        { "value": "Light Olive", "weight": 16, "prompt": "light olive skin tone" },
+        { "value": "Medium", "weight": 16, "prompt": "medium natural skin tone" },
+        { "value": "Tan", "weight": 14, "prompt": "warm tan skin tone" },
+        { "value": "Brown", "weight": 14, "prompt": "rich brown skin tone" },
+        { "value": "Deep", "weight": 12, "prompt": "deep dark skin tone" },
+        { "value": "Porcelain", "weight": 12, "prompt": "porcelain pale skin tone" }
+      ]
+    },
+    {
+      "key": "background",
+      "type": "Background",
+      "options": [
+        { "value": "Soft Grey", "weight": 20, "prompt": "a soft grey studio backdrop" },
+        { "value": "Warm Beige", "weight": 16, "prompt": "a warm beige studio backdrop" },
+        { "value": "Deep Charcoal", "weight": 14, "prompt": "a deep charcoal studio backdrop" },
+        { "value": "Muted Blue", "weight": 14, "prompt": "a muted blue-grey studio backdrop" },
+        { "value": "Sage", "weight": 12, "prompt": "a soft sage green studio backdrop" },
+        { "value": "Cream", "weight": 12, "prompt": "a cream off-white studio backdrop" },
+        { "value": "Slate", "weight": 12, "prompt": "a cool slate studio backdrop" }
+      ]
+    },
+    {
+      "key": "headwear",
+      "type": "Headwear",
+      "options": [
+        { "value": "None", "weight": 55, "prompt": "" },
+        { "value": "Beanie", "weight": 12, "prompt": "a plain knitted beanie" },
+        { "value": "Beret", "weight": 10, "prompt": "a soft fabric beret" },
+        { "value": "Cap", "weight": 10, "prompt": "a plain baseball cap with no logo" },
+        { "value": "Headband", "weight": 8, "prompt": "a thin fabric headband" },
+        { "value": "Wide Brim", "weight": 5, "prompt": "a simple wide-brim studio hat" }
+      ]
+    },
+    {
+      "key": "mark",
+      "type": "Mark",
+      "options": [
+        { "value": "None", "weight": 50, "prompt": "" },
+        { "value": "Freckles", "weight": 14, "prompt": "light natural freckles across the nose and cheeks" },
+        { "value": "Beauty Mark", "weight": 12, "prompt": "a small beauty mark near the left cheek" },
+        { "value": "Scar Thin", "weight": 10, "prompt": "a thin faint scar line on the eyebrow" },
+        { "value": "Cheek Dot", "weight": 8, "prompt": "a small dark mole on the right cheek" },
+        { "value": "Temple Mark", "weight": 6, "prompt": "a tiny birthmark near the left temple" }
+      ]
+    }
+  ],
+  "defaults": {
+    "changeKeys": ["hair", "hairColor", "eyewear", "expression", "accessory", "neck", "outfit", "skinTone", "background"],
+    "extraKeys": ["headwear", "mark"]
+  },
+  "rules": {
+    "conflicts": [
+      { "a": "headwear:Beanie", "b": "hair:Afro Short", "note": "Beanie clashes with a full afro silhouette" },
+      { "a": "headwear:Wide Brim", "b": "hair:Afro Short", "note": "Wide brim hides afro volume" },
+      { "a": "neck:Choker", "b": "outfit:Turtleneck", "note": "Choker and turtleneck overlap at the neck" }
+    ]
+  }
+}

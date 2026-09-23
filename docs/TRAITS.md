@@ -1,0 +1,107 @@
+# Traits · Бібліотека паків, знімок у пресеті та Prompt Matrix
+
+## 1. Дві ролі трейтів у Series Lab
+
+| Де | Що це | Характер даних |
+|----|--------|----------------|
+| `libraries/traits/*.json` | **Каталог паків** (глобальна бібліотека рис) | Спільна база знань, джерело для операції «Застосувати пак» |
+| `preset.traits.items` | **Знімок (snapshot)** у файлі конкретної серії | Автономна копія, що зберігається в `presets/<id>.json` |
+
+**Головне правило**: Застосування пака створює глибоку копію `items` у чернетку пресету. Подальші модифікації у бібліотеці не ламають уже збережені серії.
+
+---
+
+## 2. Схема пака (`series-trait-pack/v0`)
+
+```json
+{
+  "schema": "series-trait-pack/v0",
+  "id": "pfp-core",
+  "name": "PFP core",
+  "description": "Базовий каталог портретних рис для PFP колекцій",
+  "tags": ["pfp", "portrait"],
+  "items": [
+    {
+      "key": "hair",
+      "type": "string",
+      "options": [
+        { "value": "Buzz Cut", "weight": 5, "prompt": "buzz cut hair" },
+        { "value": "Afro", "weight": 3, "prompt": "stylish afro hairstyle" }
+      ]
+    }
+  ],
+  "defaults": {
+    "changeKeys": ["hair", "outfit"],
+    "extraKeys": ["eyewear", "headwear"]
+  }
+}
+```
+
+---
+
+## 3. Вбудовані паки рис (`libraries/traits/`)
+
+1. **`pfp-core`** — класичний портретний PFP baseline: зачіска, колір волосся, вираз обличчя, окуляри, одяг, аксесуари, тон шкіри, фон.
+2. **`brand-mascot`** — векторні маскоти та персонажі: силует, основний колір, акцент, поза, реквізит, спрощений фон, емоція.
+3. **`fine-art`** — художні полотна: техніка (олія, акварель), палітра, мазки, композиція, світлотінь, атмосфера.
+4. **`abstract-series`** — абстрактні генеративні форми: геометричні фігури, патерни, фактури, кольорові поля, ритм, контраст.
+
+---
+
+## 4. Керування паками рис (Trait Pack Library Manager)
+
+- **Збереження в бібліотеку**: збереження поточного набору трейтів у `libraries/traits/<id>.json` через UI або `POST /api/trait-packs/save`.
+- **Експорт з пресету**: `POST /api/trait-packs/export-from-preset` для швидкого створення нового пака на основі готової серії.
+- **Видалення**: `DELETE /api/trait-packs/:id`.
+
+---
+
+## 5. Редактор опцій рис (Trait Options Editor)
+
+У вкладці **Конструктор** доступна інтерактивна таблиця опцій обраного трейту:
+- **`value`**: назва варіанту (наприклад, `Neon Mohican`).
+- **`weight`**: вага ймовірності випадання (ціле або дробове число $\ge 1$).
+- **`prompt`**: фрагмент промпту англійською мовою, який підставляється в генератор.
+- Кнопки: **Add Option**, **Delete**, **Duplicate Option**.
+
+---
+
+## 6. Правила конфліктів трейтів (`rules.conflicts`)
+
+Для уникнення візуально несумісних поєднань (наприклад, шапка `Beanie` поверх пишного `Afro Short`) задаються правила конфліктів:
+
+```json
+"rules": {
+  "conflicts": [
+    {
+      "a": "headwear:Beanie",
+      "b": "hair:Afro Short",
+      "note": "Шапка Beanie візуально обрізає об'ємне волосся Afro"
+    }
+  ]
+}
+```
+
+При спробі зберегти конфліктну комбінацію в редакторі рецепта API повертає `400 Bad Request` з детальним описом конфлікту.
+
+---
+
+## 7. Multi-Engine Prompt Matrix & LoRA Tags
+
+Пресет підтримує блок `engineMatrix` для адаптації промптів під різні AI-генератори:
+
+```json
+"engineMatrix": {
+  "flux": { "trigger": "gremlin_character_v2", "suffix": "8k photorealistic" },
+  "sdxl": { "lora": "gremlin_style:0.85", "qualityTags": "masterpiece, highly detailed" },
+  "midjourney": { "params": "--v 6.1 --stylize 250 --ar 1:1" }
+}
+```
+
+Модуль `src/matrix.mjs` автоматично форматує вихідні промпти під цільовий рушій:
+- **Flux**: підставляє тригерні токени та формує природний опис.
+- **SDXL**: огортає у формат `<lora:name:weight>` та додає quality tags.
+- **Midjourney**: очищає службові теги та додає параметричні прапорці `--v 6.1 --stylize`.
+- **OpenAI / Kontext**: генерує чистий descriptive промпт.
+
+Див. також: [PRESET.md](./PRESET.md) · [STAGES.md](./STAGES.md) · [API.md](./API.md)

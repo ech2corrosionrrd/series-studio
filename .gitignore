@@ -1,0 +1,13 @@
+node_modules/
+out/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+*.archive.json
+!test/fixtures/**
+input/*
+!input/.gitkeep
+workspace/
+out/bundles/

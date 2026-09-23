@@ -1,0 +1,399 @@
+{
+  "schema": "series-preset/v0",
+  "id": "fine-art",
+  "name": "Fine Art",
+  "seed": "template-fine-art-v1",
+  "size": 28,
+  "base": {
+    "path": "input/mother.png",
+    "note": "Живописний fine-art стиль із м'яким світлом і художніми трейтами."
+  },
+  "lines": {
+    "a": {
+      "who": "fine-art portrait subject",
+      "base": "input/mother.png",
+      "quota": 14
+    },
+    "b": {
+      "who": "fine-art portrait subject",
+      "base": "input/mother.png",
+      "quota": 14
+    }
+  },
+  "promptTemplate": {
+    "keep": [
+      "Edit this painting of a {who}. Keep: the same painterly identity and overall pose",
+      "fine-art painterly style",
+      "chest-up classical framing",
+      "soft museum gallery lighting"
+    ],
+    "changeKeys": [
+      "medium",
+      "palette",
+      "brushwork",
+      "composition",
+      "subject",
+      "lightingArt"
+    ],
+    "extraKeys": [
+      "atmosphere"
+    ],
+    "suffix": "No text, no logos, no watermark; single subject."
+  },
+  "traits": {
+    "items": [
+      {
+        "key": "medium",
+        "type": "Medium",
+        "options": [
+          {
+            "value": "Oil on Canvas",
+            "weight": 18,
+            "prompt": "oil on canvas, visible painterly surface"
+          },
+          {
+            "value": "Watercolour",
+            "weight": 14,
+            "prompt": "watercolour on paper, soft washes"
+          },
+          {
+            "value": "Acrylic Flat",
+            "weight": 12,
+            "prompt": "acrylic paint with flat opaque planes"
+          },
+          {
+            "value": "Gouache Matte",
+            "weight": 12,
+            "prompt": "matte gouache painting"
+          },
+          {
+            "value": "Tempera Egg",
+            "weight": 10,
+            "prompt": "egg tempera with fine classical finish"
+          },
+          {
+            "value": "Pastel Soft",
+            "weight": 12,
+            "prompt": "soft pastel on toned paper"
+          },
+          {
+            "value": "Ink Wash",
+            "weight": 10,
+            "prompt": "ink wash painting with grey values"
+          },
+          {
+            "value": "Mixed Media",
+            "weight": 12,
+            "prompt": "mixed-media painterly surface with subtle collage texture"
+          }
+        ]
+      },
+      {
+        "key": "palette",
+        "type": "Palette",
+        "options": [
+          {
+            "value": "Earth Ochre",
+            "weight": 16,
+            "prompt": "earth ochre and umber colour palette"
+          },
+          {
+            "value": "Cool Blues",
+            "weight": 14,
+            "prompt": "cool blue and slate colour palette"
+          },
+          {
+            "value": "Warm Sunset",
+            "weight": 14,
+            "prompt": "warm sunset orange and rose colour palette"
+          },
+          {
+            "value": "Muted Sage",
+            "weight": 12,
+            "prompt": "muted sage and soft grey-green colour palette"
+          },
+          {
+            "value": "Ivory Gold",
+            "weight": 12,
+            "prompt": "ivory, cream and soft gold colour palette"
+          },
+          {
+            "value": "Deep Crimson",
+            "weight": 10,
+            "prompt": "deep crimson and dark wine colour palette"
+          },
+          {
+            "value": "Monochrome Grey",
+            "weight": 12,
+            "prompt": "restrained monochrome grey colour palette"
+          },
+          {
+            "value": "Verdant Green",
+            "weight": 10,
+            "prompt": "verdant green and moss colour palette"
+          }
+        ]
+      },
+      {
+        "key": "brushwork",
+        "type": "Brushwork",
+        "options": [
+          {
+            "value": "Soft Blend",
+            "weight": 18,
+            "prompt": "soft blended brushwork, gentle transitions"
+          },
+          {
+            "value": "Impasto Thick",
+            "weight": 12,
+            "prompt": "thick impasto brushwork with raised paint ridges"
+          },
+          {
+            "value": "Loose Gesture",
+            "weight": 14,
+            "prompt": "loose gestural brushwork, lively strokes"
+          },
+          {
+            "value": "Fine Detail",
+            "weight": 12,
+            "prompt": "fine detailed brushwork in focal areas"
+          },
+          {
+            "value": "Broken Colour",
+            "weight": 12,
+            "prompt": "broken-colour brushwork, optical mixing"
+          },
+          {
+            "value": "Dry Brush",
+            "weight": 10,
+            "prompt": "dry-brush texture across the surface"
+          },
+          {
+            "value": "Glazed Layers",
+            "weight": 12,
+            "prompt": "thin glazed layers building depth"
+          },
+          {
+            "value": "Scumbled Soft",
+            "weight": 10,
+            "prompt": "soft scumbled brushwork over underpaint"
+          }
+        ]
+      },
+      {
+        "key": "composition",
+        "type": "Composition",
+        "options": [
+          {
+            "value": "Centered Portrait",
+            "weight": 18,
+            "prompt": "centered classical portrait composition"
+          },
+          {
+            "value": "Rule of Thirds",
+            "weight": 14,
+            "prompt": "subject placed on a rule-of-thirds intersection"
+          },
+          {
+            "value": "Three-Quarter Turn",
+            "weight": 14,
+            "prompt": "three-quarter turn composition toward the viewer"
+          },
+          {
+            "value": "Profile Classic",
+            "weight": 12,
+            "prompt": "classic profile composition"
+          },
+          {
+            "value": "Intimate Close",
+            "weight": 12,
+            "prompt": "intimate close framing of the face"
+          },
+          {
+            "value": "Figure in Space",
+            "weight": 12,
+            "prompt": "figure set in open painted space with breathing room"
+          },
+          {
+            "value": "Diagonal Flow",
+            "weight": 10,
+            "prompt": "diagonal flow guiding the eye across the canvas"
+          },
+          {
+            "value": "Symmetry Quiet",
+            "weight": 8,
+            "prompt": "quiet bilateral symmetry composition"
+          }
+        ]
+      },
+      {
+        "key": "subject",
+        "type": "Subject",
+        "options": [
+          {
+            "value": "Quiet Sitter",
+            "weight": 18,
+            "prompt": "a quiet seated sitter as the painted subject"
+          },
+          {
+            "value": "Thoughtful Gaze",
+            "weight": 14,
+            "prompt": "a sitter with a thoughtful distant gaze"
+          },
+          {
+            "value": "Still Life Edge",
+            "weight": 12,
+            "prompt": "portrait subject beside a small still-life edge element"
+          },
+          {
+            "value": "Window Light",
+            "weight": 14,
+            "prompt": "subject lit as if near a tall window"
+          },
+          {
+            "value": "Garden Hint",
+            "weight": 10,
+            "prompt": "subject with a soft garden hint in the painted distance"
+          },
+          {
+            "value": "Studio Interior",
+            "weight": 12,
+            "prompt": "subject in a painter's studio interior"
+          },
+          {
+            "value": "Cloaked Figure",
+            "weight": 10,
+            "prompt": "cloaked or draped figure as the painted subject"
+          },
+          {
+            "value": "Youthful Study",
+            "weight": 10,
+            "prompt": "youthful portrait study as the painted subject"
+          }
+        ]
+      },
+      {
+        "key": "lightingArt",
+        "type": "Lighting",
+        "options": [
+          {
+            "value": "Museum Soft",
+            "weight": 18,
+            "prompt": "soft museum gallery lighting on the painting"
+          },
+          {
+            "value": "Rembrandt Side",
+            "weight": 14,
+            "prompt": "Rembrandt-style side lighting with a soft triangle of light"
+          },
+          {
+            "value": "Diffuse Overcast",
+            "weight": 14,
+            "prompt": "diffuse overcast daylight across the scene"
+          },
+          {
+            "value": "Warm Candle",
+            "weight": 10,
+            "prompt": "warm candle-like glow lighting"
+          },
+          {
+            "value": "Cool North",
+            "weight": 12,
+            "prompt": "cool north-window studio light"
+          },
+          {
+            "value": "Golden Hour",
+            "weight": 12,
+            "prompt": "golden-hour warm directional light"
+          },
+          {
+            "value": "Chiaroscuro",
+            "weight": 10,
+            "prompt": "strong chiaroscuro contrast of light and shadow"
+          },
+          {
+            "value": "Pearl Ambient",
+            "weight": 10,
+            "prompt": "pearl-soft ambient wrap lighting"
+          }
+        ]
+      },
+      {
+        "key": "atmosphere",
+        "type": "Atmosphere",
+        "options": [
+          {
+            "value": "Quiet Contemplative",
+            "weight": 18,
+            "prompt": "quiet contemplative atmosphere"
+          },
+          {
+            "value": "Lyrical Soft",
+            "weight": 14,
+            "prompt": "lyrical soft romantic atmosphere"
+          },
+          {
+            "value": "Solemn Grand",
+            "weight": 12,
+            "prompt": "solemn grand atmosphere"
+          },
+          {
+            "value": "Intimate Hushed",
+            "weight": 14,
+            "prompt": "intimate hushed atmosphere"
+          },
+          {
+            "value": "Airy Light",
+            "weight": 12,
+            "prompt": "airy light atmosphere"
+          },
+          {
+            "value": "Melancholy Calm",
+            "weight": 12,
+            "prompt": "calm melancholy atmosphere"
+          },
+          {
+            "value": "Timeless Still",
+            "weight": 10,
+            "prompt": "timeless still atmosphere"
+          },
+          {
+            "value": "Warm Domestic",
+            "weight": 8,
+            "prompt": "warm domestic atmosphere"
+          }
+        ]
+      }
+    ]
+  },
+  "engine": {
+    "default": "openai",
+    "strength": 0.4
+  },
+  "rules": {
+    "forbiddenPairs": [],
+    "conflicts": [
+      {
+        "a": "brushwork:Impasto Thick",
+        "b": "medium:Watercolour",
+        "note": "Thick impasto conflicts with watercolour washes"
+      },
+      {
+        "a": "brushwork:Impasto Thick",
+        "b": "medium:Ink Wash",
+        "note": "Impasto conflicts with ink wash"
+      },
+      {
+        "a": "lightingArt:Chiaroscuro",
+        "b": "atmosphere:Airy Light",
+        "note": "Strong chiaroscuro fights an airy light mood"
+      }
+    ]
+  },
+  "waves": null,
+  "_meta": {
+    "titleUk": "Fine Art",
+    "blurb": "Живописний fine-art стиль із м'яким світлом і художніми трейтами.",
+    "template": true
+  }
+}
