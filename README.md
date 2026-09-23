@@ -1,23 +1,20 @@
 # Series Lab
 
-**Series Lab** by [W3IR](https://w3ir.io) — local deterministic workshop for NFT series: **Lab → Studio → Release**.
+**Series Lab** від [W3IR](https://w3ir.io) — детермінована локальна майстерня для генеративних NFT-серій: **Lab → Studio → Release**.
 
-- **Version**: `1.0.0` (Production Release — All 17 Roadmap Waves Completed)
-- **Host (future product UI)**: [studio.w3ir.io](https://studio.w3ir.io)  
-- **Folder on disk**: `series-studio` / package `series-lab`
-- **Security Guarantee**: 100% Non-Custodial. Zero private keys or seeds handled on the server.
+- **Версія**: `1.0.0` (Production Release — Усі 17 хвиль Roadmap завершено)
+- **Хост продукту**: [studio.w3ir.io](https://studio.w3ir.io)  
+- **Папка на диску**: `series-studio` / npm-пакет `series-lab`
+- **Гарантія безпеки**: 100% Non-Custodial. Жодні приватні ключі або сид-фрази не передаються і не зберігаються на сервері.
 
 ---
 
-## Українською (коротко)
+**Series Lab** — автономна локальна майстерня повного циклу:
+**пресет + seed** → унікальні детерміновані DNA/промпти → **базова картинка серії + Vision Assist** → багатопотоковий рендер з живим SSE-стрімом → **AI Auto-Triage & відбір** → **експорт метаданих** (ERC-721 / Metaplex / Ordinals), IPFS-пінінг, мультидвижкова матриця (Flux/SDXL/Midjourney), автономний HTML Showcase & Rarity Scorecard та конфігурації для деплою (Sugar / Thirdweb).
 
-**Series Lab** — автономна локальна майстерня W3IR: пресет + seed → унікальні детерміновані DNA/промпти → базова картинка серії + Vision Assist → багатопотоковий рендер з живим SSE-стрімом → AI Auto-Triage & відбір → експорт метаданих (ERC-721 / Metaplex / Ordinals), IPFS-пінінг, мультидвижкова матриця (Flux/SDXL/Midjourney), автономний HTML Showcase & Rarity Scorecard та конфігурації для деплою (Sugar / Thirdweb).
-
-Запуск: `start-lab.bat` або `npm start` → http://127.0.0.1:5344/studio/
-
-Термін продукту: **базова картинка(и) серії** (роль `primary` = головна базова). Не «мати» / mother.
-
-Документація (UK-first): [`docs/README.md`](docs/README.md).
+- **Запуск**: `start-lab.bat` або `npm start` → http://127.0.0.1:5344/studio/
+- **Термінологія продукту**: **базова картинка(и) серії** (роль `primary` = головна базова). Не «мати» / mother.
+- **Повна документація**: [`docs/README.md`](docs/README.md).
 
 ---
 

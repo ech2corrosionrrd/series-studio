@@ -1,119 +1,119 @@
-# Series Lab — Changelog
+# Series Lab — Журнал змін (Changelog)
 
-All notable changes to **Series Lab** (`series-lab`) are documented in this file.
+Усі суттєві зміни в проєкті **Series Lab** (`series-lab`) документуються в цьому файлі.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Формат базується на [Keep a Changelog](https://keepachangelog.com/uk/1.0.0/),
+і проєкт дотримується семантичного версіонування [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
 ## [1.0.0] — 2026-09-23
 
-### 🚀 Production Release Milestone (All 17 Roadmap Waves Completed)
+### 🚀 Реліз виробничої версії (Усі 17 хвиль Roadmap завершено)
 
-#### Wave 17: Multi-Engine Prompt Matrix & LoRA / Model Tags
-- **Matrix Transformer Engine (`src/matrix.mjs`)**:
-  - Engine-specific prompt flavoring for **Flux** (natural descriptive syntax + trigger tokens), **SDXL** (`<lora:name:weight>` formatting + quality keywords), **Midjourney** (`--v 6.1 --stylize --ar` parametric flags), **Kontext** (reference anchor), and **OpenAI** (clean prose filtering).
-  - `buildEnginePromptMatrix(recipe, preset, engineTargets)`: Generates simultaneous prompts for multi-platform generative rendering.
-  - `exportEngineMatrixCsv(recipes, preset, engineTargets)`: Multi-engine batch prompt matrix export.
-- **CLI & Preset Integration**:
-  - Preset support for optional `engineMatrix` configurations.
+#### Хвиля 17: Мультидвижкова матриця промптів та теги LoRA / моделей
+- **Двигун трансформації матриці (`src/matrix.mjs`)**:
+  - Адаптація стилістики промптів під специфіку кожного рушія: **Flux** (природний описовий синтаксис + тригерні токени), **SDXL** (форматування `<lora:name:weight>` + ключові слова якості), **Midjourney** (параметричні прапорці `--v 6.1 --stylize --ar`), **Kontext** (фіксація референсу) та **OpenAI** (фільтрація під чисту прозу).
+  - `buildEnginePromptMatrix(recipe, preset, engineTargets)`: одночасна генерація промптів для кросплатформенного рендерингу.
+  - `exportEngineMatrixCsv(recipes, preset, engineTargets)`: пакетний експорт матриці промптів у CSV.
+- **Інтеграція в CLI та пресети**:
+  - Підтримка опційних конфігурацій `engineMatrix` у пресетах.
 
-#### Wave 16: Collection Showcase & Trait Rarity Scorecard
-- **Deterministic Rarity Math (`src/scorecard.mjs`)**:
-  - Trait rarity frequency, trait rarity scores ($1/F$), total edition score summation, and collection ranking (#1 to #N).
-  - Percentile-based tier distribution: **Mythic** (Top 2%), **Legendary** (Top 10%), **Epic** (Top 25%), **Rare** (Top 50%), and **Common** (Bottom 50%).
-- **Standalone HTML Visual Proof & Showcase**:
-  - `generateShowcaseHtml(archive, preset, opts)`: Zero-dependency, responsive, dark glassmorphism standalone HTML application with live search, tier filters, DNA matrix, and trait score cards.
-  - Studio UI: Direct one-click download & open via `/api/export/showcase.html`.
+#### Хвиля 16: Showcase колекції та Rarity Scorecard
+- **Детермінована математика рідкості (`src/scorecard.mjs`)**:
+  - Частота трейтів, бали рідкості ($1/F$), сумарний бал кожного екземпляра та рейтинг колекції (#1 до #N).
+  - Розподіл за процентильними тієрами: **Mythic** (топ 2%), **Legendary** (топ 10%), **Epic** (топ 25%), **Rare** (топ 50%) та **Common** (нижні 50%).
+- **Автономний візуальний HTML Showcase**:
+  - `generateShowcaseHtml(archive, preset, opts)`: автономний інтерактивний HTML-застосунок без зовнішніх залежностей із темною темою glassmorphism, живим пошуком, фільтрами тієрів, матрицею DNA та картками рідкості.
+  - Studio UI: завантаження та відкриття в один клік через `/api/export/showcase.html`.
   - Headless CLI: `series showcase <archive.json> [-o showcase.html]`.
 
-#### Wave 15: Dynamic Media Pipeline (Video / Animation / 3D Assets)
-- **Multi-Format Asset Discovery (`src/export-bundle.mjs`)**:
-  - Auto-discovery of companion video (`.mp4`, `.webm`, `.mov`), animated (`.gif`), 3D (`.glb`, `.gltf`), and interactive HTML (`.html`) files alongside static posters.
-  - Automatic packaging into `images/` directory in ZIP bundle.
-- **Launchpad Metadata Alignment (`src/launchpads.mjs`)**:
-  - `animation_url` field populated across ERC-721, Metaplex, and Bitcoin Ordinals.
-  - Metaplex `properties.category` dynamically classified as `"video"`, `"vr"`, `"html"`, or `"image"`.
-  - `properties.files` populated with static cover and dynamic media with accurate MIME types.
-  - `exportManifestCsv` with `animation_url` column.
-  - Studio UI `#x-anim-prefix` field and CLI `--anim-prefix` flag.
+#### Хвиля 15: Конвеєр динамічних медіа (Відео / Анімації / 3D-асети)
+- **Виявлення мультиформатних ресурсів (`src/export-bundle.mjs`)**:
+  - Автоматичне виявлення супутніх файлів відео (`.mp4`, `.webm`, `.mov`), анімацій (`.gif`), 3D-моделей (`.glb`, `.gltf`) та інтерактивного HTML (`.html`) поруч зі статичними обкладинками.
+  - Автоматичне пакування до папки `images/` у ZIP-бандлі.
+- **Узгодження метаданих для лаунчпадів (`src/launchpads.mjs`)**:
+  - Заповнення поля `animation_url` для стандартів ERC-721, Metaplex та Bitcoin Ordinals.
+  - Динамічне визначення категорії Metaplex `properties.category` як `"video"`, `"vr"`, `"html"` або `"image"`.
+  - Заповнення масиву `properties.files` статичною обкладинкою та динамічними файлами з точними MIME-типами.
+  - `exportManifestCsv` з підтримкою колонки `animation_url`.
+  - Поле `#x-anim-prefix` у Studio UI та прапорець `--anim-prefix` у CLI.
 
-#### Wave 14: Release & Deployment Hub
-- **Launchpad Deploy Config Generators (`src/deploy.mjs`)**:
-  - Metaplex Sugar CLI configuration generator (`buildSugarConfig`).
-  - Thirdweb / EVM Drop contract deployment configuration (`buildThirdwebConfig`).
-  - Step-by-step localized release guide (`buildReleaseGuide`).
-- **Release Hub Studio UI**:
-  - Deep links to OpenSea Studio, Magic Eden Launchpad, LaunchMyNFT, and Testnet portals.
-  - Zero private key exposure guarantee (pure non-custodial design).
+#### Хвиля 14: Release & Deployment Hub
+- **Генератори конфігурацій деплою (`src/deploy.mjs`)**:
+  - Генератор конфігурації для Metaplex Sugar CLI (`buildSugarConfig`).
+  - Генератор конфігурації деплою контрактів Thirdweb / EVM Drop (`buildThirdwebConfig`).
+  - Покроковий локалізований посібник із запуску (`buildReleaseGuide`).
+- **Вкладка Release Hub у Studio UI**:
+  - Прямі посилання на OpenSea Studio, Magic Eden Launchpad, LaunchMyNFT та тестові мережі.
+  - Гарантія нульового доступу до приватних ключів (чистий non-custodial дизайн).
   - CLI: `series release-config <archive.json> [options]`.
 
-#### Wave 13: Launchpad Presets & Multi-Standard Export Profiles
-- **Standardized Export Profiles (`src/launchpads.mjs`)**:
-  - `opensea`: OpenSea Studio ERC-721 metadata with CSV manifest.
-  - `magiceden`: Magic Eden Solana/EVM Drop format with creator royalties array and seller fee basis points.
-  - `launchmynft`: LaunchMyNFT format with 0-based token indexing.
-  - `ordinalsbot`: Bitcoin Ordinals inscription manifest format.
-- **Bulk CSV Manifest Engine**:
-  - `exportManifestCsv`: Bulk upload CSV manifest compatible with major launchpads.
+#### Хвиля 13: Профілі експорту під лаунчпади
+- **Стандартизовані профілі експорту (`src/launchpads.mjs`)**:
+  - `opensea`: метадані ERC-721 для OpenSea Studio з CSV-маніфестом.
+  - `magiceden`: формат Magic Eden Solana/EVM Drop із масивом роялті авторів та `seller_fee_basis_points`.
+  - `launchmynft`: формат LaunchMyNFT з індексацією токенів від 0.
+  - `ordinalsbot`: формат маніфесту інскрипцій Bitcoin Ordinals.
+- **Двигун гуртових CSV-маніфестів**:
+  - `exportManifestCsv`: гуртовий експорт маніфестів CSV, сумісний із провідними маркетплейсами.
   - CLI: `series manifest <archive.json> [options]`.
 
-#### Wave 12: IPFS / Arweave Storage Dispatcher
-- **Decentralized Storage Integration (`src/storage.mjs`)**:
-  - Pinata IPFS folder upload (`uploadToPinata`) with non-custodial client architecture.
-  - Deterministic IPFS CIDv0 generator (`calculateDeterministicCid`) for offline simulation.
-  - Studio UI: One-click IPFS upload from Export tab with real-time progress.
+#### Хвиля 12: Диспетчер децентралізованого сховища IPFS / Arweave
+- **Інтеграція зі сховищами (`src/storage.mjs`)**:
+  - Завантаження папок у Pinata IPFS (`uploadToPinata`) з non-custodial клієнтською архітектурою.
+  - Детермінований генератор CIDv0 (`calculateDeterministicCid`) для локальної офлайн-симуляції.
+  - Studio UI: завантаження в IPFS в один клік із вкладки Експорт з живим відображенням прогресу.
   - CLI: `series pin <set-dir> [options]`.
 
-#### Wave 11: AI Auto-Triage & Smart Critic
-- **Quality Evaluation Engine (`src/critic.mjs`)**:
-  - Fast offline heuristics (0$ cost) detecting PNG magic bytes, dimensions, file corruption, and prompt lint hits.
-  - Multimodal Vision AI evaluator (GPT-4o / Claude 3.5 Sonnet) scoring anatomy, style consistency, and prompt alignment (1–10).
-  - Structured triage output with Keep / Redo / Review verdicts and reasoning.
-  - Studio Gallery Triage bar with auto-apply keep/redo actions.
+#### Хвиля 11: AI Auto-Triage & розумний критик
+- **Двигун оцінки якості (`src/critic.mjs`)**:
+  - Швидкі офлайн-евристики (безкоштовно) для перевірки сигнатур PNG magic bytes, розмірів, пошкодження файлів та збігів із блоклістом промптів.
+  - Мультимодальний AI-оцінювач (GPT-4o / Claude 3.5 Sonnet) для виставлення балів анатомії, узгодженості стилю та відповідності промпту (1–10).
+  - Структурований вердикт Keep / Redo / Review з поясненням причин.
+  - Панель Triage у галереї Studio з можливістю автоматичного застосування позначок keep/redo.
   - CLI: `series triage <set-dir> [options]`.
 
-#### Wave 10: Headless CLI Batch Render Pipeline
-- **Headless CLI Command (`bin/series.mjs render`)**:
-  - Production batch rendering from CLI without browser requirement.
-  - Dry-run mode (`--dry-run`), cost estimation, prompt safety linting, and reference strength clamping.
+#### Хвиля 10: Headless CLI конвеєр пакетного рендерингу
+- **Команда CLI (`bin/series.mjs render`)**:
+  - Автономний виробничий рендеринг із терміналу без необхідності запускати браузер.
+  - Режим симуляції (`--dry-run`), розрахунок вартості, перевірка промптів через лінтер та оптимізація сили референсу.
 
-#### Wave 9: Metadata Extensions & Bitcoin Ordinals Export
-- **Attributes Extensions**:
-  - OpenSea `display_type` support (`number`, `boost_number`, `boost_percentage`, `date`, `max_value`).
-  - Bitcoin Ordinals inscription manifest generation (`buildOrdinalsMeta`).
+#### Хвиля 9: Розширення метаданих та експорт Bitcoin Ordinals
+- **Розширення атрибутів**:
+  - Підтримка типів відображення OpenSea `display_type` (`number`, `boost_number`, `boost_percentage`, `date`, `max_value`).
+  - Генерація маніфестів інскрипцій Bitcoin Ordinals (`buildOrdinalsMeta`).
 
-#### Wave 8: Concurrency Pool & Live SSE Stream
-- **Performance Engine (`src/pool.mjs`)**:
-  - Deterministic concurrency pool (`mapConcurrent`) with order preservation.
-  - Server-Sent Events (SSE) live thumbnail and progress streaming during generation.
+#### Хвиля 8: Пул паралелізму та живий SSE-стрімінг
+- **Продуктивність (`src/pool.mjs`)**:
+  - Детермінований пул паралельних завдань (`mapConcurrent`) зі збереженням порядку черги.
+  - Потокова передача мініатюр та прогресу через Server-Sent Events (SSE) під час генерації.
 
-#### Wave 7: Vision Assist
-- **Reverse Prompt Engineering (`src/vision.mjs`)**:
-  - Vision AI base image analyzer extracting line archetype, framing, lighting, mood, color palette, and trait suggestions.
-  - Offline heuristic fallback mode when no API keys are configured.
+#### Хвиля 7: Vision Assist
+- **Зворотний інжиніринг промптів (`src/vision.mjs`)**:
+  - AI-аналіз базового зображення: визначення архетипу, кадрування, освітлення, настрою, палітри та пропозицій трейтів.
+  - Автономний евристичний фолбек за відсутності API-ключів.
 
-#### Wave 6: Advanced Base Management & Trait Library
-- **Line-Specific Bases**:
-  - Support for `base-<line>.*` files targeting specific archetype lines.
-- **Trait Pack Library Manager**:
-  - Reusable trait pack import/export (`libraries/traits/*.json`).
-  - Redo filtering and regeneration workflows.
+#### Хвиля 6: Керування базовими картинками та бібліотека трейтів
+- **Лінійні бази**:
+  - Підтримка файлів `base-<line>.*` для окремих архетипів ліній.
+- **Менеджер бібліотеки паків трейтів**:
+  - Імпорт та експорт багаторазових паків трейтів (`libraries/traits/*.json`).
+  - Оновлення та перегенерація відхилених результатів (Redo).
 
-#### Waves 1–5: Core Studio Foundation
+#### Хвилі 1–5: Базова основа Studio
 - **Series Lab Studio**:
-  - Pure deterministic Node.js ESM architecture with zero heavy frontend framework baggage.
-  - 100% reproducible seed-based DNA generation (`FNV-1a` + PRNG).
-  - Dual UK/EN localization across all UI tabs, docs, and CLI.
-  - Built-in prompt safety linting (brand/franchise blocklist).
-  - Trait conflict validation matrix and expected vs actual rarity reporting.
-  - Review gallery with lightboxes, keep/redo/favorite markings, and comparative sets.
-  - Mint-ready ZIP bundles with 2x upscaling (`sharp`).
+  - Чиста детермінована ESM-архітектура на Node.js без важких фронтенд-фреймворків.
+  - 100% відтворювана генерація DNA на основі seed (`FNV-1a` + PRNG).
+  - Повна двомовна локалізація (UK/EN) в усіх вкладках інтерфейсу, документації та CLI.
+  - Вбудований лінтер промптів (блокліст захищених брендів і франшиз).
+  - Матриця валідації конфліктів трейтів та звіт розрахунку рідкості (очікувана vs фактична).
+  - Галерея відбору з переглядом, позначками keep/redo/favorite та порівнянням наборів.
+  - Експорт готових до мінту ZIP-архівів із 2x апскейлом (`sharp`).
 
 ---
 
-### 🛡 Non-Custodial Security Principle
-- Series Lab generates metadata, assets, manifests, and deploy configurations locally.
-- **No private keys or mnemonic seed phrases are ever handled, requested, or stored by the server.**
-- Deployment execution is delegated directly to official launchpad portals or local CLI tools (Metaplex Sugar, Thirdweb CLI, OpenSea Studio).
+### 🛡 Принцип безпеки Non-Custodial
+- Series Lab генерує всі метадані, асети, маніфести та конфігурації деплою локально на вашому комп'ютері.
+- **Жодні приватні ключі або мнемонічні сид-фрази ніколи не запитуються, не обробляються і не зберігаються сервером.**
+- Виконання транзакцій деплою делегується безпосередньо офіційним порталам лаунчпадів або локальним CLI-інструментам (Metaplex Sugar, Thirdweb CLI, OpenSea Studio).
