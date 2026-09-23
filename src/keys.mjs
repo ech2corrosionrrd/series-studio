@@ -7,6 +7,7 @@
  * губився OPENAI_API_KEY з C:\Промт\.env.
  */
 import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 export const DEFAULT_KEYS_FILE = "C:\\Промт\\.env";
 
@@ -28,7 +29,8 @@ export function parseEnv(text) {
 
 /** Додає ключі у process.env, не перекриваючи вже задані. Повертає шлях або null. */
 export function loadKeys(path = process.env.SERIES_KEYS_FILE || DEFAULT_KEYS_FILE, env = process.env) {
-  const candidates = [path, env.SERIES_KEYS_FILE, DEFAULT_KEYS_FILE].filter(Boolean);
+  const localEnv = resolve(process.cwd(), ".env");
+  const candidates = [path, env.SERIES_KEYS_FILE, localEnv, DEFAULT_KEYS_FILE].filter(Boolean);
   const loaded = [];
   for (const cand of [...new Set(candidates)]) {
     if (!existsSync(cand)) continue;
