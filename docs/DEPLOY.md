@@ -24,17 +24,25 @@
 
 ## Оновити сайт
 
+**Автоматично (основний спосіб).** Workflow `.github/workflows/deploy-site.yml` запускається при push у `main`, якщо змінились тексти (`server/ui/locales/**`), `scripts/build-site.mjs`, `package.json` або сам workflow. Він збирає `dist/site`, перевіряє, що всі сторінки на місці, і викладає сайт у проєкт `series-lab` через `wrangler pages deploy`. Запустити вручну: GitHub → Actions → **Deploy site** → *Run workflow*.
+
+Налаштування репозиторію (GitHub → Settings → Secrets and variables → Actions):
+
+| Назва | Тип | Значення |
+|---|---|---|
+| `CLOUDFLARE_API_TOKEN` | Secret | API-токен Cloudflare з правом **Account · Cloudflare Pages · Edit** (лише на цей акаунт) |
+| `CLOUDFLARE_ACCOUNT_ID` | Variable | ID акаунта Cloudflare |
+
+Без секрету workflow лише збирає сайт і попереджає, що деплою не було.
+
+**Вручну** (якщо GitHub недоступний):
+
 ```bash
 npm run build:site          # → dist/site/
+npx wrangler pages deploy dist/site --project-name series-lab --branch main
 ```
 
-Потім одним зі способів:
-
-1. **Дашборд** (як зараз): Workers & Pages → `series-lab` → **Create deployment** → завантажити вміст `dist/site/` (теку або ZIP) → Deploy.
-2. **Wrangler** (з терміналу): один раз `npx wrangler login`, далі
-   ```bash
-   npx wrangler pages deploy dist/site --project-name series-lab --branch main
-   ```
+або в дашборді: Workers & Pages → `series-lab` → **Create deployment** → завантажити вміст `dist/site/`.
 
 Кожен деплой зберігається в історії проєкту; попередню версію можна повернути кнопкою **Rollback** на вкладці Deployments.
 
@@ -49,4 +57,4 @@ curl -sI https://studio.w3ir.io/ | grep -iE "content-security|x-frame"
 ## Чого тут свідомо немає
 
 - **Майстерні через інтернет.** Щоб відкрити Studio ззовні, потрібні вхід (Cloudflare Access або власна авторизація) і обов'язкова денна межа витрат — інакше будь-хто витрачатиме ваші ключі. Це окремий крок (див. [ROADMAP.md](./ROADMAP.md)).
-- **Автодеплою з Git.** Репозиторій приватний; підключення GitHub до Cloudflare Pages можна додати пізніше (build command `npm run build:site`, output `dist/site`).
+- **Git-інтеграції Cloudflare Pages.** Проєкт створено як Direct Upload, тому деплой іде з GitHub Actions через `wrangler`, а не через вбудоване підключення репозиторію.

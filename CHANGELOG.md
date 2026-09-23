@@ -12,6 +12,7 @@
 ### Публічний сайт
 - `scripts/build-site.mjs` (`npm run build:site`) збирає статичний сайт у `dist/site/`: лендинг і посібник uk/en з тих самих текстів, що й «Довідка», заголовки безпеки (`_headers`), 404, robots, sitemap.
 - Сайт розгорнуто на Cloudflare Pages (проєкт `series-lab`) з доменом https://studio.w3ir.io; інструкція — `docs/DEPLOY.md`.
+- Автодеплой сайту: GitHub Actions `deploy-site.yml` при push у `main` (збирання, перевірка сторінок, `wrangler pages deploy`).
 
 ## [1.4.0] — 2026-09-23
 

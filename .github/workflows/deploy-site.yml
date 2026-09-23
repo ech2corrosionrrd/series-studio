@@ -1,0 +1,58 @@
+# Auto-deploy of the public site (https://studio.w3ir.io) to Cloudflare Pages.
+# Builds dist/site from the locale texts and uploads it to the existing
+# Direct Upload project "series-lab". See docs/DEPLOY.md.
+#
+# Required repository settings:
+#   secret   CLOUDFLARE_API_TOKEN  — token with "Account · Cloudflare Pages · Edit"
+#   variable CLOUDFLARE_ACCOUNT_ID — Cloudflare account id
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/build-site.mjs"
+      - "server/ui/locales/**"
+      - "package.json"
+      - ".github/workflows/deploy-site.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-site
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build site
+        run: node scripts/build-site.mjs
+
+      - name: Check build output
+        run: |
+          for f in index.html guide/index.html en/index.html en/guide/index.html 404.html _headers; do
+            test -s "dist/site/$f" || { echo "::error::missing dist/site/$f"; exit 1; }
+          done
+
+      - name: Deploy to Cloudflare Pages
+        if: env.HAS_TOKEN == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/site --project-name=series-lab --branch=main --commit-dirty=true
+
+      - name: Token not configured
+        if: env.HAS_TOKEN != 'true'
+        run: echo "::warning::CLOUDFLARE_API_TOKEN secret is not set — site built but not deployed. See docs/DEPLOY.md."
