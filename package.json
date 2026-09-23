@@ -1,6 +1,6 @@
 {
   "name": "series-lab",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Series Lab — deterministic NFT series engine (preset → recipes/prompts). Lab layer of Series Studio by W3IR.",
   "type": "module",
   "license": "MIT",
@@ -18,7 +18,7 @@
     "./validate": "./src/validate.mjs"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test test",
     "build:demo": "node bin/series.mjs build presets/demo-series.json -o out/demo-archive.json",
     "validate:demo": "node bin/series.mjs validate presets/demo-series.json",
     "diff-seed:demo": "node bin/series.mjs diff-seed presets/demo-series.json",
@@ -48,7 +48,8 @@
     "templates",
     "libraries",
     "docs",
-    "input"
+    "input",
+    "LICENSE"
   ],
   "optionalDependencies": {
     "sharp": "^0.35.4"

@@ -2485,12 +2485,14 @@ async function renderResources() {
   if (!grid) return;
   let keys = [];
   let note = "";
-  let keysFile = "";
+  let keysFileName = "";
+  let keysConfigured = false;
   try {
     const data = await api("/api/resources");
     keys = data.keys || [];
     note = data.note || "";
-    keysFile = data.keysFile || "";
+    keysFileName = data.keysFileName || data.keysFile || "";
+    keysConfigured = Boolean(data.keysConfigured ?? keysFileName);
   } catch {
     keys = [
       { name: "OPENAI_API_KEY", present: false },
@@ -2500,10 +2502,10 @@ async function renderResources() {
     ];
   }
   grid.innerHTML = "";
-  if (keysFile || note) {
+  if (keysFileName || note) {
     const info = document.createElement("p");
     info.className = "muted small";
-    info.textContent = keysFile ? `${t("res.from")}: ${keysFile}` : note;
+    info.textContent = keysFileName ? `${t("res.from")}: ${keysFileName}` : note;
     grid.appendChild(info);
   }
   for (const k of keys) {

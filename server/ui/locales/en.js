@@ -1,4 +1,3 @@
-/** Series Lab UI — English */
 export default {
   "meta.title": "Series Lab — series workshop",
   "brand.name": "Series Lab",
@@ -64,7 +63,7 @@ export default {
   "home.safety.1": "🖥 Site only on your PC (127.0.0.1:5344) — not exposed to the internet.",
   "home.safety.2": "🚫 Mint / sales / Magic Eden are not launched from here.",
   "home.safety.3": "💸 Money is spent only when you click Generate (Base or Generate tabs).",
-  "home.safety.4": "🔑 API keys live in the Промт .env on disk; the browser never sees their values.",
+  "home.safety.4": "🔑 API keys live in a local .env file (or SERIES_KEYS_FILE); the browser never sees their values.",
   "home.safety.5": "📂 Presets, images, and archives stay in this project folder on your PC.",
   "home.step.base": "Base",
   "home.step.base.desc": "Series base image(s)",
@@ -90,7 +89,7 @@ export default {
   "base.hint.li2": "Choose files → PNG/JPG/WebP, ideally square ≥1024, no text or logos.",
   "base.hint.li3": "Upload puts files in input/. In the gallery you can set another as main or delete.",
   "base.hint.li4": "Or path B: write wishes (who / angle / style / light) and Generate candidate.",
-  "base.hint.li5": "Generation uses keys from Промт .env and may cost money at the provider.",
+  "base.hint.li5": "Generation uses keys from the local .env / SERIES_KEYS_FILE and may cost money at the provider.",
   "base.hint.li6": "“From main base” = edit existing image; unchecked = new frame from text.",
   "base.hint.li7": "When the main base is ready — Next · Constructor. Prompt templates live on stage 3.",
   "base.hint.tip": "Tip: start with one clear main base. Lines/style come later.",
@@ -223,7 +222,7 @@ export default {
   "render.hint.li4": "Estimate (free) shows count and cost, then unlocks Generate. Changing settings locks Generate again.",
   "render.hint.li5": "Images go to out/<engine>-s<strength>/. Force overwrites existing files.",
   "render.hint.li6": "Thumbs appear under the plan; open Review to mark keep/redo. Check keys under Resources.",
-  "render.hint.tip": "Tip: start with Pilot 3–10. Put keys in C:\\Промт\\.env and restart Lab if Generate fails.",
+  "render.hint.tip": "Tip: start with Pilot 3–10. Put keys in a local .env (or SERIES_KEYS_FILE) and restart Lab if Generate fails.",
   "render.engine": "Engine",
   "render.strength": "Reference strength",
   "render.pilot": "Pilot N",
@@ -271,7 +270,7 @@ export default {
   "gallery.redoMarked": "Redo marked…",
   "gallery.noSets": "— no sets yet —",
   "gallery.noRedo": "No editions marked redo.",
-"export.h1": "7 · Export",
+  "export.h1": "7 · Export",
   "export.hint": "💡 Take results out of Lab: full JSON archive or prompt tables. Marketplace listing is a later Release step — not these buttons.",
   "export.hint.more": "Step by step for beginners",
   "export.hint.li1": "First Build archive on stage 4 — otherwise the list is empty.",
@@ -289,7 +288,7 @@ export default {
   "res.h1": "Resources and keys",
   "res.hint": "💡 See whether Lab can see your API keys. Key values never appear in the browser — only present / missing.",
   "res.hint.more": "Step by step for beginners",
-  "res.hint.li1": "Keys live in C:\\\\Промт\\\\.env (or SERIES_KEYS_FILE).",
+  "res.hint.li1": "Keys live in a project-local .env (see .env.example) or the path in SERIES_KEYS_FILE.",
   "res.hint.li2": "After editing .env, restart Lab (stop-lab.bat → start-lab.bat).",
   "res.hint.li3": "Present — you can generate with that engine. Missing — add the key.",
   "res.hint.li4": "Without keys, stages 1–4 (Overview→Recipes) still work offline.",
@@ -367,7 +366,6 @@ export default {
   "ctor.packs.roleUnused": "unused",
   "ctor.packs.applied": "Pack applied (snapshot)",
   "ctor.packs.bad": "Pack has no items",
-
   "ctor.optionsTitle": "Optimal · trait options",
   "ctor.options.help": "Edit options of the series snapshot (preset.traits.items). Library packs stay catalog-only — Apply still copies a snapshot.",
   "ctor.options.hint": "Beginner tip: pick a trait key, then tune value / weight / prompt. Save with “Save prompt+traits”. Weight must be > 0; values must be unique within the trait.",
@@ -420,7 +418,6 @@ export default {
   "help.doc.studioUi": "local Studio UI · tabs · i18n",
   "help.doc.api": "full HTTP API list",
   "help.doc.export": "mint-ready ZIP, upscale, checklist",
-
   "export.bundle.title": "Mint-ready ZIP",
   "export.bundle.help": "ERC-721 / Metaplex metadata + images. Filenames = edition (1.png). Lab does not mint.",
   "export.bundle.set": "Image set",
@@ -455,13 +452,11 @@ export default {
   "export.checklist.run": "Run checklist",
   "export.checklist.done": "Checked {n} items",
   "workspace.restored": "Workspace restored",
-
   "base.vision.btn": "🤖 Vision Assist (auto analyze)",
   "base.vision.analyzing": "Analyzing base image with Vision AI...",
   "base.vision.done": "Style and traits successfully extracted!",
   "base.vision.apply": "Apply to preset",
   "base.vision.provider": "Provider: {provider}",
-
   "ctor.pack.save_lib": "💾 Save to Pack Library",
   "ctor.pack.exported": "Pack saved to libraries/traits/{id}.json",
   "ctor.pack.prompt_id": "Enter ID for new pack (latin, e.g. my-pack):",
@@ -469,19 +464,16 @@ export default {
   "ctor.matrixHelp": "Instant preview of engine-specific prompt optimization (Flux / SDXL / Midjourney / Kontext).",
   "recipes.cooccurrenceTitle": "📊 Trait Synergy Matrix",
   "recipes.cooccurrenceHelp": "Shows trait co-occurrence statistics across generated recipes.",
-
   "gallery.redo.btn": "↻ Regenerate Redo ({count})",
   "gallery.redo.none": "No redo items (mark cards with ↻ Redo in gallery)",
   "gallery.redo.running": "Regenerating redo images...",
   "gallery.redo.done": "Regenerated {count} redo images!",
-
   "render.concurrency": "Concurrency (speed)",
   "render.concurrency.1": "1x · Sequential",
   "render.concurrency.2": "2x · Optimal (2 streams)",
   "render.concurrency.3": "3x · Turbo (3 streams)",
   "render.progress": "Generated {completed} of {total} ({pct}%)",
   "render.streaming": "Live render stream active...",
-
   "gallery.triage.title": "🤖 AI Auto-Triage & Critic",
   "gallery.triage.mode.unmarked": "Unmarked only",
   "gallery.triage.mode.sample": "Sample 10",
@@ -494,7 +486,6 @@ export default {
   "gallery.triage.done": "Evaluated {count} images ({provider})",
   "gallery.triage.applyBtn": "✓ Apply Recommendations ({count})",
   "gallery.triage.applied": "Applied {count} recommendations",
-
   "export.profile.label": "Launchpad Profile",
   "export.profile.opensea": "OpenSea Studio (ERC-721 + CSV)",
   "export.profile.magiceden": "Magic Eden Drop (Solana / EVM)",
@@ -506,17 +497,13 @@ export default {
   "export.manifest.csv": "⬇ Manifest CSV (Bulk Upload)",
   "export.showcase.btn": "⬇ Showcase & Rarity Scorecard (HTML)",
   "recipes.showcase.btn": "⬇ Showcase & Rarity (HTML)",
-
   "release.hub.title": "🚀 Release & Deployment Hub",
   "release.hub.help": "Direct launchpad deep links, deployment configs, and step-by-step release guidance with zero private key exposure.",
   "release.hub.portalBtn": "🌐 Open Launch Portal",
   "release.hub.testnetBtn": "🧪 Testnet Portal",
   "release.hub.configBtn": "⬇ Download Deploy Config",
   "release.hub.guideTitle": "Step-by-Step Release Checklist",
-
   "ctor.matrix.engine": "Target AI Engine (Matrix)",
   "ctor.matrix.lora": "LoRA / Model Trigger Tags",
   "ctor.matrix.lora.ph": "e.g. <lora:gremlin_v2:0.8>, flux_style",
 };
-
-

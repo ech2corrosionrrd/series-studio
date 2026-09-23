@@ -7,6 +7,16 @@
 
 ---
 
+## [1.3.1] — 2026-09-23
+
+### Виправлення та безпека
+- `npm test` на Windows: `node --test test` (без shell-glob `test/*.test.mjs`).
+- Додано MIT `LICENSE` (Copyright (c) 2026 W3IR).
+- Ключі: прибрано хардкод `C:\\Промт\\.env`; порядок — `SERIES_KEYS_FILE` → локальний `.env` → опційний `SERIES_DEFAULT_KEYS_FILE`.
+- UI/API більше не віддають повний шлях до файлу ключів (лише `keysConfigured` / `keysFileName` basename).
+- Help/i18n: формулювання про ключі вказують на локальний `.env` / `SERIES_KEYS_FILE`.
+- Тести `parseEnv` / `loadKeys` (коментар з українським апострофом не ковтає наступний рядок).
+
 ## [1.3.0] — 2026-09-23
 
 ### 🚀 Хвиля 22: Direct Fast Engine Connectors

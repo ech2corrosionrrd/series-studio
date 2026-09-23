@@ -98,7 +98,7 @@ const OPEN = process.argv.includes("--open");
 const KEYS_PATH = loadKeys();
 const EXTRA_KEYS = loadKeysExtra([join(ROOT, ".env")]);
 if (KEYS_PATH) console.log(`Keys loaded from ${KEYS_PATH} (values never sent to browser)`);
-else console.log("Keys: no Prompt .env found (set SERIES_KEYS_FILE or C:\\Промт\\.env)");
+else console.log("Keys: no .env found (set SERIES_KEYS_FILE or place .env in project root)");
 if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 
 
@@ -803,10 +803,12 @@ function resourcesPayload() {
   });
   return {
     keys,
-    keysFile: KEYS_PATH || null,
+    keysConfigured: Boolean(KEYS_PATH),
+    keysFileName: KEYS_PATH ? basename(KEYS_PATH) : null,
+    keysSource: KEYS_PATH ? "file" : null,
     note: KEYS_PATH
-      ? "Keys loaded into the Lab process from Prompt .env (not exposed to the browser)."
-      : "Put keys in C:\\Промт\\.env or set SERIES_KEYS_FILE.",
+      ? "Keys loaded into the Lab process from a local .env (values never sent to the browser)."
+      : "Put keys in a project-local .env (see .env.example) or set SERIES_KEYS_FILE.",
   };
 }
 
@@ -879,7 +881,8 @@ async function handleApi(req, res, url) {
       layer: "lab+studio-ui",
       port: PORT,
       base: baseStatus(),
-      keysFile: KEYS_PATH || null,
+      keysConfigured: Boolean(KEYS_PATH),
+      keysFileName: KEYS_PATH ? basename(KEYS_PATH) : null,
       engines: {
         edit: Object.keys(ENGINES),
         txt2img: Object.keys(TXT2IMG),

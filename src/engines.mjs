@@ -1,7 +1,7 @@
 /**
  * Image engines for Series Lab Studio.
  * Inspired by gremlin-nft / W3IR Prompt — clean reimplementation.
- * Keys only from env (src/keys.mjs ← C:\Промт\.env).
+ * Keys only from env (src/keys.mjs ← local .env / SERIES_KEYS_FILE).
  */
 import { kontextGuidance, strengthForStability, clampStrength } from "./reference.mjs";
 import {

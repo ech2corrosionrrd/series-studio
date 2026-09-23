@@ -289,3 +289,25 @@ tr.edited td:first-child::after { content: " ✎"; color: var(--accent); font-we
 }
 .gallery.pair .tile .side-lab .qa-badge { margin-left: 4px; }
 #v-dir2-wrap[hidden] { display: none !important; }
+
+/* Help Center & Beginner Guide enhancements */
+.help-section { margin-bottom: 20px; }
+.help-section h2 { font-size: 19px; color: var(--accent); margin-top: 0; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.help-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 12px; }
+.help-subcard { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.help-subcard h3 { font-size: 15px; margin: 0 0 6px; color: var(--accent2); }
+.help-subcard p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--text); }
+.glossary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 10px; margin-top: 12px; }
+.glossary-item { background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 10px 12px; }
+.glossary-term { font-weight: 700; color: var(--accent2); font-size: 14px; margin-bottom: 3px; }
+.glossary-def { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.45; }
+.faq-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.faq-item { background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 10px 14px; }
+.faq-item summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--text); user-select: none; }
+.faq-item summary:hover { color: var(--accent); }
+.faq-item[open] summary { margin-bottom: 8px; color: var(--accent); }
+.faq-item p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted); padding-left: 4px; }
+.cli-box { background: #0b070e; border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-top: 10px; font-family: ui-monospace, monospace; font-size: 13px; }
+.cli-box div { margin: 4px 0; }
+.cli-box b { color: var(--accent); }
+
