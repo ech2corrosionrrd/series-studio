@@ -13,7 +13,6 @@ import {
   readdirSync,
   writeFileSync,
   statSync,
-  unlinkSync,
 } from "node:fs";
 import { dirname, extname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -91,6 +90,8 @@ const OUT = join(ROOT, "out");
 const BUNDLES = join(OUT, "bundles");
 const WORKSPACE_DIR = join(ROOT, "workspace");
 const WORKSPACE_FILE = join(WORKSPACE_DIR, "current.json");
+const TRASH = join(OUT, "trash");
+const RENDER_LOG = join(OUT, "render-log.jsonl");
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 5344);
 const OPEN = process.argv.includes("--open");
@@ -105,6 +106,11 @@ if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 
 import { testEngineConnection } from "../src/connectors.mjs";
 import { allowedHostnames, checkApiRequest } from "./guard.mjs";
+import { writeJsonAtomic } from "../src/fs-safe.mjs";
+import { addVersion, dropVersion, listVersions, setCurrent, versionCounts } from "../src/versions.mjs";
+import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
+import { appendRenderLog, capError, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
+import { failureBreaker } from "../src/pool.mjs";
 
 const RESOURCE_KEYS = [
   { name: "OPENAI_API_KEY", env: "OPENAI_API_KEY", note: "OpenAI Images / GPT image" },
@@ -182,6 +188,43 @@ function readBody(req) {
   });
 }
 
+function httpError(status, message, extra = {}) {
+  return Object.assign(new Error(message), { status, extra });
+}
+
+/** Moves files to out/trash instead of deleting them. */
+function toTrash(paths, reason) {
+  return trashFiles({ root: ROOT, trashDir: TRASH }, paths, reason);
+}
+
+/** Throws 400 `spend_cap` when `plannedUsd` would exceed today's cap. */
+function assertSpend(plannedUsd) {
+  const cap = spendCap(process.env.SERIES_SPEND_CAP_USD);
+  const spent = spentToday(RENDER_LOG);
+  const error = capError({ cap, spent, planned: plannedUsd });
+  if (error) throw httpError(400, error, { code: "spend_cap", capUsd: cap, spentTodayUsd: spent, plannedUsd });
+}
+
+function logRender(entry) {
+  try {
+    appendRenderLog(RENDER_LOG, entry);
+  } catch (e) {
+    console.warn(`[render-log] ${e.message}`);
+  }
+}
+
+/** Runs one paid engine call, logging success/failure to render-log.jsonl. */
+async function paidCall(entry, fn) {
+  try {
+    const buf = await fn();
+    logRender({ ...entry, ok: true });
+    return buf;
+  } catch (e) {
+    logRender({ ...entry, ok: false, costUsd: 0, error: String(e.message || e).slice(0, 300) });
+    throw e;
+  }
+}
+
 function safeJsonName(file, fallback = "demo-series.json") {
   const base = basename(String(file || fallback)).replace(/[/\\]/g, "");
   if (!base.endsWith(".json")) throw new Error("file must be *.json");
@@ -210,6 +253,8 @@ function listTemplates() {
     .map((f) => {
       try {
         const p = JSON.parse(readFileSync(join(TEMPLATES, f), "utf8"));
+        // templates/ also holds non-preset files (e.g. comfyui-workflow.json)
+        if (!p || typeof p !== "object" || !p.id || !p.traits) return null;
         return {
           id: p.id || f.replace(/\.json$/, ""),
           file: f,
@@ -221,9 +266,10 @@ function listTemplates() {
           engine: p.engine,
         };
       } catch {
-        return { id: f, file: f, name: f, blurb: "" };
+        return null;
       }
-    });
+    })
+    .filter(Boolean);
 }
 
 
@@ -484,6 +530,7 @@ function listSetImages(setName) {
   const dir = join(OUT, dirName);
   if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error(`set not found: ${dirName}`);
   const images = [];
+  const vcounts = versionCounts(dir);
   for (const f of readdirSync(dir)) {
     if (!/\.(png|jpe?g|webp)$/i.test(f)) continue;
     const m = f.match(/^(\d+)/);
@@ -493,6 +540,7 @@ function listSetImages(setName) {
     images.push({
       file: f,
       edition,
+      versions: edition != null ? vcounts[String(edition)] || 1 : 1,
       url: `/out/${dirName}/${f}`,
       path: `out/${dirName}/${f}`,
       qa: {
@@ -523,7 +571,7 @@ function writeMarks(setName, marks) {
   const dirName = safeSetName(setName);
   const dir = join(OUT, dirName);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "marks.json"), JSON.stringify(marks, null, 2) + "\n", "utf8");
+  writeJsonAtomic(join(dir, "marks.json"), marks);
 }
 
 
@@ -542,7 +590,7 @@ function writeWorkspace(data) {
     savedAt: nowIsoKyiv(),
     ...(data && typeof data === "object" ? data : {}),
   };
-  writeFileSync(WORKSPACE_FILE, JSON.stringify(payload, null, 2) + "\n", "utf8");
+  writeJsonAtomic(WORKSPACE_FILE, payload);
   return payload;
 }
 
@@ -825,6 +873,7 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
   let buf;
   let usedEngine;
   let mode;
+  let cost = null;
   const primary = listBases().find((f) => f.primary);
   if (useRef && primary) {
     usedEngine = pickAvailableEngine(engine, process.env, ENGINES);
@@ -834,15 +883,21 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
     const mime = mimeOf(primary.file);
     const eng = getEngine(usedEngine);
     mode = "edit";
-    buf = await withRetry(() =>
-      eng.generate({ prompt: text, image, mime, seed, strength: str }, ctx),
+    cost = eng.costUsd ?? null;
+    assertSpend(cost);
+    buf = await paidCall({ source: "studio", kind: "base", engine: usedEngine, costUsd: cost, seed }, () =>
+      withRetry(() => eng.generate({ prompt: text, image, mime, seed, strength: str }, ctx)),
     );
   } else {
     usedEngine = pickAvailableEngine(engine, process.env, TXT2IMG);
     if (!usedEngine) throw new Error("No image API key for txt2img (OPENAI / REPLICATE / STABILITY / POLLINATIONS)");
     const eng = getTxt2Img(usedEngine);
     mode = "txt2img";
-    buf = await withRetry(() => eng.generate({ prompt, seed }, ctx));
+    cost = eng.costUsd ?? null;
+    assertSpend(cost);
+    buf = await paidCall({ source: "studio", kind: "base", engine: usedEngine, costUsd: cost, seed }, () =>
+      withRetry(() => eng.generate({ prompt, seed }, ctx)),
+    );
   }
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -850,16 +905,14 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
   writeFileSync(join(INPUT, candName), buf);
   let primaryFile = null;
   if (makePrimary) {
-    // clear other primary.* / legacy mother.*
-    for (const n of readdirSync(INPUT)) {
-      if (/^(primary|mother)\./i.test(n)) {
-        try { unlinkSync(join(INPUT, n)); } catch { /* ignore */ }
-      }
-    }
+    // move other primary.* / legacy mother.* to trash
+    toTrash(
+      readdirSync(INPUT).filter((n) => /^(primary|mother)\./i.test(n)).map((n) => join(INPUT, n)),
+      "replaced primary (base generate)",
+    );
     primaryFile = "primary.png";
     writeFileSync(join(INPUT, primaryFile), buf);
   }
-  const cost = (useRef ? ENGINES[usedEngine] : TXT2IMG[usedEngine])?.costUsd ?? null;
   return {
     ok: true,
     stub: false,
@@ -932,7 +985,7 @@ async function handleApi(req, res, url) {
     mkdirSync(TRAITS_LIB, { recursive: true });
     const id = String(pack.id).replace(/[^a-zA-Z0-9_-]/g, "-").toLowerCase();
     const filePath = join(TRAITS_LIB, `${id}.json`);
-    writeFileSync(filePath, JSON.stringify(pack, null, 2) + "\n", "utf8");
+    writeJsonAtomic(filePath, pack);
     return send(res, 200, { ok: true, id, file: `${id}.json`, summary: summarizeTraitPack(pack, `${id}.json`) });
   }
 
@@ -953,7 +1006,7 @@ async function handleApi(req, res, url) {
     mkdirSync(TRAITS_LIB, { recursive: true });
     const id = pack.id;
     const filePath = join(TRAITS_LIB, `${id}.json`);
-    writeFileSync(filePath, JSON.stringify(pack, null, 2) + "\n", "utf8");
+    writeJsonAtomic(filePath, pack);
     return send(res, 200, { ok: true, id, file: `${id}.json`, pack, summary: summarizeTraitPack(pack, `${id}.json`) });
   }
 
@@ -961,8 +1014,8 @@ async function handleApi(req, res, url) {
     const id = decodeURIComponent(pathname.slice("/api/trait-packs/".length)).replace(/[^a-zA-Z0-9_-]/g, "");
     const filePath = join(TRAITS_LIB, `${id}.json`);
     if (!existsSync(filePath)) return send(res, 404, { error: `trait pack not found: ${id}` });
-    unlinkSync(filePath);
-    return send(res, 200, { ok: true, id });
+    const trashed = toTrash([filePath], `trait pack ${id} deleted`);
+    return send(res, 200, { ok: true, id, trashId: trashed?.id ?? null });
   }
 
   if (pathname === "/api/validate" && req.method === "POST") {
@@ -993,7 +1046,7 @@ async function handleApi(req, res, url) {
     // strip UI-only meta if saving as real preset (keep _meta optional)
     const outName = `${id}.json`;
     const outPath = join(PRESETS, outName);
-    writeFileSync(outPath, JSON.stringify(preset, null, 2) + "\n", "utf8");
+    writeJsonAtomic(outPath, preset);
     return send(res, 200, { ok: true, file: outName, path: `presets/${outName}`, id });
   }
 
@@ -1005,7 +1058,7 @@ async function handleApi(req, res, url) {
     const { archive, dupes } = makeArchive(preset);
     mkdirSync(OUT, { recursive: true });
     const outName = `${preset.id || "archive"}.json`;
-    writeFileSync(join(OUT, outName), JSON.stringify(archive, null, 2), "utf8");
+    writeJsonAtomic(join(OUT, outName), archive);
     return send(res, 200, {
       ok: true,
       out: `out/${outName}`,
@@ -1136,7 +1189,7 @@ async function handleApi(req, res, url) {
       });
     }
 
-    writeFileSync(archivePath, JSON.stringify(archive, null, 2) + "\n", "utf8");
+    writeJsonAtomic(archivePath, archive);
     return send(res, 200, { ok: true, file: archiveFile, recipe: enrichRecipe(recipe) });
   }
 
@@ -1223,10 +1276,12 @@ async function handleApi(req, res, url) {
     const buf = Buffer.from(body.data, "base64");
     if (buf.length < 32) throw new Error("empty image");
     const outPath = join(INPUT, name);
+    if (existsSync(outPath)) toTrash([outPath], `overwritten by upload (${name})`);
     writeFileSync(outPath, buf);
     // optional: set as primary by renaming/copying
     if (body.makePrimary && role !== "primary") {
       const primaryName = "primary" + ext;
+      if (existsSync(join(INPUT, primaryName))) toTrash([join(INPUT, primaryName)], "replaced primary (upload)");
       writeFileSync(join(INPUT, primaryName), buf);
       name = primaryName;
     }
@@ -1248,13 +1303,12 @@ async function handleApi(req, res, url) {
     if (!existsSync(src)) throw new Error("file not found");
     const ext = extname(file).toLowerCase() || ".png";
     const destName = "primary" + ext;
+    if (file === destName) return send(res, 200, { ok: true, file: destName, path: `input/${destName}`, files: listBases() });
     const buf = readFileSync(src);
-    // remove other primary.* / legacy mother.*
-    for (const n of readdirSync(INPUT)) {
-      if (/^(primary|mother)\./i.test(n) && n !== destName) {
-        try { unlinkSync(join(INPUT, n)); } catch { /* ignore */ }
-      }
-    }
+    toTrash(
+      readdirSync(INPUT).filter((n) => /^(primary|mother)\./i.test(n)).map((n) => join(INPUT, n)),
+      `replaced primary (set ${file})`,
+    );
     writeFileSync(join(INPUT, destName), buf);
     return send(res, 200, { ok: true, file: destName, path: `input/${destName}`, files: listBases() });
   }
@@ -1265,8 +1319,8 @@ async function handleApi(req, res, url) {
     if (!file || file.includes("..")) throw new Error("bad file");
     const path = join(INPUT, file);
     if (!existsSync(path)) throw new Error("not found");
-    unlinkSync(path);
-    return send(res, 200, { ok: true, files: listBases() });
+    const trashed = toTrash([path], "base image deleted");
+    return send(res, 200, { ok: true, trashId: trashed?.id ?? null, files: listBases() });
   }
 
   if (pathname === "/api/base/wish" && req.method === "GET") {
@@ -1284,7 +1338,7 @@ async function handleApi(req, res, url) {
       strength: Number(body.strength ?? 0.45),
       updatedAt: nowIsoKyiv(),
     };
-    writeFileSync(join(INPUT, "wish.json"), JSON.stringify(wish, null, 2) + "\n", "utf8");
+    writeJsonAtomic(join(INPUT, "wish.json"), wish);
     return send(res, 200, { ok: true, wish });
   }
 
@@ -1310,7 +1364,7 @@ async function handleApi(req, res, url) {
       strength: Number(body.strength ?? 0.45),
       updatedAt: nowIsoKyiv(),
     };
-    writeFileSync(join(INPUT, "wish.json"), JSON.stringify(wish, null, 2) + "\n", "utf8");
+    writeJsonAtomic(join(INPUT, "wish.json"), wish);
     const result = await runPrimaryGenerate({
       wish: text,
       engine: body.engine || "openai",
@@ -1349,14 +1403,19 @@ async function handleApi(req, res, url) {
     const sel = resolveGenerateSelection(archive, body, set);
     const unit = ENGINES[engineWanted]?.costUsd ?? ENGINES.kontext?.costUsd ?? 0.04;
     const cost = Math.round(sel.editions.length * unit * 1000) / 1000;
+    const cap = spendCap(process.env.SERIES_SPEND_CAP_USD);
+    const spent = spentToday(RENDER_LOG);
+    const capMsg = capError({ cap, spent, planned: cost });
     const lines = [
       `Archive: ${archiveFile} (${archive.size} recipes)`,
       `Engine: ${engineWanted} · strength ${strength}`,
       `Set folder: out/${set}/`,
-      `Mode: ${sel.mode}` + (sel.force ? " · FORCE overwrite" : ""),
+      `Mode: ${sel.mode}` + (sel.force ? " · FORCE re-render (old images kept as versions)" : ""),
       `To generate: ${sel.editions.length}` + (sel.editions.length ? ` → #${sel.editions.slice(0, 24).join(", #")}${sel.editions.length > 24 ? "…" : ""}` : ""),
       sel.skippedExisting.length ? `Skip existing: ${sel.skippedExisting.length}` : "Skip existing: 0",
       `Est. cost: ~$${cost} ($${unit}/image)`,
+      `Spent today: ~$${spent}` + (cap != null ? ` of $${cap} daily cap` : " (no daily cap — set SERIES_SPEND_CAP_USD)"),
+      ...(capMsg ? ["", `⛔ ${capMsg}`] : []),
       "",
       "Estimate is free. Generate will call the image API.",
     ];
@@ -1377,6 +1436,9 @@ async function handleApi(req, res, url) {
       count: sel.editions.length,
       unitCostUsd: unit,
       costUsd: cost,
+      spentTodayUsd: spent,
+      capUsd: cap,
+      capError: capMsg,
       text: lines.join("\n"),
       lint: { ok: lint.ok, hits: lint.hits },
     });
@@ -1408,19 +1470,17 @@ async function handleApi(req, res, url) {
       const mime = mimeOf(primary.file);
       const str = clampStrength(body.strength);
       const ctx = engineCtx(process.env);
-      const buf = await withRetry(() =>
-        eng.generate({
-          prompt,
-          image,
-          mime,
-          seed: body.seed != null ? Number(body.seed) : undefined,
-          strength: str,
-        }, ctx),
+      const seed = body.seed != null ? Number(body.seed) : undefined;
+      const tag = String(body.edition ?? body.index ?? Date.now()).replace(/[^a-zA-Z0-9_-]/g, "") || String(Date.now());
+      assertSpend(eng.costUsd ?? null);
+      const buf = await paidCall(
+        { source: "studio", kind: "pilot", engine: engineName, edition: tag, costUsd: eng.costUsd ?? null, seed },
+        () => withRetry(() => eng.generate({ prompt, image, mime, seed, strength: str }, ctx)),
       );
-      mkdirSync(OUT, { recursive: true });
       const dir = join(OUT, "pilots");
       mkdirSync(dir, { recursive: true });
-      const name = `pilot-${body.edition ?? body.index ?? Date.now()}.png`;
+      const name = `pilot-${tag}.png`;
+      if (existsSync(join(dir, name))) toTrash([join(dir, name)], `pilot ${name} regenerated`);
       writeFileSync(join(dir, name), buf);
       return send(res, 200, {
         ok: true,
@@ -1469,9 +1529,12 @@ async function handleApi(req, res, url) {
       }
     }
     const eng = getEngine(engineName);
+    const unitCost = eng.costUsd ?? null;
+    assertSpend(unitCost == null ? null : sel.recipes.length * unitCost);
     const allBases = listBases();
     const ctx = engineCtx(process.env);
     const outDir = join(OUT, set);
+    const breaker = failureBreaker({ maxConsecutive: Number(process.env.SERIES_MAX_CONSECUTIVE_FAILURES) || 5 });
     mkdirSync(outDir, { recursive: true });
 
     const isStream = Boolean(body.stream) || String(req.headers["accept"] || "").includes("text/event-stream");
@@ -1504,16 +1567,21 @@ async function handleApi(req, res, url) {
             }, ctx),
           );
           const name = `${recipe.edition}.png`;
-          writeFileSync(join(outDir, name), buf);
+          const v = addVersion(outDir, recipe.edition, buf, { engine: engineName, strength, seed: recipe.seed });
+          logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, v, ok: true, costUsd: unitCost, seed: recipe.seed });
+          breaker.record(true);
           return {
             ok: true,
             edition: recipe.edition,
             index: recipe.index,
             file: name,
+            v,
             path: `out/${set}/${name}`,
-            url: `/out/${set}/${name}`,
+            url: `/out/${set}/${name}?v=${v}`,
           };
         } catch (e) {
+          logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, ok: false, costUsd: 0, error: String(e.message || e).slice(0, 300) });
+          breaker.record(false);
           return {
             ok: false,
             edition: recipe.edition,
@@ -1531,7 +1599,8 @@ async function handleApi(req, res, url) {
             total: progress.total,
           })}\n\n`);
         }
-      }
+      },
+      { signal: breaker.signal },
     );
 
     const okN = results.filter((r) => r.ok).length;
@@ -1544,6 +1613,8 @@ async function handleApi(req, res, url) {
       set,
       count: okN,
       costUsd: Math.round(okN * (eng.costUsd || 0) * 1000) / 1000,
+      stopped: breaker.reason,
+      skipped: results.filter((r) => r.skipped).length,
       results,
       thumbs: results.filter((r) => r.ok).map((r) => ({ edition: r.edition, url: r.url, path: r.path })),
     };
@@ -1563,6 +1634,51 @@ async function handleApi(req, res, url) {
     }
 
     return send(res, 200, finalPayload);
+  }
+
+  if (pathname === "/api/versions" && req.method === "GET") {
+    const dir = safeSetName(url.searchParams.get("dir") || "");
+    const edition = url.searchParams.get("edition");
+    return send(res, 200, { dir, ...listVersions(join(OUT, dir), dir, edition) });
+  }
+
+  if (pathname === "/api/versions/current" && req.method === "POST") {
+    const body = await readBody(req);
+    const dir = safeSetName(body.dir || "");
+    setCurrent(join(OUT, dir), body.edition, body.v);
+    return send(res, 200, { ok: true, dir, ...listVersions(join(OUT, dir), dir, body.edition) });
+  }
+
+  if (pathname === "/api/versions/drop" && req.method === "POST") {
+    const body = await readBody(req);
+    const dir = safeSetName(body.dir || "");
+    const file = dropVersion(join(OUT, dir), body.edition, body.v);
+    const trashed = toTrash([file], `${dir} #${body.edition} v${body.v} dropped`);
+    return send(res, 200, { ok: true, dir, trashId: trashed?.id ?? null, ...listVersions(join(OUT, dir), dir, body.edition) });
+  }
+
+  if (pathname === "/api/trash" && req.method === "GET") {
+    return send(res, 200, { items: listTrash(TRASH) });
+  }
+
+  if (pathname === "/api/trash/restore" && req.method === "POST") {
+    const body = await readBody(req);
+    const item = restoreTrash({ root: ROOT, trashDir: TRASH }, String(body.id || ""));
+    return send(res, 200, { ok: true, restored: item, items: listTrash(TRASH) });
+  }
+
+  if (pathname === "/api/trash/purge" && req.method === "POST") {
+    const body = await readBody(req);
+    purgeTrash(TRASH, String(body.id || ""));
+    return send(res, 200, { ok: true, items: listTrash(TRASH) });
+  }
+
+  if (pathname === "/api/spend" && req.method === "GET") {
+    return send(res, 200, {
+      capUsd: spendCap(process.env.SERIES_SPEND_CAP_USD),
+      spentTodayUsd: spentToday(RENDER_LOG),
+      byEngine: spendByEngineToday(RENDER_LOG),
+    });
   }
 
   if (pathname === "/api/sets" && req.method === "GET") {
@@ -2220,9 +2336,23 @@ const server = createServer(async (req, res) => {
     }
     send(res, 404, "Not found", "text/plain; charset=utf-8");
   } catch (e) {
-    send(res, 500, { error: String(e.message || e) });
+    if (res.headersSent) {
+      res.end();
+      return;
+    }
+    send(res, e.status || 500, { error: String(e.message || e), ...(e.extra || {}) });
   }
 });
+
+try {
+  const days = Number(process.env.SERIES_TRASH_DAYS ?? 30);
+  if (days > 0) {
+    const purged = pruneTrash(TRASH, days);
+    if (purged.length) console.log(`Trash: purged ${purged.length} item(s) older than ${days} days`);
+  }
+} catch (e) {
+  console.warn(`Trash prune skipped: ${e.message}`);
+}
 
 server.listen(PORT, HOST, () => {
   const href = `http://${HOST}:${PORT}/studio/`;

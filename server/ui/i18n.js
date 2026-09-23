@@ -31,6 +31,18 @@ export function t(key, vars) {
   return s;
 }
 
+/** True when the current (or default) locale defines `key`. */
+export function hasKey(key) {
+  return key in dict || key in (LOCALES[DEFAULT] || {});
+}
+
+/** Keys `${prefix}1`, `${prefix}2`, … that exist, in order. */
+export function listKeys(prefix) {
+  const keys = [];
+  for (let i = 1; hasKey(`${prefix}${i}`); i++) keys.push(`${prefix}${i}`);
+  return keys;
+}
+
 export function setLocale(code) {
   const next = LOCALES[code] ? code : DEFAULT;
   current = next;
@@ -72,6 +84,15 @@ export function initI18n() {
  * - [data-i18n-aria="key"] → aria-label
  */
 export function applyI18n(root = document) {
+  // [data-i18n-list="render.hint.li"] → <li> for render.hint.li1, li2, … (as many as the locale defines)
+  root.querySelectorAll("[data-i18n-list]").forEach((el) => {
+    const prefix = el.getAttribute("data-i18n-list");
+    el.replaceChildren(...listKeys(prefix).map((key) => {
+      const li = document.createElement("li");
+      li.textContent = t(key);
+      return li;
+    }));
+  });
   root.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
     if (key) el.textContent = t(key);

@@ -20,7 +20,7 @@
 | Фаза | Статус | Зміст |
 |------|--------|--------|
 | **Lab core** | ✅ | rng · traits · recipes · validate CLI · schemas · demo preset |
-| **Studio UI** | ✅ | вкладки 1–7 + Ресурси/Довідка · i18n uk/en · keys з Промт `.env` |
+| **Studio UI** | ✅ | вкладки 1–7 + Ресурси/Довідка · i18n uk/en · ключі з локального `.env` |
 | **Health-патерн 4–6** | ✅ | рецепти-таблиця+редактор · estimate→generate · keep/redo |
 | **Промт bridge · хвиля 1** | ✅ | паки/шаблони · styleLock · lint · rarity · trait rules · light QA |
 | **Промт bridge · хвиля 2** | ✅ | mint-ready ZIP · upscale · NFT checklist · workspace autosave |
@@ -44,6 +44,8 @@
 | **Notifications & Webhooks · хвиля 20** | ✅ | Batch Generation Notifications & Webhooks (Telegram-бот, звукові/системні сповіщення) |
 | **UI Matrix & Trait Synergy · хвиля 21** | ✅ | UI Matrix Preview & Trait Heatmap (попередній перегляд рушіїв на льоту, теплова карта рідкості) |
 | **Fast Engine Connectors · хвиля 22** | ✅ | Direct Fast Engine Connectors (Fal.ai, Replicate Schnell, Runware, локальний ComfyUI та Automatic1111) |
+| **Безпека й страховка · хвиля 23** | ✅ | захист API (CSRF / DNS rebinding) · версії рендерів · кошик · журнал і денна межа витрат · автостоп batch · атомарний запис JSON |
+| **Довідка й дизайн · хвиля 24** | ✅ | підказки з локалей на кожній вкладці · довідка-путівник з пошуком (uk/en) · `docs/GUIDE.md` · mock у списках рушіїв · оновлений дизайн і мобільна верстка |
 | **Release (marketplace claim)** | ⏳ | claim/листинг на маркетплейсі — свідомий крок поза ядром Lab |
 | **SaaS міст** | ⏳ | кредити/гаманець/IPFS лишаються в Промт / ai.w3ir.io |
 
@@ -189,6 +191,22 @@
 3. **Діагностика підключень та CLI**:
    - **CLI `series engines`**: інтерактивна таблиця всіх підтримуваних рушіїв (edit та txt2img) із перевіркою наявності ключів та розрахунком собівартості.
    - **API & UI тестування**: ендпоінти `GET /api/engines/status` та `POST /api/engines/test` з кнопкою перевірки всіх підключень та вимірюванням пінгу у вкладці «Ресурси».
+
+## Хвиля 23 (Безпека й страховка — реалізовано)
+
+- `server/guard.mjs`: `/api/*` приймає лише свій `Host` і same-origin `Origin`, POST — лише JSON (`SERIES_ALLOWED_HOSTS` для додаткових імен).
+- `src/versions.mjs`: перегенерація в Studio і `series render` переносить попередню картинку в `out/<набір>/versions/<N>/`; у Відборі — вікно версій.
+- `src/trash.mjs`: видалення / заміна файлів → `out/trash/`, відновлення в «Ресурсах», автоочищення `SERIES_TRASH_DAYS`.
+- `src/spend.mjs`: журнал `out/render-log.jsonl`, денна межа `SERIES_SPEND_CAP_USD`, витрачене сьогодні в оцінці й «Ресурсах».
+- `failureBreaker` у `src/pool.mjs`: автостоп після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) помилок поспіль.
+- `src/fs-safe.mjs`: атомарний запис JSON. Джерела ідей — gremlin-nft (versions, trash, spend, fs-safe) і Промт (provider_health).
+
+## Хвиля 24 (Довідка, підказки, дизайн — реалізовано)
+
+- Підказки на всіх вкладках генеруються з локалей (`data-i18n-list`) — жоден пункт більше не губиться між HTML і перекладом.
+- Вкладка «❓ Довідка»: швидкий старт за $0, путівник по етапах (навіщо / що робити / що отримаєте / типові помилки), страховка, безкоштовний режим, словник, FAQ, CLI; пошук і зміст. Друкована версія — `docs/GUIDE.md`.
+- Англійська локаль доповнена до повного набору ключів.
+- Дизайн: токени, навігація-кроки, головні кнопки `primary`, видимий фокус, адаптивна верстка до 390 px.
 
 ## Відкладено (справді deferred)
 

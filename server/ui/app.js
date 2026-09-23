@@ -160,6 +160,7 @@ function setupLang() {
   window.addEventListener("series-lab:locale", () => {
     sync();
     refreshDynamicCopy();
+    renderHelp();
   });
 }
 
@@ -1614,6 +1615,9 @@ function setupRender() {
           await loadGallerySets();
         }
         if (progressText) progressText.textContent = t("render.done", { n: lastDone.count, set: lastDone.set }) || `Done: ${lastDone.count}`;
+        if (progressText && lastDone.stopped) {
+          progressText.textContent += ` · ⛔ ${t("render.stopped", { reason: lastDone.stopped, skipped: lastDone.skipped })}`;
+        }
         if (progressBar) progressBar.style.width = "100%";
         if (progressPct) progressPct.textContent = "100%";
       }
@@ -1838,14 +1842,18 @@ function renderGallery() {
       const qa = img?.qa?.ok === false
         ? `<span class="qa-badge">${t("gallery.qa.badge")}</span>`
         : "";
+      const ver = img.versions > 1
+        ? `<button type="button" class="ver-badge" title="${escapeHtml(t("ver.badge.title", { n: img.versions }))}">v·${img.versions}</button>`
+        : "";
       tile.innerHTML = `
         <img src="${escapeHtml(img.url)}" alt="#${img.edition}" />
-        <div class="meta">#${img.edition} ${qa}${triageBadge}</div>
+        <div class="meta">#${img.edition} ${ver}${qa}${triageBadge}</div>
         <div class="btns">
           <button type="button" class="btn small b-keep">${t("gallery.keep")}</button>
           <button type="button" class="btn small b-redo">${t("gallery.redo")}</button>
         </div>`;
       tile.querySelector("img").addEventListener("click", () => openLightbox(img.url));
+      tile.querySelector(".ver-badge")?.addEventListener("click", () => openVersions(img.edition));
     }
 
     tile.querySelector(".b-keep").addEventListener("click", () => toggleMark(row.edition, "keep"));
@@ -1853,6 +1861,199 @@ function renderGallery() {
     grid.appendChild(tile);
   }
   if ($("v-stats")) $("v-stats").textContent = t("gallery.stats", { keep, redo, none });
+}
+
+/* ---------- Help (built from locale keys, works offline) ---------- */
+const HELP_STEPS = [
+  ["s1", "home"], ["s2", "base"], ["s3", "ctor"], ["s4", "recipes"],
+  ["s5", "render"], ["s6", "gallery"], ["s7", "export"], ["s8", "res"],
+];
+const HELP_CLI = [
+  ["doctor", "doctor"],
+  ["engines", "engines"],
+  ["validate", "validate presets/demo-series.json"],
+  ["build", "build presets/demo-series.json -o out/demo-archive.json"],
+  ["render", "render presets/demo-series.json --engine mock --limit 5"],
+  ["triage", "triage out/mock-s0.45 --provider heuristic --apply"],
+  ["upscale", "upscale out/fal-s0.45"],
+  ["pin", "pin out/fal-s0.45 --name my-series"],
+  ["manifest", "manifest out/demo-archive.json --profile opensea"],
+  ["showcase", "showcase out/demo-archive.json -o out/showcase.html"],
+  ["provenance", "provenance out/fal-s0.45 -o out/provenance.json"],
+  ["dataset", "dataset out/demo-archive.json --images out/fal-s0.45 --trigger my_hero -o out/dataset.zip"],
+  ["release", "release-config out/demo-archive.json --profile magiceden -o out/sugar.json"],
+];
+const HELP_DOCS = [
+  ["docs/GUIDE.md", "guide"], ["docs/STAGES.md", "stages"], ["docs/STUDIO-UI.md", "studioUi"],
+  ["docs/API.md", "api"], ["docs/EXPORT.md", "export"], ["docs/BASE.md", "base"],
+  ["docs/TRAITS.md", "traits"], ["docs/PRESET.md", "preset"], ["docs/ROADMAP.md", "roadmap"],
+  ["README.md", "readme"],
+];
+
+/** Strings for `${prefix}1`, `${prefix}2`, … while the locale defines them. */
+function tList(prefix) {
+  const out = [];
+  for (let i = 1; i < 100; i++) {
+    const key = `${prefix}${i}`;
+    const s = t(key);
+    if (s === key) break;
+    out.push(s);
+  }
+  return out;
+}
+
+const esc = (key) => escapeHtml(t(key));
+const helpList = (prefix, tag = "ul") =>
+  `<${tag}>${tList(prefix).map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</${tag}>`;
+
+function helpSections() {
+  const steps = HELP_STEPS.map(([id, tab], i) => `
+    <details class="help-step help-item" ${i === 0 ? "open" : ""}>
+      <summary><span class="help-step-n">${i < 7 ? i + 1 : "💰"}</span>${escapeHtml(t(`help.${id}.title`).replace(/^(\d+\s*·|💰)\s*/u, ""))}</summary>
+      <div class="help-step-body">
+        <p class="help-why"><b>${esc("help.label.why")}:</b> ${esc(`help.${id}.why`)}</p>
+        <h4>${esc("help.label.do")}</h4>${helpList(`help.${id}.do`, "ol")}
+        <p class="help-get"><b>${esc("help.label.get")}:</b> ${esc(`help.${id}.get`)}</p>
+        <h4>${esc("help.label.oops")}</h4>${helpList(`help.${id}.oops`)}
+        <button type="button" class="btn small" data-goto="${tab}">${esc("help.open")}</button>
+      </div>
+    </details>`).join("");
+
+  const glossary = tList("help.gl").map((s) => {
+    const [term, ...rest] = s.split(" — ");
+    return `<div class="help-item gl-row"><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(rest.join(" — "))}</dd></div>`;
+  }).join("");
+
+  const faq = tList("help.faq.q").map((q, i) => `
+    <details class="help-item faq-item"><summary>${escapeHtml(q)}</summary><p>${esc(`help.faq.a${i + 1}`)}</p></details>`).join("");
+
+  const cli = HELP_CLI.map(([k, cmd]) =>
+    `<div class="help-item cli-row"><code>node bin/series.mjs ${escapeHtml(cmd)}</code><span>${esc(`help.cli.${k}`)}</span></div>`).join("");
+
+  const docs = HELP_DOCS.map(([file, k]) =>
+    `<li class="help-item"><code>${file}</code> — ${esc(`help.doc.${k}`)}</li>`).join("");
+
+  return [
+    ["whatis", `<p>${esc("help.whatis.p1")}</p><p>${esc("help.whatis.p2")}</p>
+      <div class="help-cards">${[1, 2, 3].map((n) => `<div class="help-card"><b>${esc(`help.whatis.card${n}.title`)}</b><span>${esc(`help.whatis.card${n}.desc`)}</span></div>`).join("")}</div>`],
+    ["quick", `<p>${esc("help.quick.desc")}</p>${helpList("help.quick.li", "ol")}<p class="help-note">${esc("help.quick.tip")}</p>`],
+    ["steps", `<p>${esc("help.steps.desc")}</p>${steps}`],
+    ["safety", `<p>${esc("help.safety.desc")}</p>${helpList("help.safety.li")}`],
+    ["zero", `<p>${esc("help.zero.desc")}</p>${helpList("help.zero.li")}`],
+    ["glossary", `<p>${esc("help.glossary.desc")}</p><dl class="help-gl">${glossary}</dl>`],
+    ["faq", `<p>${esc("help.faq.desc")}</p>${faq}`],
+    ["cli", `<p>${esc("help.cli.desc")}</p><div class="help-cli">${cli}</div>`],
+    ["docs", `<ul class="help-docs">${docs}</ul>`],
+    ["run", `<p>${esc("help.run.desc")}</p>`],
+  ];
+}
+
+function renderHelp() {
+  const body = $("help-body");
+  const toc = $("help-toc");
+  if (!body || !toc) return;
+  const sections = helpSections();
+  body.innerHTML = sections.map(([id, html]) =>
+    `<section class="help-sec card" id="help-${id}"><h2>${esc(`help.${id}.title`)}</h2>${html}</section>`).join("");
+  toc.innerHTML = `<b>${esc("help.toc.title")}</b>` + sections.map(([id]) =>
+    `<a href="#help-${id}" data-sec="${id}">${esc(`help.${id}.title`)}</a>`).join("");
+  body.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
+  toc.querySelectorAll("a").forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault();
+    $(`help-${a.dataset.sec}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
+  filterHelp($("help-search")?.value || "");
+}
+
+function filterHelp(query) {
+  const q = query.trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll("#help-body .help-sec").forEach((sec) => {
+    const items = sec.querySelectorAll(".help-item");
+    let secHit = !q || sec.querySelector("h2").textContent.toLowerCase().includes(q);
+    let itemHits = 0;
+    items.forEach((it) => {
+      const hit = !q || it.textContent.toLowerCase().includes(q);
+      it.hidden = Boolean(q) && !hit && !secHit;
+      if (q && hit) {
+        itemHits++;
+        if (it.tagName === "DETAILS") it.open = true;
+      }
+    });
+    const visible = !q || secHit || itemHits > 0 || sec.textContent.toLowerCase().includes(q);
+    sec.hidden = !visible;
+    if (visible) shown++;
+  });
+  const count = $("help-search-count");
+  if (count) count.textContent = q ? (shown ? t("help.search.count", { n: shown }) : t("help.search.none")) : "";
+}
+
+function setupHelp() {
+  renderHelp();
+  $("help-search")?.addEventListener("input", (e) => filterHelp(e.target.value));
+}
+
+/* ---------- Versions (re-renders never overwrite) ---------- */
+async function openVersions(edition) {
+  const overlay = $("ver-overlay");
+  if (!overlay || !state.galleryDir) return;
+  try {
+    const data = await api(`/api/versions?dir=${encodeURIComponent(state.galleryDir)}&edition=${edition}`);
+    renderVersions(data);
+    overlay.hidden = false;
+  } catch (e) {
+    galleryStatus(e.message);
+  }
+}
+
+function renderVersions(data) {
+  const list = $("ver-list");
+  if ($("ver-title")) $("ver-title").textContent = t("ver.title", { edition: data.edition });
+  if (!list) return;
+  list.innerHTML = "";
+  for (const v of [...data.versions].reverse()) {
+    const item = document.createElement("div");
+    item.className = `ver-item${v.current ? " current" : ""}`;
+    const when = v.at ? new Date(v.at).toLocaleString() : "—";
+    item.innerHTML = `
+      <img src="${escapeHtml(v.url)}" alt="v${v.v}" />
+      <div class="small"><b>v${v.v}</b> ${v.current ? `· ${escapeHtml(t("ver.current"))}` : ""}<br>
+        <span class="muted">${escapeHtml(when)}${v.engine ? ` · ${escapeHtml(v.engine)}` : ""}</span></div>
+      <div class="btns">${v.current ? "" : `
+        <button type="button" class="btn small primary b-cur">${escapeHtml(t("ver.makeCurrent"))}</button>
+        <button type="button" class="btn small b-drop">${escapeHtml(t("ver.drop"))}</button>`}
+      </div>`;
+    item.querySelector("img").addEventListener("click", () => openLightbox(v.url));
+    item.querySelector(".b-cur")?.addEventListener("click", () => versionAction("/api/versions/current", data.edition, v.v));
+    item.querySelector(".b-drop")?.addEventListener("click", () => versionAction("/api/versions/drop", data.edition, v.v));
+    list.appendChild(item);
+  }
+}
+
+async function versionAction(path, edition, v) {
+  try {
+    const data = await api(path, {
+      method: "POST",
+      body: JSON.stringify({ dir: state.galleryDir, edition, v }),
+    });
+    renderVersions(data);
+    await loadGalleryDir(state.galleryDir);
+  } catch (e) {
+    galleryStatus(e.message);
+  }
+}
+
+function galleryStatus(msg) {
+  const el = $("v-triage-status");
+  if (el) el.textContent = msg;
+}
+
+function setupVersions() {
+  const overlay = $("ver-overlay");
+  $("ver-close")?.addEventListener("click", () => { overlay.hidden = true; });
+  overlay?.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.hidden = true;
+  });
 }
 
 async function toggleMark(edition, kind) {
@@ -2516,6 +2717,72 @@ async function renderResources() {
       <p class="muted small">${k.note ? escapeHtml(k.note) : t("res.checklist")}</p>`;
     grid.appendChild(card);
   }
+  renderSpend();
+  renderTrash();
+}
+
+async function renderSpend() {
+  const out = $("spend-out");
+  if (!out) return;
+  try {
+    const d = await api("/api/spend");
+    const by = Object.entries(d.byEngine || {}).map(([k, v]) => `${escapeHtml(k)}: $${v}`).join(" · ");
+    out.innerHTML = `<div>${escapeHtml(t("spend.today", { usd: d.spentTodayUsd }))}${by ? ` <span class="muted">(${by})</span>` : ""}</div>
+      <div class="muted">${escapeHtml(d.capUsd != null ? t("spend.cap", { usd: d.capUsd }) : t("spend.noCap"))}</div>`;
+  } catch (e) {
+    out.textContent = e.message;
+  }
+}
+
+async function renderTrash() {
+  const box = $("trash-list");
+  if (!box) return;
+  let items = [];
+  try {
+    items = (await api("/api/trash")).items || [];
+  } catch (e) {
+    box.textContent = e.message;
+    return;
+  }
+  box.innerHTML = "";
+  if (!items.length) {
+    box.innerHTML = `<p class="muted">${escapeHtml(t("trash.empty"))}</p>`;
+    return;
+  }
+  for (const it of items) {
+    const row = document.createElement("div");
+    row.className = "trash-row";
+    const files = it.files.map((f) => f.from).join(", ");
+    const kb = Math.max(1, Math.round((it.bytes || 0) / 1024));
+    row.innerHTML = `
+      <div><b>${escapeHtml(new Date(it.at).toLocaleString())}</b> · ${escapeHtml(it.reason || "")}
+        <div class="muted">${escapeHtml(files)} · ${kb} KB</div></div>
+      <div class="btns">
+        <button type="button" class="btn small b-restore">${escapeHtml(t("trash.restore"))}</button>
+        <button type="button" class="btn small b-purge">${escapeHtml(t("trash.purge"))}</button>
+      </div>`;
+    row.querySelector(".b-restore").addEventListener("click", () => trashAction("/api/trash/restore", it.id));
+    const purge = row.querySelector(".b-purge");
+    purge.addEventListener("click", () => {
+      // two-step confirm without a blocking browser dialog
+      if (purge.dataset.armed) return trashAction("/api/trash/purge", it.id);
+      purge.dataset.armed = "1";
+      purge.textContent = t("trash.purgeConfirm");
+      purge.classList.add("danger");
+    });
+    box.appendChild(row);
+  }
+}
+
+async function trashAction(path, id) {
+  try {
+    await api(path, { method: "POST", body: JSON.stringify({ id }) });
+  } catch (e) {
+    const box = $("trash-list");
+    if (box) box.insertAdjacentHTML("afterbegin", `<p class="bad">${escapeHtml(e.message)}</p>`);
+    return;
+  }
+  renderTrash();
 }
 
 function setupEngineDiagnostics() {
@@ -2569,7 +2836,9 @@ async function boot() {
   setupRender();
   setupGallery();
   setupEngineDiagnostics();
+  setupVersions();
   setupExport();
+  setupHelp();
 
   try {
     state.health = await api("/api/health");
@@ -2578,7 +2847,9 @@ async function boot() {
     $("me").textContent = "offline";
   }
 
-    await Promise.all([loadPresets(), loadTemplates(), loadArchives(), refreshBaseStatus()]);
+  // one failing loader must not leave the rest of the UI uninitialised
+  const loads = await Promise.allSettled([loadPresets(), loadTemplates(), loadArchives(), refreshBaseStatus()]);
+  loads.filter((r) => r.status === "rejected").forEach((r) => console.error(r.reason));
   if (state.presets[0]) {
     try {
       const data = await api(`/api/preset?file=${encodeURIComponent(state.presets[0].file)}`);

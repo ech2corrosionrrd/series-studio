@@ -94,6 +94,23 @@
 | GET | `/api/release/portals` | отримання посилань на лаунчпади та покрокових порад (`?profile=&archive=`) |
 | GET | `/api/release/config` | завантаження конфігів деплою (`sugar.json` / `thirdweb.json`) |
 
+## Versions / trash / spend (захист оплачених рендерів)
+
+| Method | Path | Опис |
+|--------|------|------|
+| GET | `/api/versions?dir=&edition=` | історія версій картинки: `out/<set>/versions/<N>/` |
+| POST | `/api/versions/current` | `{ dir, edition, v }` — зробити версію поточною (`<N>.png`) |
+| POST | `/api/versions/drop` | `{ dir, edition, v }` — непоточну версію в кошик |
+| GET | `/api/trash` | записи кошика `out/trash/<id>/` (новіші першими) |
+| POST | `/api/trash/restore` | `{ id }` — повернути файли на місце (відмова, якщо ціль уже існує) |
+| POST | `/api/trash/purge` | `{ id }` — видалити запис назавжди |
+| GET | `/api/spend` | `{ capUsd, spentTodayUsd, byEngine }` з `out/render-log.jsonl` |
+
+Перегенерація (`force`) і `series render` більше не перезаписують `<N>.png`: попередня картинка переходить у `versions/`.
+Видалення базових картинок, паків трейтів, перезапис пілотів і primary — через кошик.
+Платні виклики пишуться в `out/render-log.jsonl`; `SERIES_SPEND_CAP_USD` блокує запуск понад денну межу (400, `code: "spend_cap"`).
+Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) помилок поспіль (`stopped` у відповіді).
+
 ## Статика
 
 | Path | Опис |

@@ -47,16 +47,7 @@
       <p data-i18n="home.hint">💡 …</p>
       <details open>
         <summary data-i18n="home.hint.more"></summary>
-        <ol class="guide">
-          <li data-i18n="home.hint.li1"></li>
-          <li data-i18n="home.hint.li2"></li>
-          <li data-i18n="home.hint.li3"></li>
-          <li data-i18n="home.hint.li4"></li>
-          <li data-i18n="home.hint.li5"></li>
-          <li data-i18n="home.hint.li6"></li>
-          <li data-i18n="home.hint.li7"></li>
-          <li data-i18n="home.hint.li8"></li>
-        </ol>
+        <ol class="guide" data-i18n-list="home.hint.li"></ol>
         <p class="muted small" data-i18n="home.hint.tip"></p>
       </details>
     </div>
@@ -90,13 +81,14 @@
             <option value="stability">stability</option>
             <option value="pollinations">pollinations</option>
             <option value="runware">runware</option>
+            <option value="mock" data-i18n="engine.mock">mock (demo, $0.00)</option>
           </select></label>
         <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="o-strength-v">0.45</b>
           <input type="range" id="o-strength" min="0.1" max="0.95" step="0.05" value="0.45">
         </label>
       </div>
       <div class="actions">
-        <button type="button" id="o-save" class="btn danger" data-i18n="home.save">Зберегти пресет</button>
+        <button type="button" id="o-save" class="btn primary" data-i18n="home.save">Зберегти пресет</button>
         <button type="button" id="o-next" class="btn" data-i18n="home.next">Далі · Основа →</button>
         <span id="o-msg" class="small"></span>
       </div>
@@ -136,15 +128,7 @@
       <p data-i18n="base.hint"></p>
       <details open>
         <summary data-i18n="base.hint.more"></summary>
-        <ol class="guide">
-          <li data-i18n="base.hint.li1"></li>
-          <li data-i18n="base.hint.li2"></li>
-          <li data-i18n="base.hint.li3"></li>
-          <li data-i18n="base.hint.li4"></li>
-          <li data-i18n="base.hint.li5"></li>
-          <li data-i18n="base.hint.li6"></li>
-          <li data-i18n="base.hint.li7"></li>
-        </ol>
+        <ol class="guide" data-i18n-list="base.hint.li"></ol>
         <p class="muted small" data-i18n="base.hint.tip"></p>
       </details>
     </div>
@@ -169,7 +153,7 @@
             <span data-i18n="base.pick">Обрати файли</span>
             <input type="file" id="base-file" accept="image/png,image/jpeg,image/webp" multiple hidden>
           </label>
-          <button type="button" id="base-upload" class="btn danger" disabled data-i18n="base.save">Завантажити</button>
+          <button type="button" id="base-upload" class="btn primary" disabled data-i18n="base.save">Завантажити</button>
         </div>
         <p id="base-pick-list" class="muted small"></p>
         <span id="base-msg" class="small"></span>
@@ -184,7 +168,7 @@
             <p id="base-vision-summary" class="small" style="margin:4px 0"></p>
             <pre id="base-vision-out" class="log" style="max-height:160px; overflow:auto;"></pre>
             <div class="actions" style="margin-top:8px">
-              <button type="button" id="base-vision-apply" class="btn danger" data-i18n="base.vision.apply">Застосувати до пресету</button>
+              <button type="button" id="base-vision-apply" class="btn primary" data-i18n="base.vision.apply">Застосувати до пресету</button>
             </div>
           </div>
         </div>
@@ -207,6 +191,7 @@
             <option value="stability" data-i18n="engine.stability">stability</option>
             <option value="pollinations" data-i18n="engine.pollinations">pollinations</option>
             <option value="runware" data-i18n="engine.runware">runware</option>
+            <option value="mock" data-i18n="engine.mock">mock (demo, $0.00)</option>
           </select>
         </label>
         <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="base-wish-str-v">0.45</b>
@@ -216,7 +201,7 @@
         <label class="row"><input type="checkbox" id="base-wish-primary" checked> <span data-i18n="base.wish.makePrimary">Зберегти як головну базову картинку серії</span></label>
         <div class="actions">
           <button type="button" id="base-wish-save" class="btn" data-i18n="base.wish.save">Зберегти побажання</button>
-          <button type="button" id="base-wish-gen" class="btn danger" data-i18n="base.wish.gen">Згенерувати кандидата</button>
+          <button type="button" id="base-wish-gen" class="btn primary" data-i18n="base.wish.gen">Згенерувати кандидата</button>
         </div>
         <pre id="base-wish-out" class="log" hidden></pre>
         <p class="muted small" data-i18n="base.wish.note"></p>
@@ -239,16 +224,7 @@
       <p data-i18n="ctor.hint"></p>
       <details open>
         <summary data-i18n="ctor.hint.more"></summary>
-        <ol class="guide">
-          <li data-i18n="ctor.hint.li1"></li>
-          <li data-i18n="ctor.hint.li2"></li>
-          <li data-i18n="ctor.hint.li3"></li>
-          <li data-i18n="ctor.hint.li4"></li>
-          <li data-i18n="ctor.hint.li5"></li>
-          <li data-i18n="ctor.hint.li6"></li>
-          <li data-i18n="ctor.hint.li7"></li>
-          <li data-i18n="ctor.hint.li8"></li>
-        </ol>
+        <ol class="guide" data-i18n-list="ctor.hint.li"></ol>
         <p class="muted small" data-i18n="ctor.hint.tip"></p>
       </details>
     </div>
@@ -275,6 +251,7 @@
           <option value="stability">stability</option>
           <option value="pollinations">pollinations</option>
           <option value="runware">runware</option>
+          <option value="mock" data-i18n="engine.mock">mock (demo, $0.00)</option>
         </select>
         <input id="c-strength" type="range" min="0.1" max="0.95" step="0.05" value="0.45">
         <b id="c-strength-v">0.45</b>
@@ -287,7 +264,7 @@
       </label>
       <button type="button" id="ctor-load" class="btn" data-i18n="ctor.load">Завантажити</button>
       <button type="button" id="ctor-validate" class="btn" data-i18n="ctor.validate">Validate</button>
-      <button type="button" id="ctor-save" class="btn danger" data-i18n="ctor.save">Зберегти промпт+трейти</button>
+      <button type="button" id="ctor-save" class="btn primary" data-i18n="ctor.save">Зберегти промпт+трейти</button>
       <button type="button" id="ctor-next" class="btn" data-i18n="ctor.next">Далі · Рецепти →</button>
       <span id="ctor-msg" class="small"></span>
     </div>
@@ -405,20 +382,13 @@
       <p data-i18n="recipes.hint"></p>
       <details open>
         <summary data-i18n="recipes.hint.more"></summary>
-        <ol class="guide">
-          <li data-i18n="recipes.hint.li1"></li>
-          <li data-i18n="recipes.hint.li2"></li>
-          <li data-i18n="recipes.hint.li3"></li>
-          <li data-i18n="recipes.hint.li4"></li>
-          <li data-i18n="recipes.hint.li5"></li>
-          <li data-i18n="recipes.hint.li6"></li>
-        </ol>
+        <ol class="guide" data-i18n-list="recipes.hint.li"></ol>
         <p class="muted small" data-i18n="recipes.hint.tip"></p>
       </details>
     </div>
     <div class="toolbar">
       <select id="r-preset"></select>
-      <button type="button" id="r-build" class="btn danger" data-i18n="recipes.build">Зібрати архів</button>
+      <button type="button" id="r-build" class="btn primary" data-i18n="recipes.build">Зібрати архів</button>
       <button type="button" id="r-diff" class="btn" data-i18n="recipes.diff">Diff-seed</button>
       <input id="r-search" data-i18n-placeholder="recipes.search" placeholder="Search">
       <select id="r-line"><option value="" data-i18n="recipes.allLines">Усі лінії</option></select>
@@ -445,7 +415,7 @@
       </label>
       <div class="actions">
         <button type="button" id="r-ed-save" class="btn" data-i18n="recipes.editor.save">Save</button>
-        <button type="button" id="r-ed-redo" class="btn danger" data-i18n="recipes.editor.redo">Save &amp; redo…</button>
+        <button type="button" id="r-ed-redo" class="btn primary" data-i18n="recipes.editor.redo">Save &amp; redo…</button>
         <button type="button" id="r-ed-reset" class="btn" data-i18n="recipes.editor.reset">Reset to original</button>
         <span id="r-ed-msg" class="small"></span>
       </div>
@@ -460,14 +430,7 @@
       <p data-i18n="render.hint"></p>
       <details open>
         <summary data-i18n="render.hint.more"></summary>
-        <ol class="guide">
-          <li data-i18n="render.hint.li1"></li>
-          <li data-i18n="render.hint.li2"></li>
-          <li data-i18n="render.hint.li3"></li>
-          <li data-i18n="render.hint.li4"></li>
-          <li data-i18n="render.hint.li5"></li>
-          <li data-i18n="render.hint.li6"></li>
-        </ol>
+        <ol class="guide" data-i18n-list="render.hint.li"></ol>
         <p class="muted small" data-i18n="render.hint.tip"></p>
       </details>
     </div>
@@ -483,6 +446,7 @@
             <option value="stability">stability (~$0.035)</option>
             <option value="pollinations">pollinations (~$0.02)</option>
             <option value="runware">runware (~$0.006)</option>
+            <option value="mock" data-i18n="engine.mock">mock (demo, $0.00)</option>
           </select>
         </label>
         <label><span data-i18n="render.strength">Сила референсу</span>: <b id="g-strength-v">0.45</b>
@@ -518,7 +482,7 @@
         </fieldset>
         <div class="actions">
           <button type="button" id="g-estimate" class="btn" data-i18n="render.estimate">Estimate (free)</button>
-          <button type="button" id="g-run" class="btn danger" disabled data-i18n="render.run">Generate…</button>
+          <button type="button" id="g-run" class="btn primary" disabled data-i18n="render.run">Generate…</button>
         </div>
       </div>
       <div class="card">
@@ -547,14 +511,7 @@
     <h1 data-i18n="gallery.h1">Відбір</h1>
     <div class="hint"><p data-i18n="gallery.hint"></p><details open>
         <summary data-i18n="gallery.hint.more"></summary>
-        <ol class="guide">
-          <li data-i18n="gallery.hint.li1"></li>
-          <li data-i18n="gallery.hint.li2"></li>
-          <li data-i18n="gallery.hint.li3"></li>
-          <li data-i18n="gallery.hint.li4"></li>
-          <li data-i18n="gallery.hint.li5"></li>
-          <li data-i18n="gallery.hint.li6"></li>
-        </ol>
+        <ol class="guide" data-i18n-list="gallery.hint.li"></ol>
         <p class="muted small" data-i18n="gallery.hint.tip"></p>
       </details>
     </div>
@@ -576,7 +533,7 @@
       </select>
       <span id="v-stats" class="muted"></span>
       <button type="button" id="v-redo" class="btn" data-i18n="gallery.redoMarked">Redo marked…</button>
-      <button type="button" id="v-quick-redo" class="btn danger" data-i18n="gallery.redo.btn">↻ Перегенерувати відхилені</button>
+      <button type="button" id="v-quick-redo" class="btn primary" data-i18n="gallery.redo.btn">↻ Перегенерувати відхилені</button>
       <span id="v-redo-status" class="small muted"></span>
     </div>
     <div class="card triage-bar" style="margin: 10px 0; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px;">
@@ -608,6 +565,13 @@
       <img id="v-lightbox-img" alt="">
       <button type="button" id="v-lightbox-close" class="btn">✕</button>
     </div>
+    <div id="ver-overlay" class="overlay" hidden>
+      <div class="card ver-card">
+        <h3><span id="ver-title"></span><button type="button" id="ver-close" class="btn small">✕</button></h3>
+        <p class="muted small" data-i18n="ver.hint"></p>
+        <div id="ver-list" class="ver-list"></div>
+      </div>
+    </div>
   </section>
 
   <!-- 7. EXPORT -->
@@ -615,12 +579,7 @@
     <h1 data-i18n="export.h1">Експорт</h1>
     <div class="hint"><p data-i18n="export.hint"></p><details open>
         <summary data-i18n="export.hint.more"></summary>
-        <ol class="guide">
-          <li data-i18n="export.hint.li1"></li>
-          <li data-i18n="export.hint.li2"></li>
-          <li data-i18n="export.hint.li3"></li>
-          <li data-i18n="export.hint.li4"></li>
-        </ol>
+        <ol class="guide" data-i18n-list="export.hint.li"></ol>
         <p class="muted small" data-i18n="export.hint.tip"></p>
       </details>
     </div>
@@ -731,17 +690,21 @@
     <h1 data-i18n="res.h1">Ресурси</h1>
     <div class="hint"><p data-i18n="res.hint"></p><details open>
         <summary data-i18n="res.hint.more"></summary>
-        <ol class="guide">
-          <li data-i18n="res.hint.li1"></li>
-          <li data-i18n="res.hint.li2"></li>
-          <li data-i18n="res.hint.li3"></li>
-          <li data-i18n="res.hint.li4"></li>
-        </ol>
+        <ol class="guide" data-i18n-list="res.hint.li"></ol>
         <p class="muted small" data-i18n="res.hint.tip"></p>
       </details>
     </div>
     <p class="muted" data-i18n="res.note"></p>
     <div id="res-grid" class="res-grid"></div>
+    <div class="card" style="margin-top:16px">
+      <h3 data-i18n="spend.h3">💰 Витрати сьогодні</h3>
+      <div id="spend-out" class="small"></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3 data-i18n="trash.h3">🗑️ Кошик</h3>
+      <p class="muted small" data-i18n="trash.hint"></p>
+      <div id="trash-list" class="trash-list small"></div>
+    </div>
     <div class="card" style="margin-top:16px">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
         <h3>⚡ Діагностика та швидкість рушіїв генерації (Wave 22)</h3>
@@ -757,57 +720,13 @@
     <h1 data-i18n="help.h1">Довідка</h1>
     <div class="hint">
       <p data-i18n="help.hint"></p>
-      <details open>
-        <summary data-i18n="help.hint.more"></summary>
-        <ol class="guide">
-          <li data-i18n="help.hint.li1"></li>
-          <li data-i18n="help.hint.li2"></li>
-          <li data-i18n="help.hint.li3"></li>
-          <li data-i18n="help.hint.li4"></li>
-          <li data-i18n="help.hint.li5"></li>
-          <li data-i18n="help.hint.li6"></li>
-          <li data-i18n="help.hint.li7"></li>
-        </ol>
-        <p class="muted small" data-i18n="help.hint.tip"></p>
-      </details>
     </div>
-    <div class="prose card">
-      <h2 data-i18n="help.path">Lab → Studio → Release</h2>
-      <ol>
-        <li data-i18n="help.lab"></li>
-        <li data-i18n="help.studio"></li>
-        <li data-i18n="help.release"></li>
-      </ol>
-      <h2 data-i18n="help.beginner">Для початківців · що означають слова</h2>
-      <ul>
-        <li data-i18n="help.term.preset"></li>
-        <li data-i18n="help.term.seed"></li>
-        <li data-i18n="help.term.base"></li>
-        <li data-i18n="help.term.trait"></li>
-        <li data-i18n="help.term.recipe"></li>
-        <li data-i18n="help.term.dna"></li>
-        <li data-i18n="help.term.pack"></li>
-      </ul>
-      <h2 data-i18n="help.docs">Документація</h2>
-      <ul>
-        <li><code>docs/ROADMAP.md</code> — <span data-i18n="help.doc.roadmap"></span></li>
-        <li><code>docs/FROM-PROMT.md</code> — <span data-i18n="help.doc.fromPromt"></span></li>
-        <li><code>docs/STAGES.md</code> — <span data-i18n="help.doc.stages"></span></li>
-        <li><code>docs/BASE.md</code> — <span data-i18n="help.doc.base"></span></li>
-        <li><code>docs/TRAITS.md</code> — <span data-i18n="help.doc.traits"></span></li>
-        <li><code>docs/EXPORT.md</code> — <span data-i18n="help.doc.export"></span></li>
-        <li><code>docs/API.md</code> — <span data-i18n="help.doc.api"></span></li>
-        <li><code>docs/STUDIO-UI.md</code> — <span data-i18n="help.doc.studioUi"></span></li>
-        <li><code>docs/README.md</code> — <span data-i18n="help.doc.index"></span></li>
-        <li><code>README.md</code></li>
-        <li><a href="https://studio.w3ir.io" target="_blank" rel="noopener">studio.w3ir.io</a></li>
-      </ul>
-      <h2 data-i18n="help.run">Локальний запуск</h2>
-      <pre class="log small">start-lab.bat
-або: npm start
-→ http://127.0.0.1:5344/studio/</pre>
-      <p class="muted small" data-i18n="help.i18n"></p>
+    <div class="help-tools card">
+      <input type="search" id="help-search" data-i18n-placeholder="help.search.ph" autocomplete="off">
+      <span id="help-search-count" class="muted small"></span>
     </div>
+    <nav id="help-toc" class="help-toc" data-i18n-aria="help.toc.title"></nav>
+    <div id="help-body" class="help-body"></div>
   </section>
 </main>
 

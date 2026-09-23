@@ -6,6 +6,10 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeJsonAtomic } from "../src/fs-safe.mjs";
+import { addVersion } from "../src/versions.mjs";
+import { appendRenderLog, capError, spendCap, spentToday } from "../src/spend.mjs";
+import { failureBreaker } from "../src/pool.mjs";
 import {
   buildRecipes,
   duplicates,
@@ -173,7 +177,7 @@ function cmdBuild(presetPath, outPath) {
   const archive = makeArchive(preset);
   const out = resolve(outPath || defaultOutPath(presetPath));
   mkdirSync(dirname(out), { recursive: true });
-  writeFileSync(out, JSON.stringify(archive, null, 2) + "\n", "utf8");
+  writeJsonAtomic(out, archive);
   console.log(`Wrote ${out}  (${archive.recipes.length} recipes)`);
 }
 
@@ -229,6 +233,22 @@ async function cmdRender(presetPath, opts = {}) {
 
   loadKeys();
   const eng = getEngine(engine);
+  const renderLog = resolve("out", "render-log.jsonl");
+  const capMsg = capError({
+    cap: spendCap(process.env.SERIES_SPEND_CAP_USD),
+    spent: spentToday(renderLog),
+    planned: eng.costUsd == null ? null : targetRecipes.length * eng.costUsd,
+  });
+  if (capMsg) {
+    console.error(`[ERROR] ${capMsg}`);
+    process.exit(1);
+  }
+  const breaker = failureBreaker({ maxConsecutive: Number(process.env.SERIES_MAX_CONSECUTIVE_FAILURES) || 5 });
+  const log = (entry) => {
+    try {
+      appendRenderLog(renderLog, { source: "cli", kind: "batch", engine, set: outDir, ...entry });
+    } catch { /* logging must not break a render */ }
+  };
   const inputDir = resolve("input");
   let primaryFile = "primary.png";
   if (!existsSync(join(inputDir, primaryFile))) {
@@ -255,24 +275,34 @@ async function cmdRender(presetPath, opts = {}) {
       const mime = primaryFile.endsWith(".png") ? "image/png" : "image/jpeg";
       const image = readFileSync(primaryPath);
       const ctx = engineCtx(process.env);
-      const buf = await withRetry(() =>
-        eng.generate({
-          prompt: recipe.prompt,
-          image,
-          mime,
-          seed: recipe.seed,
-          strength,
-        }, ctx),
-      );
-      const outFile = join(outDir, `${recipe.edition}.png`);
-      writeFileSync(outFile, buf);
-      return { ok: true, edition: recipe.edition, path: outFile };
+      let buf;
+      try {
+        buf = await withRetry(() =>
+          eng.generate({
+            prompt: recipe.prompt,
+            image,
+            mime,
+            seed: recipe.seed,
+            strength,
+          }, ctx),
+        );
+      } catch (e) {
+        log({ edition: recipe.edition, ok: false, costUsd: 0, error: String(e.message || e).slice(0, 300) });
+        breaker.record(false);
+        throw e;
+      }
+      const v = addVersion(outDir, recipe.edition, buf, { engine, strength, seed: recipe.seed, source: "cli" });
+      log({ edition: recipe.edition, v, ok: true, costUsd: eng.costUsd ?? null, seed: recipe.seed });
+      breaker.record(true);
+      return { ok: true, edition: recipe.edition, v, path: join(outDir, `${recipe.edition}.png`) };
     },
     (p) => {
       const pct = Math.round((p.completed / p.total) * 100);
       process.stdout.write(`\r[${p.completed}/${p.total}] (${pct}%) Rendered #${p.item.edition}...`);
     },
+    { signal: breaker.signal },
   );
+  if (breaker.reason) console.error(`\n[STOPPED] ${breaker.reason}`);
 
   const okCount = results.filter((r) => r.ok).length;
   console.log(`\nDone! Successfully rendered ${okCount} images to ${outDir}`);
@@ -378,7 +408,7 @@ async function cmdTriage(setDirPath, opts = {}) {
         currentMarks[String(r.edition)] = r.verdict;
       }
     }
-    writeFileSync(marksPath, JSON.stringify(currentMarks, null, 2) + "\n", "utf8");
+    writeJsonAtomic(marksPath, currentMarks);
     console.log(`Applied marks to ${marksPath}`);
   }
 }
@@ -493,13 +523,13 @@ function cmdReleaseConfig(archivePath, opts = {}) {
     const sugar = buildSugarConfig(archive, preset || {}, configOpts);
     const out = resolve(opts.out || join("out", `sugar-${archive.presetId || "series"}.json`));
     mkdirSync(dirname(out), { recursive: true });
-    writeFileSync(out, JSON.stringify(sugar, null, 2) + "\n", "utf8");
+    writeJsonAtomic(out, sugar);
     console.log(`Wrote Metaplex Sugar CLI config: ${out} (profile: ${profile})`);
   } else {
     const tw = buildThirdwebConfig(archive, preset || {}, configOpts);
     const out = resolve(opts.out || join("out", `thirdweb-${archive.presetId || "series"}.json`));
     mkdirSync(dirname(out), { recursive: true });
-    writeFileSync(out, JSON.stringify(tw, null, 2) + "\n", "utf8");
+    writeJsonAtomic(out, tw);
     console.log(`Wrote Thirdweb / EVM Drop config: ${out} (profile: ${profile})`);
   }
 }
@@ -580,7 +610,7 @@ function cmdProvenance(targetDir, opts = {}) {
   if (opts.out) {
     const out = resolve(opts.out);
     mkdirSync(dirname(out), { recursive: true });
-    writeFileSync(out, JSON.stringify(prov, null, 2) + "\n", "utf8");
+    writeJsonAtomic(out, prov);
     console.log(`Wrote provenance file: ${out}`);
   }
 }
