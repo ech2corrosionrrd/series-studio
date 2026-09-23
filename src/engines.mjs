@@ -4,6 +4,14 @@
  * Keys only from env (src/keys.mjs ← C:\Промт\.env).
  */
 import { kontextGuidance, strengthForStability, clampStrength } from "./reference.mjs";
+import {
+  falRun,
+  runwareRun,
+  comfyUiPrompt,
+  a1111Run,
+  DEFAULT_COMFYUI_URL,
+  DEFAULT_A1111_URL,
+} from "./connectors.mjs";
 
 const REPLICATE_API = "https://api.replicate.com/v1";
 export const REPLICATE_MAX_WAIT_MS = 5 * 60_000;
@@ -71,6 +79,75 @@ export const ENGINES = {
         },
         ctx,
       );
+    },
+  },
+  fal: {
+    title: "Fal.ai Flux Dev (Fast Cloud)",
+    key: "FAL_KEY",
+    costUsd: 0.025,
+    mode: "edit",
+    async generate({ prompt, image, mime, seed, strength }, { fetch, env }) {
+      const key = env.FAL_KEY || env.FAL_API_KEY;
+      return falRun({
+        model: "fal-ai/flux/dev/image-to-image",
+        input: {
+          prompt: `${kontextGuidance(strength)} ${prompt}`,
+          image_url: `data:${mime};base64,${image.toString("base64")}`,
+          strength: (strengthForStability(strength) || 70) / 100,
+          ...(seed != null ? { seed: Number(seed) } : {}),
+        },
+        key,
+        fetch,
+      });
+    },
+  },
+  comfyui: {
+    title: "Local ComfyUI (Free $0.00)",
+    key: "COMFYUI_URL",
+    costUsd: 0.0,
+    mode: "edit",
+    async generate({ prompt, image, mime, seed, strength }, { fetch, env }) {
+      return comfyUiPrompt({
+        prompt,
+        image,
+        mime,
+        seed,
+        strength: (strengthForStability(strength) || 70) / 100,
+        url: env.COMFYUI_URL || DEFAULT_COMFYUI_URL,
+        fetch,
+      });
+    },
+  },
+  a1111: {
+    title: "Local Automatic1111 / WebUI (Free $0.00)",
+    key: "A1111_URL",
+    costUsd: 0.0,
+    mode: "edit",
+    async generate({ prompt, image, seed, strength }, { fetch, env }) {
+      return a1111Run({
+        prompt,
+        image,
+        seed,
+        strength: (strengthForStability(strength) || 70) / 100,
+        url: env.A1111_URL || env.SD_WEBUI_URL || DEFAULT_A1111_URL,
+        fetch,
+      });
+    },
+  },
+  runware: {
+    title: "Runware AI (Fast img2img)",
+    key: "RUNWARE_API_KEY",
+    costUsd: 0.006,
+    mode: "edit",
+    async generate({ prompt, image, mime, seed, strength }, { fetch, env }) {
+      return runwareRun({
+        prompt,
+        seed,
+        inputImage: `data:${mime};base64,${image.toString("base64")}`,
+        strength: (strengthForStability(strength) || 70) / 100,
+        key: env.RUNWARE_API_KEY,
+        fetch,
+      });
     },
   },
   openai: {
@@ -192,6 +269,76 @@ export const TXT2IMG = {
       return Buffer.from(b64, "base64");
     },
   },
+  fal: {
+    title: "Fal.ai Flux Schnell (Fast txt2img)",
+    key: "FAL_KEY",
+    costUsd: 0.003,
+    async generate({ prompt, seed }, { fetch, env }) {
+      const key = env.FAL_KEY || env.FAL_API_KEY;
+      return falRun({
+        model: "fal-ai/flux/schnell",
+        input: {
+          prompt,
+          image_size: "square_hd",
+          num_inference_steps: 4,
+          ...(seed != null ? { seed: Number(seed) } : {}),
+        },
+        key,
+        fetch,
+      });
+    },
+  },
+  schnell: {
+    title: "Replicate Flux Schnell (txt2img)",
+    key: "REPLICATE_API_TOKEN",
+    costUsd: 0.005,
+    async generate({ prompt, seed }, ctx) {
+      return replicateRun(
+        "black-forest-labs/flux-schnell",
+        {
+          prompt,
+          aspect_ratio: "1:1",
+          output_format: "png",
+          ...(seed !== undefined && seed !== null ? { seed: Number(seed) } : {}),
+        },
+        ctx,
+      );
+    },
+  },
+  comfyui: {
+    title: "Local ComfyUI txt2img (Free $0.00)",
+    key: "COMFYUI_URL",
+    costUsd: 0.0,
+    async generate({ prompt, seed }, { fetch, env }) {
+      return comfyUiPrompt({
+        prompt,
+        seed,
+        url: env.COMFYUI_URL || DEFAULT_COMFYUI_URL,
+        fetch,
+      });
+    },
+  },
+  a1111: {
+    title: "Local Automatic1111 txt2img (Free $0.00)",
+    key: "A1111_URL",
+    costUsd: 0.0,
+    async generate({ prompt, seed }, { fetch, env }) {
+      return a1111Run({
+        prompt,
+        seed,
+        url: env.A1111_URL || env.SD_WEBUI_URL || DEFAULT_A1111_URL,
+        fetch,
+      });
+    },
+  },
+  runware: {
+    title: "Runware AI txt2img",
+    key: "RUNWARE_API_KEY",
+    costUsd: 0.005,
+    async generate({ prompt, seed }, { fetch, env }) {
+      return runwareRun({ prompt, seed, key: env.RUNWARE_API_KEY, fetch });
+    },
+  },
   kontext: {
     title: "Flux 1.1 Pro (Replicate txt2img)",
     key: "REPLICATE_API_TOKEN",
@@ -300,7 +447,18 @@ export function buildWishPrompt(wish) {
 }
 
 export function pickAvailableEngine(preferred, env = process.env, table = ENGINES) {
-  const order = [preferred, "kontext", "openai", "stability", "pollinations"].filter(Boolean);
+  const order = [
+    preferred,
+    "fal",
+    "kontext",
+    "schnell",
+    "openai",
+    "stability",
+    "pollinations",
+    "runware",
+    "comfyui",
+    "a1111",
+  ].filter(Boolean);
   const seen = new Set();
   for (const name of order) {
     if (seen.has(name)) continue;
@@ -308,7 +466,33 @@ export function pickAvailableEngine(preferred, env = process.env, table = ENGINE
     const eng = table[name];
     if (!eng) continue;
     const key = eng.key;
-    const alt = key === "POLLINATIONS_API_KEY" ? env.POLLINATIONS_TOKEN : null;
+    if (name === "comfyui") {
+      if (
+        preferred === "comfyui" ||
+        (env.COMFYUI_URL && String(env.COMFYUI_URL).trim()) ||
+        env.COMFYUI_ENABLED === "1"
+      ) {
+        return name;
+      }
+      continue;
+    }
+    if (name === "a1111") {
+      if (
+        preferred === "a1111" ||
+        (env.A1111_URL && String(env.A1111_URL).trim()) ||
+        (env.SD_WEBUI_URL && String(env.SD_WEBUI_URL).trim()) ||
+        env.A1111_ENABLED === "1"
+      ) {
+        return name;
+      }
+      continue;
+    }
+    const alt =
+      key === "POLLINATIONS_API_KEY"
+        ? env.POLLINATIONS_TOKEN
+        : key === "FAL_KEY"
+        ? env.FAL_API_KEY
+        : null;
     if ((env[key] && String(env[key]).trim()) || (alt && String(alt).trim())) return name;
   }
   return null;

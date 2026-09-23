@@ -102,9 +102,15 @@ else console.log("Keys: no Prompt .env found (set SERIES_KEYS_FILE or C:\\Про
 if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 
 
+import { testEngineConnection } from "../src/connectors.mjs";
+
 const RESOURCE_KEYS = [
   { name: "OPENAI_API_KEY", env: "OPENAI_API_KEY", note: "OpenAI Images / GPT image" },
   { name: "REPLICATE_API_TOKEN", env: "REPLICATE_API_TOKEN", note: "Replicate / Flux Kontext" },
+  { name: "FAL_KEY", env: "FAL_KEY", note: "Fal.ai Fast Cloud (Flux Schnell/Dev)" },
+  { name: "RUNWARE_API_KEY", env: "RUNWARE_API_KEY", note: "Runware AI Fast Cloud" },
+  { name: "COMFYUI_URL", env: "COMFYUI_URL", note: "Local ComfyUI Server ($0.00, default: http://127.0.0.1:8188)" },
+  { name: "A1111_URL", env: "A1111_URL", note: "Local Automatic1111/WebUI ($0.00, default: http://127.0.0.1:7860)" },
   { name: "STABILITY_API_KEY", env: "STABILITY_API_KEY", note: "Stability AI" },
   { name: "POLLINATIONS_API_KEY", env: "POLLINATIONS_API_KEY", note: "Pollinations / Pollen" },
   { name: "ANTHROPIC_API_KEY", env: "ANTHROPIC_API_KEY", note: "Claude critic (optional, Studio)" },
@@ -783,6 +789,15 @@ function resourcesPayload() {
     let present = Boolean(process.env[k.env] && String(process.env[k.env]).trim());
     if (k.env === "POLLINATIONS_API_KEY" && !present) {
       present = Boolean(process.env.POLLINATIONS_TOKEN && String(process.env.POLLINATIONS_TOKEN).trim());
+    }
+    if (k.env === "FAL_KEY" && !present) {
+      present = Boolean(process.env.FAL_API_KEY && String(process.env.FAL_API_KEY).trim());
+    }
+    if (k.env === "COMFYUI_URL" && !present) {
+      present = Boolean(process.env.COMFYUI_ENABLED === "1" || (process.env.COMFYUI_URL && String(process.env.COMFYUI_URL).trim()));
+    }
+    if (k.env === "A1111_URL" && !present) {
+      present = Boolean(process.env.A1111_ENABLED === "1" || (process.env.A1111_URL && String(process.env.A1111_URL).trim()) || (process.env.SD_WEBUI_URL && String(process.env.SD_WEBUI_URL).trim()));
     }
     return { name: k.name, present, note: k.note };
   });
@@ -2057,6 +2072,21 @@ async function handleApi(req, res, url) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 50);
     return send(res, 200, { ok: true, totalRecipes: recipes.length, topPairs });
+  }
+
+  if (pathname === "/api/engines/status" && req.method === "GET") {
+    const list = ["fal", "comfyui", "a1111", "replicate", "openai", "stability"];
+    const statuses = await Promise.all(
+      list.map((eng) => testEngineConnection(eng, process.env, globalThis.fetch)),
+    );
+    return send(res, 200, { ok: true, engines: statuses });
+  }
+
+  if (pathname === "/api/engines/test" && req.method === "POST") {
+    const body = await readBody(req);
+    const eng = body.engine || "fal";
+    const result = await testEngineConnection(eng, process.env, globalThis.fetch);
+    return send(res, 200, { ok: true, ...result });
   }
 
   if (pathname === "/api/checklist" && req.method === "GET") {

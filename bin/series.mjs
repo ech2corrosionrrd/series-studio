@@ -31,12 +31,12 @@ import {
   sendTelegramNotification,
 } from "../src/index.mjs";
 import { loadKeys } from "../src/keys.mjs";
-import { ENGINES, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
+import { ENGINES, TXT2IMG, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function usage(code = 0) {
-  const text = `series — Series Lab CLI (preset → recipes / render / triage / pin / manifest / release / showcase / provenance / dataset)
+  const text = `series — Series Lab CLI (preset → recipes / render / triage / pin / manifest / release / showcase / provenance / dataset / engines)
 
 Usage:
   series validate <preset.json>
@@ -50,10 +50,12 @@ Usage:
   series render <preset.json> [options]
   series triage <set-dir> [options]
   series pin <set-dir> [options]
+  series engines
+  series notify [options]
 
 Options:
   -o, --out <path>        Output archive, manifest CSV, config, or render directory
-  -e, --engine <name>     AI engine for render (kontext, openai, stability, pollinations)
+  -e, --engine <name>     AI engine for render (fal, kontext, comfyui, a1111, runware, openai, stability, pollinations)
   -s, --strength <num>    Reference strength (0.1..0.95, default 0.45)
   -c, --concurrency <num> Concurrency limit for batch (1..4, default 2)
   -a, --archive <path>    Path to archive.json for recipe matching
@@ -214,7 +216,7 @@ async function cmdRender(presetPath, opts = {}) {
     console.warn(`[WARN] Prompt lint hits: ${lint.hits.join(", ")}`);
   }
 
-  const unitCost = ENGINES[engine]?.costUsd || 0.04;
+  const unitCost = ENGINES[engine]?.costUsd ?? 0.04;
   const estCost = Math.round(targetRecipes.length * unitCost * 1000) / 1000;
   console.log(`Estimated cost: ~$${estCost} ($${unitCost}/img)`);
 
@@ -672,10 +674,40 @@ function parseOpts(args) {
   return opts;
 }
 
+async function cmdEngines() {
+  loadKeys();
+  console.log("=== Series Lab Image Engines ===\n");
+  console.log("Edit / img2img engines (with base reference image):");
+  for (const [id, eng] of Object.entries(ENGINES)) {
+    const key = eng.key;
+    let available = Boolean(process.env[key]);
+    if (id === "comfyui") available = Boolean(process.env.COMFYUI_URL || process.env.COMFYUI_ENABLED === "1");
+    if (id === "a1111") available = Boolean(process.env.A1111_URL || process.env.SD_WEBUI_URL || process.env.A1111_ENABLED === "1");
+    if (id === "fal" && !available) available = Boolean(process.env.FAL_API_KEY);
+    const status = available ? "✓ READY" : "— missing key/URL";
+    console.log(`  • ${id.padEnd(12)} | $${String(eng.costUsd).padEnd(5)} | ${status.padEnd(20)} | ${eng.title}`);
+  }
+
+  console.log("\nText-to-Image (txt2img) engines:");
+  for (const [id, eng] of Object.entries(TXT2IMG)) {
+    const key = eng.key;
+    let available = Boolean(process.env[key]);
+    if (id === "comfyui") available = Boolean(process.env.COMFYUI_URL || process.env.COMFYUI_ENABLED === "1");
+    if (id === "a1111") available = Boolean(process.env.A1111_URL || process.env.SD_WEBUI_URL || process.env.A1111_ENABLED === "1");
+    if (id === "fal" && !available) available = Boolean(process.env.FAL_API_KEY);
+    const status = available ? "✓ READY" : "— missing key/URL";
+    console.log(`  • ${id.padEnd(12)} | $${String(eng.costUsd).padEnd(5)} | ${status.padEnd(20)} | ${eng.title}`);
+  }
+}
+
 async function main(argv) {
   const args = argv.slice(2);
   if (!args.length || args.includes("-h") || args.includes("--help")) usage(0);
   const cmd = args[0];
+  if (cmd === "engines") {
+    await cmdEngines();
+    return;
+  }
   if (cmd === "validate") {
     if (!args[1]) usage(1);
     cmdValidate(args[1]);

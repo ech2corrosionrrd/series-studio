@@ -83,8 +83,13 @@
         <label><span data-i18n="home.field.engine">Двигун (пізніше)</span>
           <select id="o-engine">
             <option value="kontext">kontext</option>
+            <option value="fal">fal.ai</option>
+            <option value="comfyui">comfyui (local $0)</option>
+            <option value="a1111">automatic1111 (local $0)</option>
             <option value="openai">openai</option>
             <option value="stability">stability</option>
+            <option value="pollinations">pollinations</option>
+            <option value="runware">runware</option>
           </select></label>
         <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="o-strength-v">0.45</b>
           <input type="range" id="o-strength" min="0.1" max="0.95" step="0.05" value="0.45">
@@ -194,9 +199,14 @@
         <label><span data-i18n="base.wish.engine">Двигун</span>
           <select id="base-wish-engine">
             <option value="openai" data-i18n="engine.openai">openai (txt2img)</option>
+            <option value="fal" data-i18n="engine.fal">fal.ai (fast Flux)</option>
+            <option value="schnell" data-i18n="engine.schnell">replicate schnell</option>
+            <option value="comfyui" data-i18n="engine.comfyui">comfyui (local)</option>
+            <option value="a1111" data-i18n="engine.a1111">automatic1111 (local)</option>
             <option value="kontext" data-i18n="engine.kontext">kontext / flux</option>
             <option value="stability" data-i18n="engine.stability">stability</option>
             <option value="pollinations" data-i18n="engine.pollinations">pollinations</option>
+            <option value="runware" data-i18n="engine.runware">runware</option>
           </select>
         </label>
         <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="base-wish-str-v">0.45</b>
@@ -258,9 +268,13 @@
         <input id="c-size" type="number">
         <select id="c-engine">
           <option value="kontext">kontext</option>
+          <option value="fal">fal.ai</option>
+          <option value="comfyui">comfyui</option>
+          <option value="a1111">automatic1111</option>
           <option value="openai">openai</option>
           <option value="stability">stability</option>
           <option value="pollinations">pollinations</option>
+          <option value="runware">runware</option>
         </select>
         <input id="c-strength" type="range" min="0.1" max="0.95" step="0.05" value="0.45">
         <b id="c-strength-v">0.45</b>
@@ -461,10 +475,14 @@
       <div class="card form">
         <label><span data-i18n="render.engine">Двигун</span>
           <select id="g-engine">
-            <option value="kontext">kontext (~$0.04)</option>
+            <option value="fal">fal.ai (~$0.025, fast)</option>
+            <option value="kontext" selected>kontext (~$0.04)</option>
+            <option value="comfyui">comfyui (local GPU, $0.00)</option>
+            <option value="a1111">automatic1111 (local GPU, $0.00)</option>
             <option value="openai">openai (~$0.07)</option>
             <option value="stability">stability (~$0.035)</option>
             <option value="pollinations">pollinations (~$0.02)</option>
+            <option value="runware">runware (~$0.006)</option>
           </select>
         </label>
         <label><span data-i18n="render.strength">Сила референсу</span>: <b id="g-strength-v">0.45</b>
@@ -724,6 +742,14 @@
     </div>
     <p class="muted" data-i18n="res.note"></p>
     <div id="res-grid" class="res-grid"></div>
+    <div class="card" style="margin-top:16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
+        <h3>⚡ Діагностика та швидкість рушіїв генерації (Wave 22)</h3>
+        <button type="button" id="btn-test-engines" class="btn small primary">Перевірити всі підключення</button>
+      </div>
+      <p class="muted small" style="margin:6px 0 12px 0">Перевірка зв'язку з хмарними API (Fal.ai, Replicate, OpenAI, Stability) та локальними рушіями з нульовими витратами (ComfyUI на 127.0.0.1:8188, Automatic1111 на 127.0.0.1:7860).</p>
+      <div id="engines-status-table" class="small"></div>
+    </div>
   </section>
 
   <!-- 9. HELP -->

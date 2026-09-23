@@ -43,7 +43,7 @@
 | **LoRA Dataset Exporter · хвиля 19** | ✅ | LoRA & AI Training Dataset Exporter («Серія як датасет», пари `.png` + `.txt`, тригер-слова, Kohya/Flux) |
 | **Notifications & Webhooks · хвиля 20** | ✅ | Batch Generation Notifications & Webhooks (Telegram-бот, звукові/системні сповіщення) |
 | **UI Matrix & Trait Synergy · хвиля 21** | ✅ | UI Matrix Preview & Trait Heatmap (попередній перегляд рушіїв на льоту, теплова карта рідкості) |
-| **Fast Engine Connectors · хвиля 22** | 📋 | Direct Fast Engine Connectors (Fal.ai, Replicate, Runware, локальний ComfyUI API) |
+| **Fast Engine Connectors · хвиля 22** | ✅ | Direct Fast Engine Connectors (Fal.ai, Replicate Schnell, Runware, локальний ComfyUI та Automatic1111) |
 | **Release (marketplace claim)** | ⏳ | claim/листинг на маркетплейсі — свідомий крок поза ядром Lab |
 | **SaaS міст** | ⏳ | кредити/гаманець/IPFS лишаються в Промт / ai.w3ir.io |
 
@@ -177,10 +177,18 @@
 1. **Live Prompt Matrix Preview** — миттєве перемикання між синтаксисами двигунів (Flux/SDXL/Midjourney) на будь-якому обраному рецепті в Конструкторі.
 2. **Trait Heatmap** — інтерактивна теплова карта перетину характеристик на вкладці Рецепти для виявлення статистичних аномалій.
 
-## Хвиля 22 (Direct Fast Engine Connectors)
+## Хвиля 22 (Direct Fast Engine Connectors — реалізовано)
 
-1. **Cloud Fast APIs** — прямі драйвери генерації через Fal.ai, Replicate або Runware.
-2. **Local ComfyUI Connector** — генерація через локальний WebSocket/REST API без хмарних витрат.
+1. **Cloud Fast APIs (`src/connectors.mjs`, `src/engines.mjs`)**:
+   - **Fal.ai**: надшвидкісні клієнти Flux Schnell (txt2img за ~$0.003) та Flux Dev (img2img/edit за ~$0.025) з прямим зверненням через `FAL_KEY`.
+   - **Replicate Schnell**: економічна генерація на базі моделі `black-forest-labs/flux-schnell` ($0.005/img).
+   - **Runware AI**: підтримка надшвидкої інференс-платформи Runware через `RUNWARE_API_KEY`.
+2. **Local Zero-Cost GPU Connectors ($0.00)**:
+   - **ComfyUI**: повноцінний рушій генерації через локальний сервер (`http://127.0.0.1:8188`, `COMFYUI_URL`) з підтримкою txt2img та img2img (автоматичне завантаження вхідного референсу через `/upload/image`, побудова графа KSampler, черга `/prompt`, моніторинг `/history`, скачування результату з `/view`).
+   - **Automatic1111 / SD-WebUI**: прямий конектор до локального WebUI (`http://127.0.0.1:7860`, `A1111_URL`) через ендпоінти `/sdapi/v1/txt2img` та `/sdapi/v1/img2img`.
+3. **Діагностика підключень та CLI**:
+   - **CLI `series engines`**: інтерактивна таблиця всіх підтримуваних рушіїв (edit та txt2img) із перевіркою наявності ключів та розрахунком собівартості.
+   - **API & UI тестування**: ендпоінти `GET /api/engines/status` та `POST /api/engines/test` з кнопкою перевірки всіх підключень та вимірюванням пінгу у вкладці «Ресурси».
 
 ## Відкладено (справді deferred)
 

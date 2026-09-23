@@ -2516,6 +2516,44 @@ async function renderResources() {
   }
 }
 
+function setupEngineDiagnostics() {
+  const btn = $("btn-test-engines");
+  const container = $("engines-status-table");
+  if (!btn || !container) return;
+
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    container.innerHTML = `<p class="muted">Перевірка підключень до рушіїв генерації...</p>`;
+    try {
+      const data = await api("/api/engines/status");
+      const list = data.engines || [];
+      let html = `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">`;
+      for (const e of list) {
+        const isOk = e.online;
+        const color = isOk ? "#4ade80" : "#f87171";
+        const badge = isOk ? "✓ ОНЛАЙН" : "✗ ОФЛАЙН";
+        const ping = e.pingMs ? `${e.pingMs}ms` : "—";
+        const localTag = e.local ? `<span style="background:#3b82f6; color:#fff; font-size:10px; padding:2px 5px; border-radius:4px; margin-left:6px">ЛОКАЛЬНИЙ ($0)</span>` : "";
+        html += `
+          <div style="border:1px solid #334155; border-radius:8px; padding:10px; background:#0f172a">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <b>${escapeHtml(e.engine.toUpperCase())} ${localTag}</b>
+              <span style="color:${color}; font-weight:bold; font-size:11px">${badge} (${ping})</span>
+            </div>
+            <div class="muted small" style="margin-top:6px">${escapeHtml(e.message || "")}</div>
+          </div>
+        `;
+      }
+      html += `</div>`;
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = `<p class="danger small">Помилка тестування: ${escapeHtml(err.message)}</p>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
 /* ---------- Boot ---------- */
 async function boot() {
   initI18n();
@@ -2528,6 +2566,7 @@ async function boot() {
   setupRecipes();
   setupRender();
   setupGallery();
+  setupEngineDiagnostics();
   setupExport();
 
   try {

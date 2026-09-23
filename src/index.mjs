@@ -118,6 +118,26 @@ export {
   getTelegramConfig,
   dispatchBatchNotification,
 } from "./notifications.mjs";
+export {
+  falRun,
+  runwareRun,
+  buildComfyUiWorkflow,
+  checkComfyUiStatus,
+  comfyUiPrompt,
+  checkA1111Status,
+  a1111Run,
+  testEngineConnection,
+  DEFAULT_COMFYUI_URL,
+  DEFAULT_A1111_URL,
+} from "./connectors.mjs";
+export {
+  ENGINES,
+  TXT2IMG,
+  getEngine,
+  getTxt2Img,
+  pickAvailableEngine,
+  buildWishPrompt,
+} from "./engines.mjs";
 
 
 
