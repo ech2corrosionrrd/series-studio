@@ -12,6 +12,7 @@ import {
   DEFAULT_COMFYUI_URL,
   DEFAULT_A1111_URL,
 } from "./connectors.mjs";
+import { createMockPng } from "./mock-image.mjs";
 
 const REPLICATE_API = "https://api.replicate.com/v1";
 export const REPLICATE_MAX_WAIT_MS = 5 * 60_000;
@@ -234,6 +235,15 @@ export const ENGINES = {
       return Buffer.from(await res.arrayBuffer());
     },
   },
+  mock: {
+    title: "Offline Mock Generator (Free $0.00)",
+    key: "MOCK_ENABLED",
+    costUsd: 0.0,
+    mode: "edit",
+    async generate({ prompt, seed }) {
+      return createMockPng({ seed: seed ?? 42, title: prompt || "Mock Edit" });
+    },
+  },
 };
 
 /**
@@ -400,6 +410,14 @@ export const TXT2IMG = {
       return Buffer.from(await res.arrayBuffer());
     },
   },
+  mock: {
+    title: "Offline Mock txt2img (Free $0.00)",
+    key: "MOCK_ENABLED",
+    costUsd: 0.0,
+    async generate({ prompt, seed }) {
+      return createMockPng({ seed: seed ?? 42, title: prompt || "Mock txt2img" });
+    },
+  },
 };
 
 export const DEFAULT_ENGINE = "kontext";
@@ -458,6 +476,7 @@ export function pickAvailableEngine(preferred, env = process.env, table = ENGINE
     "runware",
     "comfyui",
     "a1111",
+    "mock",
   ].filter(Boolean);
   const seen = new Set();
   for (const name of order) {
@@ -487,6 +506,12 @@ export function pickAvailableEngine(preferred, env = process.env, table = ENGINE
       }
       continue;
     }
+    if (name === "mock") {
+      if (preferred === "mock" || env.MOCK_ENABLED === "1" || env.OFFLINE === "1") {
+        return name;
+      }
+      continue;
+    }
     const alt =
       key === "POLLINATIONS_API_KEY"
         ? env.POLLINATIONS_TOKEN
@@ -495,6 +520,7 @@ export function pickAvailableEngine(preferred, env = process.env, table = ENGINE
         : null;
     if ((env[key] && String(env[key]).trim()) || (alt && String(alt).trim())) return name;
   }
+  if (preferred === "mock") return "mock";
   return null;
 }
 

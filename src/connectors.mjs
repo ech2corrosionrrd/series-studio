@@ -418,6 +418,15 @@ export async function testEngineConnection(engineName, env = process.env, fetch 
   const eng = String(engineName).toLowerCase();
 
   switch (eng) {
+    case "mock": {
+      return {
+        engine: "mock",
+        online: true,
+        pingMs: 0,
+        local: true,
+        message: "Offline deterministic mock engine active ($0.00)",
+      };
+    }
     case "fal": {
       const key = env.FAL_KEY || env.FAL_API_KEY;
       if (!key) return { engine: eng, online: false, message: "Missing FAL_KEY in environment" };

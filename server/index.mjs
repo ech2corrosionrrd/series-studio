@@ -2089,6 +2089,19 @@ async function handleApi(req, res, url) {
     return send(res, 200, { ok: true, ...result });
   }
 
+  if (pathname === "/api/comfyui/workflow" && req.method === "GET") {
+    const wfPath = join(ROOT, "templates", "comfyui-workflow.json");
+    if (!existsSync(wfPath)) return send(res, 404, { error: "comfyui-workflow.json not found" });
+    const json = JSON.parse(readFileSync(wfPath, "utf8"));
+    return send(res, 200, json);
+  }
+
+  if (pathname === "/api/doctor" && req.method === "GET") {
+    const { runDoctorDiagnostics } = await import("../src/doctor.mjs");
+    const report = await runDoctorDiagnostics({ rootDir: ROOT, env: process.env });
+    return send(res, 200, report);
+  }
+
   if (pathname === "/api/checklist" && req.method === "GET") {
     const archiveName = url.searchParams.get("archive") || url.searchParams.get("file");
     const setName = url.searchParams.get("set") || url.searchParams.get("dir");

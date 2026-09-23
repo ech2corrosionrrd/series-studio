@@ -51,11 +51,13 @@ Usage:
   series triage <set-dir> [options]
   series pin <set-dir> [options]
   series engines
+  series doctor
+  series upscale <images-dir> [options]
   series notify [options]
 
 Options:
   -o, --out <path>        Output archive, manifest CSV, config, or render directory
-  -e, --engine <name>     AI engine for render (fal, kontext, comfyui, a1111, runware, openai, stability, pollinations)
+  -e, --engine <name>     AI engine for render (fal, kontext, comfyui, a1111, runware, openai, stability, pollinations, mock)
   -s, --strength <num>    Reference strength (0.1..0.95, default 0.45)
   -c, --concurrency <num> Concurrency limit for batch (1..4, default 2)
   -a, --archive <path>    Path to archive.json for recipe matching
@@ -695,9 +697,54 @@ async function cmdEngines() {
     if (id === "comfyui") available = Boolean(process.env.COMFYUI_URL || process.env.COMFYUI_ENABLED === "1");
     if (id === "a1111") available = Boolean(process.env.A1111_URL || process.env.SD_WEBUI_URL || process.env.A1111_ENABLED === "1");
     if (id === "fal" && !available) available = Boolean(process.env.FAL_API_KEY);
+    if (id === "mock") available = true;
     const status = available ? "✓ READY" : "— missing key/URL";
     console.log(`  • ${id.padEnd(12)} | $${String(eng.costUsd).padEnd(5)} | ${status.padEnd(20)} | ${eng.title}`);
   }
+}
+
+async function cmdDoctor() {
+  loadKeys();
+  const { runDoctorDiagnostics, formatDoctorReport } = await import("../src/doctor.mjs");
+  console.log("Running Series Lab diagnostic checks...\n");
+  const report = await runDoctorDiagnostics({ rootDir: resolve("."), env: process.env });
+  console.log(formatDoctorReport(report));
+  if (!report.ok) process.exitCode = 1;
+}
+
+async function cmdUpscale(dirPath, opts = {}) {
+  const abs = resolve(dirPath);
+  if (!existsSync(abs)) {
+    console.error(`[ERROR] Directory not found: ${abs}`);
+    process.exit(1);
+  }
+  const files = readdirSync(abs).filter((f) => /\.(png|jpe?g|webp)$/i.test(f));
+  if (!files.length) {
+    console.log(`No images found in ${abs}`);
+    return;
+  }
+  const outDir = opts.out ? resolve(opts.out) : abs;
+  mkdirSync(outDir, { recursive: true });
+  console.log(`Upscaling ${files.length} images from ${abs}...`);
+
+  const { loadSharp, upscale2x } = await import("../src/upscale.mjs");
+  const sharpMod = await loadSharp();
+  if (!sharpMod) {
+    console.warn("[WARN] 'sharp' is not installed. To enable hardware 2x upscaling, run: npm install sharp");
+    return;
+  }
+
+  let count = 0;
+  for (const f of files) {
+    const src = join(abs, f);
+    const buf = readFileSync(src);
+    const up = await upscale2x(buf, { format: "png" });
+    if (up.ok && up.buffer) {
+      writeFileSync(join(outDir, f), up.buffer);
+      count++;
+    }
+  }
+  console.log(`Done! Successfully upscaled ${count}/${files.length} images to ${outDir}`);
 }
 
 async function main(argv) {
@@ -706,6 +753,16 @@ async function main(argv) {
   const cmd = args[0];
   if (cmd === "engines") {
     await cmdEngines();
+    return;
+  }
+  if (cmd === "doctor") {
+    await cmdDoctor();
+    return;
+  }
+  if (cmd === "upscale") {
+    if (!args[1]) usage(1);
+    const opts = parseOpts(args.slice(2));
+    await cmdUpscale(args[1], opts);
     return;
   }
   if (cmd === "validate") {
