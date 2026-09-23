@@ -2226,10 +2226,100 @@ function setupExport() {
         dl.download = data.file || "bundle.zip";
         dl.hidden = false;
       }
+      if (data.provenanceHash) {
+        const provBox = $("x-prov-result");
+        const provCode = $("x-prov-hash");
+        if (provBox && provCode) {
+          provCode.textContent = data.provenanceHash;
+          provBox.style.display = "block";
+        }
+      }
       scheduleWorkspaceSave({ lastArchive: archive, lastSet: set });
     } catch (e) {
       if (msg) {
         msg.textContent = e.message;
+        msg.className = "small err-msg";
+      }
+    }
+  });
+
+  $("x-provenance")?.addEventListener("click", async () => {
+    const set = $("x-set")?.value;
+    const msg = $("x-bundle-msg");
+    if (!set) {
+      if (msg) msg.textContent = t("export.bundle.noSets");
+      return;
+    }
+    try {
+      if (msg) {
+        msg.textContent = t("export.provenance.computing");
+        msg.className = "small muted";
+      }
+      const res = await api(`/api/export/provenance?set=${encodeURIComponent(set)}`);
+      if (res?.provenance?.provenanceHash) {
+        const hash = res.provenance.provenanceHash;
+        const provBox = $("x-prov-result");
+        const provCode = $("x-prov-hash");
+        if (provBox && provCode) {
+          provCode.textContent = hash;
+          provBox.style.display = "block";
+        }
+        if (msg) {
+          msg.textContent = t("export.provenance.done", { n: res.provenance.count, hash: hash.slice(0, 16) + "..." });
+          msg.className = "small ok-msg";
+        }
+      }
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = "small err-msg";
+      }
+    }
+  });
+
+  $("x-dataset")?.addEventListener("click", async () => {
+    const archive = $("x-file")?.value;
+    const set = $("x-set")?.value;
+    const msg = $("x-bundle-msg");
+    const dl = $("x-download");
+    if (!archive) {
+      if (msg) msg.textContent = t("export.none");
+      return;
+    }
+    if (!set) {
+      if (msg) msg.textContent = t("export.bundle.noSets");
+      return;
+    }
+    const trigger = window.prompt(t("export.dataset.prompt"), "") ?? "";
+    try {
+      if (msg) {
+        msg.textContent = t("export.dataset.creating");
+        msg.className = "small muted";
+      }
+      const res = await api("/api/export/dataset", {
+        method: "POST",
+        body: JSON.stringify({
+          archive,
+          set,
+          triggerWord: trigger.trim(),
+          format: "tags",
+          onlyKeep: Boolean($("x-onlyKeep")?.checked),
+        }),
+      });
+      if (res?.ok) {
+        if (msg) {
+          msg.textContent = t("export.dataset.ok", { n: res.count, file: res.file });
+          msg.className = "small ok-msg";
+        }
+        if (dl && res.downloadUrl) {
+          dl.href = res.downloadUrl;
+          dl.download = res.file;
+          dl.hidden = false;
+        }
+      }
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
         msg.className = "small err-msg";
       }
     }

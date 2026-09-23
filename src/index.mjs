@@ -103,5 +103,15 @@ export {
   exportEngineMatrixCsv,
   ENGINE_MATRIX_PROFILES,
 } from "./matrix.mjs";
+export {
+  calculateImageSha256,
+  calculateCollectionProvenance,
+  verifyProvenance,
+} from "./provenance.mjs";
+export {
+  buildDatasetCaptions,
+  exportDatasetZip,
+} from "./dataset.mjs";
+
 
 

@@ -7,6 +7,32 @@
 
 ---
 
+## [1.1.0] — 2026-09-23
+
+### 🔐 Хвиля 18: NFT Provenance Hash & Verifiable Metadata
+- **Детерміноване хешування (`src/provenance.mjs`)**:
+  - `calculateImageSha256`: прямий розрахунок SHA-256 для файлів або буферів.
+  - `calculateCollectionProvenance`: сортування за номером видання, послідовна конкатенація SHA-256 та обчислення єдиного `provenanceHash` колекції.
+  - `verifyProvenance`: автоматична верифікація цілісності директорії або мапи буферів.
+- **Інтеграція в експорт бандлів (`src/export-bundle.mjs`)**:
+  - Автоматичне пакування `provenance.json` у ZIP-архів.
+  - Запис `provenanceHash` у `collection.json`, `thirdweb.json` та повернення через `/api/export/bundle`.
+- **CLI & UI**:
+  - CLI: `series provenance <dir> [--out provenance.json] [--verify]`.
+  - API: `GET /api/export/provenance?set=...`.
+  - UI: кнопка «🔐 Provenance Hash» та віджет показу хешу.
+
+### 📦 Хвиля 19: LoRA & AI Training Dataset Exporter («Серія як датасет»)
+- **Генератор підписів (`src/dataset.mjs`)**:
+  - `buildDatasetCaptions`: підтримка тригерних слів (`triggerWord`), формату Danbooru-tags (SDXL/Kohya) та зв'язної прози (Flux.1).
+  - `exportDatasetZip`: автоматичне формування пар `[edition].png` + `[edition].txt`, створення `dataset-info.json` з порадами з навчання.
+- **CLI & UI**:
+  - CLI: `series dataset <archive.json> --images <dir> --trigger "my_token" [-o dataset.zip]`.
+  - API: `POST /api/export/dataset`.
+  - UI: кнопка «📦 LoRA Training Dataset» з інтерактивним запитом тригерного слова.
+
+---
+
 ## [1.0.0] — 2026-09-23
 
 ### 🚀 Реліз виробничої версії (Усі 17 хвиль Roadmap завершено)

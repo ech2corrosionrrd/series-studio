@@ -59,6 +59,9 @@ import {
   buildThirdwebConfig,
   generateShowcaseHtml,
   calculateRarityScores,
+  calculateCollectionProvenance,
+  verifyProvenance,
+  exportDatasetZip,
 } from "../src/index.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
 import {
@@ -1914,6 +1917,7 @@ async function handleApi(req, res, url) {
         missing: result.missing || [],
         format: result.format,
         profile: result.profile,
+        provenanceHash: result.provenanceHash || null,
         upscaled: result.upscaled,
         upscaleSkipped: result.upscaleSkipped || null,
         fallback: result.fallback || null,
@@ -1925,6 +1929,78 @@ async function handleApi(req, res, url) {
       const status =
         e.status || (e.code === "bundle_select" || e.code === "bundle_empty" ? 400 : 500);
       return send(res, status, { error: String(e.message || e), code: e.code || "bundle" });
+    }
+  }
+
+  if (pathname === "/api/export/provenance" && req.method === "GET") {
+    const setName = safeSetName(url.searchParams.get("set") || url.searchParams.get("dir"));
+    if (!setName) return send(res, 400, { error: "set parameter required" });
+    const setDir = join(OUT, setName);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
+      return send(res, 404, { error: `set directory not found: ${setName}` });
+    }
+    const files = readdirSync(setDir);
+    const images = [];
+    for (const f of files) {
+      const m = f.match(/^(\d+)\.(png|jpe?g|webp)$/i);
+      if (m) images.push({ edition: Number(m[1]), path: join(setDir, f), file: f });
+    }
+    if (!images.length) {
+      return send(res, 400, { error: `no image files found in set: ${setName}` });
+    }
+    const prov = calculateCollectionProvenance(images);
+    return send(res, 200, { ok: true, set: setName, provenance: prov });
+  }
+
+  if (pathname === "/api/export/dataset" && req.method === "POST") {
+    const body = await readBody(req);
+    const archiveName = body.archive || body.file;
+    if (!archiveName) return send(res, 400, { error: "archive required" });
+    const { archive } = loadArchiveFile(archiveName);
+    const setName = safeSetName(body.set);
+    const setDir = join(OUT, setName);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
+      return send(res, 400, { error: `set not found: ${setName}` });
+    }
+    let preset = null;
+    try {
+      preset = loadPresetForArchive(archive)?.preset || null;
+    } catch {
+      preset = loadPresetFileSafe(`${archive.presetId || "x"}.json`)?.preset || null;
+    }
+    const marks = readMarks(setName);
+    const triggerWord = body.triggerWord || body.trigger || "";
+    const format = body.format === "prose" ? "prose" : "tags";
+    const onlyKeep = body.onlyKeep === undefined ? false : Boolean(body.onlyKeep);
+
+    mkdirSync(BUNDLES, { recursive: true });
+    const zipName = `dataset-${archive.presetId || "series"}-${setName}-${Date.now().toString(36)}.zip`;
+    const outPath = join(BUNDLES, zipName);
+
+    try {
+      const resData = await exportDatasetZip({
+        archive,
+        preset,
+        setDir,
+        marks,
+        opts: {
+          triggerWord,
+          format,
+          onlyKeep,
+          outPath,
+        },
+      });
+      return send(res, 200, {
+        ok: true,
+        file: zipName,
+        path: `out/bundles/${zipName}`,
+        downloadUrl: `/out/bundles/${zipName}`,
+        count: resData.count,
+        triggerWord: resData.triggerWord,
+        format: resData.format,
+      });
+    } catch (err) {
+      return send(res, 400, { error: err.message });
     }
   }
 

@@ -81,6 +81,7 @@ export function buildThirdwebConfig(archive = {}, preset = {}, opts = {}) {
     platform_fee_recipient: creator,
     defaultAdmin: creator,
     total_supply: count,
+    ...(opts.provenanceHash ? { provenance_hash: opts.provenanceHash } : {}),
   };
 }
 

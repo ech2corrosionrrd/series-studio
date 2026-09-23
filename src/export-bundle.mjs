@@ -24,8 +24,10 @@ import {
   buildThirdwebConfig,
   buildReleaseGuide,
 } from "./deploy.mjs";
+import { calculateCollectionProvenance } from "./provenance.mjs";
 
 export {
+  calculateCollectionProvenance,
   traitsToAttributes,
   buildImageUri,
   LAUNCHPAD_PROFILES,
@@ -323,6 +325,8 @@ export async function buildBundleZip(params) {
   const imagesFolder = zip.folder("images");
   const metaFolder = zip.folder("metadata");
 
+  const imageRecords = [];
+
   for (const recipe of sel.recipes) {
     const ed = recipe.edition;
     const media = findEditionMedia(setDir, ed);
@@ -346,7 +350,9 @@ export async function buildBundleZip(params) {
         }
       }
       const imgExt = extname(media.imagePath).slice(1) || "png";
-      imagesFolder.file(`${displayEd}.${imgExt}`, buf);
+      const imgFileName = `${displayEd}.${imgExt}`;
+      imagesFolder.file(imgFileName, buf);
+      imageRecords.push({ edition: ed, file: imgFileName, buffer: buf });
     }
 
     // Handle dynamic animation / video / 3D file
@@ -354,11 +360,15 @@ export async function buildBundleZip(params) {
     if (media.animationPath) {
       const animBuf = readFileSync(media.animationPath);
       const animExt = extname(media.animationPath).slice(1) || "mp4";
-      imagesFolder.file(`${displayEd}.${animExt}`, animBuf);
+      const animFileName = `${displayEd}.${animExt}`;
+      imagesFolder.file(animFileName, animBuf);
       tokenOpts.animationExtension = animExt;
 
       if (!tokenOpts.animationUriPrefix && !tokenOpts.animationUrl && !recipe.animation_url) {
-        tokenOpts.animationUrl = `${displayEd}.${animExt}`;
+        tokenOpts.animationUrl = animFileName;
+      }
+      if (!media.imagePath) {
+        imageRecords.push({ edition: ed, file: animFileName, buffer: animBuf });
       }
     }
 
@@ -377,6 +387,14 @@ export async function buildBundleZip(params) {
     err.code = "bundle_empty";
     err.status = 400;
     throw err;
+  }
+
+  // Calculate Collection Provenance Hash
+  let provenance = null;
+  if (imageRecords.length > 0) {
+    provenance = calculateCollectionProvenance(imageRecords);
+    zip.file("provenance.json", JSON.stringify(provenance, null, 2) + "\n");
+    opts.provenanceHash = provenance.provenanceHash;
   }
 
   // Generate CSV Manifest in ZIP root
@@ -406,6 +424,7 @@ export async function buildBundleZip(params) {
     missing,
     upscaled: anyUpscaled,
   });
+  if (provenance) collection.provenanceHash = provenance.provenanceHash;
   if (sel.fallback) collection.selectionFallback = sel.fallback;
   if (upscaleSkippedReason) collection.upscaleSkipped = upscaleSkippedReason;
 
@@ -433,6 +452,7 @@ export async function buildBundleZip(params) {
     missing,
     format,
     profile: profileKey,
+    provenanceHash: provenance?.provenanceHash || null,
     fallback: sel.fallback,
     upscaled: anyUpscaled,
     upscaleSkipped: upscaleSkippedReason,

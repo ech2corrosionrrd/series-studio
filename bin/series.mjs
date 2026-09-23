@@ -24,6 +24,9 @@ import {
   buildThirdwebConfig,
   generateShowcaseHtml,
   calculateRarityScores,
+  calculateCollectionProvenance,
+  verifyProvenance,
+  exportDatasetZip,
 } from "../src/index.mjs";
 import { loadKeys } from "../src/keys.mjs";
 import { ENGINES, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
@@ -31,7 +34,7 @@ import { ENGINES, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function usage(code = 0) {
-  const text = `series — Series Lab CLI (preset → recipes / render / triage / pin / manifest / release / showcase)
+  const text = `series — Series Lab CLI (preset → recipes / render / triage / pin / manifest / release / showcase / provenance / dataset)
 
 Usage:
   series validate <preset.json>
@@ -40,6 +43,8 @@ Usage:
   series showcase <archive.json> [options]
   series manifest <archive.json> [options]
   series release-config <archive.json> [options]
+  series provenance <images-dir> [options]
+  series dataset <archive.json> [options]
   series render <preset.json> [options]
   series triage <set-dir> [options]
   series pin <set-dir> [options]
@@ -498,6 +503,104 @@ function cmdShowcase(archivePath, opts = {}) {
   console.log(`Generated Collection Showcase & Rarity Scorecard: ${out} (${(archive.recipes || []).length} editions)`);
 }
 
+function cmdProvenance(targetDir, opts = {}) {
+  const dir = resolve(targetDir);
+  if (!existsSync(dir)) {
+    console.error(`Error: target directory does not exist: ${dir}`);
+    process.exit(1);
+  }
+
+  // Check if verify mode
+  if (opts.verify) {
+    const provPath = opts.provenance ? resolve(opts.provenance) : join(dir, "provenance.json");
+    if (!existsSync(provPath)) {
+      console.error(`Error: provenance file not found for verification: ${provPath}`);
+      process.exit(1);
+    }
+    const provData = JSON.parse(readFileSync(provPath, "utf8"));
+    const result = verifyProvenance(provData, dir);
+    if (result.valid) {
+      console.log(`✅ Provenance Verification PASSED: ${provData.provenanceHash} (${provData.count} items)`);
+      process.exit(0);
+    } else {
+      console.error(`❌ Provenance Verification FAILED:`);
+      for (const err of result.errors) console.error(`  - ${err}`);
+      process.exit(1);
+    }
+  }
+
+  // Calculate mode
+  const files = readdirSync(dir);
+  const images = [];
+  for (const f of files) {
+    const m = f.match(/^(\d+)\.(png|jpe?g|webp)$/i);
+    if (m) {
+      images.push({
+        edition: Number(m[1]),
+        path: join(dir, f),
+        file: f,
+      });
+    }
+  }
+
+  if (!images.length) {
+    console.error(`Error: no image files (1.png, 2.png...) found in ${dir}`);
+    process.exit(1);
+  }
+
+  const prov = calculateCollectionProvenance(images);
+  console.log(`Generated Provenance Hash for ${prov.count} images:`);
+  console.log(`  Provenance Hash : ${prov.provenanceHash}`);
+  console.log(`  Algorithm       : ${prov.algorithm}`);
+  console.log(`  Timestamp       : ${prov.timestamp}`);
+
+  if (opts.out) {
+    const out = resolve(opts.out);
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, JSON.stringify(prov, null, 2) + "\n", "utf8");
+    console.log(`Wrote provenance file: ${out}`);
+  }
+}
+
+async function cmdDataset(archivePath, opts = {}) {
+  const archive = loadJson(archivePath);
+  let preset = null;
+  if (opts.preset) {
+    preset = loadJson(opts.preset);
+  } else if (archive.presetId) {
+    const defaultPresetPath = resolve("presets", `${archive.presetId}.json`);
+    if (existsSync(defaultPresetPath)) {
+      try { preset = loadJson(defaultPresetPath); } catch {}
+    }
+  }
+
+  const imagesDir = opts.images ? resolve(opts.images) : resolve("out", archive.presetId || "series");
+  if (!existsSync(imagesDir)) {
+    console.error(`Error: images directory does not exist: ${imagesDir}`);
+    process.exit(1);
+  }
+
+  const outZip = resolve(opts.out || join("out", `dataset-${archive.presetId || "series"}.zip`));
+
+  console.log(`Exporting LoRA training dataset for ${archive.presetId || "series"}...`);
+  console.log(`  Source Images : ${imagesDir}`);
+  console.log(`  Trigger Word  : ${opts.trigger || opts.triggerWord || "(none)"}`);
+  console.log(`  Format        : ${opts.format || "tags"}`);
+
+  const res = await exportDatasetZip({
+    archive,
+    preset,
+    setDir: imagesDir,
+    opts: {
+      ...opts,
+      triggerWord: opts.trigger || opts.triggerWord,
+      outPath: outZip,
+    },
+  });
+
+  console.log(`✅ Wrote LoRA Training Dataset ZIP: ${outZip} (${res.count} pairs [image + txt])`);
+}
+
 function parseOpts(args) {
   const opts = {};
   for (let i = 0; i < args.length; i++) {
@@ -523,6 +626,11 @@ function parseOpts(args) {
     else if (a === "--apply") opts.apply = true;
     else if (a === "--limit" || a === "--sample") opts.limit = Number(args[++i]);
     else if (a === "--dry-run") opts.dryRun = true;
+    else if (a === "--trigger" || a === "--trigger-word") opts.trigger = args[++i];
+    else if (a === "--images" || a === "--set-dir") opts.images = args[++i];
+    else if (a === "--format") opts.format = args[++i];
+    else if (a === "--verify") opts.verify = true;
+    else if (a === "--provenance") opts.provenance = args[++i];
   }
   return opts;
 }
@@ -563,6 +671,18 @@ async function main(argv) {
     if (!args[1]) usage(1);
     const opts = parseOpts(args.slice(2));
     cmdReleaseConfig(args[1], opts);
+    return;
+  }
+  if (cmd === "provenance") {
+    if (!args[1]) usage(1);
+    const opts = parseOpts(args.slice(2));
+    cmdProvenance(args[1], opts);
+    return;
+  }
+  if (cmd === "dataset") {
+    if (!args[1]) usage(1);
+    const opts = parseOpts(args.slice(2));
+    await cmdDataset(args[1], opts);
     return;
   }
   if (cmd === "render") {

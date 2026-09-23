@@ -652,9 +652,14 @@
         <label class="small"><input type="checkbox" id="x-zero-index" /> <span data-i18n="export.zeroIndex.label">0-based indexing</span></label>
         <label class="small"><input type="checkbox" id="x-upscale" /> <span data-i18n="export.bundle.upscale">Upscale 2×</span></label>
         <button type="button" id="x-bundle" class="btn primary" data-i18n="export.bundle.build">Build ZIP</button>
+        <button type="button" id="x-provenance" class="btn" data-i18n="export.provenance.btn">🔐 Provenance Hash</button>
+        <button type="button" id="x-dataset" class="btn" data-i18n="export.dataset.btn">📦 LoRA Training Dataset</button>
         <button type="button" id="x-showcase" class="btn" data-i18n="export.showcase.btn">⬇ Showcase &amp; Rarity Scorecard</button>
         <a id="x-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">⬇ Download ZIP</a>
         <span id="x-bundle-msg" class="small"></span>
+      </div>
+      <div id="x-prov-result" class="card small" style="margin-top:10px; display:none; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2)">
+        <span style="font-weight:600">Provenance Hash (SHA-256): </span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
       </div>
     </div>
 

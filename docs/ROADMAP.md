@@ -39,6 +39,11 @@
 | **Dynamic Media · хвиля 15** | ✅ | Dynamic Media Pipeline (`animation_url`, video/audio/3D support, `properties.category`, files) |
 | **Showcase & Scorecard · хвиля 16** | ✅ | Collection Showcase & Trait Rarity Scorecard (`calculateRarityScores`, standalone HTML visual proof) |
 | **Prompt Matrix · хвиля 17** | ✅ | Multi-Engine Prompt Matrix & LoRA / Model Tags (`src/matrix.mjs`, Flux, Midjourney, SDXL) |
+| **Provenance Hash · хвиля 18** | 🔄 | NFT Provenance Hash & Verifiable Metadata (ланцюг SHA-256 картинок, `provenance.json`, deploy verification) |
+| **LoRA Dataset Exporter · хвиля 19** | 📋 | LoRA & AI Training Dataset Exporter («Серія як датасет», пари `.png` + `.txt`, тригер-слова, Kohya/Flux) |
+| **Notifications & Webhooks · хвиля 20** | 📋 | Batch Generation Notifications & Webhooks (Telegram-бот, звукові/системні сповіщення) |
+| **UI Matrix & Trait Synergy · хвиля 21** | 📋 | UI Matrix Preview & Trait Heatmap (попередній перегляд рушіїв на льоту, теплова карта рідкості) |
+| **Fast Engine Connectors · хвиля 22** | 📋 | Direct Fast Engine Connectors (Fal.ai, Replicate, Runware, локальний ComfyUI API) |
 | **Release (marketplace claim)** | ⏳ | claim/листинг на маркетплейсі — свідомий крок поза ядром Lab |
 | **SaaS міст** | ⏳ | кредити/гаманець/IPFS лишаються в Промт / ai.w3ir.io |
 
@@ -148,6 +153,34 @@
 
 1. **Engine Matrix Transformer (`src/matrix.mjs`)** — адаптація промптів під особливості синтаксису генераторів: Flux (LoRA тригери + natural language), SDXL (`<lora:name:weight>` + quality tags), Midjourney (параметричні прапорці `--v 6.1 --stylize`), Kontext та OpenAI.
 2. **Batch Matrix Generator (`buildEnginePromptMatrix`, `exportEngineMatrixCsv`)** — побудова повної матриці промптів для колекції та експорт у CSV для мультиплатформенного рендеру.
+
+## Хвиля 18 (NFT Provenance Hash & Verifiable Metadata)
+
+1. **Deterministic Image Hashing (`src/provenance.mjs`)** — обчислення SHA-256 для кожного відібраного зображення серії зі збереженням точного порядку видання.
+2. **Collection Provenance Hash** — обчислення фінального загального хешу колекції через конкатенацію хешів усіх токенів та вторинне хешування (`sha256(hash_1 + ... + hash_N)`).
+3. **Пакетний експорт та деплой** — автоматичне включення `provenance.json` у бандл ZIP, оновлення `collection.json`, інтеграція в `release-guide.txt` та `thirdweb.json`.
+4. **CLI & API** — команда `series provenance` для розрахунку та верифікації цілісності набору.
+
+## Хвиля 19 (LoRA & AI Training Dataset Exporter)
+
+1. **Dataset Engine (`src/dataset.mjs`)** — формування навчального набору пар `[edition].png` + `[edition].txt` із підтримкою тригерних слів (`triggerWord`).
+2. **Стилі підписів** — підтримка тегів через кому (Danbooru/WD-style для SDXL) або природного опису (Natural Language для Flux).
+3. **Гуртовий експорт** — пакування у навчальний архів ZIP та команда `series dataset`.
+
+## Хвиля 20 (Batch Generation Notifications & Webhooks)
+
+1. **Telegram Webhook Dispatcher** — відправка повідомлення з підсумком пакетного рендеру, статистикою AI Critic та превʼю топового токена.
+2. **Web / Audio Alerts** — звуковий сигнал та сповіщення у браузері при завершенні черги генерації.
+
+## Хвиля 21 (UI Matrix Preview & Trait Heatmap)
+
+1. **Live Prompt Matrix Preview** — миттєве перемикання між синтаксисами двигунів (Flux/SDXL/Midjourney) на будь-якому обраному рецепті в Конструкторі.
+2. **Trait Heatmap** — інтерактивна теплова карта перетину характеристик на вкладці Рецепти для виявлення статистичних аномалій.
+
+## Хвиля 22 (Direct Fast Engine Connectors)
+
+1. **Cloud Fast APIs** — прямі драйвери генерації через Fal.ai, Replicate або Runware.
+2. **Local ComfyUI Connector** — генерація через локальний WebSocket/REST API без хмарних витрат.
 
 ## Відкладено (справді deferred)
 
