@@ -460,6 +460,10 @@ export default {
   "ctor.pack.save_lib": "💾 Save to Pack Library",
   "ctor.pack.exported": "Pack saved to libraries/traits/{id}.json",
   "ctor.pack.prompt_id": "Enter ID for new pack (latin, e.g. my-pack):",
+  "ctor.matrixTitle": "⚡ Multi-Engine Prompt Matrix (Live Matrix)",
+  "ctor.matrixHelp": "Instant preview of engine-specific prompt optimization (Flux / SDXL / Midjourney / Kontext).",
+  "recipes.cooccurrenceTitle": "📊 Trait Synergy Matrix",
+  "recipes.cooccurrenceHelp": "Shows trait co-occurrence statistics across generated recipes.",
 
   "gallery.redo.btn": "↻ Regenerate Redo ({count})",
   "gallery.redo.none": "No redo items (mark cards with ↻ Redo in gallery)",

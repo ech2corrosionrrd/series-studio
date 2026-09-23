@@ -27,6 +27,8 @@ import {
   calculateCollectionProvenance,
   verifyProvenance,
   exportDatasetZip,
+  dispatchBatchNotification,
+  sendTelegramNotification,
 } from "../src/index.mjs";
 import { loadKeys } from "../src/keys.mjs";
 import { ENGINES, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
@@ -268,7 +270,24 @@ async function cmdRender(presetPath, opts = {}) {
     },
   );
 
-  console.log(`\nDone! Successfully rendered ${results.filter((r) => r.ok).length} images to ${outDir}`);
+  const okCount = results.filter((r) => r.ok).length;
+  console.log(`\nDone! Successfully rendered ${okCount} images to ${outDir}`);
+
+  if (opts.notify) {
+    const notifyRes = await dispatchBatchNotification({
+      presetId: preset.id,
+      presetName: preset.name,
+      total: targetRecipes.length,
+      success: okCount,
+      failed: targetRecipes.length - okCount,
+      outputDir: outDir,
+    });
+    if (notifyRes.sent) {
+      console.log(`Telegram notification sent successfully!`);
+    } else {
+      console.log(`Telegram notification skipped/failed: ${notifyRes.error}`);
+    }
+  }
 }
 
 async function cmdTriage(setDirPath, opts = {}) {
@@ -601,6 +620,23 @@ async function cmdDataset(archivePath, opts = {}) {
   console.log(`✅ Wrote LoRA Training Dataset ZIP: ${outZip} (${res.count} pairs [image + txt])`);
 }
 
+async function cmdNotify(message, opts = {}) {
+  loadKeys();
+  const text = message || opts.message || "🔔 *Series Lab*: Тестове сповіщення з терміналу CLI успішно надіслано!";
+  console.log(`Sending Telegram notification...`);
+  const res = await dispatchBatchNotification({
+    presetName: "Series Lab CLI",
+    total: 1,
+    success: 1,
+    failed: 0,
+  });
+  if (res.sent) {
+    console.log(`✅ Telegram notification sent successfully!`);
+  } else {
+    console.log(`❌ Telegram notification failed: ${res.error}`);
+  }
+}
+
 function parseOpts(args) {
   const opts = {};
   for (let i = 0; i < args.length; i++) {
@@ -626,6 +662,7 @@ function parseOpts(args) {
     else if (a === "--apply") opts.apply = true;
     else if (a === "--limit" || a === "--sample") opts.limit = Number(args[++i]);
     else if (a === "--dry-run") opts.dryRun = true;
+    else if (a === "--notify") opts.notify = true;
     else if (a === "--trigger" || a === "--trigger-word") opts.trigger = args[++i];
     else if (a === "--images" || a === "--set-dir") opts.images = args[++i];
     else if (a === "--format") opts.format = args[++i];
@@ -701,6 +738,11 @@ async function main(argv) {
     if (!args[1]) usage(1);
     const opts = parseOpts(args.slice(2));
     await cmdPin(args[1], opts);
+    return;
+  }
+  if (cmd === "notify") {
+    const opts = parseOpts(args.slice(1));
+    await cmdNotify(args[1], opts);
     return;
   }
   console.error(`Unknown command: ${cmd}`);

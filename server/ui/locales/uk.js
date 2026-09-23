@@ -460,6 +460,10 @@ export default {
   "ctor.pack.save_lib": "💾 Зберегти в бібліотеку паків",
   "ctor.pack.exported": "Пак збережено в libraries/traits/{id}.json",
   "ctor.pack.prompt_id": "Введіть ID для нового пака (латиниця, напр. my-pack):",
+  "ctor.matrixTitle": "⚡ Мультидвижкова матриця промптів (Live Matrix)",
+  "ctor.matrixHelp": "Попередній перегляд оптимізованого синтаксису промпту під різні рушії (Flux / SDXL / Midjourney / Kontext) на льоту.",
+  "recipes.cooccurrenceTitle": "📊 Матриця взаємозв'язку та синергії рис (Trait Synergy)",
+  "recipes.cooccurrenceHelp": "Показує статистику перетину пар рис у згенерованій колекції.",
 
   "gallery.redo.btn": "↻ Перегенерувати відхилені ({count})",
   "gallery.redo.none": "Немає відхилених (позначте картки як ↻ Redo)",

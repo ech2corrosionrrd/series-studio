@@ -369,6 +369,19 @@
         <textarea id="c-sl-extra" rows="3" data-i18n-placeholder="ctor.styleLock.extraKeep.ph" placeholder="no text&#10;no logo&#10;no watermark"></textarea>
         <span class="muted small" data-i18n="ctor.styleLock.extraKeep.explain"></span></label>
     </div>
+
+    <div class="card" id="ctor-matrix-card" style="margin-top:16px">
+      <h3 data-i18n="ctor.matrixTitle">⚡ Multi-Engine Prompt Matrix Preview</h3>
+      <p class="muted small" data-i18n="ctor.matrixHelp">Попередній перегляд оптимізованого синтаксису під різні рушії в реальному часі.</p>
+      <div class="toolbar" style="margin-top:8px; gap:8px; flex-wrap:wrap">
+        <button type="button" class="btn small matrix-btn primary" data-engine="flux">Flux.1 LoRA</button>
+        <button type="button" class="btn small matrix-btn" data-engine="sdxl">SDXL + Tags</button>
+        <button type="button" class="btn small matrix-btn" data-engine="midjourney">Midjourney v6</button>
+        <button type="button" class="btn small matrix-btn" data-engine="kontext">Kontext Reference</button>
+        <button type="button" class="btn small matrix-btn" data-engine="openai">OpenAI Prose</button>
+      </div>
+      <pre id="ctor-matrix-preview" class="log small" style="margin-top:8px; white-space:pre-wrap; max-height:160px; overflow:auto">Select an engine above to preview formatted prompt</pre>
+    </div>
   </section>
 
   <!-- 4. RECIPES -->
@@ -402,6 +415,11 @@
       <summary data-i18n="recipes.rarity.title">Звіт рідкості</summary>
       <p class="muted small" data-i18n="recipes.rarity.help"></p>
       <div class="table-wrap"><table id="r-rarity-table"></table></div>
+    </details>
+    <details id="r-cooccurrence-wrap" class="card" style="margin-top:12px" hidden>
+      <summary style="font-weight:600; cursor:pointer" data-i18n="recipes.cooccurrenceTitle">📊 Матриця взаємозв'язку та синергії рис (Trait Synergy)</summary>
+      <p class="muted small" data-i18n="recipes.cooccurrenceHelp" style="margin-top:4px"></p>
+      <div id="r-cooccurrence-list" class="grid2 small" style="margin-top:8px; max-height:220px; overflow:auto"></div>
     </details>
     <div class="table-wrap"><table id="r-table"></table></div>
     <div id="r-editor" class="card editor" hidden>

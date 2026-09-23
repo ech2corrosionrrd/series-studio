@@ -39,10 +39,10 @@
 | **Dynamic Media · хвиля 15** | ✅ | Dynamic Media Pipeline (`animation_url`, video/audio/3D support, `properties.category`, files) |
 | **Showcase & Scorecard · хвиля 16** | ✅ | Collection Showcase & Trait Rarity Scorecard (`calculateRarityScores`, standalone HTML visual proof) |
 | **Prompt Matrix · хвиля 17** | ✅ | Multi-Engine Prompt Matrix & LoRA / Model Tags (`src/matrix.mjs`, Flux, Midjourney, SDXL) |
-| **Provenance Hash · хвиля 18** | 🔄 | NFT Provenance Hash & Verifiable Metadata (ланцюг SHA-256 картинок, `provenance.json`, deploy verification) |
-| **LoRA Dataset Exporter · хвиля 19** | 📋 | LoRA & AI Training Dataset Exporter («Серія як датасет», пари `.png` + `.txt`, тригер-слова, Kohya/Flux) |
-| **Notifications & Webhooks · хвиля 20** | 📋 | Batch Generation Notifications & Webhooks (Telegram-бот, звукові/системні сповіщення) |
-| **UI Matrix & Trait Synergy · хвиля 21** | 📋 | UI Matrix Preview & Trait Heatmap (попередній перегляд рушіїв на льоту, теплова карта рідкості) |
+| **Provenance Hash · хвиля 18** | ✅ | NFT Provenance Hash & Verifiable Metadata (ланцюг SHA-256 картинок, `provenance.json`, deploy verification) |
+| **LoRA Dataset Exporter · хвиля 19** | ✅ | LoRA & AI Training Dataset Exporter («Серія як датасет», пари `.png` + `.txt`, тригер-слова, Kohya/Flux) |
+| **Notifications & Webhooks · хвиля 20** | ✅ | Batch Generation Notifications & Webhooks (Telegram-бот, звукові/системні сповіщення) |
+| **UI Matrix & Trait Synergy · хвиля 21** | ✅ | UI Matrix Preview & Trait Heatmap (попередній перегляд рушіїв на льоту, теплова карта рідкості) |
 | **Fast Engine Connectors · хвиля 22** | 📋 | Direct Fast Engine Connectors (Fal.ai, Replicate, Runware, локальний ComfyUI API) |
 | **Release (marketplace claim)** | ⏳ | claim/листинг на маркетплейсі — свідомий крок поза ядром Lab |
 | **SaaS міст** | ⏳ | кредити/гаманець/IPFS лишаються в Промт / ai.w3ir.io |

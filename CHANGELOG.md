@@ -7,6 +7,30 @@
 
 ---
 
+## [1.2.0] — 2026-09-23
+
+### 🔔 Хвиля 20: Batch Generation Notifications & Webhooks
+- **Диспетчер сповіщень (`src/notifications.mjs`)**:
+  - `formatBatchSummary`: детальне форматування звіту про завершення рендеру (кількість успішних/відхилених, час, статистика AI Critic, Provenance hash).
+  - `sendTelegramNotification`: пряма відправка сповіщень у Telegram-чат/канал через Telegram Bot API.
+  - `dispatchBatchNotification`: автоматична відправка за наявності `TELEGRAM_BOT_TOKEN` та `TELEGRAM_CHAT_ID`.
+- **Інтеграція в Batch Render**:
+  - Автоматична відправка сповіщення при завершенні пакетного рендеру на сервері.
+  - CLI: прапорець `--notify` для команди `series render` та команда `series notify [msg]`.
+- **Web Audio & Browser Alerts**:
+  - Відтворення приємного звукового сигналу (Web Audio API двотоновий chime) та системного Web Notification у браузері при завершенні черги рендерингу.
+  - Додано змінні `PINATA_JWT`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` до вкладки Ресурси.
+
+### ⚡ Хвиля 21: UI Matrix Preview & Trait Heatmap
+- **Живий попередній перегляд мультидвижкової матриці (Live Matrix Preview)**:
+  - Вкладка Конструктор містить панель швидкого перемикання між рушіями (**Flux.1**, **SDXL**, **Midjourney v6**, **Kontext**, **OpenAI**).
+  - Ендпоінт `POST /api/matrix/preview` повертає миттєве форматування промпту під специфіку обраного генератора.
+- **Матриця взаємозв'язку та синергії рис (Trait Synergy Matrix)**:
+  - Ендпоінт `GET /api/traits/matrix?file=...` розраховує частотність перетину пар характеристик.
+  - Інтерактивна картка на вкладці Рецепти показує найбільш часті поєднання рис у колекції для швидкого виявлення перекосів або аномалій.
+
+---
+
 ## [1.1.0] — 2026-09-23
 
 ### 🔐 Хвиля 18: NFT Provenance Hash & Verifiable Metadata

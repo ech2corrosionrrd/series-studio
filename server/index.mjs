@@ -62,6 +62,9 @@ import {
   calculateCollectionProvenance,
   verifyProvenance,
   exportDatasetZip,
+  dispatchBatchNotification,
+  sendTelegramNotification,
+  formatEnginePrompt,
 } from "../src/index.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
 import {
@@ -105,6 +108,9 @@ const RESOURCE_KEYS = [
   { name: "STABILITY_API_KEY", env: "STABILITY_API_KEY", note: "Stability AI" },
   { name: "POLLINATIONS_API_KEY", env: "POLLINATIONS_API_KEY", note: "Pollinations / Pollen" },
   { name: "ANTHROPIC_API_KEY", env: "ANTHROPIC_API_KEY", note: "Claude critic (optional, Studio)" },
+  { name: "PINATA_JWT", env: "PINATA_JWT", note: "Pinata IPFS Storage Dispatcher" },
+  { name: "TELEGRAM_BOT_TOKEN", env: "TELEGRAM_BOT_TOKEN", note: "Telegram Batch Notifications" },
+  { name: "TELEGRAM_CHAT_ID", env: "TELEGRAM_CHAT_ID", note: "Telegram Recipient Chat / Channel ID" },
 ];
 
 function nowIsoKyiv() {
@@ -1522,6 +1528,14 @@ async function handleApi(req, res, url) {
       thumbs: results.filter((r) => r.ok).map((r) => ({ edition: r.edition, url: r.url, path: r.path })),
     };
 
+    dispatchBatchNotification({
+      presetId: archive.presetId,
+      total: sel.recipes.length,
+      success: okN,
+      failed: results.length - okN,
+      outputDir: `out/${set}`,
+    }).catch(() => {});
+
     if (isStream) {
       res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload })}\n\n`);
       res.end();
@@ -2002,6 +2016,47 @@ async function handleApi(req, res, url) {
     } catch (err) {
       return send(res, 400, { error: err.message });
     }
+  }
+
+  if (pathname === "/api/notifications/test" && req.method === "POST") {
+    const body = await readBody(req);
+    const token = body.botToken || process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = body.chatId || process.env.TELEGRAM_CHAT_ID;
+    const text = body.message || "🔔 *Series Lab*: Тестове сповіщення успішно надіслано!";
+    const resNotify = await sendTelegramNotification({ botToken: token, chatId, text });
+    return send(res, resNotify.ok ? 200 : 400, resNotify);
+  }
+
+  if (pathname === "/api/matrix/preview" && req.method === "POST") {
+    const body = await readBody(req);
+    const recipe = body.recipe;
+    const engine = body.engine || "flux";
+    const preset = body.preset || {};
+    if (!recipe) return send(res, 400, { error: "recipe object required" });
+    const formatted = formatEnginePrompt(recipe, engine, preset);
+    return send(res, 200, { ok: true, engine, prompt: formatted });
+  }
+
+  if (pathname === "/api/traits/matrix" && req.method === "GET") {
+    const archiveName = url.searchParams.get("archive") || url.searchParams.get("file");
+    if (!archiveName) return send(res, 400, { error: "archive parameter required" });
+    const { archive } = loadArchiveFile(archiveName);
+    const cooccurrence = {};
+    const recipes = archive.recipes || [];
+    for (const r of recipes) {
+      const traits = Object.entries(r.traits || {}).filter(([, v]) => v && v !== "None");
+      for (let i = 0; i < traits.length; i++) {
+        for (let j = i + 1; j < traits.length; j++) {
+          const pairKey = `${traits[i][0]}:${traits[i][1]} | ${traits[j][0]}:${traits[j][1]}`;
+          cooccurrence[pairKey] = (cooccurrence[pairKey] || 0) + 1;
+        }
+      }
+    }
+    const topPairs = Object.entries(cooccurrence)
+      .map(([pair, count]) => ({ pair, count, percentage: Math.round((count / (recipes.length || 1)) * 100) }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 50);
+    return send(res, 200, { ok: true, totalRecipes: recipes.length, topPairs });
   }
 
   if (pathname === "/api/checklist" && req.method === "GET") {

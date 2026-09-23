@@ -83,7 +83,10 @@ export const ENGINE_MATRIX_PROFILES = {
  * @param {object} [engineConfig={}]
  * @returns {string}
  */
-export function formatEnginePrompt(basePrompt, engineKey = "kontext", engineConfig = {}) {
+export function formatEnginePrompt(basePromptOrRecipe, engineKey = "kontext", engineConfig = {}) {
+  const basePrompt = typeof basePromptOrRecipe === "object" && basePromptOrRecipe !== null
+    ? (basePromptOrRecipe.prompt || "")
+    : String(basePromptOrRecipe || "");
   const profile = ENGINE_MATRIX_PROFILES[engineKey.toLowerCase()] || ENGINE_MATRIX_PROFILES.kontext;
   return profile.format(basePrompt, engineConfig);
 }

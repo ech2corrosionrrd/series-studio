@@ -44,6 +44,27 @@ function saveMarks() {
   localStorage.setItem("series-lab-marks", JSON.stringify(state.marks));
 }
 
+function playCompletionChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    [659.25, 987.77].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now + i * 0.12);
+      gain.gain.setValueAtTime(0.12, now + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.12);
+      osc.stop(now + i * 0.12 + 0.4);
+    });
+  } catch {}
+}
+
 async function api(path, opts = {}) {
   const res = await fetch(path, {
     headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
@@ -718,6 +739,41 @@ function setupOptionsEditor() {
   });
 }
 
+function setupMatrixPreview() {
+  const preview = $("ctor-matrix-preview");
+  const buttons = document.querySelectorAll(".matrix-btn");
+  if (!preview || !buttons.length) return;
+
+  buttons.forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      buttons.forEach((b) => {
+        b.classList.remove("primary");
+      });
+      btn.classList.add("primary");
+      const engine = btn.dataset.engine || "flux";
+      const preset = readCtorPreset() || {};
+      const sampleRecipe = state.recipes?.[0] || {
+        edition: 1,
+        who: preset?.lines && Object.values(preset.lines)[0]?.who ? Object.values(preset.lines)[0].who : "cyber character",
+        prompt: "A detailed portrait with cybernetic features, cinematic lighting",
+        traits: { outfit: "Neon Armor", hairstyle: "Buzz Cut", mood: "Determined" },
+      };
+      try {
+        preview.textContent = "Formatting for " + engine + "...";
+        const res = await api("/api/matrix/preview", {
+          method: "POST",
+          body: JSON.stringify({ recipe: sampleRecipe, engine, preset }),
+        });
+        if (res?.prompt) {
+          preview.textContent = res.prompt;
+        }
+      } catch (err) {
+        preview.textContent = "Error: " + err.message;
+      }
+    });
+  });
+}
+
 function fillOverview(preset) {
   if (!$("o-id")) return;
   $("o-id").value = preset.id || "";
@@ -967,6 +1023,8 @@ function setupConstructor() {
     $(id)?.addEventListener("input", () => renderTraitChecklist());
   }
   setupOptionsEditor();
+  setupMatrixPreview();
+
   $("ctor-load")?.addEventListener("click", async () => {
     try {
       const file = $("ctor-file").value;
@@ -1311,6 +1369,29 @@ async function loadRecipesArchive(file) {
     } catch { /* ignore */ }
   }
   fillArchiveSelect();
+  loadTraitCooccurrence(file);
+}
+
+async function loadTraitCooccurrence(file) {
+  const wrap = $("r-cooccurrence-wrap");
+  const list = $("r-cooccurrence-list");
+  if (!wrap || !list) return;
+  try {
+    const res = await api(`/api/traits/matrix?file=${encodeURIComponent(file)}`);
+    if (res?.topPairs?.length) {
+      list.innerHTML = res.topPairs.slice(0, 24).map((p) => `
+        <div class="card" style="padding:6px 10px; margin:0; border:1px solid var(--border)">
+          <div style="font-weight:600; font-size:12px; word-break:break-all">${escapeHtml(p.pair)}</div>
+          <div class="muted small" style="margin-top:2px">${p.count}x (${p.percentage}%)</div>
+        </div>
+      `).join("");
+      wrap.hidden = false;
+    } else {
+      wrap.hidden = true;
+    }
+  } catch {
+    wrap.hidden = true;
+  }
 }
 
 async function loadArchives() {
@@ -1523,6 +1604,10 @@ function setupRender() {
       }
 
       if (lastDone) {
+        playCompletionChime();
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Series Lab", { body: `Batch render completed: ${lastDone.count} images in set ${lastDone.set}` });
+        }
         if (lastDone.set) {
           state.lastSet = lastDone.set;
           scheduleWorkspaceSave({ lastSet: lastDone.set });
