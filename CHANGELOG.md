@@ -7,6 +7,14 @@
 
 ---
 
+## [Unreleased]
+
+### Безпека та виправлення
+- `npm test`: `node --test` (автопошук `*.test.mjs`); `node --test test` падав на Node 22+ з `MODULE_NOT_FOUND`.
+- API захищено від CSRF і DNS rebinding (`server/guard.mjs`): перевірка `Host`, same-origin `Origin`, POST лише з `Content-Type: application/json`; інакше `403`.
+- Нова змінна `SERIES_ALLOWED_HOSTS` — додаткові імена хостів (через кому) для доступу до Studio.
+- `input/` прибрано з `files` у `package.json` — користувацькі зображення не потрапляють у npm-пакет.
+
 ## [1.3.1] — 2026-09-23
 
 ### Виправлення та безпека

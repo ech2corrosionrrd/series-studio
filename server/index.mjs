@@ -94,6 +94,7 @@ const WORKSPACE_FILE = join(WORKSPACE_DIR, "current.json");
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 5344);
 const OPEN = process.argv.includes("--open");
+const ALLOWED_HOSTS = allowedHostnames(HOST, process.env.SERIES_ALLOWED_HOSTS);
 
 const KEYS_PATH = loadKeys();
 const EXTRA_KEYS = loadKeysExtra([join(ROOT, ".env")]);
@@ -103,6 +104,7 @@ if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 
 
 import { testEngineConnection } from "../src/connectors.mjs";
+import { allowedHostnames, checkApiRequest } from "./guard.mjs";
 
 const RESOURCE_KEYS = [
   { name: "OPENAI_API_KEY", env: "OPENAI_API_KEY", note: "OpenAI Images / GPT image" },
@@ -2202,6 +2204,8 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${HOST}:${PORT}`);
     if (url.pathname.startsWith("/api/")) {
+      const blocked = checkApiRequest(req, { allowedHosts: ALLOWED_HOSTS, port: PORT });
+      if (blocked) return send(res, 403, { error: blocked });
       await handleApi(req, res, url);
       return;
     }

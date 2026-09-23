@@ -18,7 +18,7 @@
     "./validate": "./src/validate.mjs"
   },
   "scripts": {
-    "test": "node --test test",
+    "test": "node --test",
     "build:demo": "node bin/series.mjs build presets/demo-series.json -o out/demo-archive.json",
     "validate:demo": "node bin/series.mjs validate presets/demo-series.json",
     "diff-seed:demo": "node bin/series.mjs diff-seed presets/demo-series.json",
@@ -48,7 +48,6 @@
     "templates",
     "libraries",
     "docs",
-    "input",
     "LICENSE"
   ],
   "optionalDependencies": {
