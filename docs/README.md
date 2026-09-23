@@ -27,6 +27,7 @@
 | [TRAITS.md](./TRAITS.md) | Паки рис, знімок у пресеті, редактор опцій, конфлікти |
 | [PRESET.md](./PRESET.md) | Формат пресету `series-preset/v0`, `styleLock`, матриця двигунів |
 | [VISION.md](./VISION.md) | Vision Assist: авторозбір базової картинки |
+| [DEPLOY.md](./DEPLOY.md) | Публічний сайт studio.w3ir.io на Cloudflare Pages: структура, оновлення, перевірка |
 | [ROADMAP.md](./ROADMAP.md) | План і статус хвиль розвитку |
 | [SYNTHESIS.md](./SYNTHESIS.md) · [FROM-PROMT.md](./FROM-PROMT.md) | Що взято з проєктів-донорів (Промт, gremlin-nft) |
 | [BRAND.md](./BRAND.md) · [BOUNDARIES.md](./BOUNDARIES.md) | Бренд і межі продукту |

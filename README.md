@@ -118,6 +118,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 - [docs/GUIDE.md](docs/GUIDE.md) — посібник для початківців
 - [docs/README.md](docs/README.md) — індекс усієї документації
 - [docs/STAGES.md](docs/STAGES.md) · [docs/STUDIO-UI.md](docs/STUDIO-UI.md) · [docs/API.md](docs/API.md) · [docs/EXPORT.md](docs/EXPORT.md)
+- [docs/DEPLOY.md](docs/DEPLOY.md) — публічний сайт https://studio.w3ir.io (Cloudflare Pages)
 - [docs/ROADMAP.md](docs/ROADMAP.md) · [CHANGELOG.md](CHANGELOG.md)
 
 Термінологія: **базова картинка(и) серії**; роль `primary` = головна базова.

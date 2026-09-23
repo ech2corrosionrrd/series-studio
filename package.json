@@ -24,7 +24,8 @@
     "diff-seed:demo": "node bin/series.mjs diff-seed presets/demo-series.json",
     "start": "node server/index.mjs --open",
     "lab": "node server/index.mjs --open",
-    "lab:serve": "node server/index.mjs"
+    "lab:serve": "node server/index.mjs",
+    "build:site": "node scripts/build-site.mjs"
   },
   "keywords": [
     "nft",

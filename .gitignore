@@ -11,3 +11,4 @@ input/*
 !input/.gitkeep
 workspace/
 out/bundles/
+dist/
