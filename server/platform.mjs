@@ -13,7 +13,7 @@ import { processHelioWebhookPayload, reconcilePayments, verifyHelioSignature, he
 import { claimNftFulfillment } from "../src/platform/billing.mjs";
 import { syncGenesisMints, walletGenesisCount } from "../src/platform/holders.mjs";
 import { engineStatus, generateImage, ENGINE_FLUX } from "../src/platform/imagegen.mjs";
-import { notifyOperator } from "../src/platform/ops.mjs";
+import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
 import {
   STYLE_PRESETS, TMA_ENGINE_ALIASES, TraitError, buildGremlinPrompt, decodeReferenceImage, enhanceTmaPrompt,
   inspectBundleZip, parseTmaBody, recordB2bUsage, resolveTmaEngine, resolveTmaStyle, validateSeed, validateTraits, verifyB2bKey,
@@ -241,6 +241,11 @@ async function routes(req, res, url) {
     if (entry.address !== normalizeAddr(address)) throw new HttpError(401, "Адреса не збігається з nonce");
     const ok = evm ? verifyEvmSignature(address, entry.message, String(body.signature || "")) : verifySolanaSignature(address, entry.message, String(body.signature || ""));
     if (!ok) throw new HttpError(401, "Підпис не пройшов перевірку");
+    // Staging / invite-only: only listed wallets (and admins) may sign in.
+    const invited = String(process.env.SERIES_ALLOWED_WALLETS || "").split(",").map((w) => normalizeAddr(w)).filter(Boolean);
+    if (invited.length && !invited.includes(normalizeAddr(address)) && !isAdmin(address)) {
+      throw new HttpError(403, "Access by invitation only on this server");
+    }
     const token = issueSessionToken(address);
     // Промт gave the welcome grant on the first Streamlit page load; here it
     // happens right after the verified signature (same rules, same ledger).
