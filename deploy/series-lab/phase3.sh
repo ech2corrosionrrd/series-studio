@@ -51,7 +51,7 @@ OVERRIDES="HELIO_API_KEY HELIO_API_SECRET HELIO_WEBHOOK_SECRET HELIO_MINT_PAYLIN
 PATTERN=$(echo "$OVERRIDES" | sed 's/ /=|^/g')
 grep -vE "^(${PATTERN}=)" "$PROMT/.env" > "$BASE/.env.series-lab.tmp"
 ADMINS=$(grep -E '^ADMIN_WALLETS=' "$PROMT/.env" | cut -d= -f2- || true)
-if [ -z "${SERIES_ALLOWED_WALLETS:-$ADMINS}" ]; then
+if [ -z "${SERIES_ALLOWED_WALLETS:-}${ADMINS}" ]; then
   # An empty invite list means "everyone" — never for a copy that spends real API money.
   echo "No ADMIN_WALLETS in $PROMT/.env and no SERIES_ALLOWED_WALLETS given — refusing to open staging to everyone."
   echo "Re-run as: SERIES_ALLOWED_WALLETS=0xYourWallet,... bash $0 $SRC_TAR"
@@ -72,7 +72,7 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 VAULT_WALLET_ADDRESS=
 # invite-only (admins always allowed); add tester wallets comma-separated
-SERIES_ALLOWED_WALLETS=${SERIES_ALLOWED_WALLETS:-$ADMINS}
+SERIES_ALLOWED_WALLETS=${SERIES_ALLOWED_WALLETS:+${SERIES_ALLOWED_WALLETS},}$ADMINS
 # real API keys are used — cap the staging bill
 SERIES_SPEND_CAP_USD=${SERIES_SPEND_CAP_USD:-5}
 LANDING_HOSTS=
