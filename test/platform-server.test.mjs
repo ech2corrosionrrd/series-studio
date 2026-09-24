@@ -77,6 +77,9 @@ function evmWallet() {
   return { address, sign };
 }
 
+const user = evmWallet();
+env.SERIES_ALLOWED_WALLETS = user.address;
+
 before(async () => {
   server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
   await new Promise((resolve, reject) => {
@@ -97,7 +100,6 @@ after(async () => {
 });
 
 describe("public mode end-to-end", () => {
-  const user = evmWallet();
 
   test("anonymous visitors are sent to /login; API answers 401", async () => {
     const page = await call("GET", "/studio/");
@@ -107,6 +109,14 @@ describe("public mode end-to-end", () => {
     assert.equal((await call("GET", "/login")).status, 200);
     const health = await call("GET", "/health");
     assert.deepEqual(health.json, { status: "ok", service: "nft-prompt-builder-payments" });
+  });
+
+  test("invite-only mode refuses wallets that are not listed", async () => {
+    const stranger = evmWallet();
+    const n = await call("GET", `/auth/nonce?address=${stranger.address}`);
+    const r = await call("POST", "/auth/verify", { body: { address: stranger.address, nonce: n.json.nonce, signature: stranger.sign(n.json.message) } });
+    assert.equal(r.status, 403);
+    assert.match(r.json.detail, /invitation/);
   });
 
   test("wallet sign-in sets the session and grants welcome credits", async () => {
