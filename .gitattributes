@@ -2,3 +2,7 @@
 Dockerfile text eol=lf
 deploy/** text eol=lf
 server/site/** text eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.gif binary
