@@ -1,0 +1,12 @@
+# Ф3 — parallel run. ADD this block to the existing Промт Caddyfile; nothing else
+# changes, production hosts still go to Промт. Needs a DNS record `next` → the
+# Hetzner IP (proxied through Cloudflare, same origin certificate).
+
+http://next.w3ir.io {
+	reverse_proxy serieslab:5344
+}
+https://next.w3ir.io {
+	import origin_tls
+	import access_log
+	reverse_proxy serieslab:5344
+}

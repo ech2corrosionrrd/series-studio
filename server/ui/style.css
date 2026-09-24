@@ -474,3 +474,16 @@ ol.guide.field-guide li::before { width: 16px; height: 16px; top: 4px; left: 4px
 
 /* [hidden] must win over component display rules (.overlay, .lightbox, …) */
 [hidden] { display: none !important; }
+
+/* Public mode: account bar + top-up */
+.acct { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acct-credits { padding: 3px 10px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--line); font-size: 13px; }
+.topup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.topup-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--line-soft); }
+.topup-card.rec { border-color: var(--accent); }
+.topup-credits { font-size: 22px; font-weight: 700; }
+.ver-card h4 { margin: 14px 0 4px; }
+.ref-link { display: block; padding: 8px; overflow-x: auto; white-space: nowrap; }
+.credit-history { max-height: 220px; overflow: auto; }
+.hist-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+.ok { color: var(--ok); }

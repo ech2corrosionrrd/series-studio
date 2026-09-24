@@ -28,6 +28,12 @@
     <button data-tab="help" data-i18n="nav.help" data-i18n-title="nav.help.title">❓ Довідка</button>
   </nav>
   <span id="me" class="muted small"></span>
+  <div id="acct" class="acct" hidden>
+    <span id="acct-wallet" class="muted small"></span>
+    <span class="acct-credits"><b id="acct-balance">0</b> <span data-i18n="acct.credits">кредитів</span></span>
+    <button type="button" id="acct-topup" class="btn small primary" data-i18n="acct.topup">💳 Поповнити</button>
+    <button type="button" id="acct-logout" class="btn small" data-i18n="acct.logout">Вийти</button>
+  </div>
   <div class="lang-switch" role="group" aria-label="Language">
     <span class="muted small" data-i18n="lang.label">Мова</span>
     <button type="button" class="lang-btn" data-locale="uk" title="Українська">UK</button>
@@ -535,6 +541,8 @@
       <button type="button" id="v-redo" class="btn" data-i18n="gallery.redoMarked">Redo marked…</button>
       <button type="button" id="v-quick-redo" class="btn primary" data-i18n="gallery.redo.btn">↻ Перегенерувати відхилені</button>
       <span id="v-redo-status" class="small muted"></span>
+      <button type="button" id="v-publish" class="btn small public-only" hidden data-i18n="publish.btn">🌐 Опублікувати колекцію</button>
+      <span id="v-publish-status" class="small muted"></span>
     </div>
     <div class="card triage-bar" style="margin: 10px 0; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px;">
       <b style="color: var(--primary, #6366f1); font-size: 13px;" data-i18n="gallery.triage.title">🤖 AI Auto-Triage &amp; Critic</b>
@@ -564,6 +572,21 @@
     <div id="v-lightbox" class="lightbox" hidden>
       <img id="v-lightbox-img" alt="">
       <button type="button" id="v-lightbox-close" class="btn">✕</button>
+    </div>
+    <div id="topup-overlay" class="overlay" hidden>
+      <div class="card ver-card">
+        <h3><span data-i18n="topup.title">Поповнення кредитів</span><button type="button" id="topup-close" class="btn small">✕</button></h3>
+        <p class="muted small" data-i18n="topup.hint"></p>
+        <div id="topup-packages" class="topup-grid"></div>
+        <h4 data-i18n="holder.title">Бонус холдера Genesis</h4>
+        <p class="muted small" data-i18n="holder.hint"></p>
+        <div class="row"><button type="button" id="holder-check" class="btn small" data-i18n="holder.check">Перевірити</button><span id="holder-status" class="small"></span></div>
+        <h4 data-i18n="ref.title">Запросити друга</h4>
+        <p class="muted small" data-i18n="ref.hint"></p>
+        <code id="ref-link" class="ref-link"></code>
+        <h4 data-i18n="history.title">Історія кредитів</h4>
+        <div id="credit-history" class="small credit-history"></div>
+      </div>
     </div>
     <div id="ver-overlay" class="overlay" hidden>
       <div class="card ver-card">

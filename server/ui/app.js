@@ -78,6 +78,11 @@ async function api(path, opts = {}) {
     data = { raw: text };
   }
   if (!res.ok) {
+    if (res.status === 401 && data.code === "auth") {
+      location.href = `/login${location.search}`;
+      throw new Error(data.error || "Sign in required");
+    }
+    if (data.code === "credits" || data.code === "rate" || data.code === "freemium") refreshAccount();
     if (data.code === "lint" && Array.isArray(data.hits) && data.hits.length) {
       throw new Error(t("lint.blocked", { hits: data.hits.join(", ") }));
     }
@@ -1615,6 +1620,7 @@ function setupRender() {
           await loadGallerySets();
         }
         if (progressText) progressText.textContent = t("render.done", { n: lastDone.count, set: lastDone.set }) || `Done: ${lastDone.count}`;
+        refreshAccount();
         if (progressText && lastDone.stopped) {
           progressText.textContent += ` · ⛔ ${t("render.stopped", { reason: lastDone.stopped, skipped: lastDone.skipped })}`;
         }
@@ -1991,6 +1997,87 @@ function filterHelp(query) {
 function setupHelp() {
   renderHelp();
   $("help-search")?.addEventListener("input", (e) => filterHelp(e.target.value));
+}
+
+/* ---------- Account (public mode: wallet, credits, top-up) ---------- */
+state.account = null;
+
+async function refreshAccount() {
+  let me;
+  try {
+    me = await api("/api/me");
+  } catch {
+    return;
+  }
+  state.account = me;
+  const box = $("acct");
+  const isPublic = me.mode === "public";
+  if (box) box.hidden = !isPublic;
+  document.body.classList.toggle("public-mode", isPublic);
+  document.querySelectorAll(".public-only").forEach((el) => { el.hidden = !isPublic; });
+  if (!isPublic) return;
+  if ($("acct-wallet")) $("acct-wallet").textContent = me.wallet.length > 12 ? `${me.wallet.slice(0, 6)}…${me.wallet.slice(-4)}` : me.wallet;
+  if ($("acct-balance")) $("acct-balance").textContent = String(me.balance);
+}
+
+function renderTopup() {
+  const me = state.account;
+  if (!me) return;
+  const grid = $("topup-packages");
+  if (grid) {
+    grid.innerHTML = me.packages.map((p) => `
+      <div class="topup-card${p.recommended ? " rec" : ""}">
+        <b>${escapeHtml(p.label)}</b>
+        <div class="topup-credits">${p.credits} <span class="muted small">${escapeHtml(t("acct.credits"))}</span></div>
+        <div class="muted small">$${p.usd} · ${escapeHtml(p.note)}</div>
+        ${p.url ? `<a class="btn small primary" href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(t("topup.buy"))}</a>` : `<span class="muted small">${escapeHtml(t("topup.unavailable"))}</span>`}
+      </div>`).join("");
+  }
+  if ($("ref-link")) $("ref-link").textContent = me.referral?.link || "—";
+  api("/api/credits/history").then((d) => {
+    const box = $("credit-history");
+    if (!box) return;
+    box.innerHTML = (d.transactions || []).map((tx) =>
+      `<div class="hist-row"><span>${escapeHtml(tx.created_at.replace("T", " "))}</span><span>${escapeHtml(tx.note || tx.kind)}</span><b class="${tx.credits < 0 ? "bad" : "ok"}">${tx.credits > 0 ? "+" : ""}${tx.credits}</b></div>`).join("")
+      || `<p class="muted">${escapeHtml(t("history.empty"))}</p>`;
+  }).catch(() => {});
+}
+
+function setupAccount() {
+  const overlay = $("topup-overlay");
+  $("acct-topup")?.addEventListener("click", () => { renderTopup(); overlay.hidden = false; });
+  $("topup-close")?.addEventListener("click", () => { overlay.hidden = true; refreshAccount(); });
+  overlay?.addEventListener("click", (e) => { if (e.target === overlay) { overlay.hidden = true; refreshAccount(); } });
+  $("acct-logout")?.addEventListener("click", async () => {
+    await fetch("/auth/logout", { method: "POST" }).catch(() => {});
+    location.href = "/login";
+  });
+  $("holder-check")?.addEventListener("click", async () => {
+    const out = $("holder-status");
+    try {
+      const e = await api("/api/holder");
+      if (!e.claimable_credits) {
+        out.textContent = e.already ? t("holder.already") : e.excluded ? t("holder.excluded") : !e.is_solana ? t("holder.notSolana") : t("holder.none");
+        return;
+      }
+      const r = await api("/api/holder/claim", { method: "POST", body: "{}" });
+      out.textContent = r.granted ? t("holder.granted", { n: r.credits }) : t("holder.none");
+      refreshAccount();
+    } catch (err) {
+      out.textContent = err.message;
+    }
+  });
+  $("v-publish")?.addEventListener("click", async () => {
+    const out = $("v-publish-status");
+    if (!state.galleryDir) return;
+    try {
+      const r = await api("/api/publish", { method: "POST", body: JSON.stringify({ dir: state.galleryDir, title: state.galleryDir }) });
+      out.innerHTML = `${escapeHtml(t("publish.done"))} <a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.url)}</a>`;
+    } catch (err) {
+      out.textContent = err.message;
+    }
+  });
+  refreshAccount();
 }
 
 /* ---------- Versions (re-renders never overwrite) ---------- */
@@ -2839,6 +2926,7 @@ async function boot() {
   setupVersions();
   setupExport();
   setupHelp();
+  setupAccount();
 
   try {
     state.health = await api("/api/health");

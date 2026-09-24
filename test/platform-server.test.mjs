@@ -1,0 +1,193 @@
+/**
+ * End-to-end: the real server in public mode (SERIES_MODE=public) on a temp data
+ * dir. Walks a user through wallet sign-in → welcome credits → paid batch →
+ * insufficient credits → Helio webhook top-up → Passport quest → publish.
+ * Uses the free `mock` engine priced at 2 credits via ENGINE_CREDIT_COSTS.
+ */
+import { after, before, describe, test } from "node:test";
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { createHmac, randomBytes } from "node:crypto";
+import { mkdtempSync, rmSync } from "node:fs";
+import { request } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { keccak_256 } from "@noble/hashes/sha3.js";
+import { createMockPng } from "../src/mock-image.mjs";
+
+const dir = mkdtempSync(join(tmpdir(), "series-public-"));
+const PORT = 5600 + Math.floor(Math.random() * 300);
+const env = {
+  ...process.env,
+  SERIES_MODE: "public",
+  SERIES_DATA_DIR: dir,
+  SERIES_KEYS_FILE: join(dir, "no-keys.env"),
+  AUTH_SESSION_SECRET: "e2e-secret",
+  AUTH_COOKIE_INSECURE: "1",
+  WELCOME_REQUIRE_BALANCE: "0",
+  ENGINE_CREDIT_COSTS: '{"mock":2}',
+  OFFLINE: "1",
+  HOST: "127.0.0.1",
+  PORT: String(PORT),
+  HELIO_WEBHOOK_SECRET: "helio-secret",
+  HELIO_PAYLINK_START: "aa11",
+  GREMLIN_API_KEY: "gremlin-key",
+  HOLDER_SYNC_INTERVAL_SECONDS: "0",
+  FULFILLMENT_RECONCILE_INTERVAL_SECONDS: "0",
+  HELIO_API_KEY: "",
+  HELIO_API_SECRET: "",
+  SERIES_SPEND_CAP_USD: "",
+};
+let server;
+let cookie = "";
+
+function call(method, path, { body, headers = {}, raw = false } = {}) {
+  return new Promise((resolve, reject) => {
+    const data = body === undefined ? null : Buffer.isBuffer(body) ? body : Buffer.from(typeof body === "string" ? body : JSON.stringify(body));
+    const req = request({
+      host: "127.0.0.1", port: PORT, method, path,
+      headers: { ...(data ? { "Content-Type": "application/json", "Content-Length": data.length } : {}), ...(cookie ? { Cookie: cookie } : {}), ...headers },
+    }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => {
+        const buf = Buffer.concat(chunks);
+        let json = null;
+        if (!raw) { try { json = JSON.parse(buf.toString("utf8")); } catch { /* not json */ } }
+        resolve({ status: res.statusCode, headers: res.headers, json, text: buf.toString("utf8") });
+      });
+    });
+    req.on("error", reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+
+function evmWallet() {
+  const priv = randomBytes(32);
+  const pub = secp256k1.getPublicKey(priv, false);
+  const address = `0x${Buffer.from(keccak_256(pub.subarray(1)).subarray(-20)).toString("hex")}`;
+  const sign = (message) => {
+    const msg = Buffer.from(message, "utf8");
+    const hash = keccak_256(Buffer.concat([Buffer.from(`\x19Ethereum Signed Message:\n${msg.length}`), msg]));
+    const sig = secp256k1.sign(hash, priv, { prehash: false, format: "recovered" }); // [rec, r, s]
+    return `0x${Buffer.concat([Buffer.from(sig.subarray(1)), Buffer.from([sig[0] + 27])]).toString("hex")}`;
+  };
+  return { address, sign };
+}
+
+before(async () => {
+  server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
+  await new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("server did not start")), 15_000);
+    server.stdout.on("data", (d) => { if (String(d).includes("Series Lab Studio")) { clearTimeout(t); resolve(); } });
+    server.on("exit", (c) => reject(new Error(`server exited ${c}`)));
+  });
+});
+
+after(async () => {
+  if (server && server.exitCode === null) {
+    const exited = new Promise((r) => server.once("exit", r));
+    server.kill();
+    await exited;
+  }
+  // Windows releases the SQLite file handle a moment after the process exits.
+  rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+});
+
+describe("public mode end-to-end", () => {
+  const user = evmWallet();
+
+  test("anonymous visitors are sent to /login; API answers 401", async () => {
+    const page = await call("GET", "/studio/");
+    assert.equal(page.status, 302);
+    assert.equal(page.headers.location, "/login");
+    assert.equal((await call("GET", "/api/me")).status, 401);
+    assert.equal((await call("GET", "/login")).status, 200);
+    const health = await call("GET", "/health");
+    assert.deepEqual(health.json, { status: "ok", service: "nft-prompt-builder-payments" });
+  });
+
+  test("wallet sign-in sets the session and grants welcome credits", async () => {
+    const offer = await call("GET", "/auth/welcome-offer");
+    assert.equal(offer.json.credits, 20);
+    const n = await call("GET", `/auth/nonce?address=${user.address}`);
+    assert.equal(n.status, 200);
+    const bad = await call("POST", "/auth/verify", { body: { address: user.address, nonce: n.json.nonce, signature: `0x${"11".repeat(65)}` } });
+    assert.equal(bad.status, 401);
+    const n2 = await call("GET", `/auth/nonce?address=${user.address}`);
+    const ok = await call("POST", "/auth/verify", { body: { address: user.address, nonce: n2.json.nonce, signature: user.sign(n2.json.message) } });
+    assert.equal(ok.status, 200, ok.text);
+    assert.equal(ok.json.welcomed, true);
+    assert.equal(ok.json.balance, 20);
+    cookie = String(ok.headers["set-cookie"][0]).split(";")[0];
+    const me = await call("GET", "/api/me");
+    assert.equal(me.json.mode, "public");
+    assert.equal(me.json.wallet, user.address);
+    assert.equal(me.json.balance, 20);
+    assert.equal((await call("GET", "/api/resources")).status, 403, "operator view is admin-only");
+  });
+
+  test("paid batch debits credits per image; refusal when credits run short", async () => {
+    const png = createMockPng({ seed: 1, title: "base" });
+    const up = await call("POST", "/api/base/upload", { body: { data: Buffer.from(png).toString("base64"), filename: "primary.png", role: "primary" } });
+    assert.equal(up.status, 200, up.text);
+    const build = await call("POST", "/api/build", { body: { file: "demo-series.json" } });
+    assert.equal(build.status, 200, build.text);
+    const est = await call("POST", "/api/estimate", { body: { engine: "mock", mode: "first", first: 3 } });
+    assert.equal(est.json.creditsNeeded, 6);
+    const gen = await call("POST", "/api/generate", { body: { engine: "mock", mode: "first", first: 3 } });
+    assert.equal(gen.status, 200, gen.text);
+    assert.equal(gen.json.count, 3);
+    assert.equal((await call("GET", "/api/me")).json.balance, 14);
+    const tooMuch = await call("POST", "/api/generate", { body: { engine: "mock", mode: "first", first: 20, force: true } });
+    assert.equal(tooMuch.status, 402);
+    assert.equal(tooMuch.json.code, "credits");
+    assert.equal((await call("GET", "/api/me")).json.balance, 14, "nothing charged for a refused batch");
+    const local = await call("POST", "/api/generate", { body: { engine: "comfyui", mode: "first", first: 1 } });
+    assert.equal(local.status, 400);
+  });
+
+  test("Passport quest sees the generated images (API-key protected)", async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    const noKey = await call("GET", `/gremlin/activity?wallet=${user.address}&date=${day}`);
+    assert.equal(noKey.status, 401);
+    const act = await call("GET", `/gremlin/activity?wallet=${user.address}&date=${day}`, { headers: { "X-Gremlin-Key": "gremlin-key" } });
+    assert.equal(act.status, 200);
+    assert.equal(act.json.generated, 3);
+    const bad = await call("GET", `/gremlin/activity?wallet=${user.address}&date=2026-02-30`, { headers: { "X-Gremlin-Key": "gremlin-key" } });
+    assert.equal(bad.status, 400);
+  });
+
+  test("Helio webhook tops up once; pay host exposes only the webhook", async () => {
+    const payload = JSON.stringify({ data: { paylinkId: "aa11", id: "helio-tx-1", senderPublicKey: user.address, transactionStatus: "SUCCESS" } });
+    const sig = createHmac("sha256", "helio-secret").update(payload).digest("hex");
+    const saved = cookie;
+    cookie = "";
+    const bad = await call("POST", "/webhooks/helio", { body: payload, headers: { "x-helio-signature": "00" } });
+    assert.equal(bad.status, 401);
+    const first = await call("POST", "/webhooks/helio", { body: payload, headers: { "x-helio-signature": sig } });
+    assert.equal(first.json.credited, true);
+    const again = await call("POST", "/webhooks/helio", { body: payload, headers: { "x-helio-signature": sig } });
+    assert.equal(again.json.credited, false);
+    const payHost = await call("GET", "/legal", { headers: { Host: "pay.w3ir.io" } });
+    assert.equal(payHost.status, 404);
+    cookie = saved;
+    assert.equal((await call("GET", "/api/me")).json.balance, 114);
+  });
+
+  test("publish a set as a public collection page", async () => {
+    const sets = await call("GET", "/api/sets");
+    const setDir = sets.json.sets[0].dir;
+    const pub = await call("POST", "/api/publish", { body: { dir: setDir, title: "E2E Gremlins" } });
+    assert.equal(pub.status, 200, pub.text);
+    assert.equal(pub.json.slug, "e2e-gremlins");
+    cookie = "";
+    const page = await call("GET", "/c/e2e-gremlins");
+    assert.equal(page.status, 200);
+    assert.match(page.text, /E2E Gremlins/);
+    assert.equal((await call("GET", "/c/e2e-gremlins/img/1.png", { raw: true })).status, 200);
+    assert.equal((await call("GET", "/legal/en")).status, 200);
+  });
+});

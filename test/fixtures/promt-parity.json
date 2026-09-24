@@ -1,0 +1,172 @@
+{
+ "tokens": [
+  {
+   "addr": "0xAbC0000000000000000000000000000000000001",
+   "now": 1790000000,
+   "token": "eyJhZGRyIjoiMHhhYmMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxIiwiZXhwIjoxNzkwMDE0NDAwLCJpYXQiOjE3OTAwMDAwMDB9.0A69Lg38NGYAQIdba_Ba8Kua5uO_uTdbXM0GPmBSc_8"
+  },
+  {
+   "addr": "7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV",
+   "now": 1790000000,
+   "token": "eyJhZGRyIjoiN0VjRGhTWUd4WHlzY3N6WUVwMzVLSE44dnZ3M3N2QXVMS1R6WHdDRkx0ViIsImV4cCI6MTc5MDAxNDQwMCwiaWF0IjoxNzkwMDAwMDAwfQ.uQpjfAbCS946oPP4ogAJ70VB8qXNpy_QTNjOy61pUsY"
+  }
+ ],
+ "siwe": "ai.w3ir.io wants you to sign in with your Ethereum account:\n0xAbC0000000000000000000000000000000000001\n\nSign in to NFT Prompt Builder. This request will not trigger an on-chain transaction or cost gas.\n\nURI: https://ai.w3ir.io\nVersion: 1\nChain ID: 8453\nNonce: n0nce\nIssued At: 2026-09-24T00:00:00Z",
+ "referral": {
+  "0xabc0000000000000000000000000000000000001": "go7e5n4425",
+  "7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV": "7zspjuapqv"
+ },
+ "gremlin": [
+  {
+   "traits": {
+    "body": "void",
+    "eyes": "glow",
+    "accessory": "none",
+    "backdrop": "nebula"
+   },
+   "prompt": "a portrait of a cute mischievous gremlin creature, deep void-black skin with faint purple sheen, big glowing luminous eyes, cosmic nebula background, digital art, character design, centered, highly detailed"
+  },
+  {
+   "traits": {
+    "body": "signal",
+    "eyes": "pixel",
+    "accessory": "crown",
+    "backdrop": "studio"
+   },
+   "prompt": "a portrait of a cute mischievous gremlin creature, electric cyan skin with neon signal glow, blocky pixelated 8-bit eyes, wearing a tiny golden crown, clean neutral studio background, digital art, character design, centered, highly detailed"
+  }
+ ],
+ "tma": [
+  {
+   "prompt": "a cat",
+   "style": "sticker",
+   "full": "a cat, die-cut vinyl sticker design, bold clean white outline, vibrant flat colors, isolated on solid white background"
+  },
+  {
+   "prompt": "  ",
+   "style": "gremlin",
+   "full": "gremlin lore style, mischievous cute gremlin creature, vibrant green and purple accents, expressive oversized ears and glowing eyes, detailed digital art sticker"
+  },
+  {
+   "prompt": "robot dog",
+   "style": "pixel_art",
+   "full": "robot dog, pixel art 16-bit retro arcade aesthetic, clean sharp pixel lines, colorful game sprite"
+  }
+ ],
+ "safety": [
+  {
+   "text": "child playing in park",
+   "ok": true,
+   "category": ""
+  },
+  {
+   "text": "naked child",
+   "ok": false,
+   "category": "csam"
+  },
+  {
+   "text": "child porn",
+   "ok": false,
+   "category": "csam"
+  },
+  {
+   "text": "дитина грається",
+   "ok": true,
+   "category": ""
+  },
+  {
+   "text": "оголена дитина",
+   "ok": false,
+   "category": "csam"
+  },
+  {
+   "text": "зґвалтування",
+   "ok": false,
+   "category": "sexual_violence"
+  },
+  {
+   "text": "sexy woman portrait",
+   "ok": true,
+   "category": ""
+  },
+  {
+   "text": "підліток у лісі",
+   "ok": true,
+   "category": ""
+  },
+  {
+   "text": "teenage sexy",
+   "ok": false,
+   "category": "csam"
+  },
+  {
+   "text": "rape scene",
+   "ok": false,
+   "category": "sexual_violence"
+  },
+  {
+   "text": "мішка теді",
+   "ok": true,
+   "category": ""
+  },
+  {
+   "text": "ДИТИНА секс",
+   "ok": false,
+   "category": "csam"
+  },
+  {
+   "text": "school girl",
+   "ok": true,
+   "category": ""
+  },
+  {
+   "text": "schoolgirl lingerie",
+   "ok": false,
+   "category": "csam"
+  }
+ ],
+ "slugify": {
+  "My Cool Collection!": "my-cool-collection",
+  "  --Hello__World--  ": "hello-world",
+  "Привіт світ": "collection",
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "": "collection"
+ },
+ "legal_uk": "<!DOCTYPE html>\n<html lang=\"uk\" class=\"dark\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Правові документи — w3ir.io</title>\n  <meta name=\"robots\" content=\"all\" />\n  <script src=\"https://cdn.tailwindcss.com\"></script>\n  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap\" rel=\"stylesheet\" />\n  <style>\n    :root{--bg:#0a0b0f;--surface:#12141a;--border:#232734;--text:#ecedef;--muted:#9ba1ae;--lo:#5a6072;--accent:#6e56cf;--accent-soft:#9e8cfc;}\n    *{font-family:'Inter',system-ui,sans-serif}\n    body{margin:0;background:var(--bg);color:var(--text)}\n    .doc h1{font-size:1.9rem;font-weight:800;margin:0 0 .5rem}\n    .doc h2{font-size:1.35rem;font-weight:700;margin:2rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--border)}\n    .doc h3{font-size:1.05rem;font-weight:600;margin:1.2rem 0 .4rem;color:var(--accent-soft)}\n    .doc p,.doc li{color:var(--muted);line-height:1.65;font-size:.95rem}\n    .doc ul{margin:.3rem 0 .8rem 1.1rem}\n    .doc li{margin:.25rem 0}\n    .doc code{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.05rem .35rem;font-size:.85em;color:var(--accent-soft)}\n    .doc blockquote{border-left:3px solid var(--accent);background:var(--surface);margin:1rem 0;padding:.7rem 1rem;border-radius:0 8px 8px 0;color:var(--text)}\n    .doc hr{border:0;border-top:1px solid var(--border);margin:1.5rem 0}\n    .doc strong{color:var(--text)}\n  </style>\n</head>\n<body class=\"min-h-screen\">\n  <header class=\"mx-auto flex max-w-3xl items-center justify-between px-6 py-5\">\n    <a href=\"https://w3ir.io\" class=\"flex items-center gap-2\">\n      <div class=\"grid h-8 w-8 place-items-center rounded-lg text-sm font-extrabold text-white\" style=\"background:linear-gradient(135deg,var(--accent),var(--accent-soft))\">N</div>\n      <span class=\"font-semibold tracking-tight\">NFT Prompt Builder</span>\n    </a>\n    <a href=\"/legal/en\" class=\"text-sm text-[var(--accent-soft)] hover:underline\">EN</a>\n  </header>\n  <main class=\"doc mx-auto max-w-3xl px-6 pb-20 pt-4\">\n<h1>Правові документи — NFT Prompt Builder (w3ir.io)</h1>\n<p><strong>Чинні з:</strong> 2026-06-19 · <strong>Контакт:</strong> w3ir@pm.me · <strong>Сервіс:</strong> https://ai.w3ir.io</p>\n<blockquote>ℹ️ <strong>Сервіс у стадії активної розробки (бета).</strong> Окремі формальні реквізити (юридична особа, право, що регулює) ще уточнюються. З будь-яких правових питань — <strong>w3ir@pm.me</strong>.</blockquote>\n<p>Документ містить три частини: <strong>1. Умови використання</strong>, <strong>2. Політика конфіденційності</strong>, <strong>3. Політика повернення коштів</strong>.</p>\n<hr/>\n<h2>1. Умови використання (Terms of Service)</h2>\n<h3>1.1. Прийняття</h3>\n<p>Користуючись NFT Prompt Builder («Сервіс», «ми»), ви приймаєте ці Умови. Якщо не згодні — не користуйтеся Сервісом. Сервіс надає команда проєкту w3ir.io (реєстрація юридичної особи в процесі).</p>\n<h3>1.2. Що це за сервіс</h3>\n<p>Сервіс — інструмент для <strong>створення контенту, готового до мінту</strong>: генерація текстових промптів, зображень (через сторонні AI-провайдери) і метаданих (ERC-721 / Metaplex), а також **експорт mint-ready бандлів<strong>. Сервіс </strong>не проводить мінт NFT всередині застосунку**, не є біржею/маркетплейсом, не зберігає ваші активи й не керує вашими ключами. Мінт ви робите самостійно деінде.</p>\n<h3>1.3. Право користування</h3>\n<p>Вам має бути <strong>18+</strong> і ви маєте дієздатність укладати договір. Ви не перебуваєте в санкційній юрисдикції й не порушуєте місцеве законодавство. Ви самостійно відповідаєте за дотримання законів вашої країни щодо генеративного контенту, криптоактивів і NFT.</p>\n<h3>1.4. Доступ і гаманець</h3>\n<p>Вхід — підписом гаманця (SIWE; EVM або Solana). **Ми ніколи не зберігаємо й не маємо доступу до ваших приватних ключів.** Ви відповідаєте за безпеку гаманця та за всі дії під ним.</p>\n<h3>1.5. Кредити та оплата</h3>\n<ul><li>Кредити — <strong>внутрішні одиниці</strong> для покриття витрат на AI-API. Це <strong>не платіжний засіб</strong>, вони не</li></ul>\n<p>мають грошової вартості поза Сервісом, не передаються й не обмінюються на гроші.</p>\n<ul><li>Поповнення — через <strong>Helio Pay (USDC на Base)</strong>; пакети показані в розділі 💳 Кредити.</li><li>Нові гаманці можуть отримати вітальні кредити (анти-Sybil перевірка балансу). Кредити **списуються</li></ul>\n<p>за кожну генерацію**; вартість залежить від двигуна.</p>\n<ul><li>Деталі повернення — у частині <strong>3</strong>.</li></ul>\n<h3>1.6. Допустиме використання</h3>\n<p>Заборонено створювати чи намагатися створювати контент, що порушує закон, зокрема (не вичерпно):</p>\n<ul><li><strong>сексуалізацію неповнолітніх (CSAM)</strong> та <strong>сексуальне насильство</strong> — такі промпти автоматично</li></ul>\n<p>блокуються модерацією;</p>\n<ul><li>контент, що порушує чужі права інтелектуальної власності, торгові марки чи право на зображення;</li><li>обман, видавання себе за інших, шахрайство, шкідливе ПЗ.</li></ul>\n<p>Ми можемо <strong>фільтрувати/відхиляти промпти</strong>, застосовувати денні ліміти та <strong>призупиняти доступ</strong> при зловживанні. Ви відповідаєте за весь контент, який створюєте через Сервіс.</p>\n<h3>1.7. Інтелектуальна власність</h3>\n<ul><li><strong>Згенерований контент:</strong> права на вивід AI регулюються умовами відповідних провайдерів (OpenAI,</li></ul>\n<p>Anthropic, Stability, Replicate тощо). У межах наших прав ви можете використовувати створені вами активи. <strong>Ви самостійно відповідаєте</strong> за те, що ваші промпти й результати не порушують чужих прав, і за законність їх мінту/продажу.</p>\n<ul><li><strong>Атрибуція:</strong> бандл може містити позначку «Made with w3ir» (на окремих тарифах вимикається).</li><li><strong>Наше ПЗ і бренд</strong> (код, інтерфейс, назва, логотип) лишаються нашою власністю.</li></ul>\n<h3>1.8. Застереження щодо AI</h3>\n<p>Вивід генеративних моделей <strong>імовірнісний</strong>: може бути неточним, образливим, схожим на наявні твори або не унікальним. Ми <strong>не гарантуємо</strong> унікальності, якості чи придатності для конкретної мети. <strong>Перевіряйте результат перед мінтом.</strong></p>\n<h3>1.9. Без фінансових/юридичних порад</h3>\n<p>Ніщо в Сервісі не є інвестиційною, юридичною чи податковою порадою. NFT — високоризикові; ми **не гарантуємо жодної вартості** створених активів.</p>\n<h3>1.10. Сторонні сервіси</h3>\n<p>Сервіс залежить від третіх сторін (OpenAI, Anthropic, Stability, Replicate, Pinata/IPFS, Helio, Cloudflare, RPC-вузли блокчейнів). Їх робота регулюється їхніми умовами; ми не відповідаємо за їхні збої, зміни цін чи доступність.</p>\n<h3>1.11. Відмова від гарантій і обмеження відповідальності</h3>\n<p>Сервіс надається <strong>«як є»</strong>, без жодних гарантій. У максимально дозволеній законом мірі ми не відповідаємо за непрямі чи побічні збитки; сукупна відповідальність обмежена сумою, яку ви сплатили за Сервіс за попередні <strong>3 місяці</strong>. Ви відшкодовуєте нам збитки від вашого порушення цих Умов.</p>\n<h3>1.12. Призупинення та припинення</h3>\n<p>Ми можемо призупинити чи припинити доступ при порушенні Умов або зловживанні. Ви можете припинити користування будь-коли.</p>\n<h3>1.13. Зміни та право, що регулює</h3>\n<p>Ми можемо оновлювати ці Умови; суттєві зміни позначаються новою датою «Чинні з». Право, що регулює, буде визначене з реєстрацією юридичної особи; до того спори вирішуються добросовісними перемовинами. Питання — <strong>w3ir@pm.me</strong>.</p>\n<hr/>\n<h2>2. Політика конфіденційності (Privacy Policy)</h2>\n<h3>2.1. Хто ми</h3>\n<p>NFT Prompt Builder (w3ir.io), контакт <strong>w3ir@pm.me</strong>.</p>\n<h3>2.2. Які дані ми обробляємо</h3>\n<ul><li><strong>Адреса гаманця</strong> (публічна) — ідентифікатор для кредитів та історії.</li><li><strong>Читання балансу on-chain</strong> (нативний баланс для анти-Sybil) через RPC-вузли.</li><li><strong>Дані генерації</strong> — ваші промпти, згенеровані зображення, метадані, історія — зберігаються</li></ul>\n<p><strong>на нашому сервері, ізольовано по гаманцю</strong>.</p>\n<ul><li><strong>Дані оплати</strong> — ідентифікатор транзакції, сума (через Helio; <strong>лише крипто</strong>, ми не бачимо</li></ul>\n<p>банківських/карткових даних).</p>\n<ul><li><strong>Сесійна кука</strong> <code>w3ir_session</code> (HMAC) — для входу.</li><li><strong>Серверні логи</strong> (IP, базове) — для безпеки й rate-limiting; агрегована аналітика Cloudflare.</li><li><strong>Ми НЕ збираємо</strong> email, ім&#x27;я чи інші традиційні персональні дані; акаунта поза гаманцем немає.</li></ul>\n<h3>2.3. Навіщо</h3>\n<p>Надання Сервісу, облік кредитів, запобігання зловживанню/Sybil, покращення продукту.</p>\n<h3>2.4. Кому передаємо</h3>\n<ul><li><strong>AI-провайдерам</strong> (OpenAI, Anthropic, Stability, Replicate) — ваші промпти/зображення для генерації.</li><li><strong>Pinata/IPFS</strong> — файли, якщо ви публікуєте в IPFS (контент стає <strong>публічним і незмінним</strong>).</li><li><strong>Helio</strong> — для обробки платежів. <strong>Cloudflare</strong> — для доставки/захисту.</li><li>Кожна сторона має власну політику. <strong>Ми не продаємо ваші дані.</strong></li></ul>\n<h3>2.5. Зберігання</h3>\n<p>Історія зберігається, доки ви не попросите видалення або поки гаманець активний; логи ротуються. <strong>Дані on-chain і платіжні транзакції незмінні в блокчейні</strong> — поза нашим контролем.</p>\n<h3>2.6. Безпека</h3>\n<p>HMAC-сесії, секрети поза кодом, резервні копії бази. Абсолютної безпеки не існує.</p>\n<h3>2.7. Ваші права</h3>\n<p>Можете запитати <strong>видалення збережених даних вашого гаманця</strong> — напишіть на w3ir@pm.me. Дані в блокчейні видалити неможливо.</p>\n<h3>2.8. Куки</h3>\n<p>Лише <strong>необхідна</strong> сесійна кука; Cloudflare може ставити технічні/безпекові куки.</p>\n<h3>2.9. Діти</h3>\n<p>Сервіс не призначений для осіб молодше 18 років.</p>\n<h3>2.10. Зміни</h3>\n<p>Оновлення позначаються датою «Чинні з». Питання — <strong>w3ir@pm.me</strong>.</p>\n<hr/>\n<h2>3. Політика повернення коштів (Refund Policy)</h2>\n<h3>3.1. Природа платежів</h3>\n<p>Оплата — <strong>криптовалютою (USDC на Base)</strong>; такі перекази <strong>технічно незворотні</strong>. Кредити — цифрові витратні одиниці.</p>\n<h3>3.2. Що НЕ повертається</h3>\n<ul><li><strong>Використані кредити</strong> (витрачені на генерації) — поверненню не підлягають.</li><li><strong>Вітальні, реферальні та подаровані</strong> кредити — рекламні, без грошової вартості.</li></ul>\n<h3>3.3. Що розглядаємо</h3>\n<p>Повернення <strong>невикористаних</strong> кредитів — індивідуально, протягом <strong>14 днів</strong>, у разі технічної проблеми: подвійне списання, оплата підтверджена, а кредити не зараховані, тощо. Звертайтеся з <strong>адресою гаманця + хешем транзакції</strong>.</p>\n<h3>3.4. Невдалі генерації</h3>\n<p>Якщо генерація не вдалася, кредити <strong>автоматично повертаються</strong> на ваш внутрішній баланс — додаткових дій не потрібно.</p>\n<h3>3.5. Як подати запит</h3>\n<p>Напишіть на <strong>w3ir@pm.me</strong> з адресою гаманця й хешем транзакції. Відповідь — протягом <strong>розумний строк</strong> (зазвичай кілька робочих днів). Чарджбеки не застосовуються (крипто-оплата).</p>\n  </main>\n  <footer class=\"mx-auto max-w-3xl px-6 py-8 text-xs text-[var(--lo)] border-t border-[var(--border)]\">\n    <a href=\"https://ai.w3ir.io\" class=\"text-[var(--accent-soft)] hover:underline\">Запустити застосунок →</a>\n    &nbsp;·&nbsp; <a href=\"https://w3ir.io\" class=\"hover:underline\">w3ir.io</a>\n  </footer>\n</body>\n</html>",
+ "legal_en": "<!DOCTYPE html>\n<html lang=\"uk\" class=\"dark\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Legal — w3ir.io</title>\n  <meta name=\"robots\" content=\"all\" />\n  <script src=\"https://cdn.tailwindcss.com\"></script>\n  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap\" rel=\"stylesheet\" />\n  <style>\n    :root{--bg:#0a0b0f;--surface:#12141a;--border:#232734;--text:#ecedef;--muted:#9ba1ae;--lo:#5a6072;--accent:#6e56cf;--accent-soft:#9e8cfc;}\n    *{font-family:'Inter',system-ui,sans-serif}\n    body{margin:0;background:var(--bg);color:var(--text)}\n    .doc h1{font-size:1.9rem;font-weight:800;margin:0 0 .5rem}\n    .doc h2{font-size:1.35rem;font-weight:700;margin:2rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--border)}\n    .doc h3{font-size:1.05rem;font-weight:600;margin:1.2rem 0 .4rem;color:var(--accent-soft)}\n    .doc p,.doc li{color:var(--muted);line-height:1.65;font-size:.95rem}\n    .doc ul{margin:.3rem 0 .8rem 1.1rem}\n    .doc li{margin:.25rem 0}\n    .doc code{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.05rem .35rem;font-size:.85em;color:var(--accent-soft)}\n    .doc blockquote{border-left:3px solid var(--accent);background:var(--surface);margin:1rem 0;padding:.7rem 1rem;border-radius:0 8px 8px 0;color:var(--text)}\n    .doc hr{border:0;border-top:1px solid var(--border);margin:1.5rem 0}\n    .doc strong{color:var(--text)}\n  </style>\n</head>\n<body class=\"min-h-screen\">\n  <header class=\"mx-auto flex max-w-3xl items-center justify-between px-6 py-5\">\n    <a href=\"https://w3ir.io\" class=\"flex items-center gap-2\">\n      <div class=\"grid h-8 w-8 place-items-center rounded-lg text-sm font-extrabold text-white\" style=\"background:linear-gradient(135deg,var(--accent),var(--accent-soft))\">N</div>\n      <span class=\"font-semibold tracking-tight\">NFT Prompt Builder</span>\n    </a>\n    <a href=\"/legal\" class=\"text-sm text-[var(--accent-soft)] hover:underline\">UA</a>\n  </header>\n  <main class=\"doc mx-auto max-w-3xl px-6 pb-20 pt-4\">\n<h1>Legal — NFT Prompt Builder (w3ir.io)</h1>\n<p><strong>Effective:</strong> 2026-06-19 · <strong>Contact:</strong> w3ir@pm.me · <strong>Service:</strong> https://ai.w3ir.io</p>\n<blockquote>ℹ️ <strong>The Service is in active development (beta).</strong> Certain formal details (legal entity, governing law) are still being finalized. For any legal inquiries — <strong>w3ir@pm.me</strong>.</blockquote>\n<p>This document has three parts: <strong>1. Terms of Service</strong>, <strong>2. Privacy Policy</strong>, <strong>3. Refund Policy</strong>.</p>\n<hr/>\n<h2>1. Terms of Service</h2>\n<h3>1.1. Acceptance</h3>\n<p>By using NFT Prompt Builder (the &quot;Service&quot;, &quot;we&quot;), you accept these Terms. If you disagree, do not use the Service. The Service is provided by the w3ir.io project team (legal entity registration in progress).</p>\n<h3>1.2. What the Service is</h3>\n<p>The Service is a tool to <strong>create mint-ready content</strong>: generating text prompts, images (via third-party AI providers) and metadata (ERC-721 / Metaplex), and <strong>exporting mint-ready bundles</strong>. The Service <strong>does not mint NFTs in-app</strong>, is not an exchange/marketplace, does not custody your assets, and does not control your keys. You mint elsewhere yourself.</p>\n<h3>1.3. Eligibility</h3>\n<p>You must be <strong>18+</strong> with legal capacity to contract. You are not located in a sanctioned jurisdiction and you comply with your local laws. You are solely responsible for compliance with the laws of your country regarding generative content, crypto-assets and NFTs.</p>\n<h3>1.4. Access and wallet</h3>\n<p>Sign-in is by wallet signature (SIWE; EVM or Solana). <strong>We never store or access your private keys.</strong> You are responsible for your wallet&#x27;s security and for all activity under it.</p>\n<h3>1.5. Credits and payment</h3>\n<ul><li>Credits are <strong>internal units</strong> to cover AI API costs. They are <strong>not legal tender</strong>, have no</li></ul>\n<p>monetary value outside the Service, and are non-transferable and non-exchangeable for cash.</p>\n<ul><li>Top-ups are via <strong>Helio Pay (USDC on Base)</strong>; packages are shown under 💳 Credits.</li><li>New wallets may receive welcome credits (anti-Sybil balance check). Credits are **consumed per</li></ul>\n<p>generation**; cost depends on the engine.</p>\n<ul><li>Refund details are in part <strong>3</strong>.</li></ul>\n<h3>1.6. Acceptable use</h3>\n<p>You must not create or attempt to create unlawful content, including (without limitation):</p>\n<ul><li><strong>sexualization of minors (CSAM)</strong> and <strong>sexual violence</strong> — such prompts are automatically blocked</li></ul>\n<p>by moderation;</p>\n<ul><li>content infringing others&#x27; intellectual property, trademarks or likeness rights;</li><li>deception, impersonation, fraud, malware.</li></ul>\n<p>We may <strong>filter/reject prompts</strong>, apply daily limits, and <strong>suspend access</strong> for abuse. You are responsible for all content you create through the Service.</p>\n<h3>1.7. Intellectual property</h3>\n<ul><li><strong>Generated content:</strong> rights to AI output are governed by the respective providers&#x27; terms (OpenAI,</li></ul>\n<p>Anthropic, Stability, Replicate, etc.). To the extent of our rights, you may use the assets you create. <strong>You are solely responsible</strong> for ensuring your prompts and outputs do not infringe third- party rights, and for the legality of minting/selling them.</p>\n<ul><li><strong>Attribution:</strong> a bundle may include a &quot;Made with w3ir&quot; mark (disabled on certain tiers).</li><li><strong>Our software and brand</strong> (code, UI, name, logo) remain our property.</li></ul>\n<h3>1.8. AI disclaimer</h3>\n<p>Generative model output is <strong>probabilistic</strong>: it may be inaccurate, offensive, similar to existing works, or non-unique. We <strong>do not guarantee</strong> uniqueness, quality or fitness for a particular purpose. <strong>Review the output before minting.</strong></p>\n<h3>1.9. No financial/legal advice</h3>\n<p>Nothing in the Service is investment, legal or tax advice. NFTs are high-risk; we **do not guarantee any value** of created assets.</p>\n<h3>1.10. Third-party services</h3>\n<p>The Service relies on third parties (OpenAI, Anthropic, Stability, Replicate, Pinata/IPFS, Helio, Cloudflare, blockchain RPC nodes). Their operation is governed by their terms; we are not liable for their outages, price changes or availability.</p>\n<h3>1.11. Disclaimer of warranties and limitation of liability</h3>\n<p>The Service is provided <strong>&quot;as is&quot;</strong>, without warranties of any kind. To the maximum extent permitted by law, we are not liable for indirect or incidental damages; total liability is capped at the amount you paid for the Service in the preceding <strong>3 months</strong>. You will indemnify us for losses arising from your breach of these Terms.</p>\n<h3>1.12. Suspension and termination</h3>\n<p>We may suspend or terminate access for breach or abuse. You may stop using the Service at any time.</p>\n<h3>1.13. Changes and governing law</h3>\n<p>We may update these Terms; material changes are marked with a new &quot;Effective&quot; date. Governing law is specified upon incorporation; until then, disputes are resolved through good-faith negotiation. Questions — <strong>w3ir@pm.me</strong>.</p>\n<hr/>\n<h2>2. Privacy Policy</h2>\n<h3>2.1. Who we are</h3>\n<p>NFT Prompt Builder (w3ir.io), contact <strong>w3ir@pm.me</strong>.</p>\n<h3>2.2. Data we process</h3>\n<ul><li><strong>Wallet address</strong> (public) — identifier for credits and history.</li><li><strong>On-chain balance reads</strong> (native balance for anti-Sybil) via RPC nodes.</li><li><strong>Generation data</strong> — your prompts, generated images, metadata, history — stored **on our server,</li></ul>\n<p>isolated per wallet**.</p>\n<ul><li><strong>Payment data</strong> — transaction ID, amount (via Helio; <strong>crypto only</strong>, we never see bank/card data).</li><li><strong>Session cookie</strong> <code>w3ir_session</code> (HMAC) — for sign-in.</li><li><strong>Server logs</strong> (IP, basic) — for security and rate-limiting; aggregate Cloudflare analytics.</li><li><strong>We do NOT collect</strong> email, name or other traditional personal data; there is no account beyond</li></ul>\n<p>the wallet.</p>\n<h3>2.3. Why</h3>\n<p>To provide the Service, account for credits, prevent abuse/Sybil, and improve the product.</p>\n<h3>2.4. Who we share with</h3>\n<ul><li><strong>AI providers</strong> (OpenAI, Anthropic, Stability, Replicate) — your prompts/images for generation.</li><li><strong>Pinata/IPFS</strong> — files if you publish to IPFS (content becomes <strong>public and immutable</strong>).</li><li><strong>Helio</strong> — to process payments. <strong>Cloudflare</strong> — for delivery/protection.</li><li>Each party has its own policy. <strong>We do not sell your data.</strong></li></ul>\n<h3>2.5. Retention</h3>\n<p>History is kept until you request deletion or while the wallet is active; logs are rotated. <strong>On-chain and payment transactions are immutable on the blockchain</strong> — outside our control.</p>\n<h3>2.6. Security</h3>\n<p>HMAC sessions, secrets kept out of code, database backups. No system is perfectly secure.</p>\n<h3>2.7. Your rights</h3>\n<p>You may request <strong>deletion of your wallet&#x27;s stored data</strong> — email w3ir@pm.me. On-chain data cannot be deleted.</p>\n<h3>2.8. Cookies</h3>\n<p>Only an <strong>essential</strong> session cookie; Cloudflare may set technical/security cookies.</p>\n<h3>2.9. Children</h3>\n<p>The Service is not intended for anyone under 18.</p>\n<h3>2.10. Changes</h3>\n<p>Updates are marked with the &quot;Effective&quot; date. Questions — <strong>w3ir@pm.me</strong>.</p>\n<hr/>\n<h2>3. Refund Policy</h2>\n<h3>3.1. Nature of payments</h3>\n<p>Payment is by <strong>cryptocurrency (USDC on Base)</strong>; such transfers are <strong>technically irreversible</strong>. Credits are digital, consumable units.</p>\n<h3>3.2. Non-refundable</h3>\n<ul><li><strong>Consumed credits</strong> (spent on generations) are non-refundable.</li><li><strong>Welcome, referral and granted</strong> credits — promotional, with no cash value.</li></ul>\n<h3>3.3. Considered case-by-case</h3>\n<p>Refunds of <strong>unused</strong> credits are considered individually, within <strong>14 days</strong>, for a technical issue: double charge, payment confirmed but credits not delivered, etc. Contact us with your **wallet address + transaction hash**.</p>\n<h3>3.4. Failed generations</h3>\n<p>If a generation fails, credits are <strong>automatically refunded</strong> to your in-app balance — no action needed.</p>\n<h3>3.5. How to request</h3>\n<p>Email <strong>w3ir@pm.me</strong> with your wallet address and transaction hash. We respond within a <strong>reasonable time</strong> (typically a few business days). Chargebacks do not apply (crypto payment).</p>\n  </main>\n  <footer class=\"mx-auto max-w-3xl px-6 py-8 text-xs text-[var(--lo)] border-t border-[var(--border)]\">\n    <a href=\"https://ai.w3ir.io\" class=\"text-[var(--accent-soft)] hover:underline\">Запустити застосунок →</a>\n    &nbsp;·&nbsp; <a href=\"https://w3ir.io\" class=\"hover:underline\">w3ir.io</a>\n  </footer>\n</body>\n</html>",
+ "sanitize": {
+  "ABCDEF01": "ABCDEF01",
+  "abc0def": "abc0def",
+  "abcT0def": "abc0def",
+  "01aT2b": "01a02b",
+  "  a1b2  ": "a1b2",
+  "zzz": "zzz",
+  "": ""
+ },
+ "extract": [
+  {
+   "tx_id": "tx1",
+   "wallet": "7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV",
+   "paylink": "abc"
+  },
+  {
+   "tx_id": "tx3",
+   "wallet": "0xdef",
+   "paylink": "p1"
+  }
+ ],
+ "credit_cost": {
+  "OpenAI gpt-image-1|False|False": 4,
+  "OpenAI gpt-image-1|False|True": 6,
+  "OpenAI gpt-image-1|True|False": 8,
+  "OpenAI gpt-image-1|True|True": 10,
+  "Stability AI (Core / SD3)|False|False": 1,
+  "Stability AI (Core / SD3)|False|True": 2,
+  "Stability AI (Core / SD3)|True|False": 2,
+  "Stability AI (Core / SD3)|True|True": 3,
+  "Flux.1 (Replicate)|False|False": 1,
+  "Flux.1 (Replicate)|False|True": 2,
+  "Flux.1 (Replicate)|True|False": 2,
+  "Flux.1 (Replicate)|True|True": 3
+ }
+}
