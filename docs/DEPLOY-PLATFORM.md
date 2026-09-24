@@ -27,32 +27,35 @@
 
 ## Ф3 · Паралельний запуск на `next.w3ir.io`
 
-Прод-хости й далі обслуговує Промт.
+Прод-хости й далі обслуговує Промт. Усе робить один скрипт — з ПК, з кореня репозиторію:
 
 ```bash
-# на ПК
-docker build -t series-lab:$(git rev-parse --short HEAD) .
-docker save series-lab:<tag> | ssh root@HOST_IP docker load
-
-# на сервері
-cd /opt/w3ir
-mkdir -p data-next && cp -a data/users.db data/genesis_mints.json data/vault_catalog.json data-next/ && cp -a data/public data-next/ 2>/dev/null
-cp .env .env.series-lab            # потім дописати специфічне для Series Lab
-# додати сервіс із deploy/series-lab/docker-compose.yml (SERIES_LAB_IMAGE=series-lab:<tag>, SERIES_LAB_DATA=data-next)
-# додати блок із deploy/series-lab/Caddyfile.parallel у Caddyfile
-docker compose up -d serieslab && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+bash deploy/series-lab/upload.sh            # root@HOST_IP за замовчуванням
 ```
 
-DNS: запис `next` → `HOST_IP` (proxied) у зоні `w3ir.io`.
+Він завантажує поточний коміт і запускає на сервері `deploy/series-lab/phase3.sh`, який:
+
+1. розпаковує код у **`/opt/series-lab`** — не в `/opt/w3ir`, бо деплой Промт робить `git clean -fd` і стер би все нове;
+2. збирає образ `series-lab:<коміт>`;
+3. робить **узгоджену** копію бази через SQLite online backup (не `cp`, бо WAL) + `genesis_mints.json`, `vault_catalog.json`, `public/` → `/opt/series-lab/data-next`;
+4. пише `.env.series-lab` = `.env` Промт + перевизначення для staging: без звіряння Helio й вебхука, без Telegram, без сейфу, SIWE-домен `next.w3ir.io`, **вхід лише для `ADMIN_WALLETS`** (або `SERIES_ALLOWED_WALLETS=…`), межа витрат $5/день — бо копія кредитів витрачає справжні API-ключі;
+5. запускає контейнер `serieslab` у мережі `w3ir_default` (ліміт пам'яті 512 МБ);
+6. додає блок `next.w3ir.io` у Caddyfile Промт, перевіряє конфіг і перезавантажує Caddy; якщо перевірка не пройшла — повертає попередній Caddyfile;
+7. перевіряє `next` через Caddy і що `ai.w3ir.io` Промт відповідає як раніше.
+
+Повторний запуск оновлює образ і конфіг; дані перекопіюються лише з `REFRESH_DATA=1`. Відкат: `ssh root@HOST_IP bash /tmp/series-lab-phase3-rollback.sh` (зупиняє контейнер і повертає Caddyfile; `PURGE=1` — ще й видаляє `/opt/series-lab`).
+
+⚠️ Блок Caddy живе в tracked-файлі Промт: наступний деплой Промт його скине. Щоб зберігся — злити в репозиторій Промт той самий блок (`deploy/series-lab/Caddyfile.parallel`).
+
+Після скрипту — DNS: запис `next` → `HOST_IP` (proxied) у зоні `w3ir.io`. Сертифікат Cloudflare Origin на сервері вже покриває `*.w3ir.io`.
 
 Перевірка:
 
 ```bash
-node scripts/contract-check.mjs --old https://gen.w3ir.io --new https://next.w3ir.io \
-  --gremlin-key "$GREMLIN_API_KEY" --tma-key "$TMA_API_KEY"
+node scripts/contract-check.mjs --old https://gen.w3ir.io --new https://next.w3ir.io   --gremlin-key "$GREMLIN_API_KEY" --tma-key "$TMA_API_KEY"
 ```
 
-Далі — 2–3 справжні користувачі проходять звичний сценарій на `next.w3ir.io/login`. Кредити в `data-next` — копія, **не справжні**; оплати Helio туди не надходять.
+Далі — 2–3 справжні користувачі (їхні гаманці в `SERIES_ALLOWED_WALLETS`) проходять звичний сценарій на `next.w3ir.io/login`. Кредити в `data-next` — копія, **не справжні**; оплати туди не надходять.
 
 ## Ф4 · Перемикання
 
