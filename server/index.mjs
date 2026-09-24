@@ -5,6 +5,7 @@
  * Lab APIs + Studio stubs. No paid image calls.
  */
 import { createServer } from "node:http";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { exec } from "node:child_process";
 import {
   existsSync,
@@ -82,16 +83,29 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const UI = join(__dirname, "ui");
 const PUBLIC = join(__dirname, "public");
-const INPUT = join(ROOT, "input");
-const PRESETS = join(ROOT, "presets");
 const TEMPLATES = join(ROOT, "templates");
-const TRAITS_LIB = join(ROOT, "libraries", "traits");
-const OUT = join(ROOT, "out");
-const BUNDLES = join(OUT, "bundles");
-const WORKSPACE_DIR = join(ROOT, "workspace");
-const WORKSPACE_FILE = join(WORKSPACE_DIR, "current.json");
-const TRASH = join(OUT, "trash");
-const RENDER_LOG = join(OUT, "render-log.jsonl");
+// Data locations are resolved per request: in local mode they are the project
+// folders; in public mode (SERIES_MODE=public) every signed-in wallet gets its
+// own tree under <SERIES_DATA_DIR>/users/<wallet>/ (see withUserPaths).
+const PUBLIC_MODE = process.env.SERIES_MODE === "public";
+const PLATFORM_ON = PUBLIC_MODE || process.env.SERIES_PLATFORM === "1";
+const DATA_DIR = resolve(process.env.SERIES_DATA_DIR || join(ROOT, "data"));
+const LOCAL_PATHS = {
+  root: ROOT,
+  input: join(ROOT, "input"),
+  presets: join(ROOT, "presets"),
+  traits: join(ROOT, "libraries", "traits"),
+  out: join(ROOT, "out"),
+  workspace: join(ROOT, "workspace"),
+};
+const reqCtx = new AsyncLocalStorage();
+const P = () => reqCtx.getStore()?.paths ?? LOCAL_PATHS;
+const currentWallet = () => reqCtx.getStore()?.wallet ?? null;
+const bundlesDir = () => join(P().out, "bundles");
+const workspaceFile = () => join(P().workspace, "current.json");
+const trashDir = () => join(P().out, "trash");
+// The spend log/cap is server-wide in public mode (one operator bill), per project locally.
+const renderLog = () => (PUBLIC_MODE ? join(DATA_DIR, "render-log.jsonl") : join(P().out, "render-log.jsonl"));
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 5344);
 const OPEN = process.argv.includes("--open");
@@ -106,6 +120,16 @@ if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 
 import { testEngineConnection } from "../src/connectors.mjs";
 import { allowedHostnames, checkApiRequest } from "./guard.mjs";
+import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
+import {
+  PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck, freemiumRecord, getBalance,
+  listTransactions, recordFunnelEvent, referralCodeFor, refundCredits,
+} from "../src/platform/billing.mjs";
+import { helioPaylinkUrl } from "../src/platform/helio.mjs";
+import { isAdmin } from "../src/platform/ops.mjs";
+import { claim as claimHolderBonus, eligibility as holderEligibility } from "../src/platform/holders.mjs";
+import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs";
+import { publishCollection } from "../src/platform/site.mjs";
 import { writeJsonAtomic } from "../src/fs-safe.mjs";
 import { addVersion, dropVersion, listVersions, setCurrent, versionCounts } from "../src/versions.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
@@ -194,32 +218,113 @@ function httpError(status, message, extra = {}) {
 
 /** Moves files to out/trash instead of deleting them. */
 function toTrash(paths, reason) {
-  return trashFiles({ root: ROOT, trashDir: TRASH }, paths, reason);
+  return trashFiles({ root: P().root, trashDir: trashDir() }, paths, reason);
 }
 
 /** Throws 400 `spend_cap` when `plannedUsd` would exceed today's cap. */
 function assertSpend(plannedUsd) {
   const cap = spendCap(process.env.SERIES_SPEND_CAP_USD);
-  const spent = spentToday(RENDER_LOG);
+  const spent = spentToday(renderLog());
   const error = capError({ cap, spent, planned: plannedUsd });
-  if (error) throw httpError(400, error, { code: "spend_cap", capUsd: cap, spentTodayUsd: spent, plannedUsd });
+  if (!error) return;
+  if (PUBLIC_MODE) {
+    // Server-wide operator cap: users get a neutral message, the operator sees the numbers in the log.
+    console.warn(`[spend-cap] ${error}`);
+    throw httpError(503, "The service is at its daily capacity — please try again tomorrow.", { code: "capacity" });
+  }
+  throw httpError(400, error, { code: "spend_cap", capUsd: cap, spentTodayUsd: spent, plannedUsd });
 }
 
 function logRender(entry) {
   try {
-    appendRenderLog(RENDER_LOG, entry);
+    appendRenderLog(renderLog(), entry);
   } catch (e) {
     console.warn(`[render-log] ${e.message}`);
   }
 }
 
 /** Runs one paid engine call, logging success/failure to render-log.jsonl. */
+// ── Credits (public mode) ──────────────────────────────────────────────────
+// Every paid engine call is reserved in credits BEFORE it runs and refunded if
+// it fails — the same money path as Промт (debit note "image generation",
+// refund "refund: generation failed", which Passport quests count).
+const LOCAL_ONLY_ENGINES = new Set(["comfyui", "a1111"]);
+const visionCreditCost = () => Math.max(0, Number.parseInt(process.env.VISION_CREDIT_COST || "1", 10) || 0);
+
+function assertEngineAllowed(engine) {
+  if (PUBLIC_MODE && LOCAL_ONLY_ENGINES.has(engine)) {
+    throw httpError(400, `Engine ${engine} runs only on a local PC and is not available online`, { code: "engine" });
+  }
+}
+
+function insufficient(wallet, needed) {
+  return httpError(402, `Not enough credits: need ${needed}, balance ${getBalance(wallet)}. Top up in the header (💳).`, {
+    code: "credits", needed, balance: getBalance(wallet),
+  });
+}
+
+/** Reserve credits for one paid call. → charge handle (or null in local mode / free engine). */
+function chargeCredits({ engine, costUsd = 0, reference = false, credits = null, note, rateLimited = true }) {
+  if (!PUBLIC_MODE) return null;
+  const wallet = currentWallet();
+  if (!wallet) throw httpError(401, "Sign in with your wallet first", { code: "auth" });
+  assertEngineAllowed(engine);
+  const amount = credits ?? creditCost(engine, { reference, costUsd });
+  if (amount <= 0) return null;
+  if (rateLimited && !checkGenerationRate(wallet)) {
+    throw httpError(429, "Generation rate limit reached — wait a minute (top up to lift the limit).", { code: "rate" });
+  }
+  const fm = freemiumCheck(wallet);
+  if (!fm.allowed) throw httpError(429, "Daily free generation limit reached — top up to continue.", { code: "freemium" });
+  if (!deductCredits(wallet, amount, { engine, ...(note ? { note } : {}) })) throw insufficient(wallet, amount);
+  freemiumRecord(wallet, 1);
+  return { wallet, amount, engine, note };
+}
+
+function refundCharge(charge) {
+  if (!charge) return;
+  try {
+    refundCredits(charge.wallet, charge.amount, { engine: charge.engine, ...(charge.note ? { note: `refund: ${charge.note} failed` } : {}) });
+    freemiumRecord(charge.wallet, -1);
+  } catch (e) {
+    console.error(`[credits] refund failed for ${charge.wallet}: ${e.message}`);
+  }
+}
+
+/** Waits (max ~2 min) for a free per-minute slot — batch mode, like Промт wait_for_generation_rate. */
+async function waitForRateSlot(maxMs = 120_000) {
+  if (!PUBLIC_MODE) return;
+  const wallet = currentWallet();
+  const until = Date.now() + maxMs;
+  while (!checkGenerationRate(wallet) && Date.now() < until) await new Promise((r) => setTimeout(r, 2000));
+}
+
+function trackFunnel(event, payload) {
+  const wallet = currentWallet();
+  if (wallet) recordFunnelEvent(wallet, event, payload || null);
+}
+
+/** Brand/franchise lint + content safety. → null when OK, else an error body. */
+function blockedPrompts(texts) {
+  const list = texts.map((t) => String(t ?? ""));
+  for (const t of list) {
+    const safety = checkPromptSafetySync(t);
+    if (!safety.ok) return { error: safetyMessage(safety, "en"), code: "safety", category: safety.category };
+  }
+  const lint = lintPrompts(list);
+  if (!lint.ok) return { error: "Prompt blocked by brand/franchise lint", code: "lint", hits: lint.hits };
+  return null;
+}
+
 async function paidCall(entry, fn) {
+  const charge = chargeCredits({ engine: entry.engine, costUsd: entry.costUsd ?? 0, reference: Boolean(entry.reference) });
   try {
     const buf = await fn();
-    logRender({ ...entry, ok: true });
+    logRender({ ...entry, ok: true, ...(charge ? { wallet: charge.wallet, credits: charge.amount } : {}) });
+    trackFunnel("generate", { kind: entry.kind, count: 1 });
     return buf;
   } catch (e) {
+    refundCharge(charge);
     logRender({ ...entry, ok: false, costUsd: 0, error: String(e.message || e).slice(0, 300) });
     throw e;
   }
@@ -233,12 +338,12 @@ function safeJsonName(file, fallback = "demo-series.json") {
 }
 
 function listPresets() {
-  if (!existsSync(PRESETS)) return [];
-  return readdirSync(PRESETS)
+  if (!existsSync(P().presets)) return [];
+  return readdirSync(P().presets)
     .filter((f) => f.endsWith(".json"))
     .map((f) => {
       try {
-        const p = JSON.parse(readFileSync(join(PRESETS, f), "utf8"));
+        const p = JSON.parse(readFileSync(join(P().presets, f), "utf8"));
         return { file: f, id: p.id || f, name: p.name || p.id || f, size: p.size, seed: p.seed };
       } catch {
         return { file: f, id: f, name: f };
@@ -297,12 +402,12 @@ function summarizeTraitPack(pack, file) {
 }
 
 function listTraitPacks() {
-  if (!existsSync(TRAITS_LIB)) return [];
-  return readdirSync(TRAITS_LIB)
+  if (!existsSync(P().traits)) return [];
+  return readdirSync(P().traits)
     .filter((f) => f.endsWith(".json"))
     .map((f) => {
       try {
-        const pack = JSON.parse(readFileSync(join(TRAITS_LIB, f), "utf8"));
+        const pack = JSON.parse(readFileSync(join(P().traits, f), "utf8"));
         return summarizeTraitPack(pack, f);
       } catch {
         return {
@@ -324,8 +429,8 @@ function listTraitPacks() {
 function loadTraitPackById(id) {
   const clean = String(id || "").replace(/[/\\]/g, "");
   const candidates = [
-    join(TRAITS_LIB, `${clean}.json`),
-    join(TRAITS_LIB, clean.endsWith(".json") ? clean : `${clean}.json`),
+    join(P().traits, `${clean}.json`),
+    join(P().traits, clean.endsWith(".json") ? clean : `${clean}.json`),
   ];
   for (const path of candidates) {
     if (existsSync(path)) {
@@ -338,7 +443,7 @@ function loadTraitPackById(id) {
 
 function loadPresetByFile(file) {
   const base = safeJsonName(file);
-  const path = join(PRESETS, base);
+  const path = join(P().presets, base);
   if (!existsSync(path)) throw new Error(`preset not found: ${base}`);
   return { path, file: base, preset: JSON.parse(readFileSync(path, "utf8")) };
 }
@@ -389,11 +494,11 @@ function checkPreset(preset) {
 }
 
 function listArchives() {
-  if (!existsSync(OUT)) return [];
-  return readdirSync(OUT)
+  if (!existsSync(P().out)) return [];
+  return readdirSync(P().out)
     .filter((f) => f.endsWith(".json"))
     .map((f) => {
-      const path = join(OUT, f);
+      const path = join(P().out, f);
       let size;
       let presetId;
       try {
@@ -416,7 +521,7 @@ function listArchives() {
 
 function loadArchiveFile(file) {
   const base = safeJsonName(file);
-  const path = join(OUT, base);
+  const path = join(P().out, base);
   if (!existsSync(path)) throw new Error(`archive not found: ${base}`);
   return { path, file: base, archive: JSON.parse(readFileSync(path, "utf8")) };
 }
@@ -425,8 +530,8 @@ function loadPresetForArchive(archive) {
   const id = String(archive.presetId || "").replace(/[/\\]/g, "");
   if (!id) throw new Error("archive.presetId missing");
   const candidates = [
-    join(PRESETS, `${id}.json`),
-    join(PRESETS, id.endsWith(".json") ? id : `${id}.json`),
+    join(P().presets, `${id}.json`),
+    join(P().presets, id.endsWith(".json") ? id : `${id}.json`),
   ];
   for (const path of candidates) {
     if (existsSync(path)) {
@@ -502,10 +607,10 @@ function safeSetName(name) {
 }
 
 function listImageSets() {
-  if (!existsSync(OUT)) return [];
+  if (!existsSync(P().out)) return [];
   const sets = [];
-  for (const name of readdirSync(OUT)) {
-    const dir = join(OUT, name);
+  for (const name of readdirSync(P().out)) {
+    const dir = join(P().out, name);
     let st;
     try { st = statSync(dir); } catch { continue; }
     if (!st.isDirectory()) continue;
@@ -527,7 +632,7 @@ function listImageSets() {
 
 function listSetImages(setName) {
   const dirName = safeSetName(setName);
-  const dir = join(OUT, dirName);
+  const dir = join(P().out, dirName);
   if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error(`set not found: ${dirName}`);
   const images = [];
   const vcounts = versionCounts(dir);
@@ -557,7 +662,7 @@ function listSetImages(setName) {
 
 function readMarks(setName) {
   const dirName = safeSetName(setName);
-  const p = join(OUT, dirName, "marks.json");
+  const p = join(P().out, dirName, "marks.json");
   if (!existsSync(p)) return {};
   try {
     const data = JSON.parse(readFileSync(p, "utf8"));
@@ -569,28 +674,28 @@ function readMarks(setName) {
 
 function writeMarks(setName, marks) {
   const dirName = safeSetName(setName);
-  const dir = join(OUT, dirName);
+  const dir = join(P().out, dirName);
   mkdirSync(dir, { recursive: true });
   writeJsonAtomic(join(dir, "marks.json"), marks);
 }
 
 
 function readWorkspace() {
-  if (!existsSync(WORKSPACE_FILE)) return null;
+  if (!existsSync(workspaceFile())) return null;
   try {
-    return JSON.parse(readFileSync(WORKSPACE_FILE, "utf8"));
+    return JSON.parse(readFileSync(workspaceFile(), "utf8"));
   } catch {
     return null;
   }
 }
 
 function writeWorkspace(data) {
-  mkdirSync(WORKSPACE_DIR, { recursive: true });
+  mkdirSync(P().workspace, { recursive: true });
   const payload = {
     savedAt: nowIsoKyiv(),
     ...(data && typeof data === "object" ? data : {}),
   };
-  writeJsonAtomic(WORKSPACE_FILE, payload);
+  writeJsonAtomic(workspaceFile(), payload);
   return payload;
 }
 
@@ -604,7 +709,7 @@ function resolveLocale(req, body) {
 function loadPresetFileSafe(file) {
   try {
     const base = safeJsonName(file);
-    const p = join(PRESETS, base);
+    const p = join(P().presets, base);
     if (!existsSync(p)) return null;
     return { file: base, preset: JSON.parse(readFileSync(p, "utf8")) };
   } catch {
@@ -668,8 +773,8 @@ function serveOut(res, urlPath) {
     send(res, 400, { error: "bad path" });
     return true;
   }
-  const file = join(OUT, rel);
-  if (!file.startsWith(OUT)) {
+  const file = join(P().out, rel);
+  if (!file.startsWith(P().out)) {
     send(res, 400, { error: "bad path" });
     return true;
   }
@@ -714,13 +819,13 @@ function inferLine(name) {
 }
 
 function listBases() {
-  mkdirSync(INPUT, { recursive: true });
+  mkdirSync(P().input, { recursive: true });
   const allowed = new Set([".png", ".jpg", ".jpeg", ".webp"]);
   const files = [];
-  for (const name of readdirSync(INPUT)) {
+  for (const name of readdirSync(P().input)) {
     const ext = extname(name).toLowerCase();
     if (!allowed.has(ext)) continue;
-    const path = join(INPUT, name);
+    const path = join(P().input, name);
     if (!statSync(path).isFile()) continue;
     files.push({
       file: name,
@@ -736,7 +841,7 @@ function listBases() {
 }
 
 function baseStatus() {
-  mkdirSync(INPUT, { recursive: true });
+  mkdirSync(P().input, { recursive: true });
   const list = listBases();
   const primary = list.find((f) => f.primary) || list[0];
   if (primary) return { exists: true, file: primary.file, path: primary.path, count: list.length, files: list };
@@ -744,7 +849,7 @@ function baseStatus() {
 }
 
 function readWish() {
-  const path = join(INPUT, "wish.json");
+  const path = join(P().input, "wish.json");
   if (!existsSync(path)) return null;
   try {
     return JSON.parse(readFileSync(path, "utf8"));
@@ -816,8 +921,8 @@ function serveInput(res, urlPath) {
     send(res, 400, { error: "bad path" });
     return true;
   }
-  const file = join(INPUT, name);
-  if (!file.startsWith(INPUT)) {
+  const file = join(P().input, name);
+  if (!file.startsWith(P().input)) {
     send(res, 400, { error: "bad path" });
     return true;
   }
@@ -868,7 +973,7 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
   const prompt = buildWishPrompt(text);
   const str = clampStrength(strength);
   const ctx = engineCtx(process.env);
-  mkdirSync(INPUT, { recursive: true });
+  mkdirSync(P().input, { recursive: true });
 
   let buf;
   let usedEngine;
@@ -878,14 +983,14 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
   if (useRef && primary) {
     usedEngine = pickAvailableEngine(engine, process.env, ENGINES);
     if (!usedEngine) throw new Error("No image API key for edit engines (REPLICATE / OPENAI / STABILITY / POLLINATIONS)");
-    const imgPath = join(INPUT, primary.file);
+    const imgPath = join(P().input, primary.file);
     const image = readFileSync(imgPath);
     const mime = mimeOf(primary.file);
     const eng = getEngine(usedEngine);
     mode = "edit";
     cost = eng.costUsd ?? null;
     assertSpend(cost);
-    buf = await paidCall({ source: "studio", kind: "base", engine: usedEngine, costUsd: cost, seed }, () =>
+    buf = await paidCall({ source: "studio", kind: "base", engine: usedEngine, costUsd: cost, seed, reference: true }, () =>
       withRetry(() => eng.generate({ prompt: text, image, mime, seed, strength: str }, ctx)),
     );
   } else {
@@ -902,16 +1007,16 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const candName = `candidate-${stamp}.png`;
-  writeFileSync(join(INPUT, candName), buf);
+  writeFileSync(join(P().input, candName), buf);
   let primaryFile = null;
   if (makePrimary) {
     // move other primary.* / legacy mother.* to trash
     toTrash(
-      readdirSync(INPUT).filter((n) => /^(primary|mother)\./i.test(n)).map((n) => join(INPUT, n)),
+      readdirSync(P().input).filter((n) => /^(primary|mother)\./i.test(n)).map((n) => join(P().input, n)),
       "replaced primary (base generate)",
     );
     primaryFile = "primary.png";
-    writeFileSync(join(INPUT, primaryFile), buf);
+    writeFileSync(join(P().input, primaryFile), buf);
   }
   return {
     ok: true,
@@ -928,6 +1033,54 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
 
 async function handleApi(req, res, url) {
   const { pathname } = url;
+
+  // Operator-only views in public mode: server keys, server-wide spend.
+  if (PUBLIC_MODE && ["/api/spend", "/api/resources", "/api/engines/status"].includes(pathname) && !isAdmin(currentWallet())) {
+    return send(res, 403, { error: "admin only" });
+  }
+
+  if (pathname === "/api/me" && req.method === "GET") {
+    if (!PUBLIC_MODE) return send(res, 200, { mode: "local" });
+    const wallet = currentWallet();
+    const code = referralCodeFor(wallet);
+    return send(res, 200, {
+      mode: "public",
+      wallet,
+      balance: getBalance(wallet),
+      packages: Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p, url: helioPaylinkUrl(id) })),
+      referral: code ? { code, link: `${process.env.AUTH_URI || "https://ai.w3ir.io"}/login?ref=${code}` } : null,
+      creditCosts: Object.fromEntries(Object.keys(ENGINES).map((e) => [e, LOCAL_ONLY_ENGINES.has(e) ? null : creditCost(e, { reference: true, costUsd: ENGINES[e].costUsd })])),
+    });
+  }
+
+  if (pathname === "/api/credits/history" && req.method === "GET") {
+    if (!PUBLIC_MODE) return send(res, 200, { transactions: [] });
+    return send(res, 200, { transactions: listTransactions(currentWallet(), 50) });
+  }
+
+  if (pathname === "/api/holder" && req.method === "GET") {
+    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
+    return send(res, 200, await holderEligibility(currentWallet()));
+  }
+
+  if (pathname === "/api/holder/claim" && req.method === "POST") {
+    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
+    return send(res, 200, await claimHolderBonus(currentWallet()));
+  }
+
+  if (pathname === "/api/publish" && req.method === "POST") {
+    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
+    const body = await readBody(req);
+    const dir = safeSetName(body.dir);
+    const marks = readMarks(dir);
+    const onlyKeep = body.onlyKeep !== false && Object.values(marks).includes("keep");
+    const images = listSetImages(dir).images
+      .filter((img) => !onlyKeep || marks[String(img.edition)] === "keep")
+      .map((img) => ({ name: img.file, bytes: readFileSync(join(P().out, dir, img.file)) }));
+    const slug = publishCollection(String(body.title || dir), images, { subtitle: body.subtitle || "", wallet: currentWallet() });
+    trackFunnel("publish", { slug, count: images.length });
+    return send(res, 200, { ok: true, slug, url: `https://w3ir.io/c/${slug}`, path: `/c/${slug}` });
+  }
 
   if (pathname === "/api/health") {
     return send(res, 200, {
@@ -982,9 +1135,9 @@ async function handleApi(req, res, url) {
     const pack = body.pack;
     const val = validateTraitPack(pack);
     if (!val.ok) return send(res, 400, { ok: false, errors: val.errors });
-    mkdirSync(TRAITS_LIB, { recursive: true });
+    mkdirSync(P().traits, { recursive: true });
     const id = String(pack.id).replace(/[^a-zA-Z0-9_-]/g, "-").toLowerCase();
-    const filePath = join(TRAITS_LIB, `${id}.json`);
+    const filePath = join(P().traits, `${id}.json`);
     writeJsonAtomic(filePath, pack);
     return send(res, 200, { ok: true, id, file: `${id}.json`, summary: summarizeTraitPack(pack, `${id}.json`) });
   }
@@ -1003,16 +1156,16 @@ async function handleApi(req, res, url) {
     });
     const val = validateTraitPack(pack);
     if (!val.ok) return send(res, 400, { ok: false, errors: val.errors });
-    mkdirSync(TRAITS_LIB, { recursive: true });
+    mkdirSync(P().traits, { recursive: true });
     const id = pack.id;
-    const filePath = join(TRAITS_LIB, `${id}.json`);
+    const filePath = join(P().traits, `${id}.json`);
     writeJsonAtomic(filePath, pack);
     return send(res, 200, { ok: true, id, file: `${id}.json`, pack, summary: summarizeTraitPack(pack, `${id}.json`) });
   }
 
   if (pathname.startsWith("/api/trait-packs/") && req.method === "DELETE") {
     const id = decodeURIComponent(pathname.slice("/api/trait-packs/".length)).replace(/[^a-zA-Z0-9_-]/g, "");
-    const filePath = join(TRAITS_LIB, `${id}.json`);
+    const filePath = join(P().traits, `${id}.json`);
     if (!existsSync(filePath)) return send(res, 404, { error: `trait pack not found: ${id}` });
     const trashed = toTrash([filePath], `trait pack ${id} deleted`);
     return send(res, 200, { ok: true, id, trashId: trashed?.id ?? null });
@@ -1042,10 +1195,10 @@ async function handleApi(req, res, url) {
     if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
     const id = String(preset.id || "").replace(/[^a-zA-Z0-9._-]/g, "-");
     if (!id) throw new Error("preset.id required");
-    mkdirSync(PRESETS, { recursive: true });
+    mkdirSync(P().presets, { recursive: true });
     // strip UI-only meta if saving as real preset (keep _meta optional)
     const outName = `${id}.json`;
-    const outPath = join(PRESETS, outName);
+    const outPath = join(P().presets, outName);
     writeJsonAtomic(outPath, preset);
     return send(res, 200, { ok: true, file: outName, path: `presets/${outName}`, id });
   }
@@ -1056,9 +1209,9 @@ async function handleApi(req, res, url) {
     const checked = checkPreset(preset);
     if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
     const { archive, dupes } = makeArchive(preset);
-    mkdirSync(OUT, { recursive: true });
+    mkdirSync(P().out, { recursive: true });
     const outName = `${preset.id || "archive"}.json`;
-    writeJsonAtomic(join(OUT, outName), archive);
+    writeJsonAtomic(join(P().out, outName), archive);
     return send(res, 200, {
       ok: true,
       out: `out/${outName}`,
@@ -1252,7 +1405,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/base/upload" && req.method === "POST") {
     const body = await readBody(req);
     if (!body.data) throw new Error("data (base64) required");
-    mkdirSync(INPUT, { recursive: true });
+    mkdirSync(P().input, { recursive: true });
     const orig = basename(String(body.filename || "primary.png"));
     const ext = extname(orig).toLowerCase() || ".png";
     const allowed = new Set([".png", ".jpg", ".jpeg", ".webp"]);
@@ -1275,14 +1428,14 @@ async function handleApi(req, res, url) {
     }
     const buf = Buffer.from(body.data, "base64");
     if (buf.length < 32) throw new Error("empty image");
-    const outPath = join(INPUT, name);
+    const outPath = join(P().input, name);
     if (existsSync(outPath)) toTrash([outPath], `overwritten by upload (${name})`);
     writeFileSync(outPath, buf);
     // optional: set as primary by renaming/copying
     if (body.makePrimary && role !== "primary") {
       const primaryName = "primary" + ext;
-      if (existsSync(join(INPUT, primaryName))) toTrash([join(INPUT, primaryName)], "replaced primary (upload)");
-      writeFileSync(join(INPUT, primaryName), buf);
+      if (existsSync(join(P().input, primaryName))) toTrash([join(P().input, primaryName)], "replaced primary (upload)");
+      writeFileSync(join(P().input, primaryName), buf);
       name = primaryName;
     }
     return send(res, 200, {
@@ -1299,17 +1452,17 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const file = basename(String(body.file || ""));
     if (!file) throw new Error("file required");
-    const src = join(INPUT, file);
+    const src = join(P().input, file);
     if (!existsSync(src)) throw new Error("file not found");
     const ext = extname(file).toLowerCase() || ".png";
     const destName = "primary" + ext;
     if (file === destName) return send(res, 200, { ok: true, file: destName, path: `input/${destName}`, files: listBases() });
     const buf = readFileSync(src);
     toTrash(
-      readdirSync(INPUT).filter((n) => /^(primary|mother)\./i.test(n)).map((n) => join(INPUT, n)),
+      readdirSync(P().input).filter((n) => /^(primary|mother)\./i.test(n)).map((n) => join(P().input, n)),
       `replaced primary (set ${file})`,
     );
-    writeFileSync(join(INPUT, destName), buf);
+    writeFileSync(join(P().input, destName), buf);
     return send(res, 200, { ok: true, file: destName, path: `input/${destName}`, files: listBases() });
   }
 
@@ -1317,7 +1470,7 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const file = basename(String(body.file || ""));
     if (!file || file.includes("..")) throw new Error("bad file");
-    const path = join(INPUT, file);
+    const path = join(P().input, file);
     if (!existsSync(path)) throw new Error("not found");
     const trashed = toTrash([path], "base image deleted");
     return send(res, 200, { ok: true, trashId: trashed?.id ?? null, files: listBases() });
@@ -1331,14 +1484,14 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const text = String(body.wish || "").trim();
     if (!text) throw new Error("wish text required");
-    mkdirSync(INPUT, { recursive: true });
+    mkdirSync(P().input, { recursive: true });
     const wish = {
       wish: text,
       engine: body.engine || "kontext",
       strength: Number(body.strength ?? 0.45),
       updatedAt: nowIsoKyiv(),
     };
-    writeJsonAtomic(join(INPUT, "wish.json"), wish);
+    writeJsonAtomic(join(P().input, "wish.json"), wish);
     return send(res, 200, { ok: true, wish });
   }
 
@@ -1348,23 +1501,17 @@ async function handleApi(req, res, url) {
     if (!text) throw new Error("wish text required");
     {
       const assembled = buildWishPrompt(text);
-      const lint = lintPrompt(`${assembled}\n${text}`);
-      if (!lint.ok) {
-        return send(res, 400, {
-          error: "Prompt blocked by brand/franchise lint",
-          code: "lint",
-          hits: lint.hits,
-        });
-      }
+      const blocked = blockedPrompts([`${assembled}\n${text}`]);
+      if (blocked) return send(res, 400, blocked);
     }
-    mkdirSync(INPUT, { recursive: true });
+    mkdirSync(P().input, { recursive: true });
     const wish = {
       wish: text,
       engine: body.engine || "openai",
       strength: Number(body.strength ?? 0.45),
       updatedAt: nowIsoKyiv(),
     };
-    writeJsonAtomic(join(INPUT, "wish.json"), wish);
+    writeJsonAtomic(join(P().input, "wish.json"), wish);
     const result = await runPrimaryGenerate({
       wish: text,
       engine: body.engine || "openai",
@@ -1382,9 +1529,18 @@ async function handleApi(req, res, url) {
     let baseFile = body.file ? basename(String(body.file)) : null;
     let target = bases.find((b) => b.file === baseFile) || bases.find((b) => b.primary) || bases[0];
     if (!target) return send(res, 400, { error: "No base image found to analyze" });
-    const imgBuf = readFileSync(join(INPUT, target.file));
+    const imgBuf = readFileSync(join(P().input, target.file));
     const mime = mimeOf(target.file);
-    const result = await analyzeBaseImage({ image: imgBuf, mime }, engineCtx(process.env));
+    const paidVision = Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY);
+    const charge = paidVision ? chargeCredits({ engine: "vision", credits: visionCreditCost(), note: "vision assist", rateLimited: false }) : null;
+    let result;
+    try {
+      result = await analyzeBaseImage({ image: imgBuf, mime }, engineCtx(process.env));
+    } catch (e) {
+      refundCharge(charge);
+      throw e;
+    }
+    if (charge && String(result?.provider || "").toLowerCase() === "heuristic") refundCharge(charge);
     return send(res, 200, { ...result, file: target.file });
   }
 
@@ -1404,8 +1560,10 @@ async function handleApi(req, res, url) {
     const unit = ENGINES[engineWanted]?.costUsd ?? ENGINES.kontext?.costUsd ?? 0.04;
     const cost = Math.round(sel.editions.length * unit * 1000) / 1000;
     const cap = spendCap(process.env.SERIES_SPEND_CAP_USD);
-    const spent = spentToday(RENDER_LOG);
+    const spent = spentToday(renderLog());
     const capMsg = capError({ cap, spent, planned: cost });
+    const creditsNeeded = PUBLIC_MODE ? sel.editions.length * creditCost(engineWanted, { reference: true, costUsd: unit }) : null;
+    const creditsBalance = PUBLIC_MODE ? getBalance(currentWallet()) : null;
     const lines = [
       `Archive: ${archiveFile} (${archive.size} recipes)`,
       `Engine: ${engineWanted} · strength ${strength}`,
@@ -1413,9 +1571,11 @@ async function handleApi(req, res, url) {
       `Mode: ${sel.mode}` + (sel.force ? " · FORCE re-render (old images kept as versions)" : ""),
       `To generate: ${sel.editions.length}` + (sel.editions.length ? ` → #${sel.editions.slice(0, 24).join(", #")}${sel.editions.length > 24 ? "…" : ""}` : ""),
       sel.skippedExisting.length ? `Skip existing: ${sel.skippedExisting.length}` : "Skip existing: 0",
-      `Est. cost: ~$${cost} ($${unit}/image)`,
-      `Spent today: ~$${spent}` + (cap != null ? ` of $${cap} daily cap` : " (no daily cap — set SERIES_SPEND_CAP_USD)"),
-      ...(capMsg ? ["", `⛔ ${capMsg}`] : []),
+      PUBLIC_MODE
+        ? `Cost: ${creditsNeeded} credits (${creditCost(engineWanted, { reference: true, costUsd: unit })}/image) · your balance: ${creditsBalance}`
+        : `Est. cost: ~$${cost} ($${unit}/image)`,
+      ...(PUBLIC_MODE ? [] : [`Spent today: ~$${spent}` + (cap != null ? ` of $${cap} daily cap` : " (no daily cap — set SERIES_SPEND_CAP_USD)")]),
+      ...(capMsg ? ["", PUBLIC_MODE ? "⛔ The service is at its daily capacity — please try again tomorrow." : `⛔ ${capMsg}`] : []),
       "",
       "Estimate is free. Generate will call the image API.",
     ];
@@ -1437,6 +1597,8 @@ async function handleApi(req, res, url) {
       unitCostUsd: unit,
       costUsd: cost,
       spentTodayUsd: spent,
+      creditsNeeded,
+      creditsBalance,
       capUsd: cap,
       capError: capMsg,
       text: lines.join("\n"),
@@ -1454,19 +1616,13 @@ async function handleApi(req, res, url) {
       const prompt = String(body.prompt || "").trim();
       if (!prompt) throw new Error("prompt required");
       {
-        const lint = lintPrompt(prompt);
-        if (!lint.ok) {
-          return send(res, 400, {
-            error: "Prompt blocked by brand/franchise lint",
-            code: "lint",
-            hits: lint.hits,
-          });
-        }
+        const blocked = blockedPrompts([prompt]);
+        if (blocked) return send(res, 400, blocked);
       }
       const engineName = pickAvailableEngine(body.engine || "kontext", process.env, ENGINES);
       if (!engineName) throw new Error("No edit-engine API key available");
       const eng = getEngine(engineName);
-      const image = readFileSync(join(INPUT, primary.file));
+      const image = readFileSync(join(P().input, primary.file));
       const mime = mimeOf(primary.file);
       const str = clampStrength(body.strength);
       const ctx = engineCtx(process.env);
@@ -1474,10 +1630,10 @@ async function handleApi(req, res, url) {
       const tag = String(body.edition ?? body.index ?? Date.now()).replace(/[^a-zA-Z0-9_-]/g, "") || String(Date.now());
       assertSpend(eng.costUsd ?? null);
       const buf = await paidCall(
-        { source: "studio", kind: "pilot", engine: engineName, edition: tag, costUsd: eng.costUsd ?? null, seed },
+        { source: "studio", kind: "pilot", engine: engineName, edition: tag, costUsd: eng.costUsd ?? null, seed, reference: true },
         () => withRetry(() => eng.generate({ prompt, image, mime, seed, strength: str }, ctx)),
       );
-      const dir = join(OUT, "pilots");
+      const dir = join(P().out, "pilots");
       mkdirSync(dir, { recursive: true });
       const name = `pilot-${tag}.png`;
       if (existsSync(join(dir, name))) toTrash([join(dir, name)], `pilot ${name} regenerated`);
@@ -1519,21 +1675,22 @@ async function handleApi(req, res, url) {
       });
     }
     {
-      const lint = lintPrompts((sel.recipes || []).map((r) => r.prompt || ""));
-      if (!lint.ok) {
-        return send(res, 400, {
-          error: "Prompt blocked by brand/franchise lint",
-          code: "lint",
-          hits: lint.hits,
-        });
-      }
+      const blocked = blockedPrompts((sel.recipes || []).map((r) => r.prompt || ""));
+      if (blocked) return send(res, 400, blocked);
     }
     const eng = getEngine(engineName);
     const unitCost = eng.costUsd ?? null;
     assertSpend(unitCost == null ? null : sel.recipes.length * unitCost);
+    assertEngineAllowed(engineName);
+    if (PUBLIC_MODE) {
+      // Check the whole batch up front so it never stops half-way for lack of credits.
+      const need = sel.recipes.length * creditCost(engineName, { reference: true, costUsd: unitCost ?? 0 });
+      if (need > getBalance(currentWallet())) throw insufficient(currentWallet(), need);
+      trackFunnel("generate", { kind: "batch", count: sel.recipes.length, engine: engineName });
+    }
     const allBases = listBases();
     const ctx = engineCtx(process.env);
-    const outDir = join(OUT, set);
+    const outDir = join(P().out, set);
     const breaker = failureBreaker({ maxConsecutive: Number(process.env.SERIES_MAX_CONSECUTIVE_FAILURES) || 5 });
     mkdirSync(outDir, { recursive: true });
 
@@ -1553,9 +1710,12 @@ async function handleApi(req, res, url) {
       sel.recipes,
       concurrency,
       async (recipe) => {
+        let charge = null;
         try {
+          await waitForRateSlot();
+          charge = chargeCredits({ engine: engineName, costUsd: unitCost ?? 0, reference: true });
           const recipeBase = resolveBaseImageForRecipe(recipe, allBases) || primary;
-          const image = readFileSync(join(INPUT, recipeBase.file));
+          const image = readFileSync(join(P().input, recipeBase.file));
           const mime = mimeOf(recipeBase.file);
           const buf = await withRetry(() =>
             eng.generate({
@@ -1580,6 +1740,7 @@ async function handleApi(req, res, url) {
             url: `/out/${set}/${name}?v=${v}`,
           };
         } catch (e) {
+          refundCharge(charge);
           logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, ok: false, costUsd: 0, error: String(e.message || e).slice(0, 300) });
           breaker.record(false);
           return {
@@ -1639,45 +1800,45 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/versions" && req.method === "GET") {
     const dir = safeSetName(url.searchParams.get("dir") || "");
     const edition = url.searchParams.get("edition");
-    return send(res, 200, { dir, ...listVersions(join(OUT, dir), dir, edition) });
+    return send(res, 200, { dir, ...listVersions(join(P().out, dir), dir, edition) });
   }
 
   if (pathname === "/api/versions/current" && req.method === "POST") {
     const body = await readBody(req);
     const dir = safeSetName(body.dir || "");
-    setCurrent(join(OUT, dir), body.edition, body.v);
-    return send(res, 200, { ok: true, dir, ...listVersions(join(OUT, dir), dir, body.edition) });
+    setCurrent(join(P().out, dir), body.edition, body.v);
+    return send(res, 200, { ok: true, dir, ...listVersions(join(P().out, dir), dir, body.edition) });
   }
 
   if (pathname === "/api/versions/drop" && req.method === "POST") {
     const body = await readBody(req);
     const dir = safeSetName(body.dir || "");
-    const file = dropVersion(join(OUT, dir), body.edition, body.v);
+    const file = dropVersion(join(P().out, dir), body.edition, body.v);
     const trashed = toTrash([file], `${dir} #${body.edition} v${body.v} dropped`);
-    return send(res, 200, { ok: true, dir, trashId: trashed?.id ?? null, ...listVersions(join(OUT, dir), dir, body.edition) });
+    return send(res, 200, { ok: true, dir, trashId: trashed?.id ?? null, ...listVersions(join(P().out, dir), dir, body.edition) });
   }
 
   if (pathname === "/api/trash" && req.method === "GET") {
-    return send(res, 200, { items: listTrash(TRASH) });
+    return send(res, 200, { items: listTrash(trashDir()) });
   }
 
   if (pathname === "/api/trash/restore" && req.method === "POST") {
     const body = await readBody(req);
-    const item = restoreTrash({ root: ROOT, trashDir: TRASH }, String(body.id || ""));
-    return send(res, 200, { ok: true, restored: item, items: listTrash(TRASH) });
+    const item = restoreTrash({ root: P().root, trashDir: trashDir() }, String(body.id || ""));
+    return send(res, 200, { ok: true, restored: item, items: listTrash(trashDir()) });
   }
 
   if (pathname === "/api/trash/purge" && req.method === "POST") {
     const body = await readBody(req);
-    purgeTrash(TRASH, String(body.id || ""));
-    return send(res, 200, { ok: true, items: listTrash(TRASH) });
+    purgeTrash(trashDir(), String(body.id || ""));
+    return send(res, 200, { ok: true, items: listTrash(trashDir()) });
   }
 
   if (pathname === "/api/spend" && req.method === "GET") {
     return send(res, 200, {
       capUsd: spendCap(process.env.SERIES_SPEND_CAP_USD),
-      spentTodayUsd: spentToday(RENDER_LOG),
-      byEngine: spendByEngineToday(RENDER_LOG),
+      spentTodayUsd: spentToday(renderLog()),
+      byEngine: spendByEngineToday(renderLog()),
     });
   }
 
@@ -1722,7 +1883,7 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const dir = safeSetName(body.dir || body.set);
     if (!dir) return send(res, 400, { error: "dir required" });
-    const setDir = join(OUT, dir);
+    const setDir = join(P().out, dir);
     if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
       return send(res, 400, { error: `set directory not found: ${dir}` });
     }
@@ -1788,17 +1949,21 @@ async function handleApi(req, res, url) {
 
     const items = targetImages.map((img) => ({
       edition: img.edition,
-      imagePath: join(OUT, dir, img.file),
+      imagePath: join(P().out, dir, img.file),
       recipe: img.edition != null ? recipeMap.get(img.edition) : undefined,
     }));
+    const triageCharge = provider !== "heuristic" && items.length
+      ? chargeCredits({ engine: provider, credits: items.length * visionCreditCost(), note: "ai triage", rateLimited: false })
+      : null;
 
     const concurrency = Math.max(1, Math.min(4, Number(body.concurrency) || 2));
-    const results = await triageBatch(items, {
-      concurrency,
-      provider,
-      apiKey,
-      preset,
-    });
+    let results;
+    try {
+      results = await triageBatch(items, { concurrency, provider, apiKey, preset });
+    } catch (e) {
+      refundCharge(triageCharge);
+      throw e;
+    }
 
     const autoApply = Boolean(body.autoApplyMarks);
     if (autoApply) {
@@ -1832,7 +1997,7 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const dir = safeSetName(body.dir || body.set);
     if (!dir) return send(res, 400, { error: "dir required" });
-    const setDir = join(OUT, dir);
+    const setDir = join(P().out, dir);
     if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
       return send(res, 400, { error: `set not found: ${dir}` });
     }
@@ -1849,6 +2014,7 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === "/api/export/manifest.csv" && req.method === "GET") {
+    trackFunnel("export", { kind: "manifest" });
     const archiveName = url.searchParams.get("archive") || url.searchParams.get("file");
     let archive = null;
     if (archiveName) {
@@ -2012,6 +2178,7 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === "/api/export/bundle" && req.method === "POST") {
+    trackFunnel("export", { kind: "bundle" });
     const body = await readBody(req);
     const archiveName = body.archive || body.file;
     if (!archiveName) return send(res, 400, { error: "archive required" });
@@ -2020,7 +2187,7 @@ async function handleApi(req, res, url) {
     const format = profile.format || body.format || "erc721";
     const { archive, file: archiveFile } = loadArchiveFile(archiveName);
     const set = safeSetName(body.set);
-    const setDir = join(OUT, set);
+    const setDir = join(P().out, set);
     if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
       return send(res, 400, { error: `set not found: ${set}` });
     }
@@ -2040,7 +2207,7 @@ async function handleApi(req, res, url) {
         setDir,
         set,
         marks,
-        bundlesDir: BUNDLES,
+        bundlesDir: bundlesDir(),
         opts: {
           format,
           profile: profileKey,
@@ -2085,7 +2252,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/export/provenance" && req.method === "GET") {
     const setName = safeSetName(url.searchParams.get("set") || url.searchParams.get("dir"));
     if (!setName) return send(res, 400, { error: "set parameter required" });
-    const setDir = join(OUT, setName);
+    const setDir = join(P().out, setName);
     if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
       return send(res, 404, { error: `set directory not found: ${setName}` });
     }
@@ -2103,12 +2270,13 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === "/api/export/dataset" && req.method === "POST") {
+    trackFunnel("export", { kind: "dataset" });
     const body = await readBody(req);
     const archiveName = body.archive || body.file;
     if (!archiveName) return send(res, 400, { error: "archive required" });
     const { archive } = loadArchiveFile(archiveName);
     const setName = safeSetName(body.set);
-    const setDir = join(OUT, setName);
+    const setDir = join(P().out, setName);
     if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
       return send(res, 400, { error: `set not found: ${setName}` });
     }
@@ -2123,9 +2291,9 @@ async function handleApi(req, res, url) {
     const format = body.format === "prose" ? "prose" : "tags";
     const onlyKeep = body.onlyKeep === undefined ? false : Boolean(body.onlyKeep);
 
-    mkdirSync(BUNDLES, { recursive: true });
+    mkdirSync(bundlesDir(), { recursive: true });
     const zipName = `dataset-${archive.presetId || "series"}-${setName}-${Date.now().toString(36)}.zip`;
-    const outPath = join(BUNDLES, zipName);
+    const outPath = join(bundlesDir(), zipName);
 
     try {
       const resData = await exportDatasetZip({
@@ -2316,9 +2484,55 @@ async function handleApi(req, res, url) {
   return send(res, 404, { error: "not found" });
 }
 
+/** Per-wallet data tree (public mode); seeded with the shared presets and trait packs. */
+function userPaths(wallet) {
+  const safe = String(wallet).replace(/[^a-zA-Z0-9]/g, "");
+  const base = join(DATA_DIR, "users", safe);
+  const paths = {
+    root: base,
+    input: join(base, "input"),
+    presets: join(base, "presets"),
+    traits: join(base, "traits"),
+    out: join(base, "out"),
+    workspace: join(base, "workspace"),
+  };
+  for (const [key, shared] of [["presets", LOCAL_PATHS.presets], ["traits", LOCAL_PATHS.traits]]) {
+    if (existsSync(paths[key])) continue;
+    mkdirSync(paths[key], { recursive: true });
+    if (!existsSync(shared)) continue;
+    for (const f of readdirSync(shared)) {
+      if (f.endsWith(".json")) writeFileSync(join(paths[key], f), readFileSync(join(shared, f)));
+    }
+  }
+  return paths;
+}
+
+const isPageRequest = (pathname) => pathname === "/" || pathname === "/studio" || pathname === "/studio/" || pathname.endsWith(".html");
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${HOST}:${PORT}`);
+    if (PLATFORM_ON && (await handlePlatform(req, res, url))) return;
+    if (!PUBLIC_MODE) return await handleRequest(req, res, url);
+    const wallet = sessionWallet(req);
+    if (!wallet) {
+      if (url.pathname.startsWith("/api/")) return send(res, 401, { error: "Sign in with your wallet first", code: "auth" });
+      if (isPageRequest(url.pathname)) return send(res, 302, "", "text/plain", { Location: `/login${url.search}` });
+      if (url.pathname.startsWith("/out/") || url.pathname.startsWith("/input/")) return send(res, 401, "Sign in required", "text/plain");
+    }
+    const store = wallet ? { wallet, paths: userPaths(wallet) } : undefined;
+    return await reqCtx.run(store, () => handleRequest(req, res, url));
+  } catch (e) {
+    if (res.headersSent) {
+      res.end();
+      return;
+    }
+    send(res, e.status || 500, { error: String(e.message || e), ...(e.extra || {}) });
+  }
+});
+
+async function handleRequest(req, res, url) {
+  {
     if (url.pathname.startsWith("/api/")) {
       const blocked = checkApiRequest(req, { allowedHosts: ALLOWED_HOSTS, port: PORT });
       if (blocked) return send(res, 403, { error: blocked });
@@ -2335,24 +2549,26 @@ const server = createServer(async (req, res) => {
       if (sendFile(res, file)) return;
     }
     send(res, 404, "Not found", "text/plain; charset=utf-8");
-  } catch (e) {
-    if (res.headersSent) {
-      res.end();
-      return;
-    }
-    send(res, e.status || 500, { error: String(e.message || e), ...(e.extra || {}) });
   }
-});
+}
 
 try {
   const days = Number(process.env.SERIES_TRASH_DAYS ?? 30);
   if (days > 0) {
-    const purged = pruneTrash(TRASH, days);
-    if (purged.length) console.log(`Trash: purged ${purged.length} item(s) older than ${days} days`);
+    const trashDirs = [trashDir()];
+    const usersDir = join(DATA_DIR, "users");
+    if (PUBLIC_MODE && existsSync(usersDir)) {
+      for (const u of readdirSync(usersDir)) trashDirs.push(join(usersDir, u, "out", "trash"));
+    }
+    let purged = 0;
+    for (const dir of trashDirs) purged += pruneTrash(dir, days).length;
+    if (purged) console.log(`Trash: purged ${purged} item(s) older than ${days} days`);
   }
 } catch (e) {
   console.warn(`Trash prune skipped: ${e.message}`);
 }
+
+if (PLATFORM_ON) startPlatformBackground();
 
 server.listen(PORT, HOST, () => {
   const href = `http://${HOST}:${PORT}/studio/`;

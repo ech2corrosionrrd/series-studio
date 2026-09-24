@@ -1,0 +1,35 @@
+# Series Lab service for the Hetzner host (/opt/w3ir). Merge into the existing
+# compose file next to Промт's `api`, `streamlit` and `caddy` services.
+# Full procedure: docs/DEPLOY-PLATFORM.md.
+#
+# Two data layouts:
+#   Ф3 (parallel run)  ./data-next  — a COPY of Промт's ./data; credits there are not real.
+#   Ф4 (switch)        ./data       — the SAME directory Промт used (users.db, genesis_mints.json,
+#                                     vault_catalog.json, public/) after Промт stops writing.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  serieslab:
+    image: ${SERIES_LAB_IMAGE:-series-lab:local}
+    container_name: series-lab
+    env_file: .env.series-lab
+    volumes:
+      - ./${SERIES_LAB_DATA:-data-next}:/data
+      # Sugar checkout for Drop #2 vault transfers (scripts/transfer-nft.mjs), read-only.
+      - ${SUGAR_HOST_PATH:-/opt/sugar}:/opt/sugar:ro
+    environment:
+      SUGAR_PROJECT_PATH: /opt/sugar
+    expose:
+      - "5344"
+    restart: unless-stopped
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5344/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
