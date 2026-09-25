@@ -611,66 +611,6 @@
       <img id="v-lightbox-img" alt="">
       <button type="button" id="v-lightbox-close" class="btn" data-i18n-tip="ctrl.v-lightbox-close.tip">✕</button>
     </div>
-    <div id="topup-overlay" class="overlay" hidden>
-      <div class="card topup-panel" role="dialog" aria-modal="true" aria-labelledby="topup-title">
-        <header class="topup-head">
-          <div class="topup-head-text">
-            <h3 id="topup-title" data-i18n="topup.title">Поповнення кредитів</h3>
-            <p class="muted small" data-i18n="topup.hint"></p>
-          </div>
-          <div class="topup-head-bal" aria-live="polite">
-            <span class="muted small" data-i18n="acct.balance">Баланс</span>
-            <b id="topup-balance">0</b>
-            <span class="muted small" data-i18n="acct.credits">кредитів</span>
-          </div>
-          <button type="button" id="topup-close" class="btn small topup-close" aria-label="Close" data-i18n-tip="ctrl.topup-close.tip">✕</button>
-        </header>
-
-        <p id="topup-reason" class="topup-reason" role="status" hidden></p>
-
-        <section class="topup-section">
-          <div class="topup-section-head">
-            <h4 data-i18n="topup.packages">Пакети</h4>
-            <span class="muted small" data-i18n="topup.payVia">Оплата USDC (Base) · Helio Pay</span>
-          </div>
-          <div id="topup-packages" class="topup-grid"></div>
-        </section>
-
-        <section class="topup-sync" aria-live="polite">
-          <div class="topup-sync-text">
-            <b data-i18n="topup.syncTitle">Після оплати</b>
-            <p class="muted small" data-i18n="topup.syncHint">На localhost вебхук не доходить — натисніть, щоб опитати Helio і зарахувати кредити.</p>
-          </div>
-          <button type="button" id="topup-sync" class="btn small" data-i18n="topup.sync" data-i18n-tip="topup.sync.tip">Перевірити оплату</button>
-          <span id="topup-sync-status" class="topup-sync-status small muted"></span>
-        </section>
-
-        <div class="topup-side">
-          <section class="topup-section topup-box">
-            <h4 data-i18n="holder.title">Бонус холдера Genesis</h4>
-            <p class="muted small" data-i18n="holder.hint"></p>
-            <div class="topup-actions">
-              <button type="button" id="holder-check" class="btn small" data-i18n="holder.check" data-i18n-tip="holder.check.tip">Перевірити й отримати</button>
-              <span id="holder-status" class="small"></span>
-            </div>
-          </section>
-          <section class="topup-section topup-box">
-            <h4 data-i18n="ref.title">Запросити друга</h4>
-            <p class="muted small" data-i18n="ref.hint"></p>
-            <div class="topup-ref">
-              <code id="ref-link" class="ref-link"></code>
-              <button type="button" id="ref-copy" class="btn small" data-i18n="ref.copy" data-i18n-tip="ref.copy.tip">Копіювати</button>
-            </div>
-            <span id="ref-copy-status" class="small muted" hidden></span>
-          </section>
-        </div>
-
-        <section class="topup-section">
-          <h4 data-i18n="history.title">Історія кредитів</h4>
-          <div id="credit-history" class="credit-history"></div>
-        </section>
-      </div>
-    </div>
     <div id="ver-overlay" class="overlay" hidden>
       <div class="card ver-card">
         <h3><span id="ver-title"></span><button type="button" id="ver-close" class="btn small" data-i18n-tip="ctrl.ver-close.tip">✕</button></h3>
@@ -891,6 +831,68 @@
     <div id="help-body" class="help-body"></div>
   </section>
 </main>
+
+<!-- Top-up window: must live outside the tab sections, otherwise it is hidden with an inactive tab -->
+<div id="topup-overlay" class="overlay" hidden>
+  <div class="card topup-panel" role="dialog" aria-modal="true" aria-labelledby="topup-title">
+    <header class="topup-head">
+      <div class="topup-head-text">
+        <h3 id="topup-title" data-i18n="topup.title">Поповнення кредитів</h3>
+        <p class="muted small" data-i18n="topup.hint"></p>
+      </div>
+      <div class="topup-head-bal" aria-live="polite">
+        <span class="muted small" data-i18n="acct.balance">Баланс</span>
+        <b id="topup-balance">0</b>
+        <span class="muted small" data-i18n="acct.credits">кредитів</span>
+      </div>
+      <button type="button" id="topup-close" class="btn small topup-close" aria-label="Close" data-i18n-tip="ctrl.topup-close.tip">✕</button>
+    </header>
+
+    <p id="topup-reason" class="topup-reason" role="status" hidden></p>
+
+    <section class="topup-section">
+      <div class="topup-section-head">
+        <h4 data-i18n="topup.packages">Пакети</h4>
+        <span class="muted small" data-i18n="topup.payVia">Оплата USDC (Base) · Helio Pay</span>
+      </div>
+      <div id="topup-packages" class="topup-grid"></div>
+    </section>
+
+    <section class="topup-sync" aria-live="polite">
+      <div class="topup-sync-text">
+        <b data-i18n="topup.syncTitle">Після оплати</b>
+        <p class="muted small" data-i18n="topup.syncHint">На localhost вебхук не доходить — натисніть, щоб опитати Helio і зарахувати кредити.</p>
+      </div>
+      <button type="button" id="topup-sync" class="btn small" data-i18n="topup.sync" data-i18n-tip="topup.sync.tip">Перевірити оплату</button>
+      <span id="topup-sync-status" class="topup-sync-status small muted"></span>
+    </section>
+
+    <div class="topup-side">
+      <section class="topup-section topup-box">
+        <h4 data-i18n="holder.title">Бонус холдера Genesis</h4>
+        <p class="muted small" data-i18n="holder.hint"></p>
+        <div class="topup-actions">
+          <button type="button" id="holder-check" class="btn small" data-i18n="holder.check" data-i18n-tip="holder.check.tip">Перевірити й отримати</button>
+          <span id="holder-status" class="small"></span>
+        </div>
+      </section>
+      <section class="topup-section topup-box">
+        <h4 data-i18n="ref.title">Запросити друга</h4>
+        <p class="muted small" data-i18n="ref.hint"></p>
+        <div class="topup-ref">
+          <code id="ref-link" class="ref-link"></code>
+          <button type="button" id="ref-copy" class="btn small" data-i18n="ref.copy" data-i18n-tip="ref.copy.tip">Копіювати</button>
+        </div>
+        <span id="ref-copy-status" class="small muted" hidden></span>
+      </section>
+    </div>
+
+    <section class="topup-section">
+      <h4 data-i18n="history.title">Історія кредитів</h4>
+      <div id="credit-history" class="credit-history"></div>
+    </section>
+  </div>
+</div>
 
 <script type="module" src="app.js"></script>
 </body>
