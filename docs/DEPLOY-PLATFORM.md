@@ -8,7 +8,7 @@
 
 ## Що вже перевірено локально
 
-- `npm test` — 183 тести, з них 28 платформні: побайтна рівність із Промт (сесійні токени, реферальні коди, промпти Passport/TMA, модерація з кирилицею, юридичні сторінки, тарифи, розбір Helio) і наскрізний сценарій сервера в публічному режимі.
+- `npm test` — 215 тестів (на 25.09.2026), зокрема платформні: побайтна рівність із Промт (сесійні токени, реферальні коди, промпти Passport/TMA, модерація з кирилицею, юридичні сторінки, тарифи, розбір Helio) і наскрізний сценарій сервера в публічному режимі.
 - `node scripts/contract-check.mjs --old https://gen.w3ir.io --new http://127.0.0.1:5344` — 10 з 10 безпечних GET-контрактів збігаються з живим Промт.
 
 ## Змінні середовища
@@ -22,6 +22,7 @@
 | `AUTH_SESSION_SECRET` | сесії SIWE / реферальні коди Lab |
 | `AUTH_DOMAIN`, `AUTH_URI`, `AUTH_CHAIN_ID` | текст SIWE-повідомлення |
 | `HELIO_*` | paylinks Lab → пакети, підпис вебхука, звіряння |
+| `SOLANA_PAY_RECIPIENT` | публічна Solana-адреса для прямої оплати USDC (ключ не потрібен); порожньо — вимкнено. Опційно `SOLANA_PAY_RPC_URL` / `SOLANA_RPC_URL`, `SOLANA_PAY_RECONCILE_INTERVAL_SECONDS`, `SOLANA_PAY_ORDER_DAYS` |
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | сповіщення оператору від імені Series Lab |
 | `GREMLIN_API_KEY`, `TMA_API_KEY`, `W3IR_B2B_KEYS` | ключі партнерів (Passport, Telegram) |
 | `OPENAI_API_KEY`, `REPLICATE_API_TOKEN`, `STABILITY_API_KEY`, … | рушії студії |
@@ -61,7 +62,7 @@ bash deploy/series-lab/upload.sh            # root@2.28.7.128 за замовч�
 1. розпаковує код у **`/opt/series-lab`** — не в `/opt/w3ir`, бо деплой Промт робить `git clean -fd` і стер би все нове;
 2. збирає образ `series-lab:<коміт>`;
 3. робить **узгоджену** копію бази через SQLite online backup (не `cp`, бо WAL) + `genesis_mints.json`, `vault_catalog.json`, `public/` → `/opt/series-lab/data-next`;
-4. пише `.env.series-lab` = `.env` Промт + перевизначення для staging: без звіряння Helio й вебхука, без Telegram, без сейфу, SIWE-домен `next.w3ir.io`, **вхід лише для `ADMIN_WALLETS`** (або `SERIES_ALLOWED_WALLETS=…`), межа витрат $5/день — бо копія кредитів витрачає справжні API-ключі;
+4. пише `.env.series-lab` = `.env` Промт + перевизначення для staging: без звіряння Helio й вебхука, без прямої оплати USDC (`SOLANA_PAY_RECIPIENT` порожній), без Telegram, без сейфу, SIWE-домен `next.w3ir.io`, **вхід лише для `ADMIN_WALLETS`** (або `SERIES_ALLOWED_WALLETS=…`), межа витрат $5/день — бо копія кредитів витрачає справжні API-ключі;
 5. запускає контейнер `serieslab` у мережі `w3ir_default` (ліміт пам'яті 512 МБ);
 6. додає блок `next.w3ir.io` у Caddyfile Промт, перевіряє конфіг і перезавантажує Caddy; якщо перевірка не пройшла — повертає попередній Caddyfile;
 7. перевіряє `next` через Caddy і що `ai.w3ir.io` Промт відповідає як раніше.

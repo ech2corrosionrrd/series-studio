@@ -7,7 +7,7 @@
  */
 export default {
   uk: {
-    "acct.topup.tip": "Відкрити поповнення кредитів (Helio USDC), рефералку й історію балансу.",
+    "acct.topup.tip": "Відкрити поповнення кредитів (Helio або USDC напряму в Solana), рефералку й історію балансу.",
     "acct.logout.tip": "Вийти з сесії цього гаманця. Дані серії лишаються на сервері під цим гаманцем.",
     "home.start.tip": "Зберегти паспорт серії й одразу перейти до завантаження основи.",
     "home.save.tip": "Записати назву, ID, кількість, seed і двигун у файл presets/<ID>.json. Безкоштовно.",
@@ -121,7 +121,7 @@ export default {
     "ver.makeCurrent.tip": "Зробити цю версію поточною для галереї й експорту.",
     "ver.drop.tip": "Прибрати цю версію (файл піде в Кошик).",
     "holder.check.tip": "Перевірити Genesis NFT на Solana-гаманці й отримати разовий бонус кредитів.",
-    "acct.buy.tip": "Купити кредити: оберіть пакет і оплатіть криптою через Helio. Кредити зарахуються автоматично.",
+    "acct.buy.tip": "Купити кредити: оберіть пакет і оплатіть криптою (Helio або USDC напряму в Solana). Кредити зарахуються автоматично.",
     "topup.buy.tip": "Оплатити пакет кредитів криптою через Helio. Платіть з гаманця, з яким увійшли — кредити зарахуються самі.",
     "topup.sync.tip": "Опитати Helio API і зарахувати оплату на цей гаманець (потрібно після оплати на localhost).",
     "ref.copy.tip": "Скопіювати реферальне посилання в буфер.",
@@ -170,7 +170,7 @@ export default {
     "ctrl.help-search.tip": "Пошук по довідці: етапи, терміни, FAQ.",
   },
   en: {
-    "acct.topup.tip": "Open credit top-up (Helio USDC), referral link and balance history.",
+    "acct.topup.tip": "Open credit top-up (Helio or USDC directly on Solana), referral link and balance history.",
     "acct.logout.tip": "Sign out of the wallet session. Series data stays on the server under this wallet.",
     "home.start.tip": "Save the series passport and go straight to uploading the base.",
     "home.save.tip": "Write name, ID, count, seed and engine to presets/<ID>.json. Free.",
@@ -284,7 +284,7 @@ export default {
     "ver.makeCurrent.tip": "Make this version current for gallery and export.",
     "ver.drop.tip": "Drop this version (file goes to Trash).",
     "holder.check.tip": "Check for a Genesis NFT on the Solana wallet and claim a one-time credit bonus.",
-    "acct.buy.tip": "Buy credits: pick a pack and pay with crypto via Helio. Credits are added automatically.",
+    "acct.buy.tip": "Buy credits: pick a pack and pay with crypto (Helio or USDC directly on Solana). Credits are added automatically.",
     "topup.buy.tip": "Buy a credit pack with crypto via Helio. Pay from the wallet you signed in with — credits arrive on their own.",
     "topup.sync.tip": "Poll Helio and credit this wallet (needed after payment on localhost).",
     "ref.copy.tip": "Copy the referral link to the clipboard.",

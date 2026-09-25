@@ -117,10 +117,13 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 
 | Method | Path | Опис |
 |--------|------|------|
-| GET | `/api/credits` | баланс, пакети, історія (сесія) |
-| POST | `/api/credits/sync` | звірити Helio після оплати |
+| GET | `/api/me` | акаунт сесії: `wallet`, `balance`, `admin`, `packages` (з посиланнями Helio), `referral`, `localGpu`, `creditCosts`, `solPay` (`enabled`, `recipient`, `mint`; `testPack` лише адміну з `SOLANA_PAY_TEST_PACK=1`) |
+| GET | `/api/credits/history` | останні операції кредитів (сесія) |
+| POST | `/api/credits/sync` | звірити Helio після оплати (ліміт `CREDITS_SYNC_RATE_LIMIT`, типово 10/хв) |
 | POST | `/api/credits/sol/order` | `{package}` → замовлення прямої оплати USDC (Solana): точна сума з унікальними мікро-центами, адреса, `solana:` URI |
 | POST | `/api/credits/sol/check` | знайти переказ у блокчейні й зарахувати кредити → `{credited, balance, orders, error}` |
+| GET | `/api/holder` | право на бонус холдера Genesis (Solana-гаманець) |
+| POST | `/api/holder/claim` | отримати разовий бонус холдера |
 | GET | `/api/local-gpu` | політика Local GPU (доступність loopback / `SERIES_LOCAL_GPU`) |
 | GET | `/api/engines` | рушії + `creditCosts` (кредити за кадр) |
 | GET | `/api/admin/economy?days=` | `7` \| `30` \| `all` — маржа, накладні, сценарії (адмін) |
