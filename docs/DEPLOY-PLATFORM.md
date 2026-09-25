@@ -1,5 +1,9 @@
 # Розгортання платформи: Series Lab замість Промт (Ф3–Ф5)
 
+> **Команда власника.** Ядро 1.5.0 закрито в репо; кроки нижче **не** запускати
+> автоматично. Staging / Ф4 — лише коли власник відкриє хостинг
+> ([HOSTING.md](./HOSTING.md)).
+
 Інструкція до фаз Ф3–Ф5 з [MIGRATION.md](./MIGRATION.md). Код Ф1–Ф2 готовий і протестований; ці кроки виконуються **на проді Hetzner** (`2.28.7.128`, `/opt/w3ir`) і потребують вашого рішення на кожному етапі.
 
 ## Що вже перевірено локально
@@ -23,7 +27,22 @@
 | `SOLANA_RPC_URL`/`ALCHEMY_API_KEY`, `GENESIS_*`, `VAULT_*`, `HELIO_MINT_PAYLINK_ID` | холдери Genesis і Дроп #2 |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | сповіщення оператору |
 
-Додатково для Series Lab: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (запобіжник на весь сервер), `LANDING_HOSTS`, `PAY_SUBDOMAIN_HOSTS`, `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби).
+Додатково для Series Lab: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (запобіжник на весь сервер), `SERIES_ALLOWED_HOSTS` (обов'язково, бо образ слухає `0.0.0.0` і без списку не перевіряє `Host`), `LANDING_HOSTS`, `PAY_SUBDOMAIN_HOSTS`, `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби).
+
+Staging (`phase3.sh`) пише `SERIES_ALLOWED_HOSTS=next.w3ir.io`. Після Ф4 список має містити `w3ir.io,www.w3ir.io,ai.w3ir.io,gen.w3ir.io,pay.w3ir.io,next.w3ir.io` — те саме за замовчуванням у `deploy/series-lab/docker-compose.yml`.
+
+## Бекап леджера
+
+`deploy/series-lab/backup.sh` знімає узгоджену копію `users.db` (SQLite online backup, потім `PRAGMA integrity_check`): бойову базу Промт, поки контейнер `nft-builder-api` живий, і копію Series Lab, поки живий `serieslab`. Поруч кладе `genesis_mints.json` і `vault_catalog.json`. Ротація: 7 щоденних і 4 щотижневі в `/opt/series-lab/backups/`. `phase3.sh` ставить cron на 03:15 UTC.
+
+Ці копії лежать на тому ж диску, що й жива база. Вивантаження назовні вмикається в `/opt/series-lab/backup.env`:
+
+```bash
+BACKUP_RCLONE_REMOTE=offsite:nft-builder-backups
+BACKUP_PASSPHRASE=...
+```
+
+Без парольної фрази скрипт відмовляється відправляти архів. Відновлення копії: `openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_PASSPHRASE -in users-YYYYMMDD-HHMM.tar.gz.enc | tar -xz`, потім відкрити `users.db` і перевірити `PRAGMA integrity_check`.
 
 ## Ф3 · Паралельний запуск на `next.w3ir.io`
 
@@ -47,7 +66,7 @@ bash deploy/series-lab/upload.sh            # root@2.28.7.128 за замовч�
 
 Повторний запуск оновлює образ і конфіг; дані перекопіюються лише з `REFRESH_DATA=1`. Відкат: `ssh root@2.28.7.128 bash /tmp/series-lab-phase3-rollback.sh` (зупиняє контейнер і повертає Caddyfile; `PURGE=1` — ще й видаляє `/opt/series-lab`).
 
-⚠️ Блок Caddy живе в tracked-файлі Промт: наступний деплой Промт його скине. Щоб зберігся — злити в репозиторій Промт той самий блок (`deploy/series-lab/Caddyfile.parallel`).
+Блок Caddy `next.w3ir.io` є в `main` Промт (`2f64492`), тож деплой Промт його більше не стирає. Той самий текст лежить у `deploy/series-lab/Caddyfile.parallel`.
 
 Після скрипту — DNS: запис `next` → `2.28.7.128` (proxied) у зоні `w3ir.io`. Сертифікат Cloudflare Origin на сервері вже покриває `*.w3ir.io`.
 
@@ -63,7 +82,7 @@ node scripts/contract-check.mjs --old https://gen.w3ir.io --new https://next.w3i
 
 1. Попередити користувачів з балансом (див. MIGRATION.md §5).
 2. Зупинити запис у Промт: `docker compose stop streamlit api`.
-3. Фінальна копія: `cp -a data data.backup-$(date +%F-%H%M)`.
+3. Фінальна копія леджера: `bash /opt/series-lab/backup.sh` (online backup, не `cp` поверх WAL).
 4. Series Lab на бойові дані: `SERIES_LAB_DATA=data`, `docker compose up -d serieslab`.
 5. Caddyfile: блоки хостів замінити на `deploy/series-lab/Caddyfile.switch`, `caddy reload`.
 6. Перевірити: `/health` на `pay.`; вхід на `ai.`; тестова оплата Helio; Passport (`/gremlin/activity`); Telegram (`/api/v1/tma/contract`); одна з `/c/<slug>`; воронка (`funnel_events` пишеться).

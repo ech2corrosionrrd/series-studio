@@ -1,0 +1,28 @@
+# Runs the suite on every push and pull request.
+# The site deploy workflow does not run tests; the credit ledger lives in this repo.
+name: Test
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm test

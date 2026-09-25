@@ -96,7 +96,13 @@ export function sessionWallet(req) {
   }
 }
 
-const secureCookies = () => process.env.AUTH_COOKIE_INSECURE !== "1";
+/** Secure cookies on a public host. Loopback is plain http, so the session cookie stays usable there. */
+function secureCookies() {
+  if (process.env.AUTH_COOKIE_INSECURE === "1") return false;
+  if (process.env.AUTH_COOKIE_INSECURE === "0") return true;
+  const h = String(process.env.HOST || "127.0.0.1").toLowerCase();
+  return !(h === "127.0.0.1" || h === "localhost" || h === "::1" || h === "[::1]");
+}
 
 function requireKey(req, header, expected, missingStatus = 503, missingDetail = "generator not configured") {
   if (!expected) throw new HttpError(missingStatus, missingDetail);

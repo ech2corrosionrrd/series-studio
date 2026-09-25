@@ -6,8 +6,8 @@
 | Репо / папка | `gremlin-nft` | `C:\Gremlins\series-studio` (`series-lab`) |
 | Бренд | Gremlin Family / GFAM | Series Lab by W3IR · `studio.w3ir.io` |
 | Base | Father/Mother канон GFAM | **Базова картинка(и) серії** (будь-який реф) |
-| Логін майстерні | ключ `gnft_…` | Не потрібен (localhost) |
-| Ончейн / ME | Так, у плані мінту GFAM | ZIP-експорт готовий; mint — свідомий Release / зовні |
-| Білінг | — | Лишається в Промт / ai.w3ir.io |
+| Логін майстерні | ключ `gnft_…` | Повний вхід гаманцем, сесія `w3ir_session`. Localhost — лише де стоїть сервер розробки |
+| Ончейн / ME | Так, у плані мінту GFAM | ZIP + Release Hub (посилання на лаунчпад); мінт/клейм — зовні, не в Lab |
+| Білінг | — | Леджер кредитів працює разом із входом (`SERIES_MODE=public`). Хостинг — план розміщення в [HOSTING.md](./HOSTING.md) |
 
 Series Lab **надихається** gremlin-nft і Промт, але **не** є гілкою мінту health.w3ir.io і не тягне GFAM lore.

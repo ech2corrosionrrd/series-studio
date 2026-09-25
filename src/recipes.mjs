@@ -10,6 +10,7 @@ import {
   option,
   loadTraitsFromPreset,
 } from "./traits.mjs";
+import { lineIdsOf, quotasOf, supplyWaves } from "./waves.mjs";
 
 const MAX_ATTEMPTS = 100_000;
 
@@ -105,35 +106,12 @@ function styleLockBits(preset) {
 }
 
 function resolveLines(preset) {
-  if (preset.lines && typeof preset.lines === "object" && Object.keys(preset.lines).length > 0) {
-    return Object.keys(preset.lines);
-  }
-  return ["default"];
+  return lineIdsOf(preset);
 }
 
-/**
- * Quotas per line: use line.quota if set; otherwise equal split of preset.size.
- * Remainder goes to the first lines in key order.
- */
+/** Quotas per line: explicit quotas, or an equal split of preset.size. */
 function lineQuotas(preset, lineIds) {
-  const size = preset.size;
-  const explicit = lineIds.map((id) => preset.lines?.[id]?.quota);
-  if (explicit.every((q) => typeof q === "number" && q >= 0)) {
-    const sum = explicit.reduce((a, b) => a + b, 0);
-    if (sum !== size) {
-      throw new Error(`line quotas sum to ${sum}, size is ${size}`);
-    }
-    return Object.fromEntries(lineIds.map((id, i) => [id, explicit[i]]));
-  }
-  const n = lineIds.length;
-  const base = Math.floor(size / n);
-  let rem = size - base * n;
-  const quotas = {};
-  for (const id of lineIds) {
-    quotas[id] = base + (rem > 0 ? 1 : 0);
-    if (rem > 0) rem--;
-  }
-  return quotas;
+  return quotasOf(preset, lineIds);
 }
 
 function rollTraits(rng, items, line, wave = Infinity) {
@@ -157,23 +135,11 @@ function recipeSeed(presetSeed, index) {
   return hashSeed(`${presetSeed}:${index}`);
 }
 
-/**
- * Build unique recipes for the whole series.
- * @param {object} preset
- * @param {object} [overrides] — { items?: { [index]: { traits?, note? } } }
- */
-export function buildRecipes(preset, overrides = {}) {
-  const items = loadTraitsFromPreset(preset);
-  if (!items.length) throw new Error("preset.traits.items is empty");
+function rollChunk(rng, items, lineIds, quotas, seen) {
   const traitKeys = items.map((t) => t.key);
-  const lineIds = resolveLines(preset);
-  const quotas = lineQuotas(preset, lineIds);
-  const rng = makeRng(preset.seed);
-  const seen = new Set();
   const regular = [];
-
   for (const line of lineIds) {
-    const need = quotas[line];
+    const need = quotas[line] || 0;
     let made = 0;
     let attempts = 0;
     while (made < need) {
@@ -190,29 +156,62 @@ export function buildRecipes(preset, overrides = {}) {
       made++;
     }
   }
+  return rng.shuffle(regular);
+}
 
-  const shuffled = rng.shuffle(regular);
-  if (shuffled.length !== preset.size) {
-    throw new Error(`built ${shuffled.length} recipes, size is ${preset.size}`);
+/**
+ * Build unique recipes for the whole series.
+ * With preset.waves, each wave is rolled from its own seed and numbered
+ * after the previous waves. Without waves, one roll from preset.seed.
+ * @param {object} preset
+ * @param {object} [overrides] — { items?: { [index]: { traits?, note? } } }
+ */
+export function buildRecipes(preset, overrides = {}) {
+  const items = loadTraitsFromPreset(preset);
+  if (!items.length) throw new Error("preset.traits.items is empty");
+  const traitKeys = items.map((t) => t.key);
+  const lineIds = resolveLines(preset);
+  const supply = supplyWaves(preset);
+  const seen = new Set();
+  const chunks = supply
+    ? supply.map((wave) => ({
+        seed: wave.seed,
+        wave: wave.n,
+        items: rollChunk(makeRng(wave.seed), items, lineIds, wave.lines, seen),
+      }))
+    : [{
+        seed: preset.seed,
+        wave: null,
+        items: rollChunk(makeRng(preset.seed), items, lineIds, lineQuotas(preset, lineIds), seen),
+      }];
+
+  const out = [];
+  let index = 0;
+  for (const chunk of chunks) {
+    for (const it of chunk.items) {
+      const edit = overrides.items?.[index] ?? overrides.items?.[String(index)];
+      const traits = edit?.traits ? { ...it.traits, ...edit.traits } : it.traits;
+      const note = edit?.note ?? "";
+      const row = {
+        index,
+        edition: index + 1,
+        line: it.line,
+        traits,
+        dna: dna(it.line, traits, traitKeys),
+        prompt: buildPrompt(it.line, traits, preset, note),
+        seed: recipeSeed(chunk.seed, index),
+        note,
+        edited: Boolean(edit),
+      };
+      if (chunk.wave != null) row.wave = chunk.wave;
+      out.push(row);
+      index++;
+    }
   }
-
-  return shuffled.map((it, index) => {
-    const edit = overrides.items?.[index] ?? overrides.items?.[String(index)];
-    const traits = edit?.traits ? { ...it.traits, ...edit.traits } : it.traits;
-    const note = edit?.note ?? "";
-    const key = dna(it.line, traits, traitKeys);
-    return {
-      index,
-      edition: index + 1,
-      line: it.line,
-      traits,
-      dna: key,
-      prompt: buildPrompt(it.line, traits, preset, note),
-      seed: recipeSeed(preset.seed, index),
-      note,
-      edited: Boolean(edit),
-    };
-  });
+  if (out.length !== preset.size) {
+    throw new Error(`built ${out.length} recipes, size is ${preset.size}`);
+  }
+  return out;
 }
 
 /**
@@ -227,4 +226,52 @@ export function duplicates(recipes, traitKeys) {
     by.set(k, [...(by.get(k) ?? []), r.edition]);
   }
   return [...by.values()].filter((v) => v.length > 1);
+}
+
+/** Groups of editions that already share the stored DNA string. */
+export function duplicateGroups(recipes) {
+  const by = new Map();
+  for (const r of recipes || []) {
+    if (!r?.dna) continue;
+    by.set(r.dna, [...(by.get(r.dna) ?? []), r.edition]);
+  }
+  return [...by.values()].filter((v) => v.length > 1);
+}
+
+/** Prompt and DNA changes between two archives, matched by edition number. */
+export function diffArchives(a, b) {
+  const mapA = new Map((a?.recipes || []).map((r) => [r.edition, r]));
+  const mapB = new Map((b?.recipes || []).map((r) => [r.edition, r]));
+  const editions = [...new Set([...mapA.keys(), ...mapB.keys()])].sort((x, y) => x - y);
+  const changed = [];
+  const onlyA = [];
+  const onlyB = [];
+  let same = 0;
+  for (const edition of editions) {
+    const ra = mapA.get(edition);
+    const rb = mapB.get(edition);
+    if (!ra) { onlyB.push(edition); continue; }
+    if (!rb) { onlyA.push(edition); continue; }
+    if (ra.dna === rb.dna && ra.prompt === rb.prompt) { same += 1; continue; }
+    changed.push({
+      edition,
+      dnaA: ra.dna,
+      dnaB: rb.dna,
+      promptA: ra.prompt,
+      promptB: rb.prompt,
+    });
+  }
+  return { same, changed, onlyA, onlyB };
+}
+
+/** Same traits and prompt structure, new id and seed. Waves and point edits start clean. */
+export function spinoffPreset(preset, { suffix } = {}) {
+  const stamp = suffix || new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const next = structuredClone(preset);
+  next.id = `${preset.id}-spin-${stamp}`.replace(/[^a-z0-9-]+/gi, "-").replace(/-+/g, "-").slice(0, 80);
+  next.name = `${preset.name || preset.id} spin`;
+  next.seed = `${preset.seed}-spin-${stamp}`;
+  next.waves = null;
+  delete next.overrides;
+  return next;
 }

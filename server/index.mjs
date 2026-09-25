@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /**
- * Series Lab — local Studio UI (this machine only).
- * Default: http://127.0.0.1:5344/studio/
- * Lab APIs + Studio stubs. No paid image calls.
+ * Series Lab Studio.
+ * Development placement: http://127.0.0.1:5344/studio/ (HOST).
+ * The product itself is always the full platform: wallet sign-in, per-wallet
+ * data, credits. SERIES_MODE=local is an explicit file-folder workshop and
+ * may listen only on loopback.
  */
 import { createServer } from "node:http";
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -20,8 +22,14 @@ import { fileURLToPath } from "node:url";
 import {
   buildRecipes,
   buildPrompt,
+  appendSupplyWave,
+  describeSupply,
+  findDupes,
   dna,
   duplicates,
+  duplicateGroups,
+  diffArchives,
+  spinoffPreset,
   loadTraitsFromPreset,
   optionsFor,
   validatePreset,
@@ -84,10 +92,12 @@ const ROOT = resolve(__dirname, "..");
 const UI = join(__dirname, "ui");
 const PUBLIC = join(__dirname, "public");
 const TEMPLATES = join(ROOT, "templates");
-// Data locations are resolved per request: in local mode they are the project
-// folders; in public mode (SERIES_MODE=public) every signed-in wallet gets its
-// own tree under <SERIES_DATA_DIR>/users/<wallet>/ (see withUserPaths).
-const PUBLIC_MODE = process.env.SERIES_MODE === "public";
+const KEYS_PATH = loadKeys();
+const EXTRA_KEYS = loadKeysExtra([join(ROOT, ".env")]);
+if (KEYS_PATH) console.log(`Keys loaded from ${KEYS_PATH} (values never sent to browser)`);
+else console.log("Keys: no .env found (set SERIES_KEYS_FILE or place .env in project root)");
+// Full product unless SERIES_MODE=local. 127.0.0.1 is where the dev server sits, not a reduced mode.
+const PUBLIC_MODE = (process.env.SERIES_MODE || "public") === "public";
 const PLATFORM_ON = PUBLIC_MODE || process.env.SERIES_PLATFORM === "1";
 const DATA_DIR = resolve(process.env.SERIES_DATA_DIR || join(ROOT, "data"));
 const LOCAL_PATHS = {
@@ -110,16 +120,11 @@ const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number(process.env.PORT || 5344);
 const OPEN = process.argv.includes("--open");
 const ALLOWED_HOSTS = allowedHostnames(HOST, process.env.SERIES_ALLOWED_HOSTS);
-
-const KEYS_PATH = loadKeys();
-const EXTRA_KEYS = loadKeysExtra([join(ROOT, ".env")]);
-if (KEYS_PATH) console.log(`Keys loaded from ${KEYS_PATH} (values never sent to browser)`);
-else console.log("Keys: no .env found (set SERIES_KEYS_FILE or place .env in project root)");
 if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 
 
 import { testEngineConnection } from "../src/connectors.mjs";
-import { allowedHostnames, checkApiRequest } from "./guard.mjs";
+import { allowedHostnames, checkApiRequest, openAccessError } from "./guard.mjs";
 import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
 import {
   PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck, freemiumRecord, getBalance,
@@ -133,7 +138,7 @@ import { publishCollection } from "../src/platform/site.mjs";
 import { writeJsonAtomic } from "../src/fs-safe.mjs";
 import { addVersion, dropVersion, listVersions, setCurrent, versionCounts } from "../src/versions.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
-import { appendRenderLog, capError, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
+import { appendRenderLog, capError, engineStatsToday, recentEngineErrors, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
 import { failureBreaker } from "../src/pool.mjs";
 
 const RESOURCE_KEYS = [
@@ -463,7 +468,7 @@ function loadTemplateById(id) {
 }
 
 function makeArchive(preset) {
-  const recipes = buildRecipes(preset);
+  const recipes = buildRecipes(preset, { items: preset.overrides || {} });
   const traitKeys = loadTraitsFromPreset(preset).map((t) => t.key);
   const dupes = duplicates(recipes, traitKeys);
   const archive = {
@@ -1040,11 +1045,12 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === "/api/me" && req.method === "GET") {
-    if (!PUBLIC_MODE) return send(res, 200, { mode: "local" });
+    if (!PUBLIC_MODE) return send(res, 200, { mode: "local", admin: true });
     const wallet = currentWallet();
     const code = referralCodeFor(wallet);
     return send(res, 200, {
       mode: "public",
+      admin: isAdmin(wallet),
       wallet,
       balance: getBalance(wallet),
       packages: Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p, url: helioPaylinkUrl(id) })),
@@ -1227,6 +1233,7 @@ async function handleApi(req, res, url) {
         seed: r.seed,
         note: r.note ?? "",
         edited: Boolean(r.edited),
+        ...(r.wave != null ? { wave: r.wave } : {}),
       })),
     });
   }
@@ -1343,7 +1350,43 @@ async function handleApi(req, res, url) {
     }
 
     writeJsonAtomic(archivePath, archive);
+    try {
+      const loaded = loadPresetForArchive(archive);
+      const overrides = { ...(loaded.preset.overrides || {}) };
+      const key = String(idx);
+      if (!recipe.edited) delete overrides[key];
+      else overrides[key] = { traits: recipe.traits, note: recipe.note || "" };
+      loaded.preset.overrides = overrides;
+      writeJsonAtomic(loaded.path, loaded.preset);
+    } catch {
+      /* the archive still holds the edit if the preset file is missing */
+    }
     return send(res, 200, { ok: true, file: archiveFile, recipe: enrichRecipe(recipe) });
+  }
+
+  if (pathname === "/api/archive/diff" && req.method === "POST") {
+    const body = await readBody(req);
+    const left = loadArchiveFile(body.a || body.left || "");
+    const right = loadArchiveFile(body.b || body.right || "");
+    return send(res, 200, { a: left.file, b: right.file, ...diffArchives(left.archive, right.archive) });
+  }
+
+  if (pathname === "/api/preset/spinoff" && req.method === "POST") {
+    const body = await readBody(req);
+    const { preset } = loadPresetByFile(body.file || "");
+    const checked = checkPreset(preset);
+    if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
+    let next = spinoffPreset(preset, body.suffix ? { suffix: String(body.suffix) } : {});
+    let n = 2;
+    while (existsSync(join(P().presets, `${next.id}.json`))) {
+      next = spinoffPreset(preset, { suffix: `${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${n}` });
+      n += 1;
+      if (n > 20) return send(res, 409, { error: "could not pick a free spin-off id" });
+    }
+    mkdirSync(P().presets, { recursive: true });
+    const file = `${next.id}.json`;
+    writeJsonAtomic(join(P().presets, file), next);
+    return send(res, 200, { ok: true, file, preset: next });
   }
 
   if (pathname === "/api/archive/list" && req.method === "GET") {
@@ -1656,6 +1699,14 @@ async function handleApi(req, res, url) {
       file = list[0].file;
     }
     const { archive, file: archiveFile } = loadArchiveFile(file);
+    const dnaDupes = duplicateGroups(archive.recipes);
+    if (dnaDupes.length) {
+      return send(res, 400, {
+        error: `Duplicate DNA before render: ${dnaDupes.map((g) => g.join("+")).join(", ")}`,
+        code: "dna",
+        duplicates: dnaDupes,
+      });
+    }
     const strength = clampStrength(body.strength);
     const engineWanted = body.engine || "kontext";
     const engineName = pickAvailableEngine(engineWanted, process.env, ENGINES);
@@ -1839,7 +1890,37 @@ async function handleApi(req, res, url) {
       capUsd: spendCap(process.env.SERIES_SPEND_CAP_USD),
       spentTodayUsd: spentToday(renderLog()),
       byEngine: spendByEngineToday(renderLog()),
+      engines: engineStatsToday(renderLog()),
+      errors: recentEngineErrors(renderLog()),
     });
+  }
+
+  if (pathname === "/api/waves" && req.method === "GET") {
+    const { preset, file } = loadPresetByFile(url.searchParams.get("file") || "demo-series.json");
+    return send(res, 200, { file, size: preset.size, waves: describeSupply(preset) });
+  }
+
+  if (pathname === "/api/waves/append" && req.method === "POST") {
+    const body = await readBody(req);
+    const loaded = loadPresetByFile(body.file || "");
+    const preset = appendSupplyWave(loaded.preset, {
+      size: body.size,
+      seed: body.seed,
+      name: body.name,
+    });
+    const checked = checkPreset(preset);
+    if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
+    writeJsonAtomic(loaded.path, preset);
+    return send(res, 200, { ok: true, file: loaded.file, size: preset.size, waves: describeSupply(preset), preset });
+  }
+
+  if (pathname === "/api/gallery/dupes" && req.method === "POST") {
+    const body = await readBody(req);
+    const dirName = safeSetName(body.dir || "");
+    const dir = join(P().out, dirName);
+    if (!existsSync(dir)) return send(res, 404, { error: "set not found" });
+    const found = findDupes(dir, { maxDistance: body.maxDistance ?? 8 });
+    return send(res, 200, { dir: dirName, ...found });
   }
 
   if (pathname === "/api/sets" && req.method === "GET") {
@@ -2570,9 +2651,15 @@ try {
 
 if (PLATFORM_ON) startPlatformBackground();
 
+const openErr = openAccessError(HOST, PUBLIC_MODE);
+if (openErr) {
+  console.error(openErr);
+  process.exit(1);
+}
+
 server.listen(PORT, HOST, () => {
   const href = `http://${HOST}:${PORT}/studio/`;
-  console.log(`Series Lab Studio (local)  ${href}`);
+  console.log(`Series Lab Studio (${PUBLIC_MODE ? "public" : "local"})  ${href}`);
   console.log(`Also: http://${HOST}:${PORT}/`);
   console.log("Lab + Studio: keys from Prompt .env; generate is live. Ctrl+C to stop.");
   if (OPEN) {

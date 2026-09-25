@@ -4,6 +4,7 @@ out/
 .DS_Store
 .env
 .env.*
+data/
 !.env.example
 *.archive.json
 !test/fixtures/**
