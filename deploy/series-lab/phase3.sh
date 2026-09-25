@@ -7,7 +7,7 @@
 #      runs `git clean -fd` there and would delete anything new);
 #   2. builds the image series-lab:<rev>;
 #   3. makes a CONSISTENT copy of Промт data (SQLite online backup, not cp) → data-next;
-#   4. writes .env.series-lab = Промт .env + staging overrides (no Helio polling,
+#   4. writes .env.series-lab = Промт .env + staging overrides (no payments,
 #      no Telegram, invite-only, $5/day cap, SIWE domain next.w3ir.io);
 #   5. starts the container on Промт's docker network;
 #   6. adds a `next.w3ir.io` block to Caddy, validates, reloads (restores on failure).
@@ -47,7 +47,8 @@ else
 fi
 
 echo "==> 4. environment"
-OVERRIDES="HELIO_API_KEY HELIO_API_SECRET HELIO_WEBHOOK_SECRET HELIO_MINT_PAYLINK_ID SOLANA_PAY_RECIPIENT SOLANA_PAY_TEST_PACK TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID VAULT_WALLET_ADDRESS AUTH_DOMAIN AUTH_URI SERIES_SPEND_CAP_USD SERIES_ALLOWED_WALLETS LANDING_HOSTS PAY_SUBDOMAIN_HOSTS APP_ENV"
+# HELIO_* are Промт-only secrets that Lab never uses: listed so they are NOT copied into the Lab env file.
+OVERRIDES="HELIO_API_KEY HELIO_API_SECRET HELIO_WEBHOOK_SECRET HELIO_MINT_PAYLINK_ID HELIO_PAYLINK_START HELIO_PAYLINK_CREATOR HELIO_PAYLINK_PRO SOLANA_PAY_RECIPIENT SOLANA_PAY_TEST_PACK TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID VAULT_WALLET_ADDRESS AUTH_DOMAIN AUTH_URI SERIES_SPEND_CAP_USD SERIES_ALLOWED_WALLETS LANDING_HOSTS PAY_SUBDOMAIN_HOSTS APP_ENV"
 PATTERN=$(echo "$OVERRIDES" | sed 's/ /=|^/g')
 grep -vE "^(${PATTERN}=)" "$PROMT/.env" > "$BASE/.env.series-lab.tmp"
 ADMINS=$(grep -E '^ADMIN_WALLETS=' "$PROMT/.env" | cut -d= -f2- || true)
@@ -64,10 +65,6 @@ APP_ENV=production
 AUTH_DOMAIN=next.w3ir.io
 AUTH_URI=https://next.w3ir.io
 # no payments or operator notifications from the staging copy
-HELIO_API_KEY=
-HELIO_API_SECRET=
-HELIO_WEBHOOK_SECRET=
-HELIO_MINT_PAYLINK_ID=
 SOLANA_PAY_RECIPIENT=
 SOLANA_PAY_TEST_PACK=
 TELEGRAM_BOT_TOKEN=

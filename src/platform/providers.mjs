@@ -1,6 +1,6 @@
 /**
  * External provider status: key presence, optional live probe, Stability balance.
- * Port of Промт `services/provider_status.py` (Lab engines + Helio + RPC).
+ * Port of Промт `services/provider_status.py` (Lab engines + RPC).
  *
  * Direct balance via API key: Stability only. Others → dashboard URL (postpaid).
  */
@@ -29,7 +29,6 @@ export const PROVIDERS = [
   { id: "fal", name: "Fal.ai", env: "FAL_KEY", url: "https://fal.ai/dashboard/usage", purpose: "prov.purpose.fal", envAlt: "FAL_API_KEY" },
   { id: "runware", name: "Runware", env: "RUNWARE_API_KEY", url: "https://my.runware.ai/", purpose: "prov.purpose.runware" },
   { id: "pinata", name: "Pinata", env: "PINATA_JWT", url: "https://app.pinata.cloud", purpose: "prov.purpose.pinata" },
-  { id: "helio", name: "Helio", env: "HELIO_API_KEY", url: "https://app.hel.io", purpose: "prov.purpose.helio" },
   { id: "base", name: "Base RPC", env: "BASE_RPC_URL", url: "https://www.base.org", purpose: "prov.purpose.base_rpc", defaultConfigured: true },
   { id: "solana", name: "Solana RPC", env: "SOLANA_RPC_URL", url: "https://solana.com", purpose: "prov.purpose.solana_rpc", defaultConfigured: true },
 ];
@@ -142,7 +141,7 @@ export async function providerFloatStatus(fetchImpl = fetch) {
   return out;
 }
 
-/** Full health probe (call on button). Helio is presence-only. */
+/** Full health probe (call on button). */
 export async function keyHealth(fetchImpl = fetch) {
   const openai = envVal("OPENAI_API_KEY");
   const anthropic = envVal("ANTHROPIC_API_KEY");
@@ -197,8 +196,6 @@ export async function keyHealth(fetchImpl = fetch) {
     } else if (p.id === "pinata" && pinata) {
       row.checked = true;
       row.valid = await httpOk("https://api.pinata.cloud/data/testAuthentication", { Authorization: `Bearer ${pinata}` }, fetchImpl);
-    } else if (p.id === "helio") {
-      // intentional: no live probe against payment API
     } else if (p.id === "base") {
       row.checked = true;
       row.valid = await rpcOk(baseRpc, "eth_chainId", fetchImpl);

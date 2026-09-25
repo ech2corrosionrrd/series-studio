@@ -12,7 +12,7 @@
  *   3) .env in process.cwd()
  *   4) SERIES_DEFAULT_KEYS_FILE / SERIES_KEYS_FILE discovered from files already loaded
  *
- * Series Lab is self-contained: all keys, Helio paylinks, Telegram, AUTH_* live
+ * Series Lab is self-contained: all keys, payment settings, Telegram, AUTH_* live
  * in this project's .env. SERIES_PLATFORM_ENV is ignored (deprecated).
  * Never hardcode a machine-specific absolute path in source.
  */
@@ -68,7 +68,7 @@ export function loadKeys(path, env = process.env) {
 
   if (env.SERIES_PLATFORM_ENV && !env.SERIES_PLATFORM_ENV_SILENCE) {
     console.warn(
-      "[series-lab] SERIES_PLATFORM_ENV is ignored — put Helio/API/Telegram keys in this project's .env (self-contained).",
+      "[series-lab] SERIES_PLATFORM_ENV is ignored — put API/Telegram/payment settings in this project's .env (self-contained).",
     );
   }
 

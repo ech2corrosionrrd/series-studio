@@ -1,7 +1,7 @@
 /**
  * Public platform HTTP layer — the routes Промт's FastAPI serves today, with the
  * same paths, status codes and JSON shapes ({"detail": …} errors), so Passport,
- * the Telegram Mini-App gateway, Helio and existing links keep working unchanged
+ * the Telegram Mini-App gateway and existing links keep working unchanged
  * when w3ir.io / ai. / gen. / pay. are switched to Series Lab.
  *
  * `handlePlatform(req, res, url)` returns true when it answered the request.
@@ -9,8 +9,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { openDb } from "../src/platform/db.mjs";
 import { completeWalletSignIn, getBalance, normalizeWallet, recordReferral, resolveReferrer, welcomeOffer } from "../src/platform/billing.mjs";
-import { processHelioWebhookPayload, reconcilePayments, verifyHelioSignature, helioKeys } from "../src/platform/helio.mjs";
-import { claimNftFulfillment } from "../src/platform/billing.mjs";
 import { syncGenesisMints, walletGenesisCount } from "../src/platform/holders.mjs";
 import { engineStatus, generateImage, ENGINE_FLUX } from "../src/platform/imagegen.mjs";
 import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
@@ -24,14 +22,13 @@ import { checkPromptSafety } from "../src/platform/safety.mjs";
 import { NonceStore, SESSION_COOKIE, clearSessionCookie, issueSessionToken, readCookie, sessionCookie, SESSION_TTL_SECONDS, verifySessionToken } from "../src/platform/session.mjs";
 import { collectionImagePath, mediaType, renderCollectionHtml, renderLanding, renderLegalHtml, siteFile } from "../src/platform/site.mjs";
 import { walletActivity } from "../src/platform/stats.mjs";
-import { VaultError, loadCatalog, reconcileFulfillments, resolveMint, runFulfillment, vaultRpcUrl, vaultTokenMints } from "../src/platform/vault.mjs";
+import { loadCatalog, reconcileFulfillments, vaultRpcUrl, vaultTokenMints } from "../src/platform/vault.mjs";
 import { buildSiweMessage, buildSolanaMessage, isEvmWallet, isSolanaWallet, newNonce, normalizeAddr, verifyEvmSignature, verifySolanaSignature } from "../src/platform/wallet.mjs";
 
 const envInt = (k, d) => Number.parseInt(process.env[k] || "", 10) || d;
 const LIMITS = {
   nonce: () => envInt("AUTH_NONCE_RATE_LIMIT", 30),
   verify: () => envInt("AUTH_VERIFY_RATE_LIMIT", 20),
-  webhook: () => envInt("HELIO_WEBHOOK_RATE_LIMIT", 120),
   gremlinGenerate: () => envInt("GREMLIN_GENERATE_RATE_LIMIT", 10),
   gremlinHolder: () => envInt("GREMLIN_HOLDER_RATE_LIMIT", 60),
   launchpad: () => envInt("LAUNCHPAD_RATE_LIMIT", 30),
@@ -147,8 +144,8 @@ async function routes(req, res, url) {
   const method = req.method;
   const host = String(req.headers.host || "").split(":")[0].toLowerCase();
 
-  // pay.w3ir.io exposes only the webhook and health (Промт restrict_pay_subdomain).
-  if (hostSet("PAY_SUBDOMAIN_HOSTS", "pay.w3ir.io").has(host) && !["/health", "/webhooks/helio"].includes(path)) {
+  // pay.w3ir.io exposes only health (Промт restrict_pay_subdomain).
+  if (hostSet("PAY_SUBDOMAIN_HOSTS", "pay.w3ir.io").has(host) && path !== "/health") {
     send(res, 404, "Not Found", "text/plain");
     return true;
   }
@@ -271,35 +268,6 @@ async function routes(req, res, url) {
 
   if (path === "/auth/logout" && method === "POST") {
     send(res, 200, { ok: true }, "application/json", { "Set-Cookie": clearSessionCookie(secureCookies()) });
-    return true;
-  }
-
-  if (path === "/webhooks/helio" && method === "POST") {
-    rateLimit(req, "helio_webhook", LIMITS.webhook());
-    const body = await readRaw(req, 1024 * 1024);
-    let valid;
-    try {
-      valid = verifyHelioSignature(body, req.headers["x-helio-signature"] || req.headers["x-signature"]);
-    } catch (e) {
-      throw new HttpError(e.status || 500, e.message);
-    }
-    if (!valid) throw new HttpError(401, "Invalid webhook signature");
-    let payload;
-    try {
-      payload = JSON.parse(body.toString("utf8"));
-    } catch (e) {
-      throw new HttpError(400, `Invalid JSON: ${e.message}`);
-    }
-    if (payload && typeof payload === "object" && payload.data && typeof payload.data === "object" && !Array.isArray(payload.data)) payload = payload.data;
-    const paylinkId = String(payload?.paylinkId || payload?.paylink || payload?.meta?.paylinkId || "");
-    const mintPaylink = process.env.HELIO_MINT_PAYLINK_ID;
-    if (mintPaylink && paylinkId === mintPaylink) {
-      send(res, 200, await vaultTransferFromWebhook(payload));
-      return true;
-    }
-    const r = processHelioWebhookPayload(payload && typeof payload === "object" ? payload : {}, { notify: notifyOperator });
-    console.log(`Helio webhook: credited=${r.credited} — ${r.message}`);
-    send(res, 200, { ok: true, credited: r.credited, message: r.message });
     return true;
   }
 
@@ -461,35 +429,6 @@ async function routes(req, res, url) {
   return false;
 }
 
-async function vaultTransferFromWebhook(payload) {
-  const customer = payload?.meta?.customerWallet;
-  if (!customer) return { ok: false, error: "missing customerWallet" };
-  if (!isSolanaWallet(customer)) return { ok: false, error: "invalid customerWallet" };
-  const txId = String(payload.id || payload.transactionId || payload.transaction || payload.meta?.id || "").trim();
-  if (!txId) return { ok: false, error: "missing transaction id" };
-  const selected = payload?.meta?.selectedIndex;
-  if (selected == null) return { ok: false, error: "missing selectedIndex" };
-  const idx = Number.parseInt(selected, 10);
-  if (!Number.isInteger(idx) || String(idx) !== String(selected).trim()) return { ok: false, error: "invalid selectedIndex parameter" };
-  let mint;
-  try {
-    mint = resolveMint(loadCatalog(), idx);
-    const vault = String(process.env.VAULT_WALLET_ADDRESS || "").trim();
-    if (!vault) throw new VaultError("VAULT_WALLET_ADDRESS is not configured");
-    if (!(await vaultTokenMints(vaultRpcUrl(), vault)).has(mint)) throw new VaultError(`mint ${mint} (index ${idx}) is not held by the vault`);
-  } catch (e) {
-    console.error(`Helio NFT transfer REJECTED (index ${selected}): ${e.message}`);
-    return { ok: false, error: "vault item unavailable" };
-  }
-  try {
-    if (!claimNftFulfillment(txId, customer, "transfer", mint)) return { ok: true, message: "already processed" };
-    runFulfillment(txId, customer, "transfer", mint).catch(() => {});
-    return { ok: true, message: `Transfer task queued for index ${idx}` };
-  } catch {
-    return { ok: false, error: "transfer could not be queued" };
-  }
-}
-
 /** Handles platform routes. true = answered. Errors are rendered as {"detail"}. */
 export async function handlePlatform(req, res, url) {
   try {
@@ -506,7 +445,7 @@ export async function handlePlatform(req, res, url) {
   }
 }
 
-/** Background loops (Helio reconcile, holder sync, fulfillment retry) — as in Промт lifespan. */
+/** Background loops (Solana payment check, holder sync, fulfillment retry). */
 export function startPlatformBackground({ log = console } = {}) {
   const timers = [];
   const every = (seconds, fn, delay = 0) => {
@@ -514,13 +453,6 @@ export function startPlatformBackground({ log = console } = {}) {
     const run = () => fn().catch((e) => log.error?.(`[platform] ${e.message}`));
     timers.push(setTimeout(function tick() { run(); timers.push(setTimeout(tick, seconds * 1000)); }, delay * 1000));
   };
-  if (helioKeys()) {
-    every(envInt("HELIO_RECONCILE_INTERVAL_SECONDS", 300), async () => {
-      const r = await reconcilePayments({ notify: notifyOperator });
-      if (r.newTx) log.log?.(`Helio reconcile: +${r.newTx} tx, +${r.credited} credits`);
-      if (r.error) log.warn?.(`Helio reconcile: ${r.error}`);
-    });
-  }
   if (solPayEnabled()) {
     every(envInt("SOLANA_PAY_RECONCILE_INTERVAL_SECONDS", 45), async () => {
       const r = await checkSolOrders({ notify: notifyOperator });

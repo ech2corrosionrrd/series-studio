@@ -6,7 +6,7 @@
 #   w3ir.io / www   → landing (LANDING_HOSTS) + /c/<slug>, /legal, /og-card.png …
 #   ai.w3ir.io      → studio (sign-in via /login, /auth/*)
 #   gen.w3ir.io     → partner API (/gremlin/*, /api/v1/*, /api/vault/status)
-#   pay.w3ir.io     → only /webhooks/helio and /health (PAY_SUBDOMAIN_HOSTS)
+#   pay.w3ir.io     → only /health (PAY_SUBDOMAIN_HOSTS)
 
 http://w3ir.io, http://www.w3ir.io, http://ai.w3ir.io, http://gen.w3ir.io, http://pay.w3ir.io {
 	import access_log

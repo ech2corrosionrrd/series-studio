@@ -8,12 +8,12 @@
 
 ## Що вже перевірено локально
 
-- `npm test` — 215 тестів (на 25.09.2026), зокрема платформні: побайтна рівність із Промт (сесійні токени, реферальні коди, промпти Passport/TMA, модерація з кирилицею, юридичні сторінки, тарифи, розбір Helio) і наскрізний сценарій сервера в публічному режимі.
+- `npm test` — 215 тестів (на 25.09.2026), зокрема платформні: побайтна рівність із Промт (сесійні токени, реферальні коди, промпти Passport/TMA, модерація з кирилицею, юридичні сторінки, тарифи) і наскрізний сценарій сервера в публічному режимі.
 - `node scripts/contract-check.mjs --old https://gen.w3ir.io --new http://127.0.0.1:5344` — 10 з 10 безпечних GET-контрактів збігаються з живим Промт.
 
 ## Змінні середовища
 
-Файл Lab: локально `.env`, на проді `/opt/w3ir/.env.series-lab` (або `/opt/series-lab/.env`). **Series Lab самодостатній** — усі ключі й Helio-посилання живуть у його `.env`; `SERIES_PLATFORM_ENV` більше не підмішує чужий файл.
+Файл Lab: локально `.env`, на проді `/opt/w3ir/.env.series-lab` (або `/opt/series-lab/.env`). **Series Lab самодостатній** — усі ключі й адреса для оплат живуть у його `.env`; `SERIES_PLATFORM_ENV` більше не підмішує чужий файл.
 
 Імена змінних сумісні з колишнім Промт (зручно один раз скопіювати значення), але це **копія в .env Lab**, не live-залежність:
 
@@ -21,14 +21,13 @@
 |---|---|
 | `AUTH_SESSION_SECRET` | сесії SIWE / реферальні коди Lab |
 | `AUTH_DOMAIN`, `AUTH_URI`, `AUTH_CHAIN_ID` | текст SIWE-повідомлення |
-| `HELIO_*` | paylinks Lab → пакети, підпис вебхука, звіряння |
-| `SOLANA_PAY_RECIPIENT` | публічна Solana-адреса для прямої оплати USDC (ключ не потрібен); порожньо — вимкнено. Опційно `SOLANA_PAY_RPC_URL` / `SOLANA_RPC_URL`, `SOLANA_PAY_RECONCILE_INTERVAL_SECONDS`, `SOLANA_PAY_ORDER_DAYS` |
+| `SOLANA_PAY_RECIPIENT` | публічна Solana-адреса для оплати USDC (ключ не потрібен); порожньо — оплата вимкнена. Опційно `SOLANA_PAY_RPC_URL` / `SOLANA_RPC_URL`, `SOLANA_PAY_RECONCILE_INTERVAL_SECONDS`, `SOLANA_PAY_ORDER_DAYS` |
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | сповіщення оператору від імені Series Lab |
 | `GREMLIN_API_KEY`, `TMA_API_KEY`, `W3IR_B2B_KEYS` | ключі партнерів (Passport, Telegram) |
 | `OPENAI_API_KEY`, `REPLICATE_API_TOKEN`, `STABILITY_API_KEY`, … | рушії студії |
 | `WELCOME_*`, `EARLY_WELCOME_*`, `GENERATION_RATE_LIMIT_PER_MINUTE`, `FREEMIUM_DAILY_LIMIT`, `REFERRAL_BONUS_CREDITS` | правила кредитів |
 | `ADMIN_WALLETS`, `OPERATOR_WALLET`, `DOGFOOD_WALLETS` | внутрішні гаманці / адмін |
-| `SOLANA_RPC_URL`/`ALCHEMY_API_KEY`, `GENESIS_*`, `VAULT_*`, `HELIO_MINT_PAYLINK_ID` | холдери Genesis і Дроп #2 |
+| `SOLANA_RPC_URL`/`ALCHEMY_API_KEY`, `GENESIS_*`, `VAULT_*` | холдери Genesis і Дроп #2 |
 
 Додатково для Series Lab: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (запобіжник на весь сервер), `SERIES_ALLOWED_HOSTS` (обов'язково, бо образ слухає `0.0.0.0` і без списку не перевіряє `Host`), `LANDING_HOSTS`, `PAY_SUBDOMAIN_HOSTS`, `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби).
 
@@ -62,7 +61,7 @@ bash deploy/series-lab/upload.sh            # root@HOST_IP за замовчув
 1. розпаковує код у **`/opt/series-lab`** — не в `/opt/w3ir`, бо деплой Промт робить `git clean -fd` і стер би все нове;
 2. збирає образ `series-lab:<коміт>`;
 3. робить **узгоджену** копію бази через SQLite online backup (не `cp`, бо WAL) + `genesis_mints.json`, `vault_catalog.json`, `public/` → `/opt/series-lab/data-next`;
-4. пише `.env.series-lab` = `.env` Промт + перевизначення для staging: без звіряння Helio й вебхука, без прямої оплати USDC (`SOLANA_PAY_RECIPIENT` порожній), без Telegram, без сейфу, SIWE-домен `next.w3ir.io`, **вхід лише для `ADMIN_WALLETS`** (або `SERIES_ALLOWED_WALLETS=…`), межа витрат $5/день — бо копія кредитів витрачає справжні API-ключі;
+4. пише `.env.series-lab` = `.env` Промт + перевизначення для staging: без прийому оплат (`SOLANA_PAY_RECIPIENT` порожній), без Telegram, без сейфу, SIWE-домен `next.w3ir.io`, **вхід лише для `ADMIN_WALLETS`** (або `SERIES_ALLOWED_WALLETS=…`), межа витрат $5/день — бо копія кредитів витрачає справжні API-ключі;
 5. запускає контейнер `serieslab` у мережі `w3ir_default` (ліміт пам'яті 512 МБ);
 6. додає блок `next.w3ir.io` у Caddyfile Промт, перевіряє конфіг і перезавантажує Caddy; якщо перевірка не пройшла — повертає попередній Caddyfile;
 7. перевіряє `next` через Caddy і що `ai.w3ir.io` Промт відповідає як раніше.
@@ -88,7 +87,7 @@ node scripts/contract-check.mjs --old https://gen.w3ir.io --new https://next.w3i
 3. Фінальна копія леджера: `bash /opt/series-lab/backup.sh` (online backup, не `cp` поверх WAL).
 4. Series Lab на бойові дані: `SERIES_LAB_DATA=data`, `docker compose up -d serieslab`.
 5. Caddyfile: блоки хостів замінити на `deploy/series-lab/Caddyfile.switch`, `caddy reload`.
-6. Перевірити: `/health` на `pay.`; вхід на `ai.`; тестова оплата Helio; Passport (`/gremlin/activity`); Telegram (`/api/v1/tma/contract`); одна з `/c/<slug>`; воронка (`funnel_events` пишеться).
+6. Перевірити: `/health` на `pay.`; вхід на `ai.`; тестовий переказ USDC (Solana); Passport (`/gremlin/activity`); Telegram (`/api/v1/tma/contract`); одна з `/c/<slug>`; воронка (`funnel_events` пишеться).
 
 **Відкат:** повернути попередній Caddyfile, `docker compose start api streamlit`, `caddy reload`. Схема БД спільна, тож записи Series Lab Промт читає без перетворень.
 

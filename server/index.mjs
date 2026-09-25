@@ -102,11 +102,10 @@ if (process.env.SERIES_PLATFORM_ENV) {
   console.warn("SERIES_PLATFORM_ENV is ignored — Series Lab is self-contained (keys live in this .env only)");
 }
 {
-  const links = ["start", "creator", "pro"].filter((id) => helioPaylinkUrl(id));
   console.log(
-    links.length === 3
-      ? `Helio top-up: ${links.length}/3 paylinks · reconcile ${helioKeys() ? "on" : "off (need HELIO_API_KEY/SECRET)"}`
-      : `Helio top-up: ${links.length}/3 paylinks — set HELIO_PAYLINK_* in Lab .env`,
+    solPayInfo().enabled
+      ? "Top-up: USDC on Solana · payment check on"
+      : "Top-up: off — set SOLANA_PAY_RECIPIENT (public Solana address) in Lab .env",
   );
   const tg = getTelegramConfig();
   console.log(
@@ -148,7 +147,6 @@ import { handlePlatform, sessionWallet, startPlatformBackground } from "./platfo
 import { PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck, freemiumRecord, getBalance,
   listTransactions, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost,
 } from "../src/platform/billing.mjs";
-import { helioKeys, helioPaylinkUrl, reconcilePayments } from "../src/platform/helio.mjs";
 import { rateLimit } from "../src/platform/ratelimit.mjs";
 import { checkSolOrders, createSolOrder, listSolOrders, solPayInfo } from "../src/platform/solpay.mjs";
 import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
@@ -177,10 +175,7 @@ const RESOURCE_KEYS = [
   { name: "SERIES_TELEGRAM_CHAT_ID", env: "SERIES_TELEGRAM_CHAT_ID", note: "Series Lab operator chat / channel" },
   { name: "TELEGRAM_BOT_TOKEN", env: "TELEGRAM_BOT_TOKEN", note: "Fallback Telegram bot (Lab .env)" },
   { name: "TELEGRAM_CHAT_ID", env: "TELEGRAM_CHAT_ID", note: "Fallback Telegram chat (Lab .env)" },
-  { name: "HELIO_API_KEY", env: "HELIO_API_KEY", note: "Helio API (Lab .env)" },
-  { name: "HELIO_PAYLINK_START", env: "HELIO_PAYLINK_START", note: "Helio paylink · Start pack" },
-  { name: "HELIO_PAYLINK_CREATOR", env: "HELIO_PAYLINK_CREATOR", note: "Helio paylink · Creator pack" },
-  { name: "HELIO_PAYLINK_PRO", env: "HELIO_PAYLINK_PRO", note: "Helio paylink · Pro pack" },
+  { name: "SOLANA_PAY_RECIPIENT", env: "SOLANA_PAY_RECIPIENT", note: "Direct USDC (Solana) receiving address" },
 ];
 
 function nowIsoKyiv() {
@@ -1179,7 +1174,7 @@ async function handleApi(req, res, url) {
       admin: isAdmin(wallet),
       wallet,
       balance: getBalance(wallet),
-      packages: Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p, url: helioPaylinkUrl(id) })),
+      packages: Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p })),
       solPay: solPayInfo(process.env, { admin: isAdmin(wallet) }),
       referral: code ? { code, link: `${process.env.AUTH_URI || "https://ai.w3ir.io"}/login?ref=${code}` } : null,
       localGpu: gpu,
@@ -1243,23 +1238,6 @@ async function handleApi(req, res, url) {
     return send(res, 200, report);
   }
 
-  if (pathname === "/api/credits/sync" && req.method === "POST") {
-    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
-    if (!helioKeys()) {
-      return send(res, 503, { error: "HELIO_API_KEY / HELIO_API_SECRET not set — add them to Series Lab .env" });
-    }
-    // The UI polls every ~12 s after "Pay"; each poll is 3 Helio API calls.
-    rateLimit(req, "credits_sync", Number.parseInt(process.env.CREDITS_SYNC_RATE_LIMIT || "10", 10) || 10);
-    const wallet = currentWallet();
-    const r = await reconcilePayments({ targetWallet: wallet, notify: notifyOperator });
-    return send(res, 200, {
-      newTx: r.newTx,
-      credited: r.credited,
-      balance: getBalance(wallet),
-      error: r.error || null,
-    });
-  }
-
   // Direct USDC-on-Solana top-up: order → user sends the exact amount → we find it on-chain.
   if (pathname === "/api/credits/sol/order" && req.method === "POST") {
     if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
@@ -1275,7 +1253,7 @@ async function handleApi(req, res, url) {
 
   if (pathname === "/api/credits/sol/check" && req.method === "POST") {
     if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
-    rateLimit(req, "credits_sol_check", Number.parseInt(process.env.CREDITS_SYNC_RATE_LIMIT || "10", 10) * 2 || 20);
+    rateLimit(req, "credits_sol_check", Number.parseInt(process.env.SOLANA_PAY_CHECK_RATE_LIMIT || "", 10) || 20);
     const wallet = currentWallet();
     const r = await checkSolOrders({ wallet, notify: notifyOperator });
     return send(res, 200, {

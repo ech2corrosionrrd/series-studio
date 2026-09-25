@@ -853,14 +853,14 @@
     <section class="topup-section">
       <div class="topup-section-head">
         <h4 data-i18n="topup.packages">Пакети</h4>
-        <span class="muted small" data-i18n="topup.payVia">Оплата USDC (Base) · Helio Pay</span>
+        <span class="muted small" data-i18n="topup.payVia">Оплата USDC · мережа Solana</span>
       </div>
       <div id="topup-packages" class="topup-grid"></div>
     </section>
 
     <section id="sol-section" class="topup-section sol-section" hidden>
       <div class="topup-section-head">
-        <h4 data-i18n="sol.title">Оплата USDC напряму (Solana)</h4>
+        <h4 data-i18n="sol.title">Оплата USDC (Solana)</h4>
         <span class="muted small" data-i18n="sol.sub">Без посередників · з будь-якої країни</span>
       </div>
       <div id="sol-packs" class="sol-packs"></div>
@@ -878,15 +878,6 @@
           <span id="sol-status" class="small muted"></span>
         </div>
       </div>
-    </section>
-
-    <section class="topup-sync" aria-live="polite">
-      <div class="topup-sync-text">
-        <b data-i18n="topup.syncTitle">Після оплати</b>
-        <p class="muted small" data-i18n="topup.syncHint">На localhost вебхук не доходить — натисніть, щоб опитати Helio і зарахувати кредити.</p>
-      </div>
-      <button type="button" id="topup-sync" class="btn small" data-i18n="topup.sync" data-i18n-tip="topup.sync.tip">Перевірити оплату</button>
-      <span id="topup-sync-status" class="topup-sync-status small muted"></span>
     </section>
 
     <div class="topup-side">

@@ -56,7 +56,7 @@ test("loadKeys is self-contained: ignores SERIES_PLATFORM_ENV", () => {
   writeFileSync(cwdEnv, `SERIES_PLATFORM_ENV=${foreign.replace(/\\/g, "/")}\nLAB_ONLY=1\n`, "utf8");
   writeFileSync(
     foreign,
-    "HELIO_PAYLINK_START=aa11bb22\nOPENAI_API_KEY=should-not-load\nTELEGRAM_BOT_TOKEN=nope\n",
+    "PLATFORM_ONLY_VAR=aa11bb22\nOPENAI_API_KEY=should-not-load\nTELEGRAM_BOT_TOKEN=nope\n",
     "utf8",
   );
   const prev = process.cwd();
@@ -66,7 +66,7 @@ test("loadKeys is self-contained: ignores SERIES_PLATFORM_ENV", () => {
     const loaded = loadKeys(undefined, env);
     assert.equal(loaded, cwdEnv);
     assert.equal(env.LAB_ONLY, "1");
-    assert.equal(env.HELIO_PAYLINK_START, undefined);
+    assert.equal(env.PLATFORM_ONLY_VAR, undefined);
     assert.equal(env.OPENAI_API_KEY, undefined);
     assert.equal(env.TELEGRAM_BOT_TOKEN, undefined);
   } finally {

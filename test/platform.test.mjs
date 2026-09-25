@@ -18,7 +18,6 @@ const { openDb, closeAll, nowIso } = await import("../src/platform/db.mjs");
 const wallet = await import("../src/platform/wallet.mjs");
 const session = await import("../src/platform/session.mjs");
 const billing = await import("../src/platform/billing.mjs");
-const helio = await import("../src/platform/helio.mjs");
 const safety = await import("../src/platform/safety.mjs");
 const stats = await import("../src/platform/stats.mjs");
 const partners = await import("../src/platform/partners.mjs");
@@ -67,16 +66,10 @@ describe("parity with Промт (Python reference outputs)", () => {
     }
   });
 
-  test("slugify, legal HTML, paylink sanitising, Helio payment parsing, credit table", () => {
+  test("slugify, legal HTML, credit table", () => {
     for (const [input, out] of Object.entries(parity.slugify)) assert.equal(site.slugify(input), out);
     assert.equal(site.renderLegalHtml("uk"), parity.legal_uk);
     assert.equal(site.renderLegalHtml("en"), parity.legal_en);
-    for (const [input, out] of Object.entries(parity.sanitize)) assert.equal(helio.sanitizePaylinkId(input), out, input);
-    assert.deepEqual(helio.extractPayments([
-      { id: "tx1", senderPublicKey: SOL, transactionStatus: "success", paymentRequestId: "abc" },
-      { transactionId: "tx2", from: "0xabc", status: "PENDING" },
-      { meta: { id: "tx3", senderPK: "0xdef", transactionStatus: "COMPLETED", paylinkId: "p1" } },
-    ]), parity.extract);
     const family = { "OpenAI gpt-image-1": "openai", "Stability AI (Core / SD3)": "stability", "Flux.1 (Replicate)": "schnell" };
     for (const [key, credits] of Object.entries(parity.credit_cost)) {
       const [engine, final, ref] = key.split("|");
@@ -187,28 +180,6 @@ describe("billing ledger", () => {
     assert.match(nowIso(new Date("2026-09-24T10:11:12.345Z")), /^2026-09-24T10:11:12\.345000\+00:00$/);
   });
 });
-
-describe("Helio", () => {
-  test("webhook signature and payload → credits (idempotent)", () => {
-    const body = Buffer.from('{"a":1}');
-    assert.throws(() => helio.verifyHelioSignature(body, "x", ""), /not configured/);
-    const good = require_hmac("s", body);
-    assert.equal(helio.verifyHelioSignature(body, good, "s"), true);
-    assert.equal(helio.verifyHelioSignature(body, "deadbeef", "s"), false);
-
-    const env = { HELIO_PAYLINK_START: "aa11", HELIO_PAYLINK_CREATOR: "bb22" };
-    const payload = { paylinkId: "bb22", id: "hx-1", senderPublicKey: SOL, transactionStatus: "SUCCESS" };
-    assert.deepEqual(helio.processHelioWebhookPayload(payload, { env }), { credited: true, message: "Credited 400 credits (creator)" });
-    assert.equal(helio.processHelioWebhookPayload(payload, { env }).credited, false);
-    assert.equal(billing.getBalance(SOL), 400);
-    assert.match(helio.processHelioWebhookPayload({ paylinkId: "zz" }, { env }).message, /Unknown paylink/);
-  });
-});
-
-import { createHmac } from "node:crypto";
-function require_hmac(secret, body) {
-  return createHmac("sha256", secret).update(body).digest("hex");
-}
 
 describe("partners", () => {
   test("Gremlin validation", () => {
