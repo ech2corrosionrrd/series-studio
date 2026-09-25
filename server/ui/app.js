@@ -2477,10 +2477,44 @@ function openTopup({ needed, balance } = {}) {
   if (state.account?.solPay?.enabled) solCheck(); // shows an open order / credits a payment that arrived meanwhile
 }
 
-// ── Direct USDC (Solana): order → user sends the exact amount → server finds it on-chain ──
+// ── Direct USDC (Solana): prepare tx → Phantom confirm → server finds it on-chain ──
 const SOL_POLL_MS = 8_000;
 let solPollTimer = null;
 let solShownId = "";
+let solBusy = false;
+
+function getSolanaProvider() {
+  const p = window.phantom?.solana || (window.solana?.isPhantom ? window.solana : null) || window.solana;
+  return p?.isPhantom || p?.publicKey || typeof p?.connect === "function" ? p : null;
+}
+
+async function ensureSolanaPayer() {
+  const provider = getSolanaProvider();
+  if (!provider) throw new Error(t("sol.noWallet"));
+  if (!provider.publicKey) {
+    const res = await provider.connect();
+    if (!provider.publicKey && res?.publicKey) provider.publicKey = res.publicKey;
+  }
+  const pk = provider.publicKey?.toString?.() || String(provider.publicKey || "");
+  if (!pk) throw new Error(t("sol.noWallet"));
+  return { provider, payer: pk };
+}
+
+async function loadSolanaWeb3() {
+  if (window.__seriesWeb3) return window.__seriesWeb3;
+  const mod = await import("https://esm.sh/@solana/web3.js@1.98.4");
+  window.__seriesWeb3 = mod;
+  return mod;
+}
+
+async function signAndSendUsdcPayment(transactionBase64) {
+  const { provider } = await ensureSolanaPayer();
+  const { Transaction } = await loadSolanaWeb3();
+  const raw = Uint8Array.from(atob(transactionBase64), (c) => c.charCodeAt(0));
+  const tx = Transaction.from(raw);
+  const sent = await provider.signAndSendTransaction(tx);
+  return sent?.signature || sent;
+}
 
 function renderSolSection() {
   const sp = state.account?.solPay;
@@ -2500,8 +2534,10 @@ function showSolOrder(o) {
   panel.hidden = false;
   $("sol-amount").textContent = o.amount;
   $("sol-address").textContent = o.recipient;
-  $("sol-open").href = o.uri;
+  const open = $("sol-open");
+  if (open) open.href = o.uri || "#";
   panel.dataset.credits = String(o.credits);
+  panel.dataset.pack = o.package || "";
   $("sol-section").hidden = false;
   setSolStatus(t("sol.waiting", { credits: o.credits }), "busy");
   document.querySelectorAll(".sol-pack").forEach((b) => b.classList.toggle("on", b.dataset.pack === o.package));
@@ -2524,7 +2560,7 @@ async function solCheck() {
   try {
     r = await api("/api/credits/sol/check", { method: "POST", body: "{}" });
   } catch {
-    return; // 429 or a hiccup — the next tick retries
+    return;
   }
   if (r.credited > 0) {
     stopSolPoll();
@@ -2554,16 +2590,56 @@ function startSolPoll() {
   }, SOL_POLL_MS);
 }
 
+/** Prefer in-wallet confirm; fall back to order + manual/deeplink. */
 async function solCreate(packageId) {
+  if (solBusy) return;
+  solBusy = true;
+  const btn = $("sol-confirm");
   try {
+    if (getSolanaProvider()) {
+      setSolStatus(t("sol.confirming"), "busy");
+      if (btn) btn.disabled = true;
+      const { payer } = await ensureSolanaPayer();
+      const r = await api("/api/credits/sol/prepare", {
+        method: "POST",
+        body: JSON.stringify({ package: packageId, payer }),
+      });
+      showSolOrder(r.order);
+      setSolStatus(t("sol.confirming"), "busy");
+      await signAndSendUsdcPayment(r.transaction);
+      setSolStatus(t("sol.sent"), "busy");
+      startSolPoll();
+      solCheck();
+      return;
+    }
     const r = await api("/api/credits/sol/order", { method: "POST", body: JSON.stringify({ package: packageId }) });
     showSolOrder(r.order);
+    setSolStatus(t("sol.noWallet"), "bad");
     startSolPoll();
     solCheck();
   } catch (err) {
-    $("sol-order").hidden = false;
-    setSolStatus(err.message, "bad");
+    const msg = String(err?.message || err);
+    if (/User rejected|rejected the request|denied/i.test(msg)) {
+      setSolStatus(msg, "bad");
+    } else {
+      try {
+        const r = await api("/api/credits/sol/order", { method: "POST", body: JSON.stringify({ package: packageId }) });
+        showSolOrder(r.order);
+      } catch {
+        $("sol-order").hidden = false;
+      }
+      setSolStatus(msg, "bad");
+      startSolPoll();
+    }
+  } finally {
+    solBusy = false;
+    if (btn) btn.disabled = false;
   }
+}
+
+async function solConfirmClick() {
+  const pack = $("sol-order")?.dataset.pack;
+  if (pack) return solCreate(pack);
 }
 
 async function copyText(text, btn) {
@@ -2584,6 +2660,7 @@ function setupSolPay() {
   };
   $("topup-packages")?.addEventListener("click", onPack);
   $("sol-packs")?.addEventListener("click", onPack);
+  $("sol-confirm")?.addEventListener("click", () => solConfirmClick());
   $("sol-copy-amount")?.addEventListener("click", (e) => copyText($("sol-amount").textContent, e.currentTarget));
   $("sol-copy-address")?.addEventListener("click", (e) => copyText($("sol-address").textContent, e.currentTarget));
 }

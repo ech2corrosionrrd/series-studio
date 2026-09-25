@@ -148,7 +148,7 @@ import { PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck
   listTransactions, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost,
 } from "../src/platform/billing.mjs";
 import { rateLimit } from "../src/platform/ratelimit.mjs";
-import { checkSolOrders, createSolOrder, listSolOrders, solPayInfo } from "../src/platform/solpay.mjs";
+import { checkSolOrders, createSolOrder, listSolOrders, prepareSolPayment, solPayInfo } from "../src/platform/solpay.mjs";
 import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
 import { providersSnapshot, keyHealth, providerFloatStatus } from "../src/platform/providers.mjs";
 import { claim as claimHolderBonus, eligibility as holderEligibility } from "../src/platform/holders.mjs";
@@ -1246,6 +1246,22 @@ async function handleApi(req, res, url) {
     try {
       const wallet = currentWallet();
       return send(res, 200, { order: createSolOrder(wallet, String(body.package || ""), { admin: isAdmin(wallet) }) });
+    } catch (e) {
+      return send(res, 400, { error: e.message });
+    }
+  }
+
+  // Build unsigned USDC transfer for Phantom confirm (payer signs in the browser).
+  if (pathname === "/api/credits/sol/prepare" && req.method === "POST") {
+    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
+    rateLimit(req, "credits_sol_prepare", 20);
+    const body = await readBody(req);
+    try {
+      const wallet = currentWallet();
+      const prepared = await prepareSolPayment(wallet, String(body.package || ""), String(body.payer || ""), {
+        admin: isAdmin(wallet),
+      });
+      return send(res, 200, prepared);
     } catch (e) {
       return send(res, 400, { error: e.message });
     }

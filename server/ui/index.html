@@ -865,18 +865,25 @@
       </div>
       <div id="sol-packs" class="sol-packs"></div>
       <div id="sol-order" class="sol-order" hidden aria-live="polite">
-        <p class="sol-instr" data-i18n="sol.instr">Надішліть точно вказану суму USDC (мережа Solana) на цю адресу. Кредити зарахуються самі.</p>
+        <p class="sol-instr" data-i18n="sol.instr">Натисніть «Підтвердити в гаманці» — Phantom (або інший Solana-гаманець) запропонує надіслати точну суму USDC. Кредити зарахуються самі.</p>
         <dl class="sol-fields">
           <dt data-i18n="sol.amount">Сума</dt>
-          <dd><code id="sol-amount"></code> <span class="muted small">USDC</span> <button type="button" id="sol-copy-amount" class="btn small ghost" data-i18n="sol.copy">Копіювати</button></dd>
-          <dt data-i18n="sol.address">Адреса</dt>
-          <dd><code id="sol-address" class="sol-address"></code> <button type="button" id="sol-copy-address" class="btn small ghost" data-i18n="sol.copy">Копіювати</button></dd>
+          <dd><code id="sol-amount"></code> <span class="muted small">USDC</span></dd>
+          <dt data-i18n="sol.address">Отримувач Lab</dt>
+          <dd><code id="sol-address" class="sol-address"></code></dd>
         </dl>
-        <p class="muted small" data-i18n="sol.note">Сума містить унікальні копійки — вони позначають ваше замовлення, тому надішліть її без округлення. Платити можна з будь-якого Solana-гаманця.</p>
+        <p class="muted small" data-i18n="sol.note">Сума містить унікальні копійки (ідентифікатор замовлення). Оплата — з Solana-гаманця з USDC.</p>
         <div class="topup-actions">
-          <a id="sol-open" class="btn small" href="#" data-i18n="sol.open">Відкрити у гаманці</a>
+          <button type="button" id="sol-confirm" class="btn small primary" data-i18n="sol.confirm">Підтвердити в гаманці</button>
+          <a id="sol-open" class="btn small ghost" href="#" data-i18n="sol.open">Відкрити deeplink</a>
+          <button type="button" id="sol-copy-amount" class="btn small ghost" data-i18n="sol.copyAmount">Копіювати суму</button>
+          <button type="button" id="sol-copy-address" class="btn small ghost" data-i18n="sol.copyAddr">Копіювати адресу</button>
           <span id="sol-status" class="small muted"></span>
         </div>
+        <details class="sol-manual">
+          <summary data-i18n="sol.manual">Оплата вручну (без розширення гаманця)</summary>
+          <p class="muted small" data-i18n="sol.manualHint">Скопіюйте суму й адресу та надішліть USDC у мережі Solana з будь-якого гаманця.</p>
+        </details>
       </div>
     </section>
 

@@ -232,3 +232,94 @@ function settleOrder(order, signature, { db, notify }) {
   db.prepare("UPDATE sol_orders SET status = 'paid', signature = ?, paid_at = ? WHERE id = ? AND status = 'pending'").run(signature, nowIso(), order.id);
   return credited;
 }
+
+/**
+ * Build an unsigned USDC transfer for the user's Phantom to confirm.
+ * `payer` = Solana pubkey that will sign and pay fees (may differ from Lab login wallet).
+ * Returns base64 wire transaction (legacy Message).
+ */
+export async function buildUsdcPaymentTransaction(order, payer, { env = process.env, fetchImpl } = {}) {
+  if (!order || order.status !== "pending") throw new Error("Немає відкритого замовлення для оплати.");
+  if (!isSolanaWallet(payer)) throw new Error("Для підтвердження в гаманці потрібна Solana-адреса (Phantom).");
+
+  const { Connection, PublicKey, Transaction } = await import("@solana/web3.js");
+  const {
+    getAssociatedTokenAddressSync,
+    createAssociatedTokenAccountInstruction,
+    createTransferCheckedInstruction,
+    getAccount,
+    TokenAccountNotFoundError,
+    TokenInvalidAccountOwnerError,
+  } = await import("@solana/spl-token");
+
+  const mint = new PublicKey(solPayMint(env));
+  const recipient = new PublicKey(solPayRecipient(env));
+  const from = new PublicKey(payer);
+  const fromAta = getAssociatedTokenAddressSync(mint, from);
+  const toAta = getAssociatedTokenAddressSync(mint, recipient);
+
+  const connection = new Connection(rpcUrl(env), {
+    commitment: commitment(env),
+    httpHeaders: solanaRpcHeaders(rpcUrl(env), env),
+  });
+
+  // Prefer native Connection RPC (uses Alchemy Origin via httpHeaders).
+  let sourceAcc;
+  try {
+    sourceAcc = await getAccount(connection, fromAta);
+  } catch (e) {
+    if (e instanceof TokenAccountNotFoundError || e instanceof TokenInvalidAccountOwnerError) {
+      throw new Error("У цьому Solana-гаманці немає USDC. Поповніть USDC або оберіть інший гаманець.");
+    }
+    throw e;
+  }
+  if (sourceAcc.amount < BigInt(order.amount_micro)) {
+    throw new Error(
+      `Недостатньо USDC: потрібно ${formatUsdc(order.amount_micro)}, на рахунку ${formatUsdc(Number(sourceAcc.amount))}.`,
+    );
+  }
+
+  const ix = [];
+  try {
+    await getAccount(connection, toAta);
+  } catch (e) {
+    if (e instanceof TokenAccountNotFoundError || e instanceof TokenInvalidAccountOwnerError) {
+      ix.push(createAssociatedTokenAccountInstruction(from, toAta, recipient, mint));
+    } else {
+      throw e;
+    }
+  }
+  ix.push(
+    createTransferCheckedInstruction(
+      fromAta,
+      mint,
+      toAta,
+      from,
+      BigInt(order.amount_micro),
+      USDC_DECIMALS,
+    ),
+  );
+
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash(commitment(env));
+  const tx = new Transaction({
+    feePayer: from,
+    blockhash,
+    lastValidBlockHeight,
+  }).add(...ix);
+
+  const serialized = tx.serialize({ requireAllSignatures: false, verifySignatures: false });
+  return {
+    transaction: Buffer.from(serialized).toString("base64"),
+    payer,
+    mint: solPayMint(env),
+    amount_micro: order.amount_micro,
+    lastValidBlockHeight,
+  };
+}
+
+/** Create/reuse order + unsigned tx for in-wallet confirm (Phantom). */
+export async function prepareSolPayment(wallet, packageId, payer, { db = openDb(), env = process.env, admin = false } = {}) {
+  const order = createSolOrder(wallet, packageId, { db, env, admin });
+  const payment = await buildUsdcPaymentTransaction(order, payer, { env });
+  return { order, ...payment };
+}

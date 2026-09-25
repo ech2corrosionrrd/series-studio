@@ -41,6 +41,8 @@
   "dependencies": {
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",
+    "@solana/spl-token": "^0.4.13",
+    "@solana/web3.js": "^1.98.4",
     "ajv": "^8.17.1",
     "jszip": "^3.10.2"
   },
