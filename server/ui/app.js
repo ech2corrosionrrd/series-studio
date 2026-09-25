@@ -2,7 +2,7 @@
  * Series Lab Studio UI — tabs, Lab APIs, i18n (uk/en).
  * Prompts/recipe content stay English for generators.
  */
-import { initI18n, setLocale, getLocale, t, applyI18n, applyTips, tipText } from "./i18n.js";
+import { initI18n, setLocale, getLocale, t, applyI18n, applyTips, tipText, hasKey } from "./i18n.js";
 
 function tipAttr(key) {
   const s = tipText(key);
@@ -169,6 +169,7 @@ function showAdminPane(name) {
   document.querySelectorAll(".admin-pane").forEach((el) => el.classList.toggle("on", el.id === `admin-${pane}`));
   document.querySelectorAll("[data-admin]").forEach((btn) => btn.classList.toggle("on", btn.dataset.admin === pane));
   if (pane === "res") renderResources();
+  else if (pane === "econ") renderEconomy();
   else renderSpend();
 }
 
@@ -236,6 +237,7 @@ function refreshDynamicCopy() {
   renderGallery();
   fillPresetSelects();
   fillArchiveSelect();
+  relabelEngineSelects();
   const stub = $("g-plan-out");
   if (stub && !stub.dataset.dirty) stub.textContent = t("render.stub");
   const allOpt = $("r-line")?.querySelector('option[value=""]');
@@ -1707,7 +1709,7 @@ function setupRender() {
       });
       if ($("g-plan-out")) {
         $("g-plan-out").dataset.dirty = "1";
-        $("g-plan-out").textContent = JSON.stringify(data, null, 2);
+        $("g-plan-out").textContent = data.text || JSON.stringify(data, null, 2);
       }
       lockGenerate(false);
     } catch (e) {
@@ -2134,6 +2136,12 @@ function helpSections() {
     ["steps", `<p>${esc("help.steps.desc")}</p>${steps}`],
     ["safety", `<p>${esc("help.safety.desc")}</p>${helpList("help.safety.li")}`],
     ["zero", `<p>${esc("help.zero.desc")}</p>${helpList("help.zero.li")}`],
+    ["localgpu", `<p>${esc("help.localgpu.desc")}</p>
+      <h4>${esc("help.localgpu.whyTitle")}</h4><p>${esc("help.localgpu.why")}</p>
+      <h4>${esc("help.localgpu.webTitle")}</h4>${helpList("help.localgpu.web.li")}
+      <h4>${esc("help.localgpu.pcTitle")}</h4>${helpList("help.localgpu.pc.li", "ol")}
+      <h4>${esc("help.localgpu.envTitle")}</h4>${helpList("help.localgpu.env.li")}
+      <p class="help-note">${esc("help.localgpu.note")}</p>`],
     ["glossary", `<p>${esc("help.glossary.desc")}</p><dl class="help-gl">${glossary}</dl>`],
     ["faq", `<p>${esc("help.faq.desc")}</p>${faq}`],
     ["cli", `<p>${esc("help.cli.desc")}</p><div class="help-cli">${cli}</div>`],
@@ -2148,7 +2156,7 @@ function renderHelp() {
   if (!body || !toc) return;
   const sections = helpSections();
   body.innerHTML = sections.map(([id, html]) =>
-    `<section class="help-sec card" id="help-${id}"><h2>${esc(`help.${id}.title`)}</h2>${html}</section>`).join("");
+    `<section class="help-sec card" id="help-${id}" data-help-id="${id}"><h2>${esc(`help.${id}.title`)}</h2>${html}</section>`).join("");
   toc.innerHTML = `<b>${esc("help.toc.title")}</b>` + sections.map(([id]) =>
     `<a href="#help-${id}" data-sec="${id}">${esc(`help.${id}.title`)}</a>`).join("");
   body.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
@@ -2190,6 +2198,180 @@ function setupHelp() {
 /* ---------- Account (public mode: wallet, credits, top-up) ---------- */
 state.account = null;
 
+function shortWallet(w) {
+  const s = String(w || "");
+  return s.length > 12 ? `${s.slice(0, 6)}…${s.slice(-4)}` : s;
+}
+
+function packageTitle(label) {
+  return String(label || "").replace(/^[\p{Extended_Pictographic}\s🟢🟡🔵]+\s*/u, "").trim() || label;
+}
+
+function engineBaseLabel(id) {
+  const key = `engine.${id}`;
+  return hasKey(key) ? t(key) : String(id || "");
+}
+
+/** User-facing price: credits in public mode; plain name otherwise (no fake $). */
+function engineOptionLabel(id) {
+  const base = engineBaseLabel(id);
+  const me = state.account;
+  const gpu = me?.localGpu;
+  const localOn = !!gpu?.enabled;
+  if ((id === "comfyui" || id === "a1111") && localOn) {
+    const st = state.localGpuStatus?.[id];
+    const fee = Number(gpu.creditPerImage ?? 1);
+    const feeLbl = gpu.monetized
+      ? t("engine.localFee", { n: fee })
+      : t("engine.localReady");
+    if (st?.online === true) return `${base} · ${t("engine.localOnline")} · ${feeLbl}`;
+    if (st?.online === false) return `${base} · ${t("engine.localOffline")}`;
+    return `${base} · ${feeLbl}`;
+  }
+  if (!me || me.mode !== "public") return base;
+  if (id === "comfyui" || id === "a1111") return `${base} · ${t("engine.offline")}`;
+  const c = me.creditCosts?.[id];
+  if (c === 0 || id === "mock") return `${base} · ${t("engine.free")}`;
+  if (typeof c === "number" && c > 0) return `${base} · ${t("engine.perImage", { n: c })}`;
+  return base;
+}
+
+function relabelEngineSelects() {
+  const localOn = !!state.account?.localGpu?.enabled;
+  document.body.classList.toggle("local-gpu-on", localOn);
+  for (const sel of document.querySelectorAll("select")) {
+    let any = false;
+    for (const opt of sel.options) {
+      const isLocalGpu = opt.hasAttribute("data-local-gpu") || opt.value === "comfyui" || opt.value === "a1111";
+      if (isLocalGpu) {
+        opt.hidden = !localOn;
+        opt.disabled = !localOn;
+        if (!localOn && sel.value === opt.value) {
+          const fallback = [...sel.options].find((o) => !o.disabled && o.value === "kontext")
+            || [...sel.options].find((o) => !o.disabled && o.value === "mock")
+            || [...sel.options].find((o) => !o.disabled);
+          if (fallback) sel.value = fallback.value;
+        }
+      }
+      if (!hasKey(`engine.${opt.value}`)) continue;
+      any = true;
+      opt.textContent = engineOptionLabel(opt.value);
+    }
+    if (!any) continue;
+  }
+  renderLocalGpuPanel();
+}
+
+function localGpuDotClass(online) {
+  if (online === true) return "on";
+  if (online === false) return "off";
+  return "unk";
+}
+
+function renderLocalGpuPanel() {
+  const box = $("local-gpu-panel");
+  if (!box) return;
+  const me = state.account;
+  const gpu = me?.localGpu;
+  box.hidden = false;
+  if (!gpu) {
+    box.hidden = true;
+    return;
+  }
+  if (!gpu.enabled) {
+    box.className = "local-gpu-panel off";
+    box.innerHTML = `
+      <h4>${escapeHtml(t("localGpu.title"))}</h4>
+      <p class="muted small">${escapeHtml(t("localGpu.public.p1"))}</p>
+      <p class="muted small">${escapeHtml(t("localGpu.public.p2"))}</p>
+      <p class="muted small">${escapeHtml(t("localGpu.public.revenue"))}</p>
+      <ol class="local-gpu-steps">
+        ${tList("localGpu.public.li").map((s) => `<li>${escapeHtml(s)}</li>`).join("")}
+      </ol>
+      <div class="local-gpu-row">
+        <button type="button" class="btn small" data-goto-help="localgpu">${escapeHtml(t("localGpu.openHelp"))}</button>
+      </div>`;
+    box.querySelector("[data-goto-help]")?.addEventListener("click", () => {
+      showTab("help");
+      const sec = document.querySelector('#help-body [data-help-id="localgpu"]');
+      if (sec) {
+        sec.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    return;
+  }
+  const st = state.localGpuStatus || {};
+  const c = st.comfyui || {};
+  const a = st.a1111 || {};
+  box.className = "local-gpu-panel on";
+  const fee = Number(gpu.creditPerImage ?? 1);
+  const feeLine = gpu.monetized
+    ? escapeHtml(t("localGpu.local.fee", { n: fee }))
+    : escapeHtml(t("localGpu.local.freeDev"));
+  box.innerHTML = `
+    <h4>${escapeHtml(t("localGpu.title"))}</h4>
+    <p class="muted small">${escapeHtml(t("localGpu.local.p1"))}</p>
+    <p class="muted small"><b>${feeLine}</b></p>
+    <div class="local-gpu-row">
+      <span><span class="local-gpu-dot ${localGpuDotClass(c.online)}"></span>ComfyUI · ${escapeHtml(c.online === true ? t("localGpu.online") : c.online === false ? t("localGpu.offline") : t("localGpu.unchecked"))}</span>
+      <span class="muted small">${escapeHtml(gpu.urls?.comfyui || "")}</span>
+    </div>
+    <div class="local-gpu-row">
+      <span><span class="local-gpu-dot ${localGpuDotClass(a.online)}"></span>A1111 · ${escapeHtml(a.online === true ? t("localGpu.online") : a.online === false ? t("localGpu.offline") : t("localGpu.unchecked"))}</span>
+      <span class="muted small">${escapeHtml(gpu.urls?.a1111 || "")}</span>
+    </div>
+    <ol class="local-gpu-steps">
+      ${tList("localGpu.local.li").map((s) => `<li>${escapeHtml(s)}</li>`).join("")}
+    </ol>
+    <div class="local-gpu-row">
+      <button type="button" id="local-gpu-probe" class="btn small primary">${escapeHtml(t("localGpu.probe"))}</button>
+      <button type="button" class="btn small" data-goto-help="localgpu">${escapeHtml(t("localGpu.openHelp"))}</button>
+      <span id="local-gpu-msg" class="muted small"></span>
+    </div>`;
+  box.querySelector("#local-gpu-probe")?.addEventListener("click", () => probeLocalGpu());
+  box.querySelector("[data-goto-help]")?.addEventListener("click", () => {
+    showTab("help");
+    const sec = document.querySelector('#help-body [data-help-id="localgpu"]');
+    if (sec) {
+      sec.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+}
+
+async function probeLocalGpu() {
+  const btn = $("local-gpu-probe");
+  const msg = $("local-gpu-msg");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = t("localGpu.probing");
+  }
+  try {
+    const data = await api("/api/local-gpu?probe=1");
+    state.localGpuStatus = {
+      comfyui: data.comfyui,
+      a1111: data.a1111,
+    };
+    if (msg) {
+      const ok = data.comfyui?.online || data.a1111?.online;
+      msg.textContent = ok ? t("localGpu.probeOk") : t("localGpu.probeNone");
+    }
+    relabelEngineSelects();
+  } catch (e) {
+    if (msg) msg.textContent = e.message || t("localGpu.probeFail");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = t("localGpu.probe");
+    }
+  }
+}
+
+function perCreditUsd(usd, credits) {
+  const c = Number(credits) || 0;
+  if (!c) return "";
+  return `≈ $${(Number(usd) / c).toFixed(3)}/${t("acct.creditsShort")}`;
+}
+
 async function refreshAccount() {
   let me;
   try {
@@ -2204,39 +2386,127 @@ async function refreshAccount() {
   if (box) box.hidden = !isPublic;
   document.body.classList.toggle("public-mode", isPublic);
   document.querySelectorAll(".public-only").forEach((el) => { el.hidden = !isPublic; });
+  relabelEngineSelects();
   if (!isPublic) return;
-  if ($("acct-wallet")) $("acct-wallet").textContent = me.wallet.length > 12 ? `${me.wallet.slice(0, 6)}…${me.wallet.slice(-4)}` : me.wallet;
+  const w = $("acct-wallet");
+  if (w) {
+    w.textContent = shortWallet(me.wallet);
+    w.title = me.wallet;
+  }
   if ($("acct-balance")) $("acct-balance").textContent = String(me.balance);
+  if ($("topup-balance")) $("topup-balance").textContent = String(me.balance);
+  const topupBtn = $("acct-topup");
+  if (topupBtn) topupBtn.setAttribute("aria-label", `${t("acct.topup")} · ${me.balance} ${t("acct.credits")}`);
 }
 
 function renderTopup() {
   const me = state.account;
   if (!me) return;
+  if ($("topup-balance")) $("topup-balance").textContent = String(me.balance);
   const grid = $("topup-packages");
   if (grid) {
-    grid.innerHTML = me.packages.map((p) => `
-      <div class="topup-card${p.recommended ? " rec" : ""}">
-        <b>${escapeHtml(p.label)}</b>
-        <div class="topup-credits">${p.credits} <span class="muted small">${escapeHtml(t("acct.credits"))}</span></div>
-        <div class="muted small">$${p.usd} · ${escapeHtml(p.note)}</div>
-        ${p.url ? `<a class="btn small primary" href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(t("topup.buy"))}</a>` : `<span class="muted small">${escapeHtml(t("topup.unavailable"))}</span>`}
-      </div>`).join("");
+    grid.innerHTML = (me.packages || []).map((p) => {
+      const title = packageTitle(p.label);
+      const unit = perCreditUsd(p.usd, p.credits);
+      return `
+      <article class="topup-card topup-card--${escapeHtml(p.id)}${p.recommended ? " rec" : ""}">
+        ${p.recommended ? `<span class="topup-card-badge">${escapeHtml(t("topup.recommended"))}</span>` : ""}
+        <div class="topup-card-name">${escapeHtml(title)}</div>
+        <div class="topup-credits"><b>${p.credits}</b> <span class="muted small">${escapeHtml(t("acct.credits"))}</span></div>
+        <div class="topup-price">
+          <span class="topup-usd">$${Number(p.usd).toFixed(2)}</span>
+          ${unit ? `<span class="topup-unit">${escapeHtml(unit)}</span>` : ""}
+        </div>
+        <p class="topup-note">${escapeHtml(p.note || "")}</p>
+        ${p.url
+          ? `<a class="btn primary topup-buy" href="${escapeHtml(p.url)}" target="_blank" rel="noopener" data-tip="${escapeHtml(tipText("topup.buy.tip") || t("topup.buy"))}">${escapeHtml(t("topup.buy"))}</a>`
+          : `<span class="topup-unavailable">${escapeHtml(t("topup.unavailable"))}</span>`}
+      </article>`;
+    }).join("");
+    applyTips(grid);
   }
-  if ($("ref-link")) $("ref-link").textContent = me.referral?.link || "—";
+  const ref = me.referral?.link || "";
+  if ($("ref-link")) $("ref-link").textContent = ref || "—";
+  const copyBtn = $("ref-copy");
+  if (copyBtn) copyBtn.disabled = !ref;
   api("/api/credits/history").then((d) => {
     const box = $("credit-history");
     if (!box) return;
-    box.innerHTML = (d.transactions || []).map((tx) =>
-      `<div class="hist-row"><span>${escapeHtml(tx.created_at.replace("T", " "))}</span><span>${escapeHtml(tx.note || tx.kind)}</span><b class="${tx.credits < 0 ? "bad" : "ok"}">${tx.credits > 0 ? "+" : ""}${tx.credits}</b></div>`).join("")
-      || `<p class="muted">${escapeHtml(t("history.empty"))}</p>`;
+    const rows = d.transactions || [];
+    box.innerHTML = rows.length
+      ? rows.map((tx) =>
+        `<div class="hist-row"><span>${escapeHtml(tx.created_at.replace("T", " "))}</span><span title="${escapeHtml(tx.note || tx.kind)}">${escapeHtml(tx.note || tx.kind)}</span><b class="${tx.credits < 0 ? "bad" : "ok"}">${tx.credits > 0 ? "+" : ""}${tx.credits}</b></div>`)
+        .join("")
+      : `<p class="muted hist-empty">${escapeHtml(t("history.empty"))}</p>`;
   }).catch(() => {});
+}
+
+function setSyncStatus(el, text, kind) {
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove("ok", "bad", "busy");
+  if (kind) el.classList.add(kind);
 }
 
 function setupAccount() {
   const overlay = $("topup-overlay");
-  $("acct-topup")?.addEventListener("click", () => { renderTopup(); overlay.hidden = false; });
+  $("acct-topup")?.addEventListener("click", () => {
+    renderTopup();
+    overlay.hidden = false;
+    $("topup-close")?.focus();
+  });
   $("topup-close")?.addEventListener("click", () => { overlay.hidden = true; refreshAccount(); });
   overlay?.addEventListener("click", (e) => { if (e.target === overlay) { overlay.hidden = true; refreshAccount(); } });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && overlay && !overlay.hidden) {
+      overlay.hidden = true;
+      refreshAccount();
+    }
+  });
+  $("topup-sync")?.addEventListener("click", async () => {
+    const status = $("topup-sync-status");
+    const btn = $("topup-sync");
+    setSyncStatus(status, t("topup.syncBusy"), "busy");
+    if (btn) btn.disabled = true;
+    try {
+      const r = await api("/api/credits/sync", { method: "POST", body: "{}" });
+      if (r.error) {
+        setSyncStatus(status, t("topup.syncFail", { err: r.error }), "bad");
+        return;
+      }
+      setSyncStatus(
+        status,
+        r.credited > 0
+          ? t("topup.synced", { n: r.credited, tx: r.newTx, balance: r.balance })
+          : t("topup.syncNone", { balance: r.balance }),
+        r.credited > 0 ? "ok" : "",
+      );
+      await refreshAccount();
+      renderTopup();
+    } catch (err) {
+      setSyncStatus(status, err.message, "bad");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+  $("ref-copy")?.addEventListener("click", async () => {
+    const link = state.account?.referral?.link;
+    const status = $("ref-copy-status");
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      if (status) {
+        status.hidden = false;
+        status.textContent = t("ref.copied");
+        setTimeout(() => { status.hidden = true; }, 2000);
+      }
+    } catch {
+      if (status) {
+        status.hidden = false;
+        status.textContent = t("ref.copyFail");
+      }
+    }
+  });
   $("acct-logout")?.addEventListener("click", async () => {
     await fetch("/auth/logout", { method: "POST" }).catch(() => {});
     location.href = "/login";
@@ -3064,19 +3334,25 @@ async function updateReleaseHub() {
 
 
 /* ---------- Resources ---------- */
-async function renderResources() {
+async function renderResources({ probe = false } = {}) {
   const grid = $("res-grid");
+  const provBox = $("res-providers");
+  const tgBox = $("res-telegram");
   if (!grid) return;
   let keys = [];
   let note = "";
   let keysFileName = "";
-  let keysConfigured = false;
+  let data = {};
+  const btn = $("res-probe");
+  if (probe && btn) {
+    btn.disabled = true;
+    btn.textContent = t("res.providers.probing");
+  }
   try {
-    const data = await api("/api/resources");
+    data = await api(`/api/resources${probe ? "?probe=1" : ""}`);
     keys = data.keys || [];
     note = data.note || "";
     keysFileName = data.keysFileName || data.keysFile || "";
-    keysConfigured = Boolean(data.keysConfigured ?? keysFileName);
   } catch {
     keys = [
       { name: "OPENAI_API_KEY", present: false },
@@ -3084,6 +3360,78 @@ async function renderResources() {
       { name: "STABILITY_API_KEY", present: false },
       { name: "POLLINATIONS_API_KEY", present: false },
     ];
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = t("res.providers.probe");
+    }
+  }
+  if (provBox) {
+    const rows = data.health || (data.providers || []).map((p) => ({
+      ...p,
+      checked: false,
+      valid: null,
+      balance: null,
+    }));
+    const floatBy = Object.fromEntries((data.float || []).map((f) => [f.name, f]));
+    provBox.innerHTML = rows.map((p) => {
+      const float = floatBy[p.name];
+      const configured = p.configured;
+      let badge = t("res.providers.missing");
+      let badgeCls = "off";
+      let cardCls = "miss";
+      if (configured && p.checked && p.valid === true) {
+        badge = t("res.providers.valid");
+        badgeCls = "on";
+        cardCls = "ok";
+      } else if (configured && p.checked && p.valid === false) {
+        badge = t("res.providers.invalid");
+        badgeCls = "fail";
+        cardCls = "bad";
+      } else if (configured && !p.checked) {
+        badge = t("res.providers.unchecked");
+        badgeCls = "off";
+        cardCls = "warn";
+      } else if (configured) {
+        badge = t("res.providers.configured");
+        badgeCls = "on";
+        cardCls = "ok";
+      }
+      if (float?.status === "critical") cardCls = "bad";
+      else if (float?.status === "low") cardCls = "warn";
+      const purpose = hasKey(p.purpose) ? t(p.purpose) : (p.purpose || "");
+      let balHtml = "";
+      if (p.balance != null) {
+        balHtml = `<div class="prov-bal">${escapeHtml(t("res.providers.balance", { n: Math.round(p.balance), usd: p.balance_usd ?? "—" }))}</div>`;
+      } else if (float?.recommended_usd != null) {
+        balHtml = `<div class="muted small">${escapeHtml(t("res.providers.floatRec", { n: float.recommended_usd }))}</div>`;
+      }
+      return `<article class="prov-card ${cardCls}">
+        <div class="prov-card-head">
+          <b>${escapeHtml(p.name)}</b>
+          <span class="prov-badge ${badgeCls}">${escapeHtml(badge)}</span>
+        </div>
+        ${balHtml}
+        <p class="muted small">${escapeHtml(purpose)}</p>
+        <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(t("res.providers.dashboard"))}</a>
+      </article>`;
+    }).join("");
+  }
+  if (tgBox) {
+    const tg = data.telegram || {};
+    const on = !!tg.configured;
+    tgBox.className = `res-telegram ${on ? "ok" : "warn"}`;
+    const status = on
+      ? t("res.telegram.on", { source: tg.source || "TELEGRAM_*" })
+      : t("res.telegram.off");
+    tgBox.innerHTML = `
+      <div class="res-telegram-meta">
+        <b>${escapeHtml(t("res.telegram.h3"))}</b>
+        <span class="prov-badge ${on ? "on" : "off"}">${escapeHtml(status)}</span>
+        <p class="muted small">${escapeHtml(t("res.telegram.hint"))}</p>
+      </div>
+      <button type="button" id="res-tg-test" class="btn small primary" ${on ? "" : "disabled"}>${escapeHtml(t("res.telegram.test"))}</button>
+      <span id="res-tg-msg" class="res-telegram-msg"></span>`;
   }
   grid.innerHTML = "";
   if (keysFileName || note) {
@@ -3102,6 +3450,34 @@ async function renderResources() {
   }
   renderSpend();
   renderTrash();
+}
+
+async function testTelegramNotify() {
+  const btn = $("res-tg-test");
+  const msg = $("res-tg-msg");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = t("res.telegram.testing");
+  }
+  if (msg) msg.textContent = "";
+  try {
+    const r = await api("/api/notifications/test", { method: "POST", body: JSON.stringify({}) });
+    if (msg) msg.textContent = r.ok ? t("res.telegram.ok") : t("res.telegram.fail", { err: r.error || "fail" });
+  } catch (e) {
+    if (msg) msg.textContent = t("res.telegram.fail", { err: e.message || "fail" });
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = t("res.telegram.test");
+    }
+  }
+}
+
+function setupResources() {
+  $("res-probe")?.addEventListener("click", () => renderResources({ probe: true }));
+  $("res-telegram")?.addEventListener("click", (e) => {
+    if (e.target?.id === "res-tg-test") testTelegramNotify();
+  });
 }
 
 async function renderSpend() {
@@ -3130,6 +3506,228 @@ async function renderSpend() {
   } catch (e) {
     out.textContent = e.message;
   }
+}
+
+state.econDays = "all";
+
+function econKpi(label, value, { sub = "", cls = "" } = {}) {
+  return `<div class="econ-kpi${cls ? ` ${cls}` : ""}"><span>${escapeHtml(label)}</span><b>${value}</b>${sub ? `<em>${escapeHtml(sub)}</em>` : ""}</div>`;
+}
+
+function fmtUsd(n, digits = 2) {
+  if (n == null || Number.isNaN(Number(n))) return "—";
+  return `$${Number(n).toFixed(digits)}`;
+}
+
+function fmtPct(n) {
+  if (n == null || Number.isNaN(Number(n))) return "—";
+  return `${n}%`;
+}
+
+async function renderEconomy() {
+  const out = $("econ-out");
+  if (!out) return;
+  out.innerHTML = `<p class="muted">…</p>`;
+  try {
+    const q = state.econDays === "all" ? "all" : state.econDays;
+    const d = await api(`/api/admin/economy?days=${encodeURIComponent(q)}`);
+    const ov = d.overview || {};
+    const g = d.gross || {};
+    const n = d.net || {};
+    const m = d.model || {};
+    const be = d.break_even || {};
+    const f = d.funnel_30d || {};
+
+    const marginCls = g.gross_margin_pct != null && g.gross_margin_pct < 50 ? "warn" : g.gross_margin_pct != null ? "ok" : "";
+    const packs = (m.packages || []).map((p) => `
+      <div class="econ-pack${p.recommended ? " rec" : ""}">
+        <b>${escapeHtml(p.label)}</b>
+        <div class="price">${fmtUsd(p.usd)} · ${p.credits} ${escapeHtml(t("acct.credits"))}</div>
+        <div class="muted small">${fmtUsd(p.usd_per_credit, 4)}/${escapeHtml(t("acct.creditsShort"))}</div>
+        <div class="muted small">${escapeHtml(p.note || "")}</div>
+      </div>`).join("");
+
+    const tariffRows = (m.tariff_families || []).map((row) => `
+      <tr>
+        <td>${escapeHtml(row.label)}</td>
+        <td class="num">${row.draft} / ${fmtUsd(row.cogs_usd.draft, 3)} / ${fmtPct(row.margin_at_cheapest_pack_pct.draft)}</td>
+        <td class="num">${row.final} / ${fmtUsd(row.cogs_usd.final, 3)} / ${fmtPct(row.margin_at_cheapest_pack_pct.final)}</td>
+        <td class="num">${row.ref} / ${fmtUsd(row.cogs_usd.ref, 3)} / ${fmtPct(row.margin_at_cheapest_pack_pct.ref)}</td>
+      </tr>`).join("");
+
+    const engRows = (m.engines || []).map((e) => `
+      <tr>
+        <td>${escapeHtml(e.id)}${e.support_fee ? ` <span class="muted small">(${escapeHtml(t("econ.support"))})</span>` : ""}</td>
+        <td class="num">${fmtUsd(e.cost_usd, 3)}</td>
+        <td class="num">${e.credits_ref}</td>
+        <td class="num">${fmtUsd(e.revenue_at_cheapest_usd, 3)}</td>
+        <td class="num">${fmtPct(e.est_margin_pct)}</td>
+      </tr>`).join("");
+
+    const costRows = (g.by_engine_cost || []).map((e) => `
+      <tr>
+        <td>${escapeHtml(e.engine)}</td>
+        <td class="num">${e.ops}</td>
+        <td class="num">${e.credits_spent}</td>
+        <td class="num">${fmtUsd(e.api_usd, 4)}</td>
+      </tr>`).join("") || `<tr><td colspan="4" class="muted">${escapeHtml(t("econ.empty"))}</td></tr>`;
+
+    const oh = m.overhead || {};
+    const ohItems = (oh.items || []).map((it) => `
+      <div class="econ-pack">
+        <b>${escapeHtml(it.label)}</b>
+        <div class="price">${fmtUsd(it.usd)}/міс</div>
+      </div>`).join("");
+    const scenRows = (m.scenarios || []).map((r) => `
+      <tr>
+        <td class="num">${r.pro_packs}× Pro</td>
+        <td class="num">${fmtUsd(r.revenue_usd)}</td>
+        <td class="num">${fmtUsd(r.api_usd)}</td>
+        <td class="num">${fmtUsd(r.fees_usd)}</td>
+        <td class="num">${fmtUsd(r.resource_fx_usd)}</td>
+        <td class="num">${fmtUsd(r.fixed_usd)}</td>
+        <td class="num">${fmtUsd(r.net_usd)}</td>
+        <td class="num">${fmtPct(r.net_margin_pct)}</td>
+      </tr>`).join("");
+    const warnHtml = (m.warnings || []).map((w) =>
+      `<p class="econ-note" style="color:var(--warn)">${escapeHtml(w)}</p>`).join("");
+
+    const arpu = g.arpu_usd != null ? fmtUsd(g.arpu_usd) : "—";
+    const stabWarn = g.stability_share_pct != null && g.stability_share_pct > 40
+      ? `<p class="econ-note" style="color:var(--warn)">${escapeHtml(t("econ.stabWarn"))} (${g.stability_share_pct}%)</p>`
+      : "";
+
+    out.innerHTML = `
+      <section class="econ-section">
+        <h4>${escapeHtml(t("econ.ov"))}</h4>
+        <div class="econ-kpis">
+          ${econKpi(t("econ.kpi.users"), ov.users_total ?? "—", { sub: `${t("econ.kpi.verified")}: ${ov.users_verified ?? "—"}` })}
+          ${econKpi(t("econ.kpi.revenue"), fmtUsd(ov.revenue_usd), { sub: t("econ.ext", { ext: fmtUsd(ov.revenue_usd_external), int: fmtUsd(ov.revenue_usd_internal) }) })}
+          ${econKpi(t("econ.kpi.outstanding"), ov.credits_outstanding ?? "—", { sub: `${ov.credits_sold ?? 0} sold` })}
+          ${econKpi(t("econ.kpi.arpu"), arpu, { sub: `${g.payments_count ?? 0} pay` })}
+        </div>
+      </section>
+      <section class="econ-section">
+        <h4>${escapeHtml(t("econ.live"))} · ${escapeHtml(g.period || q)}</h4>
+        <div class="econ-kpis">
+          ${econKpi(t("econ.kpi.margin"), fmtPct(g.gross_margin_pct), { cls: marginCls, sub: `${fmtUsd(g.estimated_revenue_on_debited_usd)} on debit` })}
+          ${econKpi(t("econ.kpi.api"), fmtUsd(g.estimated_api_usd, 4), { sub: `${g.credits_debited ?? 0} cr` })}
+          ${econKpi(t("econ.kpi.util"), fmtPct(g.credits_utilization_pct), { sub: `avg ${fmtUsd(g.avg_usd_per_credit, 4)}/cr` })}
+          ${econKpi(t("econ.kpi.net"), fmtUsd(n.net_profit_usd), { cls: n.net_profit_usd >= 0 ? "ok" : "warn", sub: fmtPct(n.net_margin_pct) })}
+        </div>
+        <p class="econ-note">${escapeHtml(t("econ.arpuLine", { arpu, n: g.payments_count ?? 0, avg: g.avg_usd_per_credit ?? 0, welcome: g.welcome_credits_net ?? 0 }))}</p>
+        <p class="econ-note">${escapeHtml(t("econ.netLine", {
+          rev: n.revenue_usd ?? 0, api: n.api_cost_usd ?? 0,
+          fee: n.payment_fee_pct ?? 0, feeu: n.payment_fee_usd ?? 0,
+          fx: n.fx_fee_pct ?? 0, fxu: n.fx_fee_usd ?? 0,
+          rfx: n.resource_fx_pct ?? 0, rfxu: n.resource_fx_usd ?? 0,
+          fixed: n.fixed_cost_usd ?? 0, net: n.net_profit_usd ?? 0,
+        }))}</p>
+        <p class="econ-note">${escapeHtml(t("econ.ohLine", {
+          hosting: n.hosting_monthly_usd ?? oh.hosting_monthly_usd ?? 0,
+          saas: n.saas_monthly_usd ?? oh.saas_monthly_usd ?? 0,
+          fixed: n.fixed_monthly_usd ?? oh.fixed_monthly_usd ?? 0,
+          rfx: n.resource_fx_pct ?? m.fees_defaults?.resource_fx_pct ?? 0,
+        }))}</p>
+        ${stabWarn}
+        <div class="table-wrap" style="max-height:220px;margin-top:8px">
+          <table class="econ-table">
+            <thead><tr><th>${escapeHtml(t("econ.col.engine"))}</th><th class="num">${escapeHtml(t("econ.col.ops"))}</th><th class="num">${escapeHtml(t("econ.col.spent"))}</th><th class="num">${escapeHtml(t("econ.col.api"))}</th></tr></thead>
+            <tbody>${costRows}</tbody>
+          </table>
+        </div>
+      </section>
+      <section class="econ-section">
+        <h4>${escapeHtml(t("econ.be"))}</h4>
+        <p class="econ-note">${escapeHtml(t("econ.beLine", {
+          contrib: fmtUsd(be.contribution_usd),
+          need: be.break_even_count ?? 0,
+          have: be.payments_this_month ?? 0,
+          pct: be.covered_pct != null ? `${be.covered_pct}%` : "—",
+        }))}</p>
+      </section>
+      <section class="econ-section">
+        <h4>${escapeHtml(t("econ.oh"))}</h4>
+        <p class="econ-note">${escapeHtml(t("econ.ohHint"))}</p>
+        <div class="econ-packs">${ohItems}</div>
+        <p class="econ-note">${escapeHtml(t("econ.ohTotal", { total: fmtUsd(oh.fixed_monthly_usd ?? 0) }))}</p>
+        <h4 style="margin-top:14px">${escapeHtml(t("econ.scenarios"))}</h4>
+        <p class="econ-note">${escapeHtml(t("econ.scenHint", { api: m.blended_api_per_credit ?? 0 }))}</p>
+        <div class="table-wrap">
+          <table class="econ-table">
+            <thead><tr>
+              <th>${escapeHtml(t("econ.col.volume"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.rev"))}</th>
+              <th class="num">API</th>
+              <th class="num">${escapeHtml(t("econ.col.fees"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.rfx"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.fixed"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.net"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.mgn"))}</th>
+            </tr></thead>
+            <tbody>${scenRows}</tbody>
+          </table>
+        </div>
+      </section>
+      <section class="econ-section">
+        <h4>${escapeHtml(t("econ.model"))}</h4>
+        <p class="econ-note">${escapeHtml(t("econ.modelNote", {
+          target: m.target_gross_margin_pct || "≥25%",
+          net: m.target_net_margin_pct || "",
+          cheap: m.cheapest_usd_per_credit ?? 0.03,
+          rule: m.margin_floor_rule || "",
+        }))}</p>
+        ${warnHtml}
+        <h4 style="margin-top:12px">${escapeHtml(t("econ.packages"))}</h4>
+        <div class="econ-packs">${packs}</div>
+        <h4 style="margin-top:14px">${escapeHtml(t("econ.tariff"))}</h4>
+        <div class="table-wrap">
+          <table class="econ-table">
+            <thead><tr>
+              <th>${escapeHtml(t("econ.col.family"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.draft"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.final"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.ref"))}</th>
+            </tr></thead>
+            <tbody>${tariffRows}</tbody>
+          </table>
+        </div>
+        <h4 style="margin-top:14px">${escapeHtml(t("econ.engines"))}</h4>
+        <div class="table-wrap" style="max-height:260px">
+          <table class="econ-table">
+            <thead><tr>
+              <th>${escapeHtml(t("econ.col.engine"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.cogs"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.credits"))}</th>
+              <th class="num">Rev $</th>
+              <th class="num">${escapeHtml(t("econ.col.mgn"))}</th>
+            </tr></thead>
+            <tbody>${engRows}</tbody>
+          </table>
+        </div>
+      </section>
+      <section class="econ-section">
+        <h4>${escapeHtml(t("econ.funnel"))}</h4>
+        <div class="econ-kpis">
+          ${econKpi("New", f.new_users ?? "—")}
+          ${econKpi("Verified", f.new_verified ?? "—")}
+          ${econKpi("Paying", f.paying_wallets ?? "—", { sub: fmtPct(f.conversion_verified_to_paying_pct) })}
+          ${econKpi("Export", f.exported_wallets ?? "—", { sub: fmtPct(f.conversion_generate_to_export_pct) })}
+        </div>
+      </section>`;
+  } catch (e) {
+    out.innerHTML = `<p class="err-msg">${escapeHtml(t("econ.fail", { err: e.message }))}</p>`;
+  }
+}
+
+function setupEconomy() {
+  document.querySelectorAll("[data-econ-days]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.econDays = btn.dataset.econDays || "all";
+      document.querySelectorAll("[data-econ-days]").forEach((b) => b.classList.toggle("on", b === btn));
+      renderEconomy();
+    });
+  });
 }
 
 async function renderTrash() {
@@ -3239,6 +3837,8 @@ async function boot() {
   setupExport();
   setupHelp();
   setupAccount();
+  setupEconomy();
+  setupResources();
   await refreshAccount();
 
   try {
@@ -3272,6 +3872,7 @@ async function boot() {
   await fillExportSets();
   await restoreWorkspace();
   applyI18n(document);
+  relabelEngineSelects();
 }
 
 boot().catch((e) => {

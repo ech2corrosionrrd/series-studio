@@ -23,6 +23,8 @@ const env = {
   SERIES_MODE: "public",
   SERIES_DATA_DIR: dir,
   SERIES_KEYS_FILE: join(dir, "no-keys.env"),
+  SERIES_PLATFORM_ENV: "",
+  USERS_DB_PATH: join(dir, "users.db"),
   AUTH_SESSION_SECRET: "e2e-secret",
   AUTH_COOKIE_INSECURE: "1",
   WELCOME_REQUIRE_BALANCE: "0",
@@ -157,7 +159,12 @@ describe("public mode end-to-end", () => {
     assert.equal(tooMuch.json.code, "credits");
     assert.equal((await call("GET", "/api/me")).json.balance, 14, "nothing charged for a refused batch");
     const local = await call("POST", "/api/generate", { body: { engine: "comfyui", mode: "first", first: 1 } });
-    assert.equal(local.status, 400);
+    // Loopback public Studio allows local GPU but charges support credits / needs a live Comfy.
+    // Without a live Comfy the batch answers 200 with per-image errors — then nothing may be charged.
+    const failedBatch = local.status === 200 && local.json.count === 0;
+    assert.ok(failedBatch || [400, 402, 502, 503].includes(local.status), `unexpected ${local.status}: ${local.text}`);
+    assert.equal((await call("GET", "/api/me")).json.balance, 14, "failed local-GPU batch is refunded");
+    assert.notEqual(local.json?.code, "local_gpu", "policy should allow Comfy on loopback public Studio");
   });
 
   test("Passport quest sees the generated images (API-key protected)", async () => {

@@ -5,6 +5,7 @@ import {
   sendTelegramNotification,
   getTelegramConfig,
   dispatchBatchNotification,
+  brandOperatorText,
 } from "../src/notifications.mjs";
 
 test("Wave 20: formatBatchSummary formats informative markdown message", (t) => {
@@ -25,6 +26,7 @@ test("Wave 20: formatBatchSummary formats informative markdown message", (t) => 
   });
 
   assert.ok(summary.includes("Cyber Gremlins Series"));
+  assert.ok(summary.includes("Series Lab"));
   assert.ok(summary.includes("24"));
   assert.ok(summary.includes("45.2с"));
   assert.ok(summary.includes("Keep: 22"));
@@ -46,6 +48,25 @@ test("Wave 20: getTelegramConfig detects presence of credentials", (t) => {
   assert.equal(filledConf.configured, true);
   assert.equal(filledConf.botToken, "123:ABC");
   assert.equal(filledConf.chatId, "998877");
+  assert.equal(filledConf.source, "TELEGRAM_*");
+
+  const seriesWins = getTelegramConfig({
+    SERIES_TELEGRAM_BOT_TOKEN: "lab:TOK",
+    SERIES_TELEGRAM_CHAT_ID: "-1001",
+    TELEGRAM_BOT_TOKEN: "promt:TOK",
+    TELEGRAM_CHAT_ID: "999",
+  });
+  assert.equal(seriesWins.botToken, "lab:TOK");
+  assert.equal(seriesWins.chatId, "-1001");
+  assert.equal(seriesWins.source, "SERIES_TELEGRAM_*");
+});
+
+test("Wave 20: brandOperatorText prefixes Series Lab once", () => {
+  const branded = brandOperatorText("hello");
+  assert.ok(branded.startsWith("🔔 *Series Lab*"));
+  assert.ok(branded.includes("hello"));
+  const again = brandOperatorText(branded);
+  assert.equal(again, branded);
 });
 
 test("Wave 20: sendTelegramNotification returns error for missing parameters", async (t) => {

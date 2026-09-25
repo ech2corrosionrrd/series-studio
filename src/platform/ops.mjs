@@ -1,21 +1,32 @@
 /**
  * Operator notifications and wallet classification.
- * Port of Промт `services/notify.py` (plain-text Telegram, silent on failure)
- * and `services/wallet_class.py` (internal vs external wallets for metrics).
+ * Port of Промт `services/notify.py` + Series Lab branding (own Telegram bot).
  */
+import { getTelegramConfig, sendTelegramNotification, brandOperatorText } from "../notifications.mjs";
 import { normalizeAddr } from "./wallet.mjs";
 
-/** Plain-text Telegram message to the operator chat. Never throws. */
-export function notifyOperator(text) {
-  const token = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
-  const chatId = String(process.env.TELEGRAM_CHAT_ID || "").trim();
-  if (!token || !chatId) return Promise.resolve(false);
-  return fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text }),
-    signal: AbortSignal.timeout(10_000),
-  }).then(() => true, () => false);
+/** Send plain-text (or Markdown) to the Series Lab operator chat. Never throws. */
+export async function notifyOperator(text, { parseMode } = {}) {
+  const cfg = getTelegramConfig();
+  if (!cfg.configured) return false;
+  const body = brandOperatorText(text);
+  const r = await sendTelegramNotification({
+    botToken: cfg.botToken,
+    chatId: cfg.chatId,
+    text: body,
+    parseMode: parseMode || "Markdown",
+  });
+  if (!r.ok) {
+    // Fallback without Markdown if Telegram rejects entities.
+    const plain = await sendTelegramNotification({
+      botToken: cfg.botToken,
+      chatId: cfg.chatId,
+      text: body.replace(/[*_`\[\]]/g, ""),
+      parseMode: undefined,
+    });
+    return plain.ok;
+  }
+  return true;
 }
 
 /** Operator wallet for the admin panel. Public address; extra admins may be added via ADMIN_WALLETS. */

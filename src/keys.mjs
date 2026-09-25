@@ -8,9 +8,12 @@
  *
  * Resolution order for loadKeys:
  *   1) explicit path argument (if provided)
- *   2) process.env.SERIES_KEYS_FILE
+ *   2) process.env.SERIES_KEYS_FILE (before reading project .env)
  *   3) .env in process.cwd()
- *   4) process.env.SERIES_DEFAULT_KEYS_FILE (optional escape hatch)
+ *   4) SERIES_DEFAULT_KEYS_FILE / SERIES_KEYS_FILE discovered from files already loaded
+ *
+ * Series Lab is self-contained: all keys, Helio paylinks, Telegram, AUTH_* live
+ * in this project's .env. SERIES_PLATFORM_ENV is ignored (deprecated).
  * Never hardcode a machine-specific absolute path in source.
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -32,22 +35,43 @@ export function parseEnv(text) {
   return out;
 }
 
+function mergeFile(cand, env, loaded) {
+  if (!cand || !existsSync(cand) || loaded.includes(cand)) return false;
+  for (const [k, v] of Object.entries(parseEnv(readFileSync(cand, "utf8")))) {
+    if (env[k] === undefined) env[k] = v;
+  }
+  loaded.push(cand);
+  return true;
+}
+
 /** Merge keys into env without overriding existing values. Returns first loaded path or null. */
 export function loadKeys(path, env = process.env) {
-  const candidates = [];
-  if (path) candidates.push(path);
-  if (env.SERIES_KEYS_FILE) candidates.push(env.SERIES_KEYS_FILE);
-  candidates.push(resolve(process.cwd(), ".env"));
-  if (env.SERIES_DEFAULT_KEYS_FILE) candidates.push(env.SERIES_DEFAULT_KEYS_FILE);
-
   const loaded = [];
-  for (const cand of [...new Set(candidates.filter(Boolean))]) {
-    if (!existsSync(cand)) continue;
-    for (const [k, v] of Object.entries(parseEnv(readFileSync(cand, "utf8")))) {
-      if (env[k] === undefined) env[k] = v;
-    }
-    loaded.push(cand);
+  const firstPass = [];
+  if (path) firstPass.push(path);
+  if (env.SERIES_KEYS_FILE) firstPass.push(env.SERIES_KEYS_FILE);
+  firstPass.push(resolve(process.cwd(), ".env"));
+  if (env.SERIES_DEFAULT_KEYS_FILE) firstPass.push(env.SERIES_DEFAULT_KEYS_FILE);
+
+  for (const cand of [...new Set(firstPass.filter(Boolean))]) {
+    mergeFile(cand, env, loaded);
   }
+
+  // Optional extra Lab key files only (never SERIES_PLATFORM_ENV / foreign projects).
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const key of ["SERIES_KEYS_FILE", "SERIES_DEFAULT_KEYS_FILE"]) {
+      if (mergeFile(env[key], env, loaded)) grew = true;
+    }
+  }
+
+  if (env.SERIES_PLATFORM_ENV && !env.SERIES_PLATFORM_ENV_SILENCE) {
+    console.warn(
+      "[series-lab] SERIES_PLATFORM_ENV is ignored — put Helio/API/Telegram keys in this project's .env (self-contained).",
+    );
+  }
+
   return loaded[0] || null;
 }
 
@@ -55,11 +79,7 @@ export function loadKeys(path, env = process.env) {
 export function loadKeysExtra(paths, env = process.env) {
   const loaded = [];
   for (const cand of paths || []) {
-    if (!cand || !existsSync(cand)) continue;
-    for (const [k, v] of Object.entries(parseEnv(readFileSync(cand, "utf8")))) {
-      if (env[k] === undefined) env[k] = v;
-    }
-    loaded.push(cand);
+    mergeFile(cand, env, loaded);
   }
   return loaded;
 }

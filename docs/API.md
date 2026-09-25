@@ -111,6 +111,19 @@
 Платні виклики пишуться в `out/render-log.jsonl`; `SERIES_SPEND_CAP_USD` блокує запуск понад денну межу (400, `code: "spend_cap"`).
 Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) помилок поспіль (`stopped` у відповіді).
 
+## Credits / Local GPU / Admin economy (`SERIES_MODE=public`)
+
+Платформа: `server/platform.mjs` + `src/platform/*`. Деталі економіки: [ECONOMY.md](./ECONOMY.md).
+
+| Method | Path | Опис |
+|--------|------|------|
+| GET | `/api/credits` | баланс, пакети, історія (сесія) |
+| POST | `/api/credits/sync` | звірити Helio після оплати |
+| GET | `/api/local-gpu` | політика Local GPU (доступність loopback / `SERIES_LOCAL_GPU`) |
+| GET | `/api/engines` | рушії + `creditCosts` (кредити за кадр) |
+| GET | `/api/admin/economy?days=` | `7` \| `30` \| `all` — маржа, накладні, сценарії (адмін) |
+| POST | `/api/notifications/test` | тест Telegram (адмін) |
+
 ## Статика
 
 | Path | Опис |
@@ -133,4 +146,4 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 - `triage <set-dir> [options]` — автоматичний аудит та оцінка якості зображень
 - `pin <set-dir> [options]` — завантаження зображень у IPFS / Pinata
 
-Див.: [STUDIO-UI.md](./STUDIO-UI.md) · [EXPORT.md](./EXPORT.md) · [STAGES.md](./STAGES.md)
+Див.: [STUDIO-UI.md](./STUDIO-UI.md) · [EXPORT.md](./EXPORT.md) · [STAGES.md](./STAGES.md) · [ECONOMY.md](./ECONOMY.md)

@@ -1,20 +1,46 @@
 /**
  * Batch Generation Notifications & Webhook Dispatcher.
- * Handles Telegram bot notifications, webhooks, and summary formatting.
+ * Telegram messages are branded as Series Lab (own bot via SERIES_TELEGRAM_* or TELEGRAM_*).
  */
+
+export const PROJECT_TG_NAME = "Series Lab";
+
+/**
+ * Prefer Lab-specific Telegram credentials so Promt's bot is never implied.
+ * SERIES_TELEGRAM_* → TELEGRAM_* → legacy aliases.
+ */
+export function getTelegramConfig(env = process.env) {
+  const botToken = String(
+    env.SERIES_TELEGRAM_BOT_TOKEN || env.TELEGRAM_BOT_TOKEN || env.TELEGRAM_TOKEN || "",
+  ).trim();
+  const chatId = String(
+    env.SERIES_TELEGRAM_CHAT_ID || env.TELEGRAM_CHAT_ID || env.TELEGRAM_ADMIN_CHAT_ID || "",
+  ).trim();
+  const configured = Boolean(botToken && chatId);
+  return {
+    configured,
+    botToken: configured ? botToken : undefined,
+    chatId: configured ? chatId : undefined,
+    source: env.SERIES_TELEGRAM_BOT_TOKEN
+      ? "SERIES_TELEGRAM_*"
+      : env.TELEGRAM_BOT_TOKEN || env.TELEGRAM_TOKEN
+        ? "TELEGRAM_*"
+        : null,
+  };
+}
+
+/** Prefix operator/batch text with Series Lab identity (idempotent). */
+export function brandOperatorText(text, project = PROJECT_TG_NAME) {
+  const body = String(text || "").trim();
+  if (!body) return `*${project}*`;
+  if (body.includes(project) || body.startsWith("🎨 *Series Lab") || body.startsWith("🔔 *Series Lab")) {
+    return body;
+  }
+  return `🔔 *${project}*\n${body}`;
+}
 
 /**
  * Formats a clean, readable text summary for completed batch render / triage.
- * @param {object} info
- * @param {string} [info.presetId]
- * @param {string} [info.presetName]
- * @param {number} [info.total]
- * @param {number} [info.success]
- * @param {number} [info.failed]
- * @param {number} [info.durationMs]
- * @param {object} [info.triage] - { keep: number, redo: number, avgScore: number }
- * @param {string} [info.provenanceHash]
- * @returns {string} Formatted markdown/plain message
  */
 export function formatBatchSummary(info = {}) {
   const name = info.presetName || info.presetId || "Series Collection";
@@ -24,7 +50,7 @@ export function formatBatchSummary(info = {}) {
   const durationSec = info.durationMs ? (info.durationMs / 1000).toFixed(1) : null;
 
   const lines = [
-    `🎨 *Series Lab — Генерація завершена!*`,
+    `🎨 *${PROJECT_TG_NAME} — Генерація завершена!*`,
     `📁 Серія: *${name}*`,
     `📊 Всього токенів: *${total}* (✅ Успішно: ${success}${failed > 0 ? `, ❌ Помилок: ${failed}` : ""})`,
   ];
@@ -38,7 +64,7 @@ export function formatBatchSummary(info = {}) {
     const redo = info.triage.redo ?? 0;
     const score = info.triage.avgScore ? Number(info.triage.avgScore).toFixed(1) : null;
     lines.push(
-      `🤖 *AI Auto-Triage*: 🟢 Keep: ${keep} | 🔴 Redo: ${redo}${score ? ` | ⭐ Сер. бал: ${score}/10` : ""}`
+      `🤖 *AI Auto-Triage*: 🟢 Keep: ${keep} | 🔴 Redo: ${redo}${score ? ` | ⭐ Сер. бал: ${score}/10` : ""}`,
     );
   }
 
@@ -56,13 +82,6 @@ export function formatBatchSummary(info = {}) {
 /**
  * Sends a message via Telegram Bot API.
  * Gracefully resolves without crashing if keys are missing or network fails.
- *
- * @param {object} params
- * @param {string} params.botToken - Telegram Bot Token (e.g. 123456:ABC-DEF...)
- * @param {string|number} params.chatId - Telegram Chat ID
- * @param {string} params.text - Message text (Markdown supported)
- * @param {string} [params.parseMode='Markdown']
- * @returns {Promise<{ ok: boolean, error?: string, result?: object }>}
  */
 export async function sendTelegramNotification(params = {}) {
   const { botToken, chatId, text, parseMode = "Markdown" } = params;
@@ -74,19 +93,21 @@ export async function sendTelegramNotification(params = {}) {
   const cleanToken = String(botToken).trim();
   const cleanChatId = String(chatId).trim();
   const url = `https://api.telegram.org/bot${cleanToken}/sendMessage`;
+  const payload = {
+    chat_id: cleanChatId,
+    text,
+  };
+  if (parseMode) payload.parse_mode = parseMode;
 
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: cleanChatId,
-        text,
-        parse_mode: parseMode,
-      }),
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15_000),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
       return { ok: false, error: data?.description || `HTTP ${res.status}` };
     }
@@ -98,31 +119,12 @@ export async function sendTelegramNotification(params = {}) {
 }
 
 /**
- * Checks presence of Telegram credentials in environment or keys map.
- * @param {object} [env=process.env]
- * @returns {{ configured: boolean, botToken?: string, chatId?: string }}
- */
-export function getTelegramConfig(env = process.env) {
-  const botToken = env.TELEGRAM_BOT_TOKEN || env.TELEGRAM_TOKEN || "";
-  const chatId = env.TELEGRAM_CHAT_ID || env.TELEGRAM_ADMIN_CHAT_ID || "";
-  const configured = Boolean(botToken && chatId);
-  return {
-    configured,
-    botToken: configured ? botToken : undefined,
-    chatId: configured ? chatId : undefined,
-  };
-}
-
-/**
  * High-level dispatcher: sends notification if Telegram is configured.
- * @param {object} batchInfo
- * @param {object} [env=process.env]
- * @returns {Promise<{ sent: boolean, error?: string }>}
  */
 export async function dispatchBatchNotification(batchInfo = {}, env = process.env) {
   const config = getTelegramConfig(env);
   if (!config.configured) {
-    return { sent: false, error: "Telegram notifications not configured (missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID)" };
+    return { sent: false, error: "Telegram notifications not configured (set SERIES_TELEGRAM_BOT_TOKEN + SERIES_TELEGRAM_CHAT_ID)" };
   }
 
   const text = formatBatchSummary(batchInfo);
@@ -136,4 +138,25 @@ export async function dispatchBatchNotification(batchInfo = {}, env = process.en
     sent: result.ok,
     error: result.error,
   };
+}
+
+/** Admin test ping branded as Series Lab. */
+export async function sendTelegramTest(env = process.env) {
+  const config = getTelegramConfig(env);
+  if (!config.configured) {
+    return { ok: false, error: "not_configured", configured: false };
+  }
+  // Plain text — avoid Markdown parse errors on underscores in SERIES_TELEGRAM_*.
+  const text = [
+    `🔔 ${PROJECT_TG_NAME}`,
+    `Тестове сповіщення · ${new Date().toISOString().slice(0, 19).replace("T", " ")} UTC`,
+    `Джерело ключів: ${config.source || "TELEGRAM"}`,
+  ].join("\n");
+  const result = await sendTelegramNotification({
+    botToken: config.botToken,
+    chatId: config.chatId,
+    text,
+    parseMode: null,
+  });
+  return { ...result, configured: true, source: config.source };
 }

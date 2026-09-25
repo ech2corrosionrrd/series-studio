@@ -1,13 +1,9 @@
 /**
- * Platform database — the SAME SQLite file and schema as Промт (`data/users.db`).
+ * Platform database — same SQLite *schema* as Промт (`users.db`), but Series Lab
+ * keeps its **own** ledger file. Do not point `USERS_DB_PATH` at Промт production
+ * data for day-to-day Lab work: this is a new product with a fresh credit history.
  *
- * Series Lab replaces Промт in production. Balances, payments, referrals and the
- * funnel must survive the switch 1:1, so the schema below mirrors
- * `Промт/services/payment_service._connect`, `holder_rewards._ensure_table` and
- * `b2b_service._connect` exactly (idempotent CREATE TABLE IF NOT EXISTS + the
- * same additive migrations). Series Lab can open Промт's production file as is.
- *
- * Uses the built-in `node:sqlite` (Node ≥ 22.13) — no native dependency.
+ * Path: explicit → env `USERS_DB_PATH` → `<SERIES_DATA_DIR>/users.db` → `./data/users.db`.
  */
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";

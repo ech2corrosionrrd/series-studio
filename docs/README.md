@@ -14,6 +14,7 @@
 | **Користувач майстерні** | [STAGES.md](./STAGES.md) → [STUDIO-UI.md](./STUDIO-UI.md) → [EXPORT.md](./EXPORT.md) |
 | **Розробник** | [API.md](./API.md) · [PRESET.md](./PRESET.md) · [TRAITS.md](./TRAITS.md) · [../CHANGELOG.md](../CHANGELOG.md) |
 | **Після ядра / хостинг** | [HOSTING.md](./HOSTING.md) — лише за командою власника · [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) · [MIGRATION.md](./MIGRATION.md) |
+| **Оператор / економіка** | [ECONOMY.md](./ECONOMY.md) — пакети, COGS, накладні, RESOURCE_FX, Admin → Економіка |
 
 ## Усі документи
 
@@ -21,6 +22,7 @@
 |---|---|
 | [../README.md](../README.md) | Огляд продукту, запуск, змінні `.env`, CLI, структура |
 | [GUIDE.md](./GUIDE.md) | Посібник для початківців |
+| [ECONOMY.md](./ECONOMY.md) | Кредити, юніт-маржа, хостинг/SaaS, crypto→USD, Admin → Економіка |
 | [STAGES.md](./STAGES.md) | Етапи майстерні |
 | [STUDIO-UI.md](./STUDIO-UI.md) | Інтерфейс, підказки, довідка, локалізація, безпека |
 | [API.md](./API.md) | HTTP-маршрути `/api/*` |

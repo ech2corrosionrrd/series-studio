@@ -39,7 +39,8 @@
 - **Streamlit UI** — замінений Studio + `/login`.
 - **Вхід поштою** — не плануємо; лише гаманець.
 - **Ончейн-мінт / клейм зсередини Lab** — ZIP + портал лаунчпада; ключі не custodial.
-- **Кредити / Helio** — **перенесено** в `src/platform/*` (`SERIES_MODE=public`), та сама схема `users.db`.
+- **Кредити / Helio** — **перенесено** в `src/platform/*` (`SERIES_MODE=public`), схема як у Промт, але **окремий леджер** `data/users.db` і **самодостатній** `.env` Lab (Helio paylinks, API, Telegram — лише в цьому проєкті; `SERIES_PLATFORM_ENV` ігнорується). У UI — «Купити» + «Перевірити оплату» (`POST /api/credits/sync`).
+- **Адмін → Економіка** — `src/platform/margin.mjs` + `GET /api/admin/economy`: пакети, COGS, накладні (`HOSTING_MONTHLY_USD` / `SAAS_MONTHLY_USD`), Helio+FX вхід, `RESOURCE_FX_PCT` (crypto→USD на ресурси), Local GPU support fee. Деталі: [ECONOMY.md](./ECONOMY.md).
 - **`SERIES_MODE=local`** — лише теки репо без акаунтів; не може слухати поза loopback.
 
-Див. також: [ROADMAP.md](./ROADMAP.md) · [STAGES.md](./STAGES.md) · [API.md](./API.md)
+Див. також: [ROADMAP.md](./ROADMAP.md) · [STAGES.md](./STAGES.md) · [API.md](./API.md) · [ECONOMY.md](./ECONOMY.md)

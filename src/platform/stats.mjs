@@ -1,10 +1,54 @@
 /**
  * Funnel metrics and per-wallet activity. Port of Промт `services/stats.py`
- * (`wallet_activity`, `funnel`) — the numbers `ПЛАН_ВИХОДУ.md` measures success by.
+ * (`wallet_activity`, `funnel`, `overview`) — the numbers `ПЛАН_ВИХОДУ.md` measures success by.
  */
 import { DEBIT_NOTE, FAILURE_NOTE, normalizeWallet } from "./billing.mjs";
 import { nowIso, openDb } from "./db.mjs";
 import { scopeSql } from "./ops.mjs";
+
+/** Site-wide KPIs over users.db — port of Промт `stats.overview`. */
+export function overview(db = openDb()) {
+  const usersTotal = Number(db.prepare("SELECT COUNT(*) AS n FROM users").get().n);
+  const verified = Number(db.prepare("SELECT COUNT(*) AS n FROM users WHERE verified_at IS NOT NULL").get().n);
+  const outstanding = Number(db.prepare("SELECT COALESCE(SUM(credits_balance), 0) AS n FROM users").get().n);
+  const pay = db.prepare(
+    "SELECT COALESCE(SUM(amount_usd), 0) AS usd, COUNT(*) AS n, COALESCE(SUM(credits), 0) AS cr FROM payments",
+  ).get();
+  const ext = scopeSql("external");
+  const payExt = db.prepare(
+    `SELECT COALESCE(SUM(amount_usd), 0) AS usd, COUNT(*) AS n, COALESCE(SUM(credits), 0) AS cr
+     FROM payments WHERE 1 = 1${ext.sql}`,
+  ).get(...ext.params);
+  const usersExt = Number(db.prepare(`SELECT COUNT(*) AS n FROM users WHERE 1 = 1${ext.sql}`).get(...ext.params).n);
+  const revenue = Number(pay.usd);
+  const revenueExt = Math.round(Number(payExt.usd) * 100) / 100;
+  return {
+    users_total: usersTotal,
+    users_verified: verified,
+    credits_outstanding: outstanding,
+    revenue_usd: Math.round(revenue * 100) / 100,
+    payments_count: Number(pay.n),
+    credits_sold: Number(pay.cr),
+    revenue_usd_external: revenueExt,
+    revenue_usd_internal: Math.round((revenue - revenueExt) * 100) / 100,
+    payments_count_external: Number(payExt.n),
+    credits_sold_external: Number(payExt.cr),
+    users_external: usersExt,
+  };
+}
+
+/** Net credit sum by transaction kind (debit is negative). Optional last N days. */
+export function creditsByKindSince(days = null, db = openDb()) {
+  const since = days != null && days > 0
+    ? new Date(Date.now() - days * 86_400_000).toISOString().replace(/\.(\d{3})Z$/, ".$1000+00:00")
+    : null;
+  const rows = since
+    ? db.prepare("SELECT kind, COALESCE(SUM(credits), 0) AS n FROM transactions WHERE created_at >= ? GROUP BY kind").all(since)
+    : db.prepare("SELECT kind, COALESCE(SUM(credits), 0) AS n FROM transactions GROUP BY kind").all();
+  const out = {};
+  for (const r of rows) out[r.kind] = Number(r.n);
+  return out;
+}
 
 /**
  * Wallet activity for one UTC day — Passport quest verification.

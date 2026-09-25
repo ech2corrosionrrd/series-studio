@@ -21,9 +21,9 @@ export const WELCOME_NOTE = "Вітальні кредити";
 export const EARLY_WELCOME_NOTE = "Вітальні кредити (перші користувачі)";
 
 export const PACKAGES = {
-  start: { label: "🟢 Старт", usd: 4.99, credits: 100, note: "Низький поріг входу — спробувати сервіс", recommended: false },
-  creator: { label: "🟡 Креатор", usd: 14.99, credits: 400, note: "350 базових + 50 бонусних за обсяг", recommended: true },
-  pro: { label: "🔵 Профі / Колекція", usd: 29.99, credits: 1000, note: "750 базових + 250 бонусних — для матричних дропів", recommended: false },
+  start: { label: "Старт", usd: 4.99, credits: 100, note: "Низький поріг входу — спробувати сервіс", recommended: false },
+  creator: { label: "Креатор", usd: 14.99, credits: 400, note: "350 базових + 50 бонусних за обсяг", recommended: true },
+  pro: { label: "Профі / Колекція", usd: 29.99, credits: 1000, note: "750 базових + 250 бонусних — для матричних дропів", recommended: false },
 };
 
 // ── Pricing ──────────────────────────────────────────────────────────────────
@@ -38,18 +38,26 @@ const ENGINE_FAMILY = {
   stability: "stability",
   kontext: "flux", fal: "flux", schnell: "flux", runware: "flux", pollinations: "flux",
 };
-const FREE_ENGINES = new Set(["mock", "comfyui", "a1111"]);
+const FREE_ENGINES = new Set(["mock"]);
+
+/** Credits per ComfyUI/A1111 image — Lab support fee (GPU compute is free on user's PC). */
+export function localGpuCreditCost(env = process.env) {
+  const n = Number.parseInt(env.LOCAL_GPU_CREDIT_COST || "1", 10);
+  return Number.isFinite(n) && n >= 0 ? n : 1;
+}
 
 /**
  * Credits for ONE image. Промт table, with a margin floor: at the cheapest pack
  * price ($0.03/credit) an image must still cover 1.5 × provider cost.
  * Override per engine with env ENGINE_CREDIT_COSTS='{"kontext":3}'.
+ * Local GPU (comfyui/a1111): LOCAL_GPU_CREDIT_COST (default 1) — support fee for Lab.
  */
 export function creditCost(engine, { reference = false, final = false, costUsd = 0 } = {}) {
   let overrides = {};
   try { overrides = JSON.parse(process.env.ENGINE_CREDIT_COSTS || "{}"); } catch { /* ignore */ }
   if (Number.isInteger(overrides[engine]) && overrides[engine] >= 0) return overrides[engine];
   if (FREE_ENGINES.has(engine)) return 0;
+  if (engine === "comfyui" || engine === "a1111") return localGpuCreditCost();
   const row = FAMILY_CREDITS[ENGINE_FAMILY[engine] || "flux"];
   const base = row[(reference ? 2 : 0) + (final ? 1 : 0)];
   const floor = Math.ceil(Number(costUsd || 0) * 50 - 1e-9);
@@ -235,7 +243,7 @@ export function recordPayment(txId, wallet, credits, amountUsd, { db = openDb(),
     return true;
   });
   if (!ok) return false;
-  notify?.(`💰 Оплата зарахована\n+${credits} кредитів ($${amountUsd})\nГаманець: ${shortWallet(wallet)}\nБаланс: ${getBalance(wallet, db)}`);
+  notify?.(`💰 Series Lab · оплата зарахована\n+${credits} кредитів ($${amountUsd})\nГаманець: ${shortWallet(wallet)}\nБаланс: ${getBalance(wallet, db)}`);
   rewardReferral(wallet, { db, notify });
   return true;
 }
@@ -367,7 +375,7 @@ export function rewardReferral(invitee, { db = openDb(), notify } = {}) {
   const claimed = db.prepare("UPDATE referrals SET rewarded_at = ?, reward_credits = ? WHERE invitee_address = ? AND rewarded_at IS NULL").run(nowIso(), bonus, invitee).changes === 1;
   if (!claimed) return false;
   grantCredits(row.referrer_address, bonus, { note: `Реферальний бонус за ${shortWallet(invitee)}`, db });
-  notify?.(`🎁 Реферальний бонус\n+${bonus} кредитів рефереру ${shortWallet(row.referrer_address)}\nза першу оплату ${shortWallet(invitee)}`);
+  notify?.(`🎁 Series Lab · реферальний бонус\n+${bonus} кредитів рефереру ${shortWallet(row.referrer_address)}\nза першу оплату ${shortWallet(invitee)}`);
   return true;
 }
 
