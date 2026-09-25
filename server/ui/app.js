@@ -2420,8 +2420,8 @@ function renderTopup() {
           ${unit ? `<span class="topup-unit">${escapeHtml(unit)}</span>` : ""}
         </div>
         <p class="topup-note">${escapeHtml(p.note || "")}</p>
-        ${p.url
-          ? `<a class="btn primary topup-buy" href="${escapeHtml(p.url)}" target="_blank" rel="noopener" data-tip="${escapeHtml(tipText("topup.buy.tip") || t("topup.buy"))}">${escapeHtml(t("topup.buy"))}</a>`
+        ${me.solPay?.enabled
+          ? `<button type="button" class="btn primary topup-buy" data-pack="${escapeHtml(p.id)}" data-tip="${escapeHtml(tipText("topup.buy.tip") || t("topup.buy"))}">${escapeHtml(t("topup.buy"))}</button>`
           : `<span class="topup-unavailable">${escapeHtml(t("topup.unavailable"))}</span>`}
       </article>`;
     }).join("");
@@ -2452,11 +2452,6 @@ function setSyncStatus(el, text, kind) {
 }
 
 const LOW_BALANCE = 10;
-const PAY_WATCH_KEY = "series.payWatchUntil";
-const PAY_WATCH_MS = 15 * 60_000;
-const PAY_POLL_MS = 12_000;
-let payWatchTimer = null;
-let paySyncBusy = false;
 
 function showToast(text) {
   const el = document.createElement("div");
@@ -2479,71 +2474,7 @@ function openTopup({ needed, balance } = {}) {
   }
   overlay.hidden = false;
   $("topup-close")?.focus();
-  if (payWatchActive()) setSyncStatus($("topup-sync-status"), t("topup.watching"), "busy");
   if (state.account?.solPay?.enabled) solCheck(); // shows an open order / credits a payment that arrived meanwhile
-}
-
-function payWatchActive() {
-  try {
-    return Number(localStorage.getItem(PAY_WATCH_KEY) || 0) > Date.now();
-  } catch {
-    return false;
-  }
-}
-
-function stopPayWatch() {
-  clearInterval(payWatchTimer);
-  payWatchTimer = null;
-  try { localStorage.removeItem(PAY_WATCH_KEY); } catch {}
-}
-
-/** One poll of Helio; credits show up in the balance without any button press. */
-async function syncPayments({ manual = false } = {}) {
-  if (paySyncBusy) return null;
-  paySyncBusy = true;
-  const status = $("topup-sync-status");
-  try {
-    const r = await api("/api/credits/sync", { method: "POST", body: "{}" });
-    if (r.error) {
-      if (manual) setSyncStatus(status, t("topup.syncFail", { err: r.error }), "bad");
-      return r;
-    }
-    if (r.credited > 0) {
-      stopPayWatch();
-      setSyncStatus(status, t("topup.synced", { n: r.credited, tx: r.newTx, balance: r.balance }), "ok");
-      showToast(t("topup.toast", { n: r.credited, balance: r.balance }));
-      await refreshAccount();
-      if (!$("topup-overlay")?.hidden) renderTopup();
-    } else if (manual) {
-      setSyncStatus(status, t("topup.syncNone", { balance: r.balance }), "");
-    }
-    return r;
-  } catch (err) {
-    // 429 = polled too fast; the next tick will retry, so stay quiet unless asked.
-    if (manual) setSyncStatus(status, err.message, "bad");
-    return null;
-  } finally {
-    paySyncBusy = false;
-  }
-}
-
-/** After "Pay" is clicked: keep polling for up to 15 min and on return to the tab. */
-function startPayWatch() {
-  try { localStorage.setItem(PAY_WATCH_KEY, String(Date.now() + PAY_WATCH_MS)); } catch {}
-  setSyncStatus($("topup-sync-status"), t("topup.watching"), "busy");
-  clearInterval(payWatchTimer);
-  payWatchTimer = setInterval(() => {
-    if (!payWatchActive()) {
-      stopPayWatch();
-      setSyncStatus($("topup-sync-status"), t("topup.watchEnded"), "");
-      return;
-    }
-    syncPayments();
-  }, PAY_POLL_MS);
-}
-
-function resumePayWatch() {
-  if (payWatchActive() && !payWatchTimer) startPayWatch();
 }
 
 // ── Direct USDC (Solana): order → user sends the exact amount → server finds it on-chain ──
@@ -2555,11 +2486,11 @@ function renderSolSection() {
   const sp = state.account?.solPay;
   const section = $("sol-section");
   if (!section) return;
-  section.hidden = !sp?.enabled;
   const box = $("sol-packs");
-  if (!sp?.enabled || !box) return;
-  box.innerHTML = [...(state.account.packages || []), ...(sp.testPack ? [sp.testPack] : [])].map((p) =>
-    `<button type="button" class="btn small sol-pack" data-pack="${escapeHtml(p.id)}">${escapeHtml(packageTitle(p.label))} · $${Number(p.usd).toFixed(2)} → ${p.credits} ${escapeHtml(t("acct.credits"))}</button>`).join("");
+  if (box) box.innerHTML = sp?.testPack
+    ? `<button type="button" class="btn small sol-pack" data-pack="${escapeHtml(sp.testPack.id)}">${escapeHtml(packageTitle(sp.testPack.label))} · $${Number(sp.testPack.usd).toFixed(2)} → ${sp.testPack.credits} ${escapeHtml(t("acct.credits"))}</button>`
+    : "";
+  section.hidden = !(sp?.enabled && (sp.testPack || solShownId));
 }
 
 function showSolOrder(o) {
@@ -2571,8 +2502,11 @@ function showSolOrder(o) {
   $("sol-address").textContent = o.recipient;
   $("sol-open").href = o.uri;
   panel.dataset.credits = String(o.credits);
+  $("sol-section").hidden = false;
   setSolStatus(t("sol.waiting", { credits: o.credits }), "busy");
   document.querySelectorAll(".sol-pack").forEach((b) => b.classList.toggle("on", b.dataset.pack === o.package));
+  document.querySelectorAll(".topup-card").forEach((c) => c.classList.toggle("selected", c.classList.contains(`topup-card--${o.package}`)));
+  panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function setSolStatus(text, kind) {
@@ -2596,6 +2530,7 @@ async function solCheck() {
     stopSolPoll();
     $("sol-order").hidden = true;
     solShownId = "";
+    document.querySelectorAll(".topup-card.selected").forEach((c) => c.classList.remove("selected"));
     showToast(t("topup.toast", { n: r.credited, balance: r.balance }));
     await refreshAccount();
     renderTopup();
@@ -2643,10 +2578,12 @@ async function copyText(text, btn) {
 }
 
 function setupSolPay() {
-  $("sol-packs")?.addEventListener("click", (e) => {
-    const b = e.target.closest?.(".sol-pack");
+  const onPack = (e) => {
+    const b = e.target.closest?.(".topup-buy, .sol-pack");
     if (b) solCreate(b.dataset.pack);
-  });
+  };
+  $("topup-packages")?.addEventListener("click", onPack);
+  $("sol-packs")?.addEventListener("click", onPack);
   $("sol-copy-amount")?.addEventListener("click", (e) => copyText($("sol-amount").textContent, e.currentTarget));
   $("sol-copy-address")?.addEventListener("click", (e) => copyText($("sol-address").textContent, e.currentTarget));
 }
@@ -2656,29 +2593,15 @@ function setupAccount() {
   const overlay = $("topup-overlay");
   $("acct-topup")?.addEventListener("click", () => openTopup());
   $("acct-buy")?.addEventListener("click", () => openTopup());
-  $("topup-packages")?.addEventListener("click", (e) => {
-    if (e.target.closest?.(".topup-buy")) startPayWatch();
-  });
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && payWatchActive()) syncPayments();
+    if (!document.hidden && solShownId) solCheck(); // back from the wallet app
   });
-  resumePayWatch();
   $("topup-close")?.addEventListener("click", () => { overlay.hidden = true; refreshAccount(); });
   overlay?.addEventListener("click", (e) => { if (e.target === overlay) { overlay.hidden = true; refreshAccount(); } });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && overlay && !overlay.hidden) {
       overlay.hidden = true;
       refreshAccount();
-    }
-  });
-  $("topup-sync")?.addEventListener("click", async () => {
-    const btn = $("topup-sync");
-    setSyncStatus($("topup-sync-status"), t("topup.syncBusy"), "busy");
-    if (btn) btn.disabled = true;
-    try {
-      await syncPayments({ manual: true });
-    } finally {
-      if (btn) btn.disabled = false;
     }
   });
   $("ref-copy")?.addEventListener("click", async () => {

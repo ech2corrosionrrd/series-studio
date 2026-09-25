@@ -1,13 +1,13 @@
 /**
  * End-to-end: the real server in public mode (SERIES_MODE=public) on a temp data
  * dir. Walks a user through wallet sign-in → welcome credits → paid batch →
- * insufficient credits → Helio webhook top-up → Passport quest → publish.
+ * insufficient credits → on-chain top-up → Passport quest → publish.
  * Uses the free `mock` engine priced at 2 credits via ENGINE_CREDIT_COSTS.
  */
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createHmac, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
@@ -32,13 +32,9 @@ const env = {
   OFFLINE: "1",
   HOST: "127.0.0.1",
   PORT: String(PORT),
-  HELIO_WEBHOOK_SECRET: "helio-secret",
-  HELIO_PAYLINK_START: "aa11",
   GREMLIN_API_KEY: "gremlin-key",
   HOLDER_SYNC_INTERVAL_SECONDS: "0",
   FULFILLMENT_RECONCILE_INTERVAL_SECONDS: "0",
-  HELIO_API_KEY: "",
-  HELIO_API_SECRET: "",
   SERIES_SPEND_CAP_USD: "",
 };
 let server;
@@ -92,6 +88,7 @@ before(async () => {
 });
 
 after(async () => {
+  (await import("../src/platform/db.mjs")).closeAll();
   if (server && server.exitCode === null) {
     const exited = new Promise((r) => server.once("exit", r));
     server.kill();
@@ -178,20 +175,19 @@ describe("public mode end-to-end", () => {
     assert.equal(bad.status, 400);
   });
 
-  test("Helio webhook tops up once; pay host exposes only the webhook", async () => {
-    const payload = JSON.stringify({ data: { paylinkId: "aa11", id: "helio-tx-1", senderPublicKey: user.address, transactionStatus: "SUCCESS" } });
-    const sig = createHmac("sha256", "helio-secret").update(payload).digest("hex");
+  test("pay host exposes only /health; the old Helio webhook route is gone; a payment credits once", async () => {
     const saved = cookie;
     cookie = "";
-    const bad = await call("POST", "/webhooks/helio", { body: payload, headers: { "x-helio-signature": "00" } });
-    assert.equal(bad.status, 401);
-    const first = await call("POST", "/webhooks/helio", { body: payload, headers: { "x-helio-signature": sig } });
-    assert.equal(first.json.credited, true);
-    const again = await call("POST", "/webhooks/helio", { body: payload, headers: { "x-helio-signature": sig } });
-    assert.equal(again.json.credited, false);
-    const payHost = await call("GET", "/legal", { headers: { Host: "pay.w3ir.io" } });
-    assert.equal(payHost.status, 404);
+    assert.equal((await call("GET", "/legal", { headers: { Host: "pay.w3ir.io" } })).status, 404);
+    assert.equal((await call("GET", "/health", { headers: { Host: "pay.w3ir.io" } })).status, 200);
+    assert.equal((await call("POST", "/webhooks/helio", { body: "{}" })).status, 404);
     cookie = saved;
+    // Credit exactly as the Solana payment check does (same ledger file, idempotent per signature).
+    const { openDb } = await import("../src/platform/db.mjs");
+    const { recordPayment } = await import("../src/platform/billing.mjs");
+    const db = openDb(join(dir, "users.db"));
+    assert.equal(recordPayment("sol:e2e-signature-1", user.address, 100, 4.99, { db }), true);
+    assert.equal(recordPayment("sol:e2e-signature-1", user.address, 100, 4.99, { db }), false);
     assert.equal((await call("GET", "/api/me")).json.balance, 114);
   });
 

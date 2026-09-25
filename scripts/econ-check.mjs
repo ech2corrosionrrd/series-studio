@@ -5,7 +5,7 @@ const packs = Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p, per: p.usd 
 const cheap = Math.min(...packs.map((p) => p.per));
 console.log("packs $/cr", packs.map((p) => `${p.id}:${p.per.toFixed(4)}`).join(" | "), "cheapest", cheap.toFixed(4));
 
-const pay = 0.01;
+const pay = 0;
 const fxIn = 0.02;
 const resFx = 0.02; // crypto → USD for API / VPS / SaaS
 const inFees = pay + fxIn;
@@ -34,7 +34,7 @@ const mix = [
 ];
 const apiPerCr = mix.reduce((s, m) => s + m.share * (m.api / m.crPer), 0);
 console.log("\nblended api $/cr", apiPerCr.toFixed(5));
-console.log(`fees: Helio ${pay * 100}% + FX in ${fxIn * 100}% + resource offramp ${resFx * 100}% on (API+fixed)`);
+console.log(`fees: payment ${pay * 100}% + FX in ${fxIn * 100}% + resource offramp ${resFx * 100}% on (API+fixed)`);
 
 console.log(`\n--- monthly (FIXED=${fixed} = hosting ${hosting} + saas ${saas}) ---`);
 for (const nPacks of [5, 10, 20, 40]) {

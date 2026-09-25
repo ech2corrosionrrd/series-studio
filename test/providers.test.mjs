@@ -5,7 +5,6 @@ import { providerLinks, providersSnapshot, keyHealth, FLOAT_RECOMMENDED_USD } fr
 test("providerLinks lists Lab providers with dashboard urls", () => {
   const links = providerLinks();
   assert.ok(links.some((p) => p.id === "stability" && p.balance_via_api));
-  assert.ok(links.some((p) => p.id === "helio"));
   assert.ok(links.every((p) => p.url.startsWith("http")));
 });
 
@@ -16,16 +15,8 @@ test("providersSnapshot has float note and recommended map", () => {
   assert.ok(FLOAT_RECOMMENDED_USD["Stability AI"] >= 20);
 });
 
-test("keyHealth Helio is presence-only (no crash without keys)", async () => {
-  const prev = process.env.HELIO_API_KEY;
-  process.env.HELIO_API_KEY = "test-key";
-  try {
-    const rows = await keyHealth(async () => ({ ok: false }));
-    const helio = rows.find((r) => r.id === "helio");
-    assert.equal(helio.configured, true);
-    assert.equal(helio.checked, false);
-  } finally {
-    if (prev === undefined) delete process.env.HELIO_API_KEY;
-    else process.env.HELIO_API_KEY = prev;
-  }
+test("keyHealth does not crash without keys (offline probe)", async () => {
+  const rows = await keyHealth(async () => ({ ok: false }));
+  assert.ok(Array.isArray(rows) && rows.length > 0);
+  assert.ok(rows.every((r) => typeof r.id === "string"));
 });

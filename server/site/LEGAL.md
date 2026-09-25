@@ -33,7 +33,7 @@ You are responsible for your wallet's security and for all activity under it.
 ### 1.5. Credits and payment
 - Credits are **internal units** to cover AI API costs. They are **not legal tender**, have no
   monetary value outside the Service, and are non-transferable and non-exchangeable for cash.
-- Top-ups are via **Helio Pay (USDC on Base)**; packages are shown under 💳 Credits.
+- Top-ups are made in **USDC on the Solana network**, sent directly to the operator's wallet; packages are shown under 💳 Credits.
 - New wallets may receive welcome credits (anti-Sybil balance check). Credits are **consumed per
   generation**; cost depends on the engine.
 - Refund details are in part **3**.
@@ -66,7 +66,7 @@ Nothing in the Service is investment, legal or tax advice. NFTs are high-risk; w
 any value** of created assets.
 
 ### 1.10. Third-party services
-The Service relies on third parties (OpenAI, Anthropic, Stability, Replicate, Pinata/IPFS, Helio,
+The Service relies on third parties (OpenAI, Anthropic, Stability, Replicate, Pinata/IPFS,
 Cloudflare, blockchain RPC nodes). Their operation is governed by their terms; we are not liable for
 their outages, price changes or availability.
 
@@ -96,7 +96,7 @@ NFT Prompt Builder (w3ir.io), contact **w3ir@pm.me**.
 - **On-chain balance reads** (native balance for anti-Sybil) via RPC nodes.
 - **Generation data** — your prompts, generated images, metadata, history — stored **on our server,
   isolated per wallet**.
-- **Payment data** — transaction ID, amount (via Helio; **crypto only**, we never see bank/card data).
+- **Payment data** — transaction signature, amount and sender address (public on the Solana blockchain; **crypto only**, we never see bank/card data).
 - **Session cookie** `w3ir_session` (HMAC) — for sign-in.
 - **Server logs** (IP, basic) — for security and rate-limiting; aggregate Cloudflare analytics.
 - **We do NOT collect** email, name or other traditional personal data; there is no account beyond
@@ -108,7 +108,7 @@ To provide the Service, account for credits, prevent abuse/Sybil, and improve th
 ### 2.4. Who we share with
 - **AI providers** (OpenAI, Anthropic, Stability, Replicate) — your prompts/images for generation.
 - **Pinata/IPFS** — files if you publish to IPFS (content becomes **public and immutable**).
-- **Helio** — to process payments. **Cloudflare** — for delivery/protection.
+- **Cloudflare** — for delivery/protection. **Solana RPC nodes** — to verify payments on-chain.
 - Each party has its own policy. **We do not sell your data.**
 
 ### 2.5. Retention
@@ -136,7 +136,7 @@ Updates are marked with the "Effective" date. Questions — **w3ir@pm.me**.
 ## 3. Refund Policy
 
 ### 3.1. Nature of payments
-Payment is by **cryptocurrency (USDC on Base)**; such transfers are **technically irreversible**.
+Payment is by **cryptocurrency (USDC on Solana)**; such transfers are **technically irreversible**.
 Credits are digital, consumable units.
 
 ### 3.2. Non-refundable

@@ -106,7 +106,7 @@ const MAX_PARALLEL = Math.max(1, Number(process.env.FULFILLMENT_MAX_CONCURRENCY 
 export async function runFulfillment(txId, wallet, kind, detail, { log = console } = {}) {
   if (kind !== "transfer") {
     markFulfillment(txId, "failed");
-    log.error?.(`Helio NFT: unsupported fulfillment kind ${JSON.stringify(kind)} (transfer only)`);
+    log.error?.(`NFT vault: unsupported fulfillment kind ${JSON.stringify(kind)} (transfer only)`);
     return;
   }
   if (running >= MAX_PARALLEL) await new Promise((r) => queue.push(r));
@@ -118,12 +118,12 @@ export async function runFulfillment(txId, wallet, kind, detail, { log = console
       let err = "";
       child.stderr.on("data", (d) => { err += d; });
       child.on("error", (e) => { err += e.message; done(-1); });
-      child.on("close", (c) => { if (c !== 0) log.error?.(`Helio NFT transfer failed (rc=${c}) for ${wallet}\n${err}`); done(c); });
+      child.on("close", (c) => { if (c !== 0) log.error?.(`NFT vault transfer failed (rc=${c}) for ${wallet}\n${err}`); done(c); });
     });
     markFulfillment(txId, code === 0 ? "completed" : "failed");
   } catch (e) {
     markFulfillment(txId, "failed");
-    log.error?.(`Helio NFT transfer exception for ${wallet}: ${e.message}`);
+    log.error?.(`NFT vault transfer exception for ${wallet}: ${e.message}`);
   } finally {
     running -= 1;
     queue.shift()?.();

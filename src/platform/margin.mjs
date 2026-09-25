@@ -244,8 +244,8 @@ export function netMarginReport(days = null, { gross, db = openDb() } = {}) {
   const r = gross || grossMarginReport(days, db);
   const revenue = r.revenue_usd;
   const apiCost = r.actual_api_usd != null ? r.actual_api_usd : r.estimated_api_usd;
-  const payPct = envFloat("PAYMENT_FEE_PCT", 1);
-  const fxPct = envFloat("FX_FEE_PCT", 2); // inbound: Helio USDC → ops USD
+  const payPct = envFloat("PAYMENT_FEE_PCT", 0);
+  const fxPct = envFloat("FX_FEE_PCT", 2); // inbound: USDC → ops USD (exchange/OTC spread)
   const resFxPct = resourceFxPct(); // outbound: crypto → USD for resource bills
   const oh = overheadBreakdown();
   const fixedMonthly = oh.fixed_monthly_usd;
@@ -291,7 +291,7 @@ export function breakEvenSummary({
   db = openDb(),
 } = {}) {
   const fixed = monthlyFixedUsd();
-  const inFees = envFloat("PAYMENT_FEE_PCT", 1) / 100 + envFloat("FX_FEE_PCT", 2) / 100;
+  const inFees = envFloat("PAYMENT_FEE_PCT", 0) / 100 + envFloat("FX_FEE_PCT", 2) / 100;
   const resFx = resourceFxPct() / 100;
   const blended = blendedApiPerCredit(db);
   const api = packageCredits * blended;
@@ -332,7 +332,7 @@ const PLAN_MIX = [
 export function planningScenarios({ fixedMonthly = monthlyFixedUsd(), cheapestPerCr = null } = {}) {
   const packs = Object.values(PACKAGES);
   const cheap = cheapestPerCr ?? Math.min(...packs.map((p) => p.usd / p.credits));
-  const inFees = envFloat("PAYMENT_FEE_PCT", 1) / 100 + envFloat("FX_FEE_PCT", 2) / 100;
+  const inFees = envFloat("PAYMENT_FEE_PCT", 0) / 100 + envFloat("FX_FEE_PCT", 2) / 100;
   const resFx = resourceFxPct() / 100;
   const apiPerCr = PLAN_MIX.reduce((s, m) => s + m.share * (m.api_usd / m.cr_per_op), 0);
   const pro = PACKAGES.pro;
@@ -447,7 +447,7 @@ export function unitEconomicsModel() {
     blended_api_per_credit: plan.blended_api_per_credit,
     warnings,
     fees_defaults: {
-      payment_fee_pct: envFloat("PAYMENT_FEE_PCT", 1),
+      payment_fee_pct: envFloat("PAYMENT_FEE_PCT", 0),
       fx_fee_pct: envFloat("FX_FEE_PCT", 2),
       resource_fx_pct: resourceFxPct(),
       fixed_monthly_usd: oh.fixed_monthly_usd,
