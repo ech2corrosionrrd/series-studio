@@ -2427,6 +2427,7 @@ function renderTopup() {
     }).join("");
     applyTips(grid);
   }
+  renderSolSection();
   const ref = me.referral?.link || "";
   if ($("ref-link")) $("ref-link").textContent = ref || "—";
   const copyBtn = $("ref-copy");
@@ -2479,6 +2480,7 @@ function openTopup({ needed, balance } = {}) {
   overlay.hidden = false;
   $("topup-close")?.focus();
   if (payWatchActive()) setSyncStatus($("topup-sync-status"), t("topup.watching"), "busy");
+  if (state.account?.solPay?.enabled) solCheck(); // shows an open order / credits a payment that arrived meanwhile
 }
 
 function payWatchActive() {
@@ -2544,7 +2546,113 @@ function resumePayWatch() {
   if (payWatchActive() && !payWatchTimer) startPayWatch();
 }
 
+// ── Direct USDC (Solana): order → user sends the exact amount → server finds it on-chain ──
+const SOL_POLL_MS = 8_000;
+let solPollTimer = null;
+let solShownId = "";
+
+function renderSolSection() {
+  const sp = state.account?.solPay;
+  const section = $("sol-section");
+  if (!section) return;
+  section.hidden = !sp?.enabled;
+  const box = $("sol-packs");
+  if (!sp?.enabled || !box) return;
+  box.innerHTML = [...(state.account.packages || []), ...(sp.testPack ? [sp.testPack] : [])].map((p) =>
+    `<button type="button" class="btn small sol-pack" data-pack="${escapeHtml(p.id)}">${escapeHtml(packageTitle(p.label))} · $${Number(p.usd).toFixed(2)} → ${p.credits} ${escapeHtml(t("acct.credits"))}</button>`).join("");
+}
+
+function showSolOrder(o) {
+  const panel = $("sol-order");
+  if (!panel || !o) return;
+  solShownId = o.id;
+  panel.hidden = false;
+  $("sol-amount").textContent = o.amount;
+  $("sol-address").textContent = o.recipient;
+  $("sol-open").href = o.uri;
+  panel.dataset.credits = String(o.credits);
+  setSolStatus(t("sol.waiting", { credits: o.credits }), "busy");
+  document.querySelectorAll(".sol-pack").forEach((b) => b.classList.toggle("on", b.dataset.pack === o.package));
+}
+
+function setSolStatus(text, kind) {
+  const el = $("sol-status");
+  if (el) setSyncStatus(el, text, kind);
+}
+
+function stopSolPoll() {
+  clearInterval(solPollTimer);
+  solPollTimer = null;
+}
+
+async function solCheck() {
+  let r;
+  try {
+    r = await api("/api/credits/sol/check", { method: "POST", body: "{}" });
+  } catch {
+    return; // 429 or a hiccup — the next tick retries
+  }
+  if (r.credited > 0) {
+    stopSolPoll();
+    $("sol-order").hidden = true;
+    solShownId = "";
+    showToast(t("topup.toast", { n: r.credited, balance: r.balance }));
+    await refreshAccount();
+    renderTopup();
+    return;
+  }
+  const pending = (r.orders || []).find((o) => o.status === "pending");
+  if (!pending) {
+    stopSolPoll();
+    return;
+  }
+  if (solShownId !== pending.id) showSolOrder(pending);
+  if (r.error) setSolStatus(r.error, "bad");
+  startSolPoll();
+}
+
+function startSolPoll() {
+  if (solPollTimer) return;
+  solPollTimer = setInterval(() => {
+    if ($("topup-overlay")?.hidden) { stopSolPoll(); return; }
+    solCheck();
+  }, SOL_POLL_MS);
+}
+
+async function solCreate(packageId) {
+  try {
+    const r = await api("/api/credits/sol/order", { method: "POST", body: JSON.stringify({ package: packageId }) });
+    showSolOrder(r.order);
+    startSolPoll();
+    solCheck();
+  } catch (err) {
+    $("sol-order").hidden = false;
+    setSolStatus(err.message, "bad");
+  }
+}
+
+async function copyText(text, btn) {
+  const label = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = t("sol.copied");
+  } catch {
+    btn.textContent = text;
+  }
+  setTimeout(() => { btn.textContent = label; }, 1500);
+}
+
+function setupSolPay() {
+  $("sol-packs")?.addEventListener("click", (e) => {
+    const b = e.target.closest?.(".sol-pack");
+    if (b) solCreate(b.dataset.pack);
+  });
+  $("sol-copy-amount")?.addEventListener("click", (e) => copyText($("sol-amount").textContent, e.currentTarget));
+  $("sol-copy-address")?.addEventListener("click", (e) => copyText($("sol-address").textContent, e.currentTarget));
+}
+
 function setupAccount() {
+  setupSolPay();
   const overlay = $("topup-overlay");
   $("acct-topup")?.addEventListener("click", () => openTopup());
   $("acct-buy")?.addEventListener("click", () => openTopup());

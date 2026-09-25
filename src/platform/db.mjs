@@ -68,6 +68,18 @@ const SCHEMA = [
      credits INTEGER NOT NULL,
      granted_at TEXT NOT NULL,
      PRIMARY KEY (wallet_address, period))`,
+  `CREATE TABLE IF NOT EXISTS sol_orders (
+     id TEXT PRIMARY KEY,
+     wallet_address TEXT NOT NULL,
+     package TEXT NOT NULL,
+     credits INTEGER NOT NULL,
+     price_usd REAL NOT NULL,
+     amount_micro INTEGER NOT NULL,
+     status TEXT NOT NULL DEFAULT 'pending',
+     signature TEXT,
+     created_at TEXT NOT NULL,
+     paid_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS idx_sol_orders_open ON sol_orders (status, amount_micro)`,
   `CREATE TABLE IF NOT EXISTS b2b_keys (
      api_key TEXT PRIMARY KEY,
      client_name TEXT NOT NULL,
