@@ -26,6 +26,7 @@
     "lab": "node server/index.mjs --open",
     "lab:serve": "node server/index.mjs",
     "lab:tunnel": "node scripts/dev-tunnel.mjs",
+    "backup": "node scripts/backup.mjs",
     "build:site": "node scripts/build-site.mjs",
     "contract-check": "node scripts/contract-check.mjs"
   },
