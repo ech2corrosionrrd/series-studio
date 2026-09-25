@@ -1,25 +1,37 @@
 #!/usr/bin/env bash
-# Ф3 — parallel run of Series Lab on https://next.w3ir.io next to Промт.
+# Series Lab staging on https://next.w3ir.io — a STANDALONE deployment.
 # Run ON THE SERVER as root:   bash /tmp/series-lab-phase3.sh /tmp/series-lab-src.tar
 #
-# Промт keeps serving w3ir.io / ai / gen / pay. This script:
-#   1. unpacks the source into /opt/series-lab/src (outside /opt/w3ir: Промт's deploy
-#      runs `git clean -fd` there and would delete anything new);
+# Everything Lab needs lives under /opt/series-lab: its own source, image, data,
+# secrets (lab.env) and backups. It never reads another project's data or .env.
+# The only shared infrastructure it touches (unavoidable on one host) is the docker
+# network and one Caddy block that routes next.w3ir.io; SKIP_CADDY=1 only prints that block.
+#
+#   1. unpacks the source into /opt/series-lab/src;
 #   2. builds the image series-lab:<rev>;
-#   3. makes a CONSISTENT copy of Промт data (SQLite online backup, not cp) → data-next;
-#   4. writes .env.series-lab = Промт .env + staging overrides (no payments,
-#      no Telegram, invite-only, $5/day cap, SIWE domain next.w3ir.io);
-#   5. starts the container on Промт's docker network;
-#   6. adds a `next.w3ir.io` block to Caddy, validates, reloads (restores on failure).
-# Idempotent: re-running updates the image and config; data-next is NOT re-copied
-# unless REFRESH_DATA=1. Rollback: deploy/series-lab/phase3-rollback.sh
+#   3. creates Lab's OWN empty data dir (data-next) — the ledger starts from zero;
+#   4. builds .env.series-lab from Lab's own secrets file lab.env + staging overrides
+#      (no payments, no Telegram, invite-only, $5/day cap, SIWE domain next.w3ir.io);
+#   5. starts the container;
+#   6. adds a `next.w3ir.io` block to the reverse proxy, validates, reloads (restores on failure);
+#   7. installs Lab's own ledger backup (cron);
+#   8. smoke test.
+#
+# Secrets: put them in /opt/series-lab/lab.env (chmod 600) — or run upload.sh with
+# LAB_ENV_FILE=/path/to/.env to send your local file over ssh once. If lab.env is missing
+# the script writes a template from .env.example and stops.
+# Idempotent: re-running updates the image and config; data is never touched.
+# Rollback: deploy/series-lab/phase3-rollback.sh · clean slate: reset-staging.sh
 set -euo pipefail
 
 SRC_TAR="${1:?usage: phase3.sh <source.tar>}"
 BASE=/opt/series-lab
-PROMT=/opt/w3ir
-CADDYFILE="$PROMT/deploy/Caddyfile"
-NETWORK=w3ir_default
+LAB_USER="${LAB_USER:-w3ir}"
+CADDY_HOME="${CADDY_HOME:-/opt/w3ir}"                    # where the shared Caddyfile lives
+CADDYFILE="$CADDY_HOME/deploy/Caddyfile"
+CADDY_CONTAINER="${CADDY_CONTAINER:-nft-builder-caddy}"
+NETWORK="${NETWORK:-w3ir_default}"
+LAB_ENV="$BASE/lab.env"
 [ "$(id -u)" = 0 ] || { echo "run as root"; exit 1; }
 
 echo "==> 1. source"
@@ -32,29 +44,36 @@ echo "revision $REV"
 echo "==> 2. image series-lab:$REV"
 docker build -q -t "series-lab:$REV" "$BASE/src"
 
-echo "==> 3. data copy"
-if [ ! -s "$BASE/data-next/users.db" ] || [ "${REFRESH_DATA:-0}" = 1 ]; then
-  # Online backup through Промт's api container (it has Python + the file open).
-  docker exec nft-builder-api python -c "import sqlite3; s=sqlite3.connect('/app/data/users.db'); d=sqlite3.connect('/app/data/.users-next-copy.db'); s.backup(d); d.close(); s.close()"
-  mv -f "$PROMT/data/.users-next-copy.db" "$BASE/data-next/users.db"
-  for f in genesis_mints.json vault_catalog.json; do
-    [ -f "$PROMT/data/$f" ] && cp -a "$PROMT/data/$f" "$BASE/data-next/$f"
-  done
-  [ -d "$PROMT/data/public" ] && rm -rf "$BASE/data-next/public" && cp -a "$PROMT/data/public" "$BASE/data-next/public"
-  echo "copied: $(du -sh "$BASE/data-next" | cut -f1)"
+echo "==> 3. data (Lab's own)"
+if [ -s "$BASE/data-next/users.db" ]; then
+  echo "data-next has a ledger — kept as is"
 else
-  echo "data-next exists — kept (REFRESH_DATA=1 to re-copy)"
+  echo "data-next is empty — Lab creates its own ledger on first start"
 fi
 
 echo "==> 4. environment"
-# HELIO_* are Промт-only secrets that Lab never uses: listed so they are NOT copied into the Lab env file.
-OVERRIDES="HELIO_API_KEY HELIO_API_SECRET HELIO_WEBHOOK_SECRET HELIO_MINT_PAYLINK_ID HELIO_PAYLINK_START HELIO_PAYLINK_CREATOR HELIO_PAYLINK_PRO SOLANA_PAY_RECIPIENT SOLANA_PAY_TEST_PACK TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID VAULT_WALLET_ADDRESS AUTH_DOMAIN AUTH_URI SERIES_SPEND_CAP_USD SERIES_ALLOWED_WALLETS LANDING_HOSTS PAY_SUBDOMAIN_HOSTS APP_ENV"
+if [ -n "${LAB_ENV_SRC:-}" ] && [ -f "$LAB_ENV_SRC" ]; then
+  install -m 600 "$LAB_ENV_SRC" "$LAB_ENV"
+  rm -f "$LAB_ENV_SRC"
+  echo "installed $LAB_ENV from the uploaded file"
+fi
+if [ ! -f "$LAB_ENV" ]; then
+  install -m 600 "$BASE/src/.env.example" "$LAB_ENV"
+  echo "Created $LAB_ENV from .env.example."
+  echo "Fill in AUTH_SESSION_SECRET, ADMIN_WALLETS and the engine keys, then run this script again."
+  exit 1
+fi
+if ! grep -qE '^AUTH_SESSION_SECRET=.+' "$LAB_ENV"; then
+  echo "AUTH_SESSION_SECRET is empty in $LAB_ENV — sessions would be insecure. Fill it in and re-run."
+  exit 1
+fi
+OVERRIDES="SOLANA_PAY_RECIPIENT SOLANA_PAY_TEST_PACK TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID SERIES_TELEGRAM_BOT_TOKEN SERIES_TELEGRAM_CHAT_ID VAULT_WALLET_ADDRESS AUTH_DOMAIN AUTH_URI SERIES_SPEND_CAP_USD SERIES_ALLOWED_WALLETS SERIES_ALLOWED_HOSTS LANDING_HOSTS APP_ENV"
 PATTERN=$(echo "$OVERRIDES" | sed 's/ /=|^/g')
-grep -vE "^(${PATTERN}=)" "$PROMT/.env" > "$BASE/.env.series-lab.tmp"
-ADMINS=$(grep -E '^ADMIN_WALLETS=' "$PROMT/.env" | cut -d= -f2- || true)
+grep -vE "^(${PATTERN}=)" "$LAB_ENV" > "$BASE/.env.series-lab.tmp"
+ADMINS=$(grep -E '^ADMIN_WALLETS=' "$LAB_ENV" | cut -d= -f2- || true)
 if [ -z "${SERIES_ALLOWED_WALLETS:-}${ADMINS}" ]; then
-  # An empty invite list means "everyone" — never for a copy that spends real API money.
-  echo "No ADMIN_WALLETS in $PROMT/.env and no SERIES_ALLOWED_WALLETS given — refusing to open staging to everyone."
+  # An empty invite list means "everyone" — never for a server that spends real API money.
+  echo "No ADMIN_WALLETS in $LAB_ENV and no SERIES_ALLOWED_WALLETS given — refusing to open staging to everyone."
   echo "Re-run as: SERIES_ALLOWED_WALLETS=0xYourWallet,... bash $0 $SRC_TAR"
   exit 1
 fi
@@ -64,11 +83,13 @@ cat >> "$BASE/.env.series-lab.tmp" <<EOF
 APP_ENV=production
 AUTH_DOMAIN=next.w3ir.io
 AUTH_URI=https://next.w3ir.io
-# no payments or operator notifications from the staging copy
+# no payments or operator notifications from staging
 SOLANA_PAY_RECIPIENT=
 SOLANA_PAY_TEST_PACK=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
+SERIES_TELEGRAM_BOT_TOKEN=
+SERIES_TELEGRAM_CHAT_ID=
 VAULT_WALLET_ADDRESS=
 # invite-only (admins always allowed); add tester wallets comma-separated
 SERIES_ALLOWED_WALLETS=${SERIES_ALLOWED_WALLETS:+${SERIES_ALLOWED_WALLETS},}$ADMINS
@@ -77,9 +98,8 @@ SERIES_SPEND_CAP_USD=${SERIES_SPEND_CAP_USD:-5}
 # Public bind is 0.0.0.0; without this list the Host check is skipped.
 SERIES_ALLOWED_HOSTS=next.w3ir.io
 LANDING_HOSTS=
-PAY_SUBDOMAIN_HOSTS=
 EOF
-install -m 600 -o w3ir -g w3ir "$BASE/.env.series-lab.tmp" "$BASE/.env.series-lab"
+install -m 600 -o "$LAB_USER" -g "$LAB_USER" "$BASE/.env.series-lab.tmp" "$BASE/.env.series-lab"
 rm -f "$BASE/.env.series-lab.tmp"
 
 cat > "$BASE/docker-compose.yml" <<EOF
@@ -109,7 +129,7 @@ networks:
     name: $NETWORK
     external: true
 EOF
-chown -R w3ir:w3ir "$BASE"
+chown -R "$LAB_USER:$LAB_USER" "$BASE"
 
 echo "==> 5. container"
 docker compose -f "$BASE/docker-compose.yml" up -d
@@ -119,14 +139,10 @@ for i in $(seq 1 30); do
   [ "$i" = 30 ] && { echo "container not healthy"; docker logs --tail 50 serieslab; exit 1; }
 done
 
-echo "==> 6. caddy"
-if grep -q "next.w3ir.io" "$CADDYFILE"; then
-  echo "next.w3ir.io block already present"
-else
-  cp -a "$CADDYFILE" "$BASE/Caddyfile.before-phase3"
-  cat >> "$CADDYFILE" <<'EOF'
+echo "==> 6. reverse proxy"
+BLOCK=$(cat <<'EOF'
 
-# Series Lab staging (Ф3, docs/DEPLOY-PLATFORM.md in series-studio)
+# Series Lab staging (deploy/series-lab/Caddyfile.staging in series-studio)
 http://next.w3ir.io {
 	reverse_proxy serieslab:5344
 }
@@ -136,14 +152,25 @@ https://next.w3ir.io {
 	reverse_proxy serieslab:5344
 }
 EOF
-fi
-if docker exec nft-builder-caddy caddy validate --config /etc/caddy-src/Caddyfile --adapter caddyfile >/dev/null 2>&1; then
-  docker exec nft-builder-caddy caddy reload --config /etc/caddy-src/Caddyfile --adapter caddyfile
-  echo "caddy reloaded"
+)
+if [ "${SKIP_CADDY:-0}" = 1 ]; then
+  echo "SKIP_CADDY=1 — add this block to your reverse proxy yourself:"
+  echo "$BLOCK"
+elif grep -q "next.w3ir.io" "$CADDYFILE"; then
+  echo "next.w3ir.io block already present"
 else
-  echo "caddy validate FAILED — restoring previous Caddyfile"
-  [ -f "$BASE/Caddyfile.before-phase3" ] && cp -a "$BASE/Caddyfile.before-phase3" "$CADDYFILE"
-  exit 1
+  cp -a "$CADDYFILE" "$BASE/Caddyfile.before-phase3"
+  printf '%s\n' "$BLOCK" >> "$CADDYFILE"
+fi
+if [ "${SKIP_CADDY:-0}" != 1 ]; then
+  if docker exec "$CADDY_CONTAINER" caddy validate --config /etc/caddy-src/Caddyfile --adapter caddyfile >/dev/null 2>&1; then
+    docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy-src/Caddyfile --adapter caddyfile
+    echo "caddy reloaded"
+  else
+    echo "caddy validate FAILED — restoring previous Caddyfile"
+    [ -f "$BASE/Caddyfile.before-phase3" ] && cp -a "$BASE/Caddyfile.before-phase3" "$CADDYFILE"
+    exit 1
+  fi
 fi
 
 echo "==> 7. ledger backup"
@@ -154,7 +181,11 @@ else
 fi
 
 echo "==> 8. smoke"
-curl -s -o /dev/null -w "next via caddy /health: %{http_code}\n" -H "Host: next.w3ir.io" http://127.0.0.1/health
-curl -s -o /dev/null -w "Промт ai.w3ir.io still: %{http_code}\n" -H "Host: ai.w3ir.io" http://127.0.0.1/_stcore/health
-echo "done — add DNS: next → 2.28.7.128 (proxied) in Cloudflare"
-echo "NOTE: the Caddy block lives in Промт's tracked Caddyfile; a Промт deploy resets it until the PR adding it is merged."
+curl -s -o /dev/null -w "next via proxy /health: %{http_code}\n" -H "Host: next.w3ir.io" http://127.0.0.1/health
+# Optional read-only check that another site behind the same proxy still answers:
+#   SMOKE_OTHER=host/path  (e.g. SMOKE_OTHER=example.com/health)
+if [ -n "${SMOKE_OTHER:-}" ]; then
+  curl -s -o /dev/null -w "other site ${SMOKE_OTHER}: %{http_code}\n" -H "Host: ${SMOKE_OTHER%%/*}" "http://127.0.0.1/${SMOKE_OTHER#*/}"
+fi
+echo "done — DNS: next → this server (proxied) in Cloudflare"
+echo "NOTE: the proxy block lives in the shared Caddyfile; keep a copy of it wherever that file is versioned."

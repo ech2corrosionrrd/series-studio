@@ -107,7 +107,7 @@ describe("public mode end-to-end", () => {
     assert.equal((await call("GET", "/api/me")).status, 401);
     assert.equal((await call("GET", "/login")).status, 200);
     const health = await call("GET", "/health");
-    assert.deepEqual(health.json, { status: "ok", service: "nft-prompt-builder-payments" });
+    assert.deepEqual(health.json, { status: "ok", service: "series-lab" });
   });
 
   test("invite-only mode refuses wallets that are not listed", async () => {
@@ -175,11 +175,9 @@ describe("public mode end-to-end", () => {
     assert.equal(bad.status, 400);
   });
 
-  test("pay host exposes only /health; the old Helio webhook route is gone; a payment credits once", async () => {
+  test("the old Helio webhook route is gone; a payment credits once", async () => {
     const saved = cookie;
     cookie = "";
-    assert.equal((await call("GET", "/legal", { headers: { Host: "pay.w3ir.io" } })).status, 404);
-    assert.equal((await call("GET", "/health", { headers: { Host: "pay.w3ir.io" } })).status, 200);
     assert.equal((await call("POST", "/webhooks/helio", { body: "{}" })).status, 404);
     cookie = saved;
     // Credit exactly as the Solana payment check does (same ledger file, idempotent per signature).

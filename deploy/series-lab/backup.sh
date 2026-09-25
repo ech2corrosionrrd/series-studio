@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Consistent snapshots of the credit ledger.
-# Live money is still Промт's users.db until Ф4; Series Lab's copy is included
-# when that container is up. Online backup (not cp) so WAL is not torn.
+# Consistent snapshots of Series Lab's OWN data: the credit ledger (users.db),
+# per-wallet data and small JSON sidecars. Nothing from any other project.
+# Online backup (not cp) so the WAL is not torn.
 #
 # Local retention: 7 daily + 4 weekly under /opt/series-lab/backups/.
 # Offsite: set BACKUP_RCLONE_REMOTE and BACKUP_PASSPHRASE in backup.env.
@@ -9,6 +9,7 @@
 set -euo pipefail
 
 BASE=${SERIES_LAB_BASE:-/opt/series-lab}
+DATA=${SERIES_LAB_DATA_DIR:-$BASE/data-next}
 ENV_FILE=${BACKUP_ENV:-$BASE/backup.env}
 MJS=${BACKUP_MJS:-$BASE/backup-db.mjs}
 DEST=${BACKUP_DIR:-$BASE/backups}
@@ -28,19 +29,8 @@ trap 'rm -rf "$WORK"' EXIT
 
 note() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 
-backup_python() {
-  local container=$1 src=$2 out=$3
-  docker exec -e SRC="$src" -e DEST=/tmp/series-lab-users-backup.db "$container" \
-    python -c 'import os,sqlite3,sys
-s=sqlite3.connect(os.environ["SRC"])
-d=sqlite3.connect(os.environ["DEST"])
-s.backup(d); d.close(); s.close()
-c=sqlite3.connect(os.environ["DEST"])
-r=c.execute("PRAGMA integrity_check").fetchone()[0]
-c.close()
-sys.exit(0 if r=="ok" else 1)'
-  docker cp "$container:/tmp/series-lab-users-backup.db" "$out"
-  docker exec "$container" rm -f /tmp/series-lab-users-backup.db
+container_up() {
+  docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -qx true
 }
 
 backup_node() {
@@ -51,45 +41,19 @@ backup_node() {
   docker exec "$container" rm -f /tmp/series-lab-users-backup.db
 }
 
-container_up() {
-  docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -qx true
-}
-
-copy_sidecars() {
-  local from=$1 to=$2
-  local f
-  for f in genesis_mints.json vault_catalog.json; do
-    [ -f "$from/$f" ] && cp -a "$from/$f" "$to/$f"
-  done
-}
-
-saved=0
-
-if container_up nft-builder-api; then
-  mkdir -p "$WORK/promt"
-  note "snapshot Промт users.db"
-  backup_python nft-builder-api /app/data/users.db "$WORK/promt/users.db"
-  copy_sidecars /opt/w3ir/data "$WORK/promt"
-  saved=1
-else
-  note "skip Промт: container nft-builder-api is not running"
-fi
-
 lab=""
 if container_up serieslab; then lab=serieslab
 elif container_up series-lab; then lab=series-lab
 fi
-if [ -n "$lab" ]; then
-  mkdir -p "$WORK/series-lab"
-  note "snapshot Series Lab users.db ($lab)"
-  backup_node "$lab" /data/users.db "$WORK/series-lab/users.db"
-  [ -d /opt/series-lab/data-next ] && copy_sidecars /opt/series-lab/data-next "$WORK/series-lab"
-  saved=1
-else
-  note "skip Series Lab: container is not running"
-fi
+[ -n "$lab" ] || { note "Series Lab container is not running — nothing to back up"; exit 1; }
 
-[ "$saved" = 1 ] || { note "nothing to back up"; exit 1; }
+mkdir -p "$WORK/series-lab"
+note "snapshot Series Lab users.db ($lab)"
+backup_node "$lab" /data/users.db "$WORK/series-lab/users.db"
+for f in genesis_mints.json vault_catalog.json; do
+  [ -f "$DATA/$f" ] && cp -a "$DATA/$f" "$WORK/series-lab/$f"
+done
+[ -d "$DATA/users" ] && cp -a "$DATA/users" "$WORK/series-lab/users"
 
 slot="$DEST/daily/$STAMP"
 mkdir -p "$slot"
