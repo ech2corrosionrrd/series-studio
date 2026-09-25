@@ -9,6 +9,32 @@
 
 ## [Unreleased]
 
+### UI · локальний GPU
+- ComfyUI / A1111: на хмарному сайті приховані; на ПК (`HOST=127.0.0.1` / `SERIES_LOCAL_GPU=1`) — у списку.
+- **Дохід:** у `SERIES_MODE=public` списується `LOCAL_GPU_CREDIT_COST` кр/кадр (типово 1) як «Lab support · local GPU»; GPU-обчислення — користувача.
+
+### UI · кредити як єдина валюта користувача
+- Списки двигунів, підказки, FAQ і «Порахувати» показують **кредити**; `$` лишається на поповненні (Helio USDC) і в адмінці (COGS / spend).
+- `SERIES_PLATFORM_ENV` ігнорується: Helio, API, Telegram, AUTH — лише з `.env` Series Lab.
+- Локальний `.env` заповнено власними копіями ключів (без live-залежності від Промт). Telegram — окремо (`SERIES_TELEGRAM_*`).
+
+### Telegram · Series Lab
+- Сповіщення йдуть від імені Series Lab: бренд у тексті, `SERIES_TELEGRAM_*` (або `TELEGRAM_*` лише з Lab `.env`).
+- Адмін → Ресурси: статус Telegram + кнопка «Надіслати тест» (`POST /api/notifications/test`).
+
+### Поповнення кредитів
+- Helio paylinks / API — у `.env` Series Lab. Леджер кредитів — **окремий** `data/users.db`.
+- У вікні «Поповнити» — кнопка «Перевірити оплату» (`POST /api/credits/sync`), як у Промт (опитування Helio після оплати на localhost).
+- Дизайн панелі поповнення: баланс у шапці (кнопка-чіп), пакети з ціною/кредитом, бейдж «Рекомендовано», блок після оплати, рефералка з копіюванням, історія.
+
+### Адмін · Економіка
+- Вкладка «Економіка»: юніт-модель Промт (пакети, тариф сімейств, COGS рушіїв) + живий звіт з `users.db` (дохід, валова/чиста маржа, utilization, ARPU, break-even, воронка 30д). API `GET /api/admin/economy?days=7|30|all`.
+- Накладні: `HOSTING_MONTHLY_USD` + `SAAS_MONTHLY_USD` (або `FIXED_MONTHLY_USD`), Helio/FX вхід, `RESOURCE_FX_PCT` (crypto→USD на оплату API/VPS/SaaS); сценарії Pro×N; Local GPU як support fee (API $0).
+
+### Документація
+- Новий [docs/ECONOMY.md](docs/ECONOMY.md): пакети, COGS, Local GPU support fee, накладні, Helio/FX вхід, `RESOURCE_FX_PCT`, сценарії, Admin → Економіка.
+- Оновлено README, GUIDE, STUDIO-UI, FROM-PROMT, HOSTING, DEPLOY-PLATFORM, API, індекс `docs/README.md`.
+
 ## [1.5.0] — 2026-09-25
 
 Цикл ядра (хвилі 1–25) закрито. Хостинг / оновлення staging / Ф4 — лише за явною командою власника ([docs/HOSTING.md](docs/HOSTING.md)).

@@ -72,6 +72,8 @@ import {
   exportDatasetZip,
   dispatchBatchNotification,
   sendTelegramNotification,
+  sendTelegramTest,
+  getTelegramConfig,
   formatEnginePrompt,
 } from "../src/index.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
@@ -96,6 +98,23 @@ const KEYS_PATH = loadKeys();
 const EXTRA_KEYS = loadKeysExtra([join(ROOT, ".env")]);
 if (KEYS_PATH) console.log(`Keys loaded from ${KEYS_PATH} (values never sent to browser)`);
 else console.log("Keys: no .env found (set SERIES_KEYS_FILE or place .env in project root)");
+if (process.env.SERIES_PLATFORM_ENV) {
+  console.warn("SERIES_PLATFORM_ENV is ignored — Series Lab is self-contained (keys live in this .env only)");
+}
+{
+  const links = ["start", "creator", "pro"].filter((id) => helioPaylinkUrl(id));
+  console.log(
+    links.length === 3
+      ? `Helio top-up: ${links.length}/3 paylinks · reconcile ${helioKeys() ? "on" : "off (need HELIO_API_KEY/SECRET)"}`
+      : `Helio top-up: ${links.length}/3 paylinks — set HELIO_PAYLINK_* in Lab .env`,
+  );
+  const tg = getTelegramConfig();
+  console.log(
+    tg.configured
+      ? `Telegram (Series Lab): on · ${tg.source}`
+      : "Telegram (Series Lab): off — set SERIES_TELEGRAM_BOT_TOKEN + SERIES_TELEGRAM_CHAT_ID in Lab .env",
+  );
+}
 // Full product unless SERIES_MODE=local. 127.0.0.1 is where the dev server sits, not a reduced mode.
 const PUBLIC_MODE = (process.env.SERIES_MODE || "public") === "public";
 const PLATFORM_ON = PUBLIC_MODE || process.env.SERIES_PLATFORM === "1";
@@ -126,12 +145,12 @@ if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 import { testEngineConnection } from "../src/connectors.mjs";
 import { allowedHostnames, checkApiRequest, openAccessError } from "./guard.mjs";
 import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
-import {
-  PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck, freemiumRecord, getBalance,
-  listTransactions, recordFunnelEvent, referralCodeFor, refundCredits,
+import { PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck, freemiumRecord, getBalance,
+  listTransactions, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost,
 } from "../src/platform/billing.mjs";
-import { helioPaylinkUrl } from "../src/platform/helio.mjs";
-import { isAdmin } from "../src/platform/ops.mjs";
+import { helioKeys, helioPaylinkUrl, reconcilePayments } from "../src/platform/helio.mjs";
+import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
+import { providersSnapshot, keyHealth, providerFloatStatus } from "../src/platform/providers.mjs";
 import { claim as claimHolderBonus, eligibility as holderEligibility } from "../src/platform/holders.mjs";
 import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs";
 import { publishCollection } from "../src/platform/site.mjs";
@@ -146,14 +165,20 @@ const RESOURCE_KEYS = [
   { name: "REPLICATE_API_TOKEN", env: "REPLICATE_API_TOKEN", note: "Replicate / Flux Kontext" },
   { name: "FAL_KEY", env: "FAL_KEY", note: "Fal.ai Fast Cloud (Flux Schnell/Dev)" },
   { name: "RUNWARE_API_KEY", env: "RUNWARE_API_KEY", note: "Runware AI Fast Cloud" },
-  { name: "COMFYUI_URL", env: "COMFYUI_URL", note: "Local ComfyUI Server ($0.00, default: http://127.0.0.1:8188)" },
-  { name: "A1111_URL", env: "A1111_URL", note: "Local Automatic1111/WebUI ($0.00, default: http://127.0.0.1:7860)" },
+  { name: "COMFYUI_URL", env: "COMFYUI_URL", note: "Local ComfyUI on PC · Lab support fee (LOCAL_GPU_CREDIT_COST)" },
+  { name: "A1111_URL", env: "A1111_URL", note: "Local A1111 on PC · Lab support fee (LOCAL_GPU_CREDIT_COST)" },
   { name: "STABILITY_API_KEY", env: "STABILITY_API_KEY", note: "Stability AI" },
   { name: "POLLINATIONS_API_KEY", env: "POLLINATIONS_API_KEY", note: "Pollinations / Pollen" },
   { name: "ANTHROPIC_API_KEY", env: "ANTHROPIC_API_KEY", note: "Claude critic (optional, Studio)" },
   { name: "PINATA_JWT", env: "PINATA_JWT", note: "Pinata IPFS Storage Dispatcher" },
-  { name: "TELEGRAM_BOT_TOKEN", env: "TELEGRAM_BOT_TOKEN", note: "Telegram Batch Notifications" },
-  { name: "TELEGRAM_CHAT_ID", env: "TELEGRAM_CHAT_ID", note: "Telegram Recipient Chat / Channel ID" },
+  { name: "SERIES_TELEGRAM_BOT_TOKEN", env: "SERIES_TELEGRAM_BOT_TOKEN", note: "Series Lab Telegram bot" },
+  { name: "SERIES_TELEGRAM_CHAT_ID", env: "SERIES_TELEGRAM_CHAT_ID", note: "Series Lab operator chat / channel" },
+  { name: "TELEGRAM_BOT_TOKEN", env: "TELEGRAM_BOT_TOKEN", note: "Fallback Telegram bot (Lab .env)" },
+  { name: "TELEGRAM_CHAT_ID", env: "TELEGRAM_CHAT_ID", note: "Fallback Telegram chat (Lab .env)" },
+  { name: "HELIO_API_KEY", env: "HELIO_API_KEY", note: "Helio API (Lab .env)" },
+  { name: "HELIO_PAYLINK_START", env: "HELIO_PAYLINK_START", note: "Helio paylink · Start pack" },
+  { name: "HELIO_PAYLINK_CREATOR", env: "HELIO_PAYLINK_CREATOR", note: "Helio paylink · Creator pack" },
+  { name: "HELIO_PAYLINK_PRO", env: "HELIO_PAYLINK_PRO", note: "Helio paylink · Pro pack" },
 ];
 
 function nowIsoKyiv() {
@@ -255,11 +280,78 @@ function logRender(entry) {
 // refund "refund: generation failed", which Passport quests count).
 const LOCAL_ONLY_ENGINES = new Set(["comfyui", "a1111"]);
 const visionCreditCost = () => Math.max(0, Number.parseInt(process.env.VISION_CREDIT_COST || "1", 10) || 0);
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
+
+function isLoopbackHost(host) {
+  return LOOPBACK_HOSTS.has(String(host || "").toLowerCase());
+}
+
+function isLoopbackUrl(raw) {
+  try {
+    return isLoopbackHost(new URL(String(raw || "")).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * ComfyUI / A1111 on the user's PC.
+ * - SERIES_MODE=local → allowed (dev; no credits ledger).
+ * - SERIES_MODE=public + Studio on loopback (or SERIES_LOCAL_GPU=1) → allowed + Lab support fee in credits.
+ * - Public cloud (0.0.0.0 / remote) → blocked (server has no user GPU).
+ */
+function localGpuPolicy() {
+  const flag = String(process.env.SERIES_LOCAL_GPU || "").trim();
+  const comfyUrl = String(process.env.COMFYUI_URL || "http://127.0.0.1:8188").trim();
+  const a1111Url = String(process.env.A1111_URL || process.env.SD_WEBUI_URL || "http://127.0.0.1:7860").trim();
+  const loopbackStudio = isLoopbackHost(HOST);
+  let enabled = false;
+  let reason = "public_cloud";
+  if (!PUBLIC_MODE) {
+    enabled = true;
+    reason = "local_studio";
+  } else if (flag === "0") {
+    enabled = false;
+    reason = "disabled";
+  } else if (flag === "1" || loopbackStudio) {
+    enabled = true;
+    reason = "pc_with_account";
+  }
+  const fee = localGpuCreditCost();
+  return {
+    enabled,
+    reason,
+    monetized: Boolean(PUBLIC_MODE && enabled),
+    creditPerImage: fee,
+    engines: ["comfyui", "a1111"],
+    urls: { comfyui: comfyUrl, a1111: a1111Url },
+    urlsLoopback: { comfyui: isLoopbackUrl(comfyUrl), a1111: isLoopbackUrl(a1111Url) },
+    env: {
+      comfyui: Boolean(process.env.COMFYUI_URL?.trim() || process.env.COMFYUI_ENABLED === "1"),
+      a1111: Boolean(process.env.A1111_URL?.trim() || process.env.SD_WEBUI_URL?.trim() || process.env.A1111_ENABLED === "1"),
+    },
+  };
+}
 
 function assertEngineAllowed(engine) {
-  if (PUBLIC_MODE && LOCAL_ONLY_ENGINES.has(engine)) {
-    throw httpError(400, `Engine ${engine} runs only on a local PC and is not available online`, { code: "engine" });
+  if (!LOCAL_ONLY_ENGINES.has(engine)) return;
+  const gpu = localGpuPolicy();
+  if (gpu.enabled) {
+    const url = gpu.urls[engine];
+    if (PUBLIC_MODE && url && !isLoopbackUrl(url)) {
+      throw httpError(
+        400,
+        "Local GPU URL must point to this PC (127.0.0.1). Remote Comfy/A1111 is not supported.",
+        { code: "local_gpu", engine },
+      );
+    }
+    return;
   }
+  throw httpError(
+    400,
+    "ComfyUI / Automatic1111 need Studio on your PC (HOST=127.0.0.1 or SERIES_LOCAL_GPU=1). On the public website use cloud engines — GPU fees fund Lab; local GPU charges a small support fee in credits.",
+    { code: "local_gpu", engine },
+  );
 }
 
 function insufficient(wallet, needed) {
@@ -281,9 +373,11 @@ function chargeCredits({ engine, costUsd = 0, reference = false, credits = null,
   }
   const fm = freemiumCheck(wallet);
   if (!fm.allowed) throw httpError(429, "Daily free generation limit reached — top up to continue.", { code: "freemium" });
-  if (!deductCredits(wallet, amount, { engine, ...(note ? { note } : {}) })) throw insufficient(wallet, amount);
+  const debitNote = note
+    || (LOCAL_ONLY_ENGINES.has(engine) ? "Lab support · local GPU" : undefined);
+  if (!deductCredits(wallet, amount, { engine, ...(debitNote ? { note: debitNote } : {}) })) throw insufficient(wallet, amount);
   freemiumRecord(wallet, 1);
-  return { wallet, amount, engine, note };
+  return { wallet, amount, engine, note: debitNote };
 }
 
 function refundCharge(charge) {
@@ -945,6 +1039,7 @@ function mimeOf(file) {
 }
 
 function resourcesPayload() {
+  const tg = getTelegramConfig();
   const keys = RESOURCE_KEYS.map((k) => {
     let present = Boolean(process.env[k.env] && String(process.env[k.env]).trim());
     if (k.env === "POLLINATIONS_API_KEY" && !present) {
@@ -969,7 +1064,19 @@ function resourcesPayload() {
     note: KEYS_PATH
       ? "Keys loaded into the Lab process from a local .env (values never sent to the browser)."
       : "Put keys in a project-local .env (see .env.example) or set SERIES_KEYS_FILE.",
+    telegram: {
+      configured: tg.configured,
+      source: tg.source,
+      project: "Series Lab",
+    },
+    ...providersSnapshot(),
   };
+}
+
+async function resourcesPayloadLive() {
+  const base = resourcesPayload();
+  const [health, float] = await Promise.all([keyHealth(), providerFloatStatus()]);
+  return { ...base, health, float, probed_at: new Date().toISOString() };
 }
 
 async function runPrimaryGenerate({ wish, engine, strength, useRef = false, makePrimary = true, seed }) {
@@ -1039,13 +1146,30 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
 async function handleApi(req, res, url) {
   const { pathname } = url;
 
-  // Operator-only views in public mode: server keys, server-wide spend.
-  if (PUBLIC_MODE && ["/api/spend", "/api/resources", "/api/engines/status"].includes(pathname) && !isAdmin(currentWallet())) {
+  // Operator-only views in public mode: server keys, server-wide spend, economy, Telegram test.
+  if (
+    PUBLIC_MODE &&
+    ["/api/spend", "/api/resources", "/api/engines/status", "/api/admin/economy", "/api/notifications/test"].includes(pathname) &&
+    !isAdmin(currentWallet())
+  ) {
     return send(res, 403, { error: "admin only" });
   }
 
   if (pathname === "/api/me" && req.method === "GET") {
-    if (!PUBLIC_MODE) return send(res, 200, { mode: "local", admin: true });
+    const gpu = localGpuPolicy();
+    if (!PUBLIC_MODE) {
+      return send(res, 200, {
+        mode: "local",
+        admin: true,
+        localGpu: gpu,
+        creditCosts: Object.fromEntries(
+          Object.keys(ENGINES).map((e) => [
+            e,
+            creditCost(e, { reference: true, costUsd: ENGINES[e].costUsd }),
+          ]),
+        ),
+      });
+    }
     const wallet = currentWallet();
     const code = referralCodeFor(wallet);
     return send(res, 200, {
@@ -1055,13 +1179,80 @@ async function handleApi(req, res, url) {
       balance: getBalance(wallet),
       packages: Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p, url: helioPaylinkUrl(id) })),
       referral: code ? { code, link: `${process.env.AUTH_URI || "https://ai.w3ir.io"}/login?ref=${code}` } : null,
-      creditCosts: Object.fromEntries(Object.keys(ENGINES).map((e) => [e, LOCAL_ONLY_ENGINES.has(e) ? null : creditCost(e, { reference: true, costUsd: ENGINES[e].costUsd })])),
+      localGpu: gpu,
+      creditCosts: Object.fromEntries(
+        Object.keys(ENGINES).map((e) => [
+          e,
+          LOCAL_ONLY_ENGINES.has(e) && !gpu.enabled
+            ? null
+            : creditCost(e, { reference: true, costUsd: ENGINES[e].costUsd }),
+        ]),
+      ),
+    });
+  }
+
+  if (pathname === "/api/local-gpu" && req.method === "GET") {
+    const gpu = localGpuPolicy();
+    const probe = url.searchParams.get("probe") === "1" || url.searchParams.get("probe") === "true";
+    if (!gpu.enabled) {
+      return send(res, 200, {
+        ok: true,
+        ...gpu,
+        probed: false,
+        comfyui: { online: false, available: false },
+        a1111: { online: false, available: false },
+      });
+    }
+    if (!probe) {
+      return send(res, 200, {
+        ok: true,
+        ...gpu,
+        probed: false,
+        comfyui: { online: null, url: gpu.urls.comfyui },
+        a1111: { online: null, url: gpu.urls.a1111 },
+      });
+    }
+    const [comfy, a1111] = await Promise.all([
+      testEngineConnection("comfyui", process.env, globalThis.fetch),
+      testEngineConnection("a1111", process.env, globalThis.fetch),
+    ]);
+    return send(res, 200, {
+      ok: true,
+      ...gpu,
+      probed: true,
+      probed_at: new Date().toISOString(),
+      comfyui: { ...comfy, url: gpu.urls.comfyui, available: true },
+      a1111: { ...a1111, url: gpu.urls.a1111, available: true },
     });
   }
 
   if (pathname === "/api/credits/history" && req.method === "GET") {
     if (!PUBLIC_MODE) return send(res, 200, { transactions: [] });
     return send(res, 200, { transactions: listTransactions(currentWallet(), 50) });
+  }
+
+  if (pathname === "/api/admin/economy" && req.method === "GET") {
+    if (PUBLIC_MODE && !isAdmin(currentWallet())) return send(res, 403, { error: "admin only" });
+    const raw = String(url.searchParams.get("days") || "all").toLowerCase();
+    const days = raw === "7" || raw === "7d" ? 7 : raw === "30" || raw === "30d" ? 30 : null;
+    const report = economyReport(days);
+    report.funnel_30d = funnel(30);
+    return send(res, 200, report);
+  }
+
+  if (pathname === "/api/credits/sync" && req.method === "POST") {
+    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
+    if (!helioKeys()) {
+      return send(res, 503, { error: "HELIO_API_KEY / HELIO_API_SECRET not set — add them to Series Lab .env" });
+    }
+    const wallet = currentWallet();
+    const r = await reconcilePayments({ targetWallet: wallet, notify: notifyOperator });
+    return send(res, 200, {
+      newTx: r.newTx,
+      credited: r.credited,
+      balance: getBalance(wallet),
+      error: r.error || null,
+    });
   }
 
   if (pathname === "/api/holder" && req.method === "GET") {
@@ -2404,12 +2595,16 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === "/api/notifications/test" && req.method === "POST") {
+    if (PUBLIC_MODE && !isAdmin(currentWallet())) return send(res, 403, { error: "admin only" });
     const body = await readBody(req);
-    const token = body.botToken || process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = body.chatId || process.env.TELEGRAM_CHAT_ID;
-    const text = body.message || "🔔 *Series Lab*: Тестове сповіщення успішно надіслано!";
-    const resNotify = await sendTelegramNotification({ botToken: token, chatId, text });
-    return send(res, resNotify.ok ? 200 : 400, resNotify);
+    // Optional override for one-off tests; otherwise Series Lab config (SERIES_TELEGRAM_* / TELEGRAM_*).
+    if (body.botToken && body.chatId) {
+      const text = body.message || "🔔 *Series Lab*\nТестове сповіщення успішно надіслано!";
+      const resNotify = await sendTelegramNotification({ botToken: body.botToken, chatId: body.chatId, text });
+      return send(res, resNotify.ok ? 200 : 400, { ...resNotify, project: "Series Lab" });
+    }
+    const resNotify = await sendTelegramTest();
+    return send(res, resNotify.ok ? 200 : 400, { ...resNotify, project: "Series Lab" });
   }
 
   if (pathname === "/api/matrix/preview" && req.method === "POST") {
@@ -2559,6 +2754,8 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === "/api/resources" && req.method === "GET") {
+    const probe = url.searchParams.get("probe") === "1" || url.searchParams.get("probe") === "true";
+    if (probe) return send(res, 200, await resourcesPayloadLive());
     return send(res, 200, resourcesPayload());
   }
 

@@ -49,6 +49,32 @@ test("loadKeys reads temp .env, returns path, does not override existing env", (
   }
 });
 
+test("loadKeys is self-contained: ignores SERIES_PLATFORM_ENV", () => {
+  const dir = mkdtempSync(join(tmpdir(), "series-keys-self-"));
+  const cwdEnv = join(dir, ".env");
+  const foreign = join(dir, "foreign.env");
+  writeFileSync(cwdEnv, `SERIES_PLATFORM_ENV=${foreign.replace(/\\/g, "/")}\nLAB_ONLY=1\n`, "utf8");
+  writeFileSync(
+    foreign,
+    "HELIO_PAYLINK_START=aa11bb22\nOPENAI_API_KEY=should-not-load\nTELEGRAM_BOT_TOKEN=nope\n",
+    "utf8",
+  );
+  const prev = process.cwd();
+  try {
+    process.chdir(dir);
+    const env = { SERIES_PLATFORM_ENV_SILENCE: "1" };
+    const loaded = loadKeys(undefined, env);
+    assert.equal(loaded, cwdEnv);
+    assert.equal(env.LAB_ONLY, "1");
+    assert.equal(env.HELIO_PAYLINK_START, undefined);
+    assert.equal(env.OPENAI_API_KEY, undefined);
+    assert.equal(env.TELEGRAM_BOT_TOKEN, undefined);
+  } finally {
+    process.chdir(prev);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("keyPresence reports present/missing without exposing values", () => {
   const env = { A: "x", B: "  ", C: undefined };
   assert.deepEqual(keyPresence(["A", "B", "C"], env), [

@@ -52,10 +52,12 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `SERIES_MODE` | `public` (типово) — вхід гаманцем; `local` — без акаунтів, лише loopback |
 | `AUTH_SESSION_SECRET`, `ADMIN_WALLETS` | Сесія й адміни (оператор уже в коді) |
 | `FAL_KEY`, `REPLICATE_API_TOKEN`, `OPENAI_API_KEY`, `STABILITY_API_KEY`, `RUNWARE_API_KEY`, `POLLINATIONS_API_KEY` | Хмарні рушії |
-| `COMFYUI_URL`, `A1111_URL` | Локальні рушії ($0) |
+| `COMFYUI_URL`, `A1111_URL`, `LOCAL_GPU_CREDIT_COST` | Local GPU на ПК; у public — плата підтримки Lab (кр/кадр) |
 | `ANTHROPIC_API_KEY` | Vision Assist / AI Triage через Claude (опційно) |
 | `PINATA_JWT` | Завантаження в IPFS |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Сповіщення про завершення batch |
+| `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | Сповіщення від імені Series Lab |
+| `HELIO_PAYLINK_*`, `HELIO_API_*` | Поповнення кредитів (USDC Base) |
+| `HOSTING_MONTHLY_USD`, `SAAS_MONTHLY_USD`, `PAYMENT_FEE_PCT`, `FX_FEE_PCT`, `RESOURCE_FX_PCT` | Адмін → Економіка (накладні + комісії; див. [docs/ECONOMY.md](docs/ECONOMY.md)) |
 | `SERIES_SPEND_CAP_USD` | Денна межа витрат, $ |
 | `SERIES_MAX_CONSECUTIVE_FAILURES` | Автостоп batch (5) |
 | `SERIES_TRASH_DAYS` | Кошик (30; 0 = не чистити) |
@@ -74,7 +76,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | 5 | **Генерація** | «12 пілотів — порахувати» → оцінка → генерація. |
 | 6 | **Відбір** | ✓ / ↻, порівняння, Triage, схожі кадри, версії. |
 | 7 | **Експорт** | Архів випуску → портал; інші ZIP / CSV / IPFS / Showcase / Hub. |
-| — | **Адмін** | Ресурси (ключі, кошик), статистика, помилки — лише адмін-гаманець. |
+| — | **Адмін** | Ресурси, **Економіка**, статистика, помилки — лише адмін-гаманець. |
 | — | **Довідка** | Путівник, швидкий старт, словник, FAQ. |
 
 На опціях — підказки при наведенні. Інтерфейс uk / en.
@@ -125,6 +127,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 
 - [docs/GUIDE.md](docs/GUIDE.md) — початківцям
 - [docs/README.md](docs/README.md) — індекс
+- [docs/ECONOMY.md](docs/ECONOMY.md) — кредити, маржа, хостинг, обмін crypto→USD
 - [docs/ROADMAP.md](docs/ROADMAP.md) · [CHANGELOG.md](CHANGELOG.md)
 - [docs/HOSTING.md](docs/HOSTING.md) — після ядра; деплой лише за командою
 - [docs/DEPLOY.md](docs/DEPLOY.md) — https://studio.w3ir.io

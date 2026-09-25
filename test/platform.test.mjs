@@ -156,6 +156,11 @@ describe("billing ledger", () => {
     assert.equal(billing.creditCost("openai", { reference: true, costUsd: 0.07 }), 6);
     assert.equal(billing.creditCost("kontext", { reference: false, costUsd: 0.04 }), 2, "margin floor lifts 1 → 2");
     assert.equal(billing.creditCost("mock"), 0);
+    assert.equal(billing.creditCost("comfyui"), 1, "local GPU support fee");
+    assert.equal(billing.creditCost("a1111"), 1);
+    process.env.LOCAL_GPU_CREDIT_COST = "2";
+    assert.equal(billing.creditCost("comfyui"), 2);
+    delete process.env.LOCAL_GPU_CREDIT_COST;
     process.env.ENGINE_CREDIT_COSTS = '{"mock":3}';
     assert.equal(billing.creditCost("mock"), 3);
     delete process.env.ENGINE_CREDIT_COSTS;

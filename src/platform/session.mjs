@@ -1,9 +1,8 @@
 /**
  * Sign-in sessions: one-time nonces + HMAC session token.
- * Port of Промт `services/auth_gateway.py`. The token format is byte-identical
- * (base64url(sorted compact JSON) + "." + base64url(HMAC-SHA256)), so with the
- * same AUTH_SESSION_SECRET a user logged in on Промт stays logged in after the
- * switch to Series Lab.
+ * Port of Промт `services/auth_gateway.py`. Token format is byte-identical
+ * (base64url(sorted compact JSON) + "." + base64url(HMAC-SHA256)).
+ * Standalone Lab: use AUTH_SESSION_SECRET from this project's .env.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { normalizeAddr } from "./wallet.mjs";

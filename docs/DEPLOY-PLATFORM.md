@@ -13,19 +13,21 @@
 
 ## Змінні середовища
 
-Файл `/opt/w3ir/.env.series-lab`. **Скопіюйте значення з `/opt/w3ir/.env` Промт — імена ті самі.** Обов'язково збігаються:
+Файл Lab: локально `.env`, на проді `/opt/w3ir/.env.series-lab` (або `/opt/series-lab/.env`). **Series Lab самодостатній** — усі ключі й Helio-посилання живуть у його `.env`; `SERIES_PLATFORM_ENV` більше не підмішує чужий файл.
 
-| Змінна | Чому має збігатися з Промт |
+Імена змінних сумісні з колишнім Промт (зручно один раз скопіювати значення), але це **копія в .env Lab**, не live-залежність:
+
+| Змінна | Призначення в Lab |
 |---|---|
-| `AUTH_SESSION_SECRET` | тоді користувачі лишаються залогіненими після перемикання, а реферальні коди не змінюються |
+| `AUTH_SESSION_SECRET` | сесії SIWE / реферальні коди Lab |
 | `AUTH_DOMAIN`, `AUTH_URI`, `AUTH_CHAIN_ID` | текст SIWE-повідомлення |
-| `HELIO_*` | paylinks → пакети, підпис вебхука, звіряння |
+| `HELIO_*` | paylinks Lab → пакети, підпис вебхука, звіряння |
+| `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | сповіщення оператору від імені Series Lab |
 | `GREMLIN_API_KEY`, `TMA_API_KEY`, `W3IR_B2B_KEYS` | ключі партнерів (Passport, Telegram) |
-| `OPENAI_API_KEY`, `REPLICATE_API_TOKEN`, `STABILITY_API_KEY` | рушії для API партнерів і студії |
-| `WELCOME_*`, `EARLY_WELCOME_*`, `GENERATION_RATE_LIMIT_PER_MINUTE`, `FREEMIUM_DAILY_LIMIT`, `REFERRAL_BONUS_CREDITS` | ті самі правила кредитів |
-| `ADMIN_WALLETS`, `OPERATOR_WALLET`, `DOGFOOD_WALLETS` | внутрішні гаманці для воронки й доступ до службових екранів |
+| `OPENAI_API_KEY`, `REPLICATE_API_TOKEN`, `STABILITY_API_KEY`, … | рушії студії |
+| `WELCOME_*`, `EARLY_WELCOME_*`, `GENERATION_RATE_LIMIT_PER_MINUTE`, `FREEMIUM_DAILY_LIMIT`, `REFERRAL_BONUS_CREDITS` | правила кредитів |
+| `ADMIN_WALLETS`, `OPERATOR_WALLET`, `DOGFOOD_WALLETS` | внутрішні гаманці / адмін |
 | `SOLANA_RPC_URL`/`ALCHEMY_API_KEY`, `GENESIS_*`, `VAULT_*`, `HELIO_MINT_PAYLINK_ID` | холдери Genesis і Дроп #2 |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | сповіщення оператору |
 
 Додатково для Series Lab: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (запобіжник на весь сервер), `SERIES_ALLOWED_HOSTS` (обов'язково, бо образ слухає `0.0.0.0` і без списку не перевіряє `Host`), `LANDING_HOSTS`, `PAY_SUBDOMAIN_HOSTS`, `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби).
 
@@ -103,7 +105,7 @@ node scripts/contract-check.mjs --old https://gen.w3ir.io --new https://next.w3i
 | Вітальні кредити | нараховуються при першому відкритті Streamlit після входу | одразу після перевірки підпису (`/auth/verify`) — ті самі правила й леджер |
 | Помилка валідації тіла TMA | 422 зі списком помилок pydantic | 422 з текстом помилки |
 | Робочі проєкти Streamlit (`data/workspace/<wallet>`) | є | не переносяться: у Series Lab інша модель (пресет → рецепти → набори); баланси й історія кредитів переносяться повністю |
-| Адмін-панель (економіка, дайджест) | Streamlit | ще немає — воронка доступна в коді (`src/platform/stats.mjs`) |
+| Адмін-панель (економіка, дайджест) | Streamlit | **Адмін → Економіка** (`GET /api/admin/economy`, `src/platform/margin.mjs`); воронка — `stats.mjs`. Див. [ECONOMY.md](./ECONOMY.md) |
 | Сейф Дропу #2 | див. нижче | повторює поведінку Промт |
 
 ⚠️ **Знайдена прихована помилка Промт.** `vault_registry.vault_token_mints` приймає відповідь RPC лише у вигляді списку, а стандартний `getTokenAccountsByOwner` повертає `{context, value: [...]}`. Зараз це не проявляється: на проді сейф не налаштований (`/api/vault/status` → 500 «VAULT_WALLET_ADDRESS is not configured», перевірено 24.09.2026), тобто Дроп #2 вимкнений. Але якщо його ввімкнути, перевірка сейфу відхилятиме всі реальні відповіді й трансфери не пройдуть. Series Lab навмисно повторює поведінку Промт (fail-closed); виправлення — один рядок у `src/platform/vault.mjs`, рішення за вами.

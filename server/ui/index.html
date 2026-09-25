@@ -29,10 +29,13 @@
   </nav>
   <span id="me" class="muted small"></span>
   <div id="acct" class="acct" hidden>
-    <span id="acct-wallet" class="muted small"></span>
-    <span class="acct-credits"><b id="acct-balance">0</b> <span data-i18n="acct.credits">кредитів</span></span>
-    <button type="button" id="acct-topup" class="btn small primary" data-i18n="acct.topup">💳 Поповнити</button>
-    <button type="button" id="acct-logout" class="btn small" data-i18n="acct.logout">Вийти</button>
+    <span id="acct-wallet" class="acct-wallet" title=""></span>
+    <button type="button" id="acct-topup" class="acct-balance" data-i18n-tip="acct.topup.tip">
+      <span class="acct-balance-label" data-i18n="acct.balance">Баланс</span>
+      <b id="acct-balance">0</b>
+      <span class="acct-balance-unit" data-i18n="acct.creditsShort">кр.</span>
+    </button>
+    <button type="button" id="acct-logout" class="btn small ghost" data-i18n="acct.logout" data-i18n-tip="acct.logout.tip">Вийти</button>
   </div>
   <div class="lang-switch" role="group" aria-label="Language">
     <span class="muted small" data-i18n="lang.label">Мова</span>
@@ -79,15 +82,15 @@
           <input id="o-seed" autocomplete="off" data-i18n-placeholder="home.field.seed.ph" placeholder="my-series-v1"></label>
         <label><span data-i18n="home.field.engine">Двигун (пізніше)</span>
           <select id="o-engine">
-            <option value="kontext">kontext</option>
-            <option value="fal">fal.ai</option>
-            <option value="comfyui">comfyui (local $0)</option>
-            <option value="a1111">automatic1111 (local $0)</option>
-            <option value="openai">openai</option>
-            <option value="stability">stability</option>
-            <option value="pollinations">pollinations</option>
-            <option value="runware">runware</option>
-            <option value="mock" data-i18n="engine.mock">mock (demo, $0.00)</option>
+            <option value="kontext" data-i18n="engine.kontext">kontext / flux</option>
+            <option value="fal" data-i18n="engine.fal">fal.ai</option>
+            <option value="comfyui" data-i18n="engine.comfyui" data-local-gpu="1">comfyui</option>
+            <option value="a1111" data-i18n="engine.a1111" data-local-gpu="1">automatic1111</option>
+            <option value="openai" data-i18n="engine.openai">openai</option>
+            <option value="stability" data-i18n="engine.stability">stability</option>
+            <option value="pollinations" data-i18n="engine.pollinations">pollinations</option>
+            <option value="runware" data-i18n="engine.runware">runware</option>
+            <option value="mock" data-i18n="engine.mock">mock (демо)</option>
           </select></label>
         <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="o-strength-v">0.45</b>
           <input type="range" id="o-strength" min="0.1" max="0.95" step="0.05" value="0.45">
@@ -190,16 +193,16 @@
         </label>
         <label><span data-i18n="base.wish.engine">Двигун</span>
           <select id="base-wish-engine">
-            <option value="openai" data-i18n="engine.openai">openai (txt2img)</option>
-            <option value="fal" data-i18n="engine.fal">fal.ai (fast Flux)</option>
+            <option value="openai" data-i18n="engine.openai">openai</option>
+            <option value="fal" data-i18n="engine.fal">fal.ai</option>
             <option value="schnell" data-i18n="engine.schnell">replicate schnell</option>
-            <option value="comfyui" data-i18n="engine.comfyui">comfyui (local)</option>
-            <option value="a1111" data-i18n="engine.a1111">automatic1111 (local)</option>
+            <option value="comfyui" data-i18n="engine.comfyui" data-local-gpu="1">comfyui</option>
+            <option value="a1111" data-i18n="engine.a1111" data-local-gpu="1">automatic1111</option>
             <option value="kontext" data-i18n="engine.kontext">kontext / flux</option>
             <option value="stability" data-i18n="engine.stability">stability</option>
             <option value="pollinations" data-i18n="engine.pollinations">pollinations</option>
             <option value="runware" data-i18n="engine.runware">runware</option>
-            <option value="mock" data-i18n="engine.mock">mock (demo, $0.00)</option>
+            <option value="mock" data-i18n="engine.mock">mock (демо)</option>
           </select>
         </label>
         <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="base-wish-str-v">0.45</b>
@@ -251,15 +254,15 @@
         <input id="c-seed" autocomplete="off">
         <input id="c-size" type="number">
         <select id="c-engine">
-          <option value="kontext">kontext</option>
-          <option value="fal">fal.ai</option>
-          <option value="comfyui">comfyui</option>
-          <option value="a1111">automatic1111</option>
-          <option value="openai">openai</option>
-          <option value="stability">stability</option>
-          <option value="pollinations">pollinations</option>
-          <option value="runware">runware</option>
-          <option value="mock" data-i18n="engine.mock">mock (demo, $0.00)</option>
+          <option value="kontext" data-i18n="engine.kontext">kontext / flux</option>
+          <option value="fal" data-i18n="engine.fal">fal.ai</option>
+          <option value="comfyui" data-i18n="engine.comfyui" data-local-gpu="1">comfyui</option>
+          <option value="a1111" data-i18n="engine.a1111" data-local-gpu="1">automatic1111</option>
+          <option value="openai" data-i18n="engine.openai">openai</option>
+          <option value="stability" data-i18n="engine.stability">stability</option>
+          <option value="pollinations" data-i18n="engine.pollinations">pollinations</option>
+          <option value="runware" data-i18n="engine.runware">runware</option>
+          <option value="mock" data-i18n="engine.mock">mock (демо)</option>
         </select>
         <input id="c-strength" type="range" min="0.1" max="0.95" step="0.05" value="0.45">
         <b id="c-strength-v">0.45</b>
@@ -473,17 +476,18 @@
       <div class="card form">
         <label><span data-i18n="render.engine">Двигун</span>
           <select id="g-engine">
-            <option value="fal">fal.ai (~$0.025, fast)</option>
-            <option value="kontext" selected>kontext (~$0.04)</option>
-            <option value="comfyui">comfyui (local GPU, $0.00)</option>
-            <option value="a1111">automatic1111 (local GPU, $0.00)</option>
-            <option value="openai">openai (~$0.07)</option>
-            <option value="stability">stability (~$0.035)</option>
-            <option value="pollinations">pollinations (~$0.02)</option>
-            <option value="runware">runware (~$0.006)</option>
-            <option value="mock" data-i18n="engine.mock">mock (demo, $0.00)</option>
+            <option value="fal" data-i18n="engine.fal">fal.ai</option>
+            <option value="kontext" selected data-i18n="engine.kontext">kontext / flux</option>
+            <option value="comfyui" data-i18n="engine.comfyui" data-local-gpu="1">comfyui</option>
+            <option value="a1111" data-i18n="engine.a1111" data-local-gpu="1">automatic1111</option>
+            <option value="openai" data-i18n="engine.openai">openai</option>
+            <option value="stability" data-i18n="engine.stability">stability</option>
+            <option value="pollinations" data-i18n="engine.pollinations">pollinations</option>
+            <option value="runware" data-i18n="engine.runware">runware</option>
+            <option value="mock" data-i18n="engine.mock">mock (демо)</option>
           </select>
         </label>
+        <div id="local-gpu-panel" class="local-gpu-panel" hidden></div>
         <label><span data-i18n="render.strength">Сила референсу</span>: <b id="g-strength-v">0.45</b>
           <input type="range" id="g-strength" min="0.1" max="0.95" step="0.05" value="0.45">
         </label>
@@ -607,18 +611,61 @@
       <button type="button" id="v-lightbox-close" class="btn" data-i18n-tip="ctrl.v-lightbox-close.tip">✕</button>
     </div>
     <div id="topup-overlay" class="overlay" hidden>
-      <div class="card ver-card">
-        <h3><span data-i18n="topup.title">Поповнення кредитів</span><button type="button" id="topup-close" class="btn small" data-i18n-tip="ctrl.topup-close.tip">✕</button></h3>
-        <p class="muted small" data-i18n="topup.hint"></p>
-        <div id="topup-packages" class="topup-grid"></div>
-        <h4 data-i18n="holder.title">Бонус холдера Genesis</h4>
-        <p class="muted small" data-i18n="holder.hint"></p>
-        <div class="row"><button type="button" id="holder-check" class="btn small" data-i18n="holder.check">Перевірити</button><span id="holder-status" class="small"></span></div>
-        <h4 data-i18n="ref.title">Запросити друга</h4>
-        <p class="muted small" data-i18n="ref.hint"></p>
-        <code id="ref-link" class="ref-link"></code>
-        <h4 data-i18n="history.title">Історія кредитів</h4>
-        <div id="credit-history" class="small credit-history"></div>
+      <div class="card topup-panel" role="dialog" aria-modal="true" aria-labelledby="topup-title">
+        <header class="topup-head">
+          <div class="topup-head-text">
+            <h3 id="topup-title" data-i18n="topup.title">Поповнення кредитів</h3>
+            <p class="muted small" data-i18n="topup.hint"></p>
+          </div>
+          <div class="topup-head-bal" aria-live="polite">
+            <span class="muted small" data-i18n="acct.balance">Баланс</span>
+            <b id="topup-balance">0</b>
+            <span class="muted small" data-i18n="acct.credits">кредитів</span>
+          </div>
+          <button type="button" id="topup-close" class="btn small topup-close" aria-label="Close" data-i18n-tip="ctrl.topup-close.tip">✕</button>
+        </header>
+
+        <section class="topup-section">
+          <div class="topup-section-head">
+            <h4 data-i18n="topup.packages">Пакети</h4>
+            <span class="muted small" data-i18n="topup.payVia">Оплата USDC (Base) · Helio Pay</span>
+          </div>
+          <div id="topup-packages" class="topup-grid"></div>
+        </section>
+
+        <section class="topup-sync" aria-live="polite">
+          <div class="topup-sync-text">
+            <b data-i18n="topup.syncTitle">Після оплати</b>
+            <p class="muted small" data-i18n="topup.syncHint">На localhost вебхук не доходить — натисніть, щоб опитати Helio і зарахувати кредити.</p>
+          </div>
+          <button type="button" id="topup-sync" class="btn small" data-i18n="topup.sync" data-i18n-tip="topup.sync.tip">Перевірити оплату</button>
+          <span id="topup-sync-status" class="topup-sync-status small muted"></span>
+        </section>
+
+        <div class="topup-side">
+          <section class="topup-section topup-box">
+            <h4 data-i18n="holder.title">Бонус холдера Genesis</h4>
+            <p class="muted small" data-i18n="holder.hint"></p>
+            <div class="topup-actions">
+              <button type="button" id="holder-check" class="btn small" data-i18n="holder.check" data-i18n-tip="holder.check.tip">Перевірити й отримати</button>
+              <span id="holder-status" class="small"></span>
+            </div>
+          </section>
+          <section class="topup-section topup-box">
+            <h4 data-i18n="ref.title">Запросити друга</h4>
+            <p class="muted small" data-i18n="ref.hint"></p>
+            <div class="topup-ref">
+              <code id="ref-link" class="ref-link"></code>
+              <button type="button" id="ref-copy" class="btn small" data-i18n="ref.copy" data-i18n-tip="ref.copy.tip">Копіювати</button>
+            </div>
+            <span id="ref-copy-status" class="small muted" hidden></span>
+          </section>
+        </div>
+
+        <section class="topup-section">
+          <h4 data-i18n="history.title">Історія кредитів</h4>
+          <div id="credit-history" class="credit-history"></div>
+        </section>
       </div>
     </div>
     <div id="ver-overlay" class="overlay" hidden>
@@ -758,6 +805,7 @@
     <div class="hint"><p data-i18n="admin.hint"></p></div>
     <div class="admin-nav" role="tablist">
       <button type="button" data-admin="res" class="on" data-i18n="admin.tab.res">Ресурси</button>
+      <button type="button" data-admin="econ" data-i18n="admin.tab.econ">Економіка</button>
       <button type="button" data-admin="stats" data-i18n="admin.tab.stats">Статистика</button>
       <button type="button" data-admin="errors" data-i18n="admin.tab.errors">Помилки</button>
     </div>
@@ -771,11 +819,34 @@
         </details>
       </div>
       <p class="muted" data-i18n="res.note"></p>
+      <div class="res-toolbar">
+        <h3 data-i18n="res.providers.h3">Провайдери · баланси</h3>
+        <button type="button" id="res-probe" class="btn small primary" data-i18n="res.providers.probe" data-i18n-tip="res.providers.probe.tip">Перевірити ключі й баланси</button>
+      </div>
+      <p class="muted small" data-i18n="res.providers.hint"></p>
+      <div id="res-providers" class="res-providers"></div>
+      <div id="res-telegram" class="res-telegram"></div>
+      <h3 class="res-keys-title" data-i18n="res.keys.h3">Ключі двигунів (checklist)</h3>
       <div id="res-grid" class="res-grid"></div>
       <div class="card" style="margin-top:16px">
         <h3 data-i18n="trash.h3">🗑️ Кошик</h3>
         <p class="muted small" data-i18n="trash.hint"></p>
         <div id="trash-list" class="trash-list small"></div>
+      </div>
+    </div>
+
+    <div id="admin-econ" class="admin-pane">
+      <div class="card econ-card">
+        <div class="econ-toolbar">
+          <h3 data-i18n="econ.h3">Економіка (як у Промт)</h3>
+          <div class="econ-period" role="group" aria-label="Period">
+            <button type="button" class="btn small" data-econ-days="7">7д</button>
+            <button type="button" class="btn small" data-econ-days="30">30д</button>
+            <button type="button" class="btn small on" data-econ-days="all">Усе</button>
+          </div>
+        </div>
+        <p class="muted small" data-i18n="econ.hint"></p>
+        <div id="econ-out" class="econ-out"></div>
       </div>
     </div>
 

@@ -55,9 +55,14 @@
 
 `health.yml` б’є `next.w3ir.io`, `gen.w3ir.io`, `studio.w3ir.io`. Окремий пейджер після Ф4 корисний для `ai.` і `pay.`.
 
+### 5. Економіка на проді
+
+Після Ф4 задайте в `.env` Lab lean-накладні й комісії (`HOSTING_MONTHLY_USD`, `SAAS_MONTHLY_USD`, `PAYMENT_FEE_PCT`, `FX_FEE_PCT`, `RESOURCE_FX_PCT`) — див. [ECONOMY.md](./ECONOMY.md). Адмін → Економіка читає живий `users.db`.
+
 ## Пов’язані файли
 
 - [MIGRATION.md](./MIGRATION.md) — Ф3–Ф5  
 - [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) — операції на VPS  
 - [DEPLOY.md](./DEPLOY.md) — Pages лендінг  
+- [ECONOMY.md](./ECONOMY.md) — маржа, хостинг, crypto→USD  
 - `C:\Gremlins\HOSTING.md` — картина всіх проєктів (поза цим репо)
