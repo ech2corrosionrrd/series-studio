@@ -148,8 +148,8 @@ export function renderCollectionHtml(slug) {
   <title>${title} — made with w3ir.io</title>
   <meta name="description" content="An NFT collection of ${images.length} items, made with w3ir.io. Make your own in minutes." />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="${title} — made with w3ir.io" />
-  <meta property="og:description" content="An NFT collection made with w3ir.io. Make your own in minutes." />
+  <meta property="og:title" content="${title} — Series Lab" />
+  <meta property="og:description" content="An NFT collection made with Series Lab. Build your own: preset → recipes → release ZIP." />
   <meta property="og:url" content="${pageUrl}" />
   <meta property="og:image" content="${og}" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -168,8 +168,8 @@ export function renderCollectionHtml(slug) {
 <body class="min-h-screen">
   <header class="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
     <a href="${PUBLIC_BASE}" class="flex items-center gap-2">
-      <div class="grid h-8 w-8 place-items-center rounded-lg btn-accent text-sm font-extrabold text-white">N</div>
-      <span class="font-semibold tracking-tight">NFT Prompt Builder</span>
+      <div class="grid h-8 w-8 place-items-center rounded-lg btn-accent text-sm font-extrabold text-white">S</div>
+      <span class="font-semibold tracking-tight">Series Lab</span>
     </a>
     <a href="${cta}" class="btn-accent rounded-lg px-4 py-2 text-sm font-semibold text-white transition">Make your own →</a>
   </header>
@@ -178,7 +178,7 @@ export function renderCollectionHtml(slug) {
     <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">${title}</h1>
     ${by}
     ${sub}
-    <p class="mt-2 text-xs text-[var(--lo)]">${images.length} items · made with <a href="${PUBLIC_BASE}" class="text-[var(--accent-soft)] hover:underline">w3ir.io</a></p>
+    <p class="mt-2 text-xs text-[var(--lo)]">${images.length} items · made with <a href="${PUBLIC_BASE}" class="text-[var(--accent-soft)] hover:underline">Series Lab</a></p>
   </section>
 
   <section class="mx-auto max-w-5xl px-6 py-8">
@@ -190,8 +190,8 @@ ${tiles}
   <section class="mx-auto max-w-5xl px-6 pb-16">
     <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
       <h2 class="text-xl font-bold tracking-tight">Make a collection like this</h2>
-      <p class="mx-auto mt-2 max-w-md text-sm text-[var(--muted)]">Idea → AI art → mint-ready bundle in 15 minutes. Pay-as-you-go, non-custodial.</p>
-      <a href="${cta}" class="btn-accent mt-5 inline-block rounded-xl px-7 py-3 font-semibold text-white transition">Launch app →</a>
+      <p class="mx-auto mt-2 max-w-md text-sm text-[var(--muted)]">Preset → recipes → images → release ZIP. Sign in with a wallet. Pay-as-you-go, non-custodial.</p>
+      <a href="${cta}" class="btn-accent mt-5 inline-block rounded-xl px-7 py-3 font-semibold text-white transition">Open Series Lab →</a>
     </div>
   </section>
 </body>

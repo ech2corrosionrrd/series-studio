@@ -2,7 +2,12 @@
  * Series Lab Studio UI — tabs, Lab APIs, i18n (uk/en).
  * Prompts/recipe content stay English for generators.
  */
-import { initI18n, setLocale, getLocale, t, applyI18n } from "./i18n.js";
+import { initI18n, setLocale, getLocale, t, applyI18n, applyTips, tipText } from "./i18n.js";
+
+function tipAttr(key) {
+  const s = tipText(key);
+  return s ? ` title="${escapeHtml(s)}" data-tip="${escapeHtml(s)}"` : "";
+}
 
 const state = {
   presets: [],
@@ -103,6 +108,12 @@ function $(id) {
 }
 
 function showTab(name) {
+  let adminPane = null;
+  if (name === "res") {
+    adminPane = "res";
+    name = "admin";
+  }
+  if (name === "admin" && state.account && !state.account.admin) name = "home";
   document.querySelectorAll(".tab").forEach((el) => el.classList.toggle("on", el.id === `tab-${name}`));
   document.querySelectorAll("#tabs button").forEach((btn) => {
     btn.classList.toggle("on", btn.dataset.tab === name);
@@ -119,6 +130,17 @@ function showTab(name) {
   if (name === "recipes") ensureRecipesLoaded();
   if (name === "gallery") ensureGalleryLoaded();
   if (name === "render") lockGenerate(true);
+  if (name === "admin") {
+    const current = document.querySelector(".admin-pane.on")?.id?.replace(/^admin-/, "");
+    showAdminPane(adminPane || current || "res");
+  }
+}
+
+function lockGenerate(locked) {
+  const run = $("g-run");
+  if (!run) return;
+  run.disabled = Boolean(locked);
+  run.classList.toggle("primary", !locked);
 }
 
 async function ensureGalleryLoaded() {
@@ -131,8 +153,38 @@ function setupTabs() {
   document.querySelectorAll("#tabs button").forEach((btn) => {
     btn.addEventListener("click", () => showTab(btn.dataset.tab));
   });
+  document.querySelectorAll("[data-admin]").forEach((btn) => {
+    btn.addEventListener("click", () => showAdminPane(btn.dataset.admin));
+  });
   const hash = (location.hash || "").replace(/^#/, "");
+  if (hash === "admin" || hash === "res") {
+    state.pendingTab = hash;
+    return;
+  }
   if (hash && $(`tab-${hash}`)) showTab(hash);
+}
+
+function showAdminPane(name) {
+  const pane = name || "res";
+  document.querySelectorAll(".admin-pane").forEach((el) => el.classList.toggle("on", el.id === `admin-${pane}`));
+  document.querySelectorAll("[data-admin]").forEach((btn) => btn.classList.toggle("on", btn.dataset.admin === pane));
+  if (pane === "res") renderResources();
+  else renderSpend();
+}
+
+function applyAdminNav() {
+  const admin = Boolean(state.account?.admin);
+  const btn = $("nav-admin");
+  if (btn) btn.hidden = !admin;
+  if (!admin) {
+    if ($("tab-admin")?.classList.contains("on")) showTab("home");
+    return;
+  }
+  if (state.pendingTab) {
+    const pending = state.pendingTab;
+    state.pendingTab = null;
+    showTab(pending);
+  }
 }
 
 function setupHints() {
@@ -188,6 +240,7 @@ function refreshDynamicCopy() {
   if (stub && !stub.dataset.dirty) stub.textContent = t("render.stub");
   const allOpt = $("r-line")?.querySelector('option[value=""]');
   if (allOpt) allOpt.textContent = t("recipes.allLines");
+  applyTips(document);
 }
 
 /* ---------- Overview ---------- */
@@ -278,6 +331,7 @@ function fillPresetSelects() {
       .join("");
     if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
   }
+  refreshWaves();
 }
 
 async function loadTemplates() {
@@ -297,10 +351,11 @@ function renderTemplates() {
     card.innerHTML = `<b>${escapeHtml(title)}</b>
       <span class="tpl-blurb">${escapeHtml(tpl.blurb || tpl.id)}</span>
       <span class="muted small">${escapeHtml(tpl.id)} · size ${tpl.size}</span>
-      <button type="button" class="btn small" data-id="${escapeHtml(tpl.id)}">${t("base.use")}</button>`;
+      <button type="button" class="btn small" data-id="${escapeHtml(tpl.id)}"${tipAttr("base.use")}>${t("base.use")}</button>`;
     card.querySelector("button").addEventListener("click", () => useTemplate(tpl.id));
     grid.appendChild(card);
   }
+  applyTips(grid);
 }
 
 async function useTemplate(id) {
@@ -375,10 +430,11 @@ function renderPacks() {
     card.innerHTML = `<b>${escapeHtml(pack.name || pack.id)}</b>
       <span class="tpl-blurb">${escapeHtml(pack.description || "")}</span>
       <span class="muted small">${escapeHtml(pack.id)} · ${keysN} ${t("ctor.packs.keys")} · ${optsN} ${t("ctor.packs.options")}${tags ? ` · ${escapeHtml(tags)}` : ""}</span>
-      <button type="button" class="btn small" data-id="${escapeHtml(pack.id)}">${t("ctor.packs.apply")}</button>`;
+      <button type="button" class="btn small" data-id="${escapeHtml(pack.id)}"${tipAttr("ctor.packs.apply")}>${t("ctor.packs.apply")}</button>`;
     card.querySelector("button").addEventListener("click", () => applyTraitPack(pack.id));
     grid.appendChild(card);
   }
+  applyTips(grid);
 }
 
 function renderPackSummary() {
@@ -424,7 +480,7 @@ function renderTraitChecklist() {
       <span class="pack-key-name">${escapeHtml(key)}</span>
       <span class="muted small">${escapeHtml(trait.type || "")} · ${opts} ${t("ctor.packs.options")} · ${escapeHtml(role)}</span>
     </label>
-    <button type="button" class="btn small pack-key-edit" data-edit-key="${escapeHtml(key)}">${escapeHtml(t("ctor.options.editKey"))}</button>`;
+    <button type="button" class="btn small pack-key-edit" data-edit-key="${escapeHtml(key)}"${tipAttr("ctor.options.editKey")}>${escapeHtml(t("ctor.options.editKey"))}</button>`;
     row.querySelector("input").addEventListener("change", (ev) => toggleTraitKey(key, ev.target.checked));
     row.querySelector("button[data-edit-key]").addEventListener("click", () => {
       selectTraitKey(key);
@@ -622,8 +678,8 @@ function renderOptionsEditor() {
         ${promptWarn ? `<span class="muted small opt-warn">${escapeHtml(t("ctor.options.warn.promptShort"))}</span>` : ""}
       </td>
       <td class="opt-actions">
-        <button type="button" class="btn small" data-act="dup" data-idx="${idx}" title="${escapeHtml(t("ctor.options.dup"))}">${escapeHtml(t("ctor.options.dup"))}</button>
-        <button type="button" class="btn small" data-act="rm" data-idx="${idx}" title="${escapeHtml(t("ctor.options.rm"))}">${escapeHtml(t("ctor.options.rm"))}</button>
+        <button type="button" class="btn small" data-act="dup" data-idx="${idx}"${tipAttr("ctor.options.dup")}>${escapeHtml(t("ctor.options.dup"))}</button>
+        <button type="button" class="btn small" data-act="rm" data-idx="${idx}"${tipAttr("ctor.options.rm")}>${escapeHtml(t("ctor.options.rm"))}</button>
       </td>`;
     tbody.appendChild(tr);
   });
@@ -856,7 +912,8 @@ function readConstructor() {
     rules: { forbiddenPairs: [] },
     waves: null,
   };
-  const size = Number($("c-size").value) || 1;
+  const hasWaves = Array.isArray(base.waves) && base.waves.length > 0;
+  let size = Number($("c-size").value) || 1;
   const id = $("c-id").value.trim();
   const keepLines = $("c-keep").value
     .split("\n")
@@ -868,14 +925,18 @@ function readConstructor() {
       .map((x) => x.trim())
       .filter(Boolean);
   const lines = base.lines ? { ...base.lines } : { a: { who: "series subject", quota: size } };
-  const ids = Object.keys(lines);
-  if (ids.length) {
-    const baseQ = Math.floor(size / ids.length);
-    let rem = size - baseQ * ids.length;
-    for (const lid of ids) {
-      const q = baseQ + (rem > 0 ? 1 : 0);
-      if (rem > 0) rem--;
-      lines[lid] = { ...lines[lid], quota: q };
+  if (hasWaves) {
+    size = base.size;
+  } else {
+    const ids = Object.keys(lines);
+    if (ids.length) {
+      const baseQ = Math.floor(size / ids.length);
+      let rem = size - baseQ * ids.length;
+      for (const lid of ids) {
+        const q = baseQ + (rem > 0 ? 1 : 0);
+        if (rem > 0) rem--;
+        lines[lid] = { ...lines[lid], quota: q };
+      }
     }
   }
   return {
@@ -980,31 +1041,60 @@ function setupOverview() {
       renderSteps();
     });
   }
+  async function saveOverviewPreset() {
+    syncCtorFromOverview();
+    const name = $("o-name").value.trim();
+    const id = $("o-id").value.trim() || slugifyId(name);
+    if (!id && !name) throw new Error(t("home.msg.need"));
+    if (!$("o-id").value.trim()) $("o-id").value = id;
+    syncCtorFromOverview();
+    const preset = readConstructor();
+    if (!preset.id) throw new Error(t("home.msg.need"));
+    const data = await api("/api/preset/save", {
+      method: "POST",
+      body: JSON.stringify({ preset }),
+    });
+    $("o-msg").textContent = `${t("home.msg.saved")}: ${data.file}`;
+    $("o-msg").className = "small ok-msg";
+    await loadPresets();
+    if (data.file) {
+      if ($("ctor-file")) $("ctor-file").value = data.file;
+      if ($("r-preset")) $("r-preset").value = data.file;
+    }
+    renderFacts();
+    renderCtorSummary();
+    renderSteps();
+    scheduleWorkspaceSave();
+    return data;
+  }
   $("o-save").addEventListener("click", async () => {
     try {
-      syncCtorFromOverview();
-      const name = $("o-name").value.trim();
-      const id = $("o-id").value.trim() || slugifyId(name);
-      if (!id && !name) throw new Error(t("home.msg.need"));
-      if (!$("o-id").value.trim()) $("o-id").value = id;
-      syncCtorFromOverview();
-      const preset = readConstructor();
-      if (!preset.id) throw new Error(t("home.msg.need"));
-            const data = await api("/api/preset/save", {
-        method: "POST",
-        body: JSON.stringify({ preset }),
-      });
-      $("o-msg").textContent = `${t("home.msg.saved")}: ${data.file}`;
-      $("o-msg").className = "small ok-msg";
+      await saveOverviewPreset();
+    } catch (e) {
+      $("o-msg").textContent = e.message;
+      $("o-msg").className = "small err-msg";
+    }
+  });
+  $("o-start")?.addEventListener("click", async () => {
+    try {
+      await saveOverviewPreset();
+      showTab("base");
+    } catch (e) {
+      $("o-msg").textContent = e.message;
+      $("o-msg").className = "small err-msg";
+    }
+  });
+  $("o-spin")?.addEventListener("click", async () => {
+    try {
+      const file = $("r-preset")?.value || ($("o-id")?.value.trim() ? `${$("o-id").value.trim()}.json` : "");
+      if (!file) throw new Error(t("home.msg.need"));
+      const data = await api("/api/preset/spinoff", { method: "POST", body: JSON.stringify({ file }) });
       await loadPresets();
-      if (data.file) {
-        if ($("ctor-file")) $("ctor-file").value = data.file;
-        if ($("r-preset")) $("r-preset").value = data.file;
-      }
-      renderFacts();
-      renderCtorSummary();
-      renderSteps();
-      scheduleWorkspaceSave();
+      fillConstructor(data.preset);
+      if ($("r-preset")) $("r-preset").value = data.file;
+      $("o-msg").textContent = t("home.spin.done", { file: data.file });
+      $("o-msg").className = "small ok-msg";
+      showTab("base");
     } catch (e) {
       $("o-msg").textContent = e.message;
       $("o-msg").className = "small err-msg";
@@ -1144,8 +1234,8 @@ function renderBaseGallery(files) {
       <img src="/input/${encodeURIComponent(f.file)}?t=${Date.now()}" alt="">
       <div class="meta"><b>${escapeHtml(f.file)}</b> ${escapeHtml(roleLabel)}${f.line ? ` · ${escapeHtml(f.line)}` : ""}</div>
       <div class="btns">
-        ${f.primary ? "" : `<button type="button" class="btn small" data-act="primary" data-file="${escapeHtml(f.file)}">${t("base.setPrimary")}</button>`}
-        <button type="button" class="btn small" data-act="del" data-file="${escapeHtml(f.file)}">${t("base.delete")}</button>
+        ${f.primary ? "" : `<button type="button" class="btn small" data-act="primary" data-file="${escapeHtml(f.file)}"${tipAttr("base.setPrimary")}>${t("base.setPrimary")}</button>`}
+        <button type="button" class="btn small" data-act="del" data-file="${escapeHtml(f.file)}"${tipAttr("base.delete")}>${t("base.delete")}</button>
       </div>`;
     tile.querySelector('[data-act="primary"]')?.addEventListener("click", async () => {
       await api("/api/base/primary", { method: "POST", body: JSON.stringify({ file: f.file }) });
@@ -1157,6 +1247,7 @@ function renderBaseGallery(files) {
     });
     grid.appendChild(tile);
   }
+  applyTips(grid);
 }
 
 async function refreshBaseStatus() {
@@ -1333,15 +1424,17 @@ function renderRecipeTable() {
   if (line) rows = rows.filter((r) => r.line === line);
   if (q) rows = rows.filter((r) => JSON.stringify(r).toLowerCase().includes(q));
   if ($("r-count")) $("r-count").textContent = String(rows.length);
-  table.innerHTML = `<thead><tr><th>#</th><th>line</th><th>dna</th><th></th></tr></thead><tbody>` +
+  const showWave = rows.some((r) => r.wave != null);
+  table.innerHTML = `<thead><tr><th>#</th>${showWave ? `<th>${t("waves.col")}</th>` : ""}<th>line</th><th>dna</th><th></th></tr></thead><tbody>` +
     rows.map((r) => `<tr data-i="${r.index}">
-      <td>${r.edition}</td><td>${escapeHtml(r.line)}</td>
+      <td>${r.edition}</td>${showWave ? `<td>${r.wave ?? ""}</td>` : ""}<td>${escapeHtml(r.line)}</td>
       <td class="mono small">${escapeHtml(r.dna || "")}</td>
-      <td><button type="button" class="btn small" data-ed="${r.index}">${t("recipes.edit") || "Edit"}</button></td>
+      <td><button type="button" class="btn small" data-ed="${r.index}"${tipAttr("recipes.edit")}>${t("recipes.edit") || "Edit"}</button></td>
     </tr>`).join("") + "</tbody>";
   table.querySelectorAll("button[data-ed]").forEach((btn) => {
     btn.addEventListener("click", () => openRecipeEditor(Number(btn.dataset.ed)));
   });
+  applyTips(table);
 }
 
 function openRecipeEditor(index) {
@@ -1424,6 +1517,15 @@ function fillArchiveSelect() {
     .map((a) => `<option value="${escapeHtml(a.file)}">${escapeHtml(a.file)} (${a.size ?? "?"})</option>`)
     .join("");
   if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+  for (const id of ["r-diff-a", "r-diff-b"]) {
+    const box = $(id);
+    if (!box) continue;
+    const prev = box.value;
+    box.innerHTML = sel.innerHTML;
+    if (prev && [...box.options].some((o) => o.value === prev)) box.value = prev;
+  }
+  const b = $("r-diff-b");
+  if (b && state.archives.length > 1 && b.value === $("r-diff-a")?.value) b.selectedIndex = 1;
   updateJsonLink();
 }
 
@@ -1437,6 +1539,30 @@ function updateJsonLink() {
   }
   a.href = `/api/archive/file?file=${encodeURIComponent(file)}`;
   a.setAttribute("download", file);
+}
+
+async function refreshWaves() {
+  const list = $("r-waves-list");
+  const file = $("r-preset")?.value;
+  if (!list) return;
+  if (!file) {
+    list.textContent = "";
+    return;
+  }
+  try {
+    const data = await api(`/api/waves?file=${encodeURIComponent(file)}`);
+    const waves = data.waves || [];
+    list.innerHTML = waves.map((w) =>
+      `<div>${escapeHtml(t("waves.row", { n: w.n, from: w.from, to: w.to, size: w.size, seed: w.seed }))}</div>`
+    ).join("");
+    const seedInput = $("r-wave-seed");
+    if (seedInput && !seedInput.dataset.touched) {
+      const base = waves[0]?.seed || "series";
+      seedInput.value = `${base}-w${waves.length + 1}`;
+    }
+  } catch (e) {
+    list.textContent = e.message;
+  }
 }
 
 function setupRecipes() {
@@ -1466,6 +1592,24 @@ function setupRecipes() {
       alert(e.message);
     }
   });
+  $("r-archive-diff")?.addEventListener("click", async () => {
+    const msg = $("r-archive-diff-msg");
+    const list = $("r-archive-diff-list");
+    try {
+      const a = $("r-diff-a")?.value;
+      const b = $("r-diff-b")?.value;
+      if (!a || !b) throw new Error(t("archive.diff.need"));
+      const data = await api("/api/archive/diff", { method: "POST", body: JSON.stringify({ a, b }) });
+      if (msg) msg.textContent = t("archive.diff.summary", { same: data.same, changed: data.changed.length });
+      if (list) {
+        const rows = data.changed.slice(0, 20).map((row) =>
+          `<div class="err-row"><b>#${row.edition}</b> <span class="muted">${escapeHtml(row.dnaA)} → ${escapeHtml(row.dnaB)}</span><div>${escapeHtml(row.promptB)}</div></div>`);
+        list.innerHTML = rows.join("") || `<p class="muted">${escapeHtml(t("archive.diff.same"))}</p>`;
+      }
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
   $("r-diff")?.addEventListener("click", async () => {
     try {
       const file = $("r-preset")?.value;
@@ -1475,6 +1619,39 @@ function setupRecipes() {
       alert(e.message);
     }
   });
+  $("r-preset")?.addEventListener("change", () => { refreshWaves(); });
+  $("r-wave-seed")?.addEventListener("input", (e) => { e.target.dataset.touched = "1"; });
+  $("r-wave-add")?.addEventListener("click", async () => {
+    const msg = $("r-wave-msg");
+    const file = $("r-preset")?.value;
+    try {
+      const data = await api("/api/waves/append", {
+        method: "POST",
+        body: JSON.stringify({
+          file,
+          size: Number($("r-wave-size")?.value),
+          seed: $("r-wave-seed")?.value || "",
+        }),
+      });
+      if (data.preset) {
+        state.draftFull = data.preset;
+        fillOverview(data.preset);
+        fillConstructor(data.preset);
+      }
+      if ($("r-wave-seed")) delete $("r-wave-seed").dataset.touched;
+      await refreshWaves();
+      if (msg) {
+        msg.className = "small ok-msg";
+        msg.textContent = t("waves.added", { size: data.size });
+      }
+    } catch (e) {
+      if (msg) {
+        msg.className = "small err-msg";
+        msg.textContent = e.message;
+      }
+    }
+  });
+  refreshWaves();
   $("r-search")?.addEventListener("input", renderRecipeTable);
   $("r-line")?.addEventListener("change", renderRecipeTable);
   $("r-ed-save")?.addEventListener("click", async () => {
@@ -1508,6 +1685,12 @@ function setupRender() {
   $("g-strength")?.addEventListener("input", () => {
     if ($("g-strength-v")) $("g-strength-v").textContent = $("g-strength").value;
   });
+  $("g-pilots")?.addEventListener("click", () => {
+    const radio = document.querySelector('input[name="g-sel"][value="pilot"]');
+    if (radio) radio.checked = true;
+    if ($("g-pilot")) $("g-pilot").value = "12";
+    $("g-estimate")?.click();
+  });
   $("g-estimate")?.addEventListener("click", async () => {
     try {
       const data = await api("/api/estimate", {
@@ -1526,8 +1709,10 @@ function setupRender() {
         $("g-plan-out").dataset.dirty = "1";
         $("g-plan-out").textContent = JSON.stringify(data, null, 2);
       }
+      lockGenerate(false);
     } catch (e) {
       if ($("g-plan-out")) $("g-plan-out").textContent = e.message;
+      lockGenerate(true);
     }
   });
   $("g-run")?.addEventListener("click", async () => {
@@ -1822,6 +2007,8 @@ function renderGallery() {
 
     const tile = document.createElement("div");
     tile.className = `tile ${mark}`;
+    tile.dataset.edition = key;
+    if (state.galleryDupeEditions?.has(key)) tile.classList.add("dupe");
     if (row.a?.qa?.ok === false) tile.classList.add("qa-bad");
 
     const triage = state.galleryTriage[key];
@@ -1837,8 +2024,8 @@ function renderGallery() {
         <div class="imgs">${sideHtml(row.a, dir)}${sideHtml(row.b, dir2)}</div>
         <div class="meta"><b>#${row.edition}</b>${triageBadge}</div>
         <div class="btns">
-          <button type="button" class="btn small b-keep">${t("gallery.keep")}</button>
-          <button type="button" class="btn small b-redo">${t("gallery.redo")}</button>
+          <button type="button" class="btn small b-keep"${tipAttr("gallery.keep")}>${t("gallery.keep")}</button>
+          <button type="button" class="btn small b-redo"${tipAttr("gallery.redo")}>${t("gallery.redo")}</button>
         </div>`;
       tile.querySelectorAll("img").forEach((el) => {
         el.addEventListener("click", () => openLightbox(el.dataset.url || el.src));
@@ -1849,14 +2036,14 @@ function renderGallery() {
         ? `<span class="qa-badge">${t("gallery.qa.badge")}</span>`
         : "";
       const ver = img.versions > 1
-        ? `<button type="button" class="ver-badge" title="${escapeHtml(t("ver.badge.title", { n: img.versions }))}">v·${img.versions}</button>`
+        ? `<button type="button" class="ver-badge" title="${escapeHtml(t("ver.badge.title", { n: img.versions }))}" data-tip="${escapeHtml(t("ver.badge.title", { n: img.versions }))}">v·${img.versions}</button>`
         : "";
       tile.innerHTML = `
         <img src="${escapeHtml(img.url)}" alt="#${img.edition}" />
         <div class="meta">#${img.edition} ${ver}${qa}${triageBadge}</div>
         <div class="btns">
-          <button type="button" class="btn small b-keep">${t("gallery.keep")}</button>
-          <button type="button" class="btn small b-redo">${t("gallery.redo")}</button>
+          <button type="button" class="btn small b-keep"${tipAttr("gallery.keep")}>${t("gallery.keep")}</button>
+          <button type="button" class="btn small b-redo"${tipAttr("gallery.redo")}>${t("gallery.redo")}</button>
         </div>`;
       tile.querySelector("img").addEventListener("click", () => openLightbox(img.url));
       tile.querySelector(".ver-badge")?.addEventListener("click", () => openVersions(img.edition));
@@ -1867,12 +2054,13 @@ function renderGallery() {
     grid.appendChild(tile);
   }
   if ($("v-stats")) $("v-stats").textContent = t("gallery.stats", { keep, redo, none });
+  applyTips(grid);
 }
 
 /* ---------- Help (built from locale keys, works offline) ---------- */
 const HELP_STEPS = [
   ["s1", "home"], ["s2", "base"], ["s3", "ctor"], ["s4", "recipes"],
-  ["s5", "render"], ["s6", "gallery"], ["s7", "export"], ["s8", "res"],
+  ["s5", "render"], ["s6", "gallery"], ["s7", "export"], ["s8", "admin"],
 ];
 const HELP_CLI = [
   ["doctor", "doctor"],
@@ -1915,7 +2103,7 @@ const helpList = (prefix, tag = "ul") =>
 function helpSections() {
   const steps = HELP_STEPS.map(([id, tab], i) => `
     <details class="help-step help-item" ${i === 0 ? "open" : ""}>
-      <summary><span class="help-step-n">${i < 7 ? i + 1 : "💰"}</span>${escapeHtml(t(`help.${id}.title`).replace(/^(\d+\s*·|💰)\s*/u, ""))}</summary>
+      <summary><span class="help-step-n">${i < 7 ? i + 1 : "⚙"}</span>${escapeHtml(t(`help.${id}.title`).replace(/^(\d+\s*·|💰|⚙)\s*/u, ""))}</summary>
       <div class="help-step-body">
         <p class="help-why"><b>${esc("help.label.why")}:</b> ${esc(`help.${id}.why`)}</p>
         <h4>${esc("help.label.do")}</h4>${helpList(`help.${id}.do`, "ol")}
@@ -2010,6 +2198,7 @@ async function refreshAccount() {
     return;
   }
   state.account = me;
+  applyAdminNav();
   const box = $("acct");
   const isPublic = me.mode === "public";
   if (box) box.hidden = !isPublic;
@@ -2077,7 +2266,6 @@ function setupAccount() {
       out.textContent = err.message;
     }
   });
-  refreshAccount();
 }
 
 /* ---------- Versions (re-renders never overwrite) ---------- */
@@ -2107,14 +2295,15 @@ function renderVersions(data) {
       <div class="small"><b>v${v.v}</b> ${v.current ? `· ${escapeHtml(t("ver.current"))}` : ""}<br>
         <span class="muted">${escapeHtml(when)}${v.engine ? ` · ${escapeHtml(v.engine)}` : ""}</span></div>
       <div class="btns">${v.current ? "" : `
-        <button type="button" class="btn small primary b-cur">${escapeHtml(t("ver.makeCurrent"))}</button>
-        <button type="button" class="btn small b-drop">${escapeHtml(t("ver.drop"))}</button>`}
+        <button type="button" class="btn small primary b-cur"${tipAttr("ver.makeCurrent")}>${escapeHtml(t("ver.makeCurrent"))}</button>
+        <button type="button" class="btn small b-drop"${tipAttr("ver.drop")}>${escapeHtml(t("ver.drop"))}</button>`}
       </div>`;
     item.querySelector("img").addEventListener("click", () => openLightbox(v.url));
     item.querySelector(".b-cur")?.addEventListener("click", () => versionAction("/api/versions/current", data.edition, v.v));
     item.querySelector(".b-drop")?.addEventListener("click", () => versionAction("/api/versions/drop", data.edition, v.v));
     list.appendChild(item);
   }
+  applyTips(list);
 }
 
 async function versionAction(path, edition, v) {
@@ -2169,8 +2358,58 @@ function openLightbox(url) {
   box.hidden = false;
 }
 
+function editionFromFile(name) {
+  const m = String(name || "").match(/^(\d+)/);
+  return m ? m[1] : "";
+}
+
 function setupGallery() {
   $("v-filter")?.addEventListener("change", renderGallery);
+  $("v-dupes")?.addEventListener("click", async () => {
+    const status = $("v-dupes-status");
+    const box = $("v-dupes-list");
+    const dir = state.galleryDir || $("v-dir")?.value;
+    if (!dir) return;
+    if (status) status.textContent = t("gallery.dupes.running");
+    try {
+      const data = await api("/api/gallery/dupes", {
+        method: "POST",
+        body: JSON.stringify({ dir, maxDistance: 8 }),
+      });
+      const editions = new Set();
+      for (const pair of data.pairs || []) {
+        const a = editionFromFile(pair.a);
+        const b = editionFromFile(pair.b);
+        if (a) editions.add(a);
+        if (b) editions.add(b);
+      }
+      state.galleryDupeEditions = editions;
+      if (box) {
+        if (!data.pairs?.length) {
+          box.hidden = false;
+          box.textContent = t("gallery.dupes.none", { n: data.hashed || 0 });
+        } else {
+          box.hidden = false;
+          box.innerHTML = `<div>${escapeHtml(t("gallery.dupes.found", { n: data.pairs.length }))}</div>` +
+            data.pairs.slice(0, 40).map((pair) => {
+              const a = editionFromFile(pair.a);
+              const b = editionFromFile(pair.b);
+              return `<button type="button" class="btn small" data-a="${a}" data-b="${b}" style="margin:4px 4px 0 0">#${a} ~ #${b} (${pair.distance})</button>`;
+            }).join("");
+          box.querySelectorAll("button[data-a]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const el = document.querySelector(`.gallery .tile[data-edition="${btn.dataset.a}"]`);
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            });
+          });
+        }
+      }
+      if (status) status.textContent = "";
+      renderGallery();
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    }
+  });
   $("v-dir")?.addEventListener("change", () => {
     state.galleryDir = $("v-dir").value;
     syncCompareSelect();
@@ -2558,6 +2797,63 @@ function setupExport() {
     const q = new URLSearchParams({ archive: file });
     window.open(`/api/export/showcase.html?${q}`, "_blank");
   });
+  $("x-release")?.addEventListener("click", async () => {
+    const msg = $("x-release-msg");
+    const list = $("x-release-list");
+    const dl = $("x-release-dl");
+    try {
+      const archive = $("x-file")?.value;
+      const set = $("x-set")?.value;
+      if (!archive) throw new Error(t("export.none"));
+      if (msg) msg.textContent = "…";
+      if (dl) dl.hidden = true;
+      const next = $("x-release-next");
+      if (next) next.hidden = true;
+      const q = new URLSearchParams({ archive });
+      if (set) q.set("set", set);
+      const check = await api(`/api/checklist?${q}`);
+      const items = check.items || [];
+      if (list) {
+        list.innerHTML = items.map((it) =>
+          `<li class="${escapeHtml(it.level || "")}">${escapeHtml(it.label)}${it.detail ? ` — ${escapeHtml(it.detail)}` : ""}</li>`).join("");
+      }
+      const fails = items.filter((it) => it.level === "fail");
+      if (fails.length) {
+        if (msg) msg.textContent = t("export.release.blocked", { n: fails.length });
+        return;
+      }
+      if (!set) throw new Error(t("export.bundle.noSets"));
+      const data = await api("/api/export/bundle", {
+        method: "POST",
+        body: JSON.stringify({
+          archive,
+          set,
+          profile: "opensea",
+          onlyKeep: true,
+          namePrefix: $("x-namePrefix")?.value || "Series #",
+          symbol: $("x-symbol")?.value || "LAB",
+          sellerFeeBasisPoints: Number($("x-fee")?.value ?? 500),
+          description: $("x-desc")?.value || "",
+          locale: getLocale(),
+        }),
+      });
+      if (msg) msg.textContent = t("export.bundle.ok", { n: data.count, missing: (data.missing || []).length });
+      if (dl && data.downloadUrl) {
+        dl.href = data.downloadUrl;
+        dl.download = data.file || "release.zip";
+        dl.hidden = false;
+      }
+      await updateReleaseHub();
+      const portal = $("rel-portal-btn");
+      if (next && portal?.href) {
+        next.href = portal.href;
+        next.hidden = false;
+        applyTips(next);
+      }
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
   $("x-bundle")?.addEventListener("click", async () => {
     const msg = $("x-bundle-msg");
     const dl = $("x-download");
@@ -2814,8 +3110,23 @@ async function renderSpend() {
   try {
     const d = await api("/api/spend");
     const by = Object.entries(d.byEngine || {}).map(([k, v]) => `${escapeHtml(k)}: $${v}`).join(" · ");
+    const engines = Object.entries(d.engines || {}).map(([k, row]) => {
+      const pct = Math.round((row.failRate || 0) * 100);
+      return escapeHtml(t("spend.engine", { engine: k, ok: row.ok, fail: row.fail, pct }));
+    }).join("<br>");
     out.innerHTML = `<div>${escapeHtml(t("spend.today", { usd: d.spentTodayUsd }))}${by ? ` <span class="muted">(${by})</span>` : ""}</div>
-      <div class="muted">${escapeHtml(d.capUsd != null ? t("spend.cap", { usd: d.capUsd }) : t("spend.noCap"))}</div>`;
+      <div class="muted">${escapeHtml(d.capUsd != null ? t("spend.cap", { usd: d.capUsd }) : t("spend.noCap"))}</div>` +
+      (engines ? `<div style="margin-top:8px">${engines}</div>` : "");
+    const errBox = $("admin-errors-list");
+    if (errBox) {
+      const rows = d.errors || [];
+      errBox.innerHTML = rows.length
+        ? rows.map((r) => {
+          const where = [r.set, r.edition != null ? `#${r.edition}` : ""].filter(Boolean).join(" ");
+          return `<div class="err-row"><b>${escapeHtml(r.engine)}</b> <span class="muted">${escapeHtml(r.at || "")}${where ? ` · ${escapeHtml(where)}` : ""}</span><div>${escapeHtml(r.error || t("admin.errors.unknown"))}</div></div>`;
+        }).join("")
+        : `<p class="muted">${escapeHtml(t("admin.errors.none"))}</p>`;
+    }
   } catch (e) {
     out.textContent = e.message;
   }
@@ -2845,8 +3156,8 @@ async function renderTrash() {
       <div><b>${escapeHtml(new Date(it.at).toLocaleString())}</b> · ${escapeHtml(it.reason || "")}
         <div class="muted">${escapeHtml(files)} · ${kb} KB</div></div>
       <div class="btns">
-        <button type="button" class="btn small b-restore">${escapeHtml(t("trash.restore"))}</button>
-        <button type="button" class="btn small b-purge">${escapeHtml(t("trash.purge"))}</button>
+        <button type="button" class="btn small b-restore"${tipAttr("trash.restore")}>${escapeHtml(t("trash.restore"))}</button>
+        <button type="button" class="btn small b-purge"${tipAttr("trash.purge")}>${escapeHtml(t("trash.purge"))}</button>
       </div>`;
     row.querySelector(".b-restore").addEventListener("click", () => trashAction("/api/trash/restore", it.id));
     const purge = row.querySelector(".b-purge");
@@ -2859,6 +3170,7 @@ async function renderTrash() {
     });
     box.appendChild(row);
   }
+  applyTips(box);
 }
 
 async function trashAction(path, id) {
@@ -2879,7 +3191,7 @@ function setupEngineDiagnostics() {
 
   btn.addEventListener("click", async () => {
     btn.disabled = true;
-    container.innerHTML = `<p class="muted">Перевірка підключень до рушіїв генерації...</p>`;
+    container.innerHTML = `<p class="muted">${escapeHtml(t("admin.engines.running"))}</p>`;
     try {
       const data = await api("/api/engines/status");
       const list = data.engines || [];
@@ -2887,9 +3199,9 @@ function setupEngineDiagnostics() {
       for (const e of list) {
         const isOk = e.online;
         const color = isOk ? "#4ade80" : "#f87171";
-        const badge = isOk ? "✓ ОНЛАЙН" : "✗ ОФЛАЙН";
+        const badge = isOk ? t("admin.engines.online") : t("admin.engines.offline");
         const ping = e.pingMs ? `${e.pingMs}ms` : "—";
-        const localTag = e.local ? `<span style="background:#3b82f6; color:#fff; font-size:10px; padding:2px 5px; border-radius:4px; margin-left:6px">ЛОКАЛЬНИЙ ($0)</span>` : "";
+        const localTag = e.local ? `<span style="background:#3b82f6; color:#fff; font-size:10px; padding:2px 5px; border-radius:4px; margin-left:6px">${escapeHtml(t("admin.engines.local"))}</span>` : "";
         html += `
           <div style="border:1px solid #334155; border-radius:8px; padding:10px; background:#0f172a">
             <div style="display:flex; justify-content:space-between; align-items:center">
@@ -2903,7 +3215,7 @@ function setupEngineDiagnostics() {
       html += `</div>`;
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<p class="danger small">Помилка тестування: ${escapeHtml(err.message)}</p>`;
+      container.innerHTML = `<p class="danger small">${escapeHtml(t("admin.engines.fail", { message: err.message }))}</p>`;
     } finally {
       btn.disabled = false;
     }
@@ -2927,6 +3239,7 @@ async function boot() {
   setupExport();
   setupHelp();
   setupAccount();
+  await refreshAccount();
 
   try {
     state.health = await api("/api/health");
@@ -2955,7 +3268,7 @@ async function boot() {
   await loadGallerySets();
   if (state.galleryDir) await loadGalleryDir(state.galleryDir);
   else renderGallery();
-  await renderResources();
+  if (state.account?.admin) await renderResources();
   await fillExportSets();
   await restoreWorkspace();
   applyI18n(document);

@@ -24,6 +24,8 @@ services:
       - ${SUGAR_HOST_PATH:-/opt/sugar}:/opt/sugar:ro
     environment:
       SUGAR_PROJECT_PATH: /opt/sugar
+      # HOST in the image is 0.0.0.0. This list turns the Host check back on.
+      SERIES_ALLOWED_HOSTS: ${SERIES_ALLOWED_HOSTS:-w3ir.io,www.w3ir.io,ai.w3ir.io,gen.w3ir.io,pay.w3ir.io,next.w3ir.io}
     expose:
       - "5344"
     restart: unless-stopped

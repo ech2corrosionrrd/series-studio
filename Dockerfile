@@ -16,6 +16,7 @@ COPY schemas ./schemas
 COPY presets ./presets
 COPY templates ./templates
 COPY libraries ./libraries
+COPY scripts/backup-db.mjs ./scripts/backup-db.mjs
 
 # Public mode: sign-in required, per-wallet data, credits. Data lives on a volume.
 ENV SERIES_MODE=public \

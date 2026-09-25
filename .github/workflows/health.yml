@@ -1,0 +1,25 @@
+# External probe so a dead origin is visible without logging into the VPS.
+# GitHub may delay the schedule by several minutes. This does not page anyone;
+# a red run is the signal.
+name: Health
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: next.w3ir.io ledger host
+        run: curl -fsS --retry 3 --retry-delay 2 --max-time 20 https://next.w3ir.io/health
+
+      - name: gen.w3ir.io current production API
+        run: curl -fsS --retry 3 --retry-delay 2 --max-time 20 https://gen.w3ir.io/health
+
+      - name: studio.w3ir.io landing
+        run: curl -fsS -o /dev/null --retry 3 --retry-delay 2 --max-time 20 https://studio.w3ir.io/

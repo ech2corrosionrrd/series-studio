@@ -75,6 +75,8 @@ VAULT_WALLET_ADDRESS=
 SERIES_ALLOWED_WALLETS=${SERIES_ALLOWED_WALLETS:+${SERIES_ALLOWED_WALLETS},}$ADMINS
 # real API keys are used — cap the staging bill
 SERIES_SPEND_CAP_USD=${SERIES_SPEND_CAP_USD:-5}
+# Public bind is 0.0.0.0; without this list the Host check is skipped.
+SERIES_ALLOWED_HOSTS=next.w3ir.io
 LANDING_HOSTS=
 PAY_SUBDOMAIN_HOSTS=
 EOF
@@ -145,7 +147,14 @@ else
   exit 1
 fi
 
-echo "==> 7. smoke"
+echo "==> 7. ledger backup"
+if [ -f "$BASE/src/deploy/series-lab/install-backup.sh" ]; then
+  bash "$BASE/src/deploy/series-lab/install-backup.sh"
+else
+  echo "install-backup.sh missing — snapshot cron not installed"
+fi
+
+echo "==> 8. smoke"
 curl -s -o /dev/null -w "next via caddy /health: %{http_code}\n" -H "Host: next.w3ir.io" http://127.0.0.1/health
 curl -s -o /dev/null -w "Промт ai.w3ir.io still: %{http_code}\n" -H "Host: ai.w3ir.io" http://127.0.0.1/_stcore/health
 echo "done — add DNS: next → HOST_IP (proxied) in Cloudflare"

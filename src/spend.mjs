@@ -54,6 +54,44 @@ export function spentToday(file, now = new Date()) {
   return Math.round(usd * 1000) / 1000;
 }
 
+/**
+ * Today's attempts per engine: successes, failures, and the failure share.
+ * Failures are calls logged with ok: false (the provider refused or errored).
+ */
+export function engineStatsToday(file, now = new Date()) {
+  const day = localDay(now);
+  const by = {};
+  for (const e of readRenderLog(file)) {
+    if (!e.at || localDay(new Date(e.at)) !== day) continue;
+    const k = e.engine || "unknown";
+    if (!by[k]) by[k] = { ok: 0, fail: 0 };
+    if (e.ok) by[k].ok += 1;
+    else by[k].fail += 1;
+  }
+  for (const row of Object.values(by)) {
+    const total = row.ok + row.fail;
+    row.failRate = total ? Math.round((row.fail / total) * 1000) / 1000 : 0;
+  }
+  return by;
+}
+
+/** Latest failed engine calls, newest first. `error` is already truncated at write time. */
+export function recentEngineErrors(file, limit = 20) {
+  const n = Math.max(1, Math.min(100, Number(limit) || 20));
+  const rows = [];
+  for (const e of readRenderLog(file)) {
+    if (e.ok) continue;
+    rows.push({
+      at: e.at || null,
+      engine: e.engine || "unknown",
+      error: String(e.error || "").slice(0, 300),
+      edition: e.edition ?? null,
+      set: e.set || null,
+    });
+  }
+  return rows.slice(-n).reverse();
+}
+
 /** Spend per engine for today (for Resources / estimate views). */
 export function spendByEngineToday(file, now = new Date()) {
   const day = localDay(now);

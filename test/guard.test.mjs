@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { allowedHostnames, checkApiRequest } from "../server/guard.mjs";
+import { allowedHostnames, checkApiRequest, openAccessError } from "../server/guard.mjs";
 
 const opts = { allowedHosts: allowedHostnames("127.0.0.1"), port: 5344 };
 const req = (headers, method = "POST") => ({ method, headers });
@@ -47,4 +47,22 @@ test("guard: SERIES_ALLOWED_HOSTS extends the allowlist", () => {
   const ext = { allowedHosts: allowedHostnames("127.0.0.1", "studio.local, lab.lan"), port: 5344 };
   assert.equal(checkApiRequest(req({ host: "studio.local:5344", ...json }), ext), null);
   assert.equal(checkApiRequest(req({ host: "[::1]:5344", ...json }), ext), null);
+});
+
+test("guard: public bind enforces SERIES_ALLOWED_HOSTS", () => {
+  const pub = { allowedHosts: allowedHostnames("0.0.0.0", "next.w3ir.io"), port: 5344 };
+  assert.equal(checkApiRequest(req({ host: "next.w3ir.io", origin: "https://next.w3ir.io", ...json }), pub), null);
+  assert.equal(checkApiRequest(req({ host: "next.w3ir.io:443", ...json }), pub), null);
+  assert.equal(checkApiRequest(req({ host: "127.0.0.1:5344", ...json }), pub), null);
+  assert.match(checkApiRequest(req({ host: "evil.example", ...json }), pub), /host not allowed/);
+  assert.match(checkApiRequest(req({ host: "127.0.0.1:9999", ...json }), pub), /host not allowed/);
+  assert.match(checkApiRequest(req({ host: "next.w3ir.io:9999", ...json }), pub), /host not allowed/);
+});
+
+test("guard: open access is loopback development only", () => {
+  assert.equal(openAccessError("127.0.0.1", false), null);
+  assert.equal(openAccessError("localhost", false), null);
+  assert.equal(openAccessError("0.0.0.0", true), null);
+  assert.match(openAccessError("0.0.0.0", false), /SERIES_MODE=local/);
+  assert.match(openAccessError("192.168.1.5", false), /127\.0\.0\.1/);
 });

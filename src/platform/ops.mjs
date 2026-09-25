@@ -18,9 +18,12 @@ export function notifyOperator(text) {
   }).then(() => true, () => false);
 }
 
+/** Operator wallet for the admin panel. Public address; extra admins may be added via ADMIN_WALLETS. */
+export const ADMIN_WALLET = "63u6SDZckvzcJhC4V5yJn6bZ15qx1iM8c6iB3Z9xD1tn";
+
 // Team wallets that are never "external demand" (same list as Промт wallet_class).
 const TEAM_WALLETS = [
-  "63u6SDZckvzcJhC4V5yJn6bZ15qx1iM8c6iB3Z9xD1tn",
+  ADMIN_WALLET,
   "DE1gBEaqA11uYdySmF5LRmN8QsvXvnYJYHDVXeAY15Vh",
   "7XTEnenjjLi2Pr8ShUPYo1DXKm3WZRLoD2rQpiq7E6qw",
   "1BWutmTvYPwDtmw9abTkS4Ssr8no61spGAvW1X6NDix",
@@ -36,8 +39,14 @@ export function internalWallets() {
 }
 
 export const isInternal = (wallet) => !!wallet && internalWallets().has(normalizeAddr(wallet));
-export const isAdmin = (wallet) =>
-  !!wallet && String(process.env.ADMIN_WALLETS || "").split(",").map((w) => normalizeAddr(w)).filter(Boolean).includes(normalizeAddr(wallet));
+
+export function adminWallets() {
+  const out = new Set([normalizeAddr(ADMIN_WALLET)]);
+  for (const w of String(process.env.ADMIN_WALLETS || "").split(",")) if (w.trim()) out.add(normalizeAddr(w));
+  return out;
+}
+
+export const isAdmin = (wallet) => !!wallet && adminWallets().has(normalizeAddr(wallet));
 
 /** SQL tail + params for scope filtering: "all" | "external" | "internal". */
 export function scopeSql(scope = "all", column = "wallet_address") {

@@ -18,7 +18,22 @@ export {
   buildPrompt,
   buildRecipes,
   duplicates,
+  duplicateGroups,
+  diffArchives,
+  spinoffPreset,
 } from "./recipes.mjs";
+export {
+  supplyWaves,
+  describeSupply,
+  appendSupplyWave,
+  quotasOf,
+} from "./waves.mjs";
+export {
+  findDupes,
+  hamming,
+  aHashPng,
+  aHashFromGray,
+} from "./dupes.mjs";
 export {
   validatePreset,
   validateArchive,

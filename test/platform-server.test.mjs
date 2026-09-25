@@ -134,6 +134,7 @@ describe("public mode end-to-end", () => {
     cookie = String(ok.headers["set-cookie"][0]).split(";")[0];
     const me = await call("GET", "/api/me");
     assert.equal(me.json.mode, "public");
+    assert.equal(me.json.admin, false);
     assert.equal(me.json.wallet, user.address);
     assert.equal(me.json.balance, 20);
     assert.equal((await call("GET", "/api/resources")).status, 403, "operator view is admin-only");

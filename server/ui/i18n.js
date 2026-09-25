@@ -5,10 +5,31 @@
  */
 import uk from "./locales/uk.js";
 import en from "./locales/en.js";
+import tips from "./locales/tips.mjs";
 
-const LOCALES = { uk, en };
+const LOCALES = {
+  uk: { ...uk, ...(tips.uk || {}) },
+  en: { ...en, ...(tips.en || {}) },
+};
 const STORAGE_KEY = "series-lab-locale";
 const DEFAULT = "uk";
+
+/** Elements that show a hover tip (purpose / how it works). */
+const TIP_SELECTOR = [
+  "button",
+  "a.btn",
+  "a[data-i18n]",
+  "label",
+  "input:not([type=hidden])",
+  "select",
+  "textarea",
+  "summary",
+  "[data-tab]",
+  "[data-admin]",
+  ".lang-btn",
+  ".hints-toggle",
+  "[data-i18n-tip]",
+].join(",");
 
 let current = DEFAULT;
 let dict = LOCALES[DEFAULT];
@@ -75,13 +96,100 @@ export function initI18n() {
   return saved;
 }
 
+/** Resolve tip text for a logical i18n key (button label, field name, …). */
+export function tipText(key) {
+  if (!key) return "";
+  if (key.endsWith(".tip") && hasKey(key)) return t(key);
+  if (hasKey(`${key}.tip`)) return t(`${key}.tip`);
+  if (hasKey(`${key}.explain`)) return t(`${key}.explain`);
+  if (hasKey(key) && /\.(title|hint)$/.test(key)) return t(key);
+  return "";
+}
+
+function setTipAttrs(el, text) {
+  if (!el || !text) return;
+  el.setAttribute("data-tip", text);
+  // Buttons/labels get the CSS bubble; form fields keep native title (no ::after on replaced elements).
+  const tag = el.tagName;
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
+    el.setAttribute("title", text);
+  } else {
+    el.removeAttribute("title");
+  }
+}
+
+/**
+ * Attach hover tips (title + data-tip) to interactive controls under `root`.
+ * Call after building dynamic HTML (gallery tiles, trash rows, …).
+ */
+export function applyTips(root = document) {
+  const scope = root.querySelectorAll ? root : document;
+  const nodes = scope.matches?.(TIP_SELECTOR)
+    ? [scope, ...scope.querySelectorAll(TIP_SELECTOR)]
+    : [...scope.querySelectorAll(TIP_SELECTOR)];
+
+  for (const el of nodes) {
+    if (el.closest?.("[aria-hidden=true]")) continue;
+
+    let text = "";
+    const tipKey = el.getAttribute("data-i18n-tip");
+    if (tipKey) text = tipText(tipKey) || (hasKey(tipKey) ? t(tipKey) : "");
+
+    if (!text) {
+      const titleKey = el.getAttribute("data-i18n-title");
+      if (titleKey) text = hasKey(titleKey) ? t(titleKey) : tipText(titleKey);
+    }
+
+    if (!text) {
+      const i18n = el.getAttribute("data-i18n");
+      if (i18n) text = tipText(i18n);
+    }
+
+    if (!text) {
+      const span = el.querySelector?.(":scope > span[data-i18n]");
+      if (span) text = tipText(span.getAttribute("data-i18n"));
+    }
+
+    if (!text && el.id) text = tipText(`ctrl.${el.id}`);
+
+    // Filter <option> tips → put on the parent <select> if it still has none
+    if (!text && el.tagName === "SELECT") {
+      const opt = el.selectedOptions?.[0] || el.options?.[0];
+      const ok = opt?.getAttribute("data-i18n");
+      if (ok) text = tipText(ok);
+    }
+
+    if (text) {
+      setTipAttrs(el, text);
+      if (el.tagName === "LABEL") {
+        el.querySelectorAll("input, select, textarea").forEach((c) => {
+          if (!c.getAttribute("data-i18n-title") && !c.getAttribute("data-i18n-tip")) {
+            setTipAttrs(c, text);
+          }
+        });
+      }
+    }
+  }
+
+  // Labels that wrap a tipped control (no own text) inherit the child tip for hover.
+  const labelRoot = scope.querySelectorAll ? scope : document;
+  labelRoot.querySelectorAll("label").forEach((label) => {
+    if (label.closest?.("[aria-hidden=true]")) return;
+    if (label.getAttribute("data-tip")) return;
+    const child = label.querySelector("[data-tip]");
+    if (child?.getAttribute("data-tip")) setTipAttrs(label, child.getAttribute("data-tip"));
+  });
+}
+
 /**
  * Apply translations:
  * - [data-i18n="key"] → textContent
  * - [data-i18n-html="key"] → innerHTML (rare)
  * - [data-i18n-title="key"] → title
+ * - [data-i18n-tip="key"] → title + data-tip (via applyTips)
  * - [data-i18n-placeholder="key"] → placeholder
  * - [data-i18n-aria="key"] → aria-label
+ * Interactive controls also get a hover tip from `<key>.tip` / `.explain` / `ctrl.<id>.tip`.
  */
 export function applyI18n(root = document) {
   // [data-i18n-list="render.hint.li"] → <li> for render.hint.li1, li2, … (as many as the locale defines)
@@ -113,6 +221,7 @@ export function applyI18n(root = document) {
     const key = el.getAttribute("data-i18n-aria");
     if (key) el.setAttribute("aria-label", t(key));
   });
+  applyTips(root);
 }
 
 export { LOCALES, STORAGE_KEY, DEFAULT };

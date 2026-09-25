@@ -24,7 +24,7 @@
     <button data-tab="render" data-i18n="nav.render" data-i18n-title="nav.render.title">5 · Генерація</button>
     <button data-tab="gallery" data-i18n="nav.gallery" data-i18n-title="nav.gallery.title">6 · Відбір</button>
     <button data-tab="export" data-i18n="nav.export" data-i18n-title="nav.export.title">7 · Експорт</button>
-    <button data-tab="res" data-i18n="nav.res" data-i18n-title="nav.res.title">💰 Ресурси</button>
+    <button data-tab="admin" id="nav-admin" hidden data-i18n="nav.admin" data-i18n-title="nav.admin.title">Адмін</button>
     <button data-tab="help" data-i18n="nav.help" data-i18n-title="nav.help.title">❓ Довідка</button>
   </nav>
   <span id="me" class="muted small"></span>
@@ -94,7 +94,9 @@
         </label>
       </div>
       <div class="actions">
-        <button type="button" id="o-save" class="btn primary" data-i18n="home.save">Зберегти пресет</button>
+        <button type="button" id="o-start" class="btn primary" data-i18n="home.start">Почати серію · основа →</button>
+        <button type="button" id="o-save" class="btn" data-i18n="home.save">Зберегти пресет</button>
+        <button type="button" id="o-spin" class="btn" data-i18n="home.spin">Спін-оф</button>
         <button type="button" id="o-next" class="btn" data-i18n="home.next">Далі · Основа →</button>
         <span id="o-msg" class="small"></span>
       </div>
@@ -371,11 +373,11 @@
       <h3 data-i18n="ctor.matrixTitle">⚡ Multi-Engine Prompt Matrix Preview</h3>
       <p class="muted small" data-i18n="ctor.matrixHelp">Попередній перегляд оптимізованого синтаксису під різні рушії в реальному часі.</p>
       <div class="toolbar" style="margin-top:8px; gap:8px; flex-wrap:wrap">
-        <button type="button" class="btn small matrix-btn primary" data-engine="flux">Flux.1 LoRA</button>
-        <button type="button" class="btn small matrix-btn" data-engine="sdxl">SDXL + Tags</button>
-        <button type="button" class="btn small matrix-btn" data-engine="midjourney">Midjourney v6</button>
-        <button type="button" class="btn small matrix-btn" data-engine="kontext">Kontext Reference</button>
-        <button type="button" class="btn small matrix-btn" data-engine="openai">OpenAI Prose</button>
+        <button type="button" class="btn small matrix-btn primary" data-engine="flux" data-i18n-tip="ctor.matrix.flux.tip">Flux.1 LoRA</button>
+        <button type="button" class="btn small matrix-btn" data-engine="sdxl" data-i18n-tip="ctor.matrix.sdxl.tip">SDXL + Tags</button>
+        <button type="button" class="btn small matrix-btn" data-engine="midjourney" data-i18n-tip="ctor.matrix.midjourney.tip">Midjourney v6</button>
+        <button type="button" class="btn small matrix-btn" data-engine="kontext" data-i18n-tip="ctor.matrix.kontext.tip">Kontext Reference</button>
+        <button type="button" class="btn small matrix-btn" data-engine="openai" data-i18n-tip="ctor.matrix.openai.tip">OpenAI Prose</button>
       </div>
       <pre id="ctor-matrix-preview" class="log small" style="margin-top:8px; white-space:pre-wrap; max-height:160px; overflow:auto">Select an engine above to preview formatted prompt</pre>
     </div>
@@ -393,12 +395,39 @@
       </details>
     </div>
     <div class="toolbar">
-      <select id="r-preset"></select>
-      <button type="button" id="r-build" class="btn primary" data-i18n="recipes.build">Зібрати архів</button>
+      <select id="r-preset" data-i18n-tip="ctrl.r-preset.tip"></select>
+      <button type="button" id="r-build" class="btn primary" data-i18n="recipes.build">Зібрати тексти</button>
+      <span class="muted small" data-i18n="recipes.textsOnly">Без рендеру і без кредитів.</span>
       <button type="button" id="r-diff" class="btn" data-i18n="recipes.diff">Diff-seed</button>
-      <input id="r-search" data-i18n-placeholder="recipes.search" placeholder="Search">
-      <select id="r-line"><option value="" data-i18n="recipes.allLines">Усі лінії</option></select>
+      <input id="r-search" data-i18n-placeholder="recipes.search" data-i18n-tip="recipes.search.tip" placeholder="Search">
+      <select id="r-line" data-i18n-tip="recipes.allLines.tip"><option value="" data-i18n="recipes.allLines">Усі лінії</option></select>
       <span id="r-count" class="muted"></span>
+    </div>
+    <div class="card" id="r-archive-diff">
+      <h3 data-i18n="archive.diff.h3">Різниця архівів</h3>
+      <p class="muted small" data-i18n="archive.diff.hint">Порівняти промпти й DNA двох зібраних архівів до повторної генерації.</p>
+      <div class="actions">
+        <select id="r-diff-a" data-i18n-tip="archive.diff.a.tip"></select>
+        <select id="r-diff-b" data-i18n-tip="archive.diff.b.tip"></select>
+        <button type="button" id="r-archive-diff" class="btn" data-i18n="archive.diff.run">Порівняти</button>
+        <span id="r-archive-diff-msg" class="small"></span>
+      </div>
+      <div id="r-archive-diff-list" class="small"></div>
+    </div>
+    <div class="card" id="r-waves">
+      <h3 data-i18n="waves.h3">Хвилі поставки</h3>
+      <p class="muted small" data-i18n="waves.hint">Нова хвиля отримує свій seed і номери після вже зібраних. Попередні рецепти не зсуваються.</p>
+      <div id="r-waves-list" class="small"></div>
+      <div class="actions" style="margin-top:10px">
+        <label class="small"><span data-i18n="waves.count">Кількість</span>
+          <input id="r-wave-size" type="number" min="1" value="12" style="width:5rem">
+        </label>
+        <label class="small"><span data-i18n="waves.seed">Seed хвилі</span>
+          <input id="r-wave-seed" style="width:14rem">
+        </label>
+        <button type="button" id="r-wave-add" class="btn" data-i18n="waves.add">Додати хвилю</button>
+        <span id="r-wave-msg" class="small"></span>
+      </div>
     </div>
     <div id="r-dupes" class="warn" hidden></div>
     <details id="r-rarity" class="card rarity-card" hidden>
@@ -474,21 +503,22 @@
           <legend data-i18n="render.sel.legend">What to generate</legend>
           <label class="row"><input type="radio" name="g-sel" value="pilot" checked>
             <span data-i18n="render.sel.pilot">Pilot N</span>
-            <input id="g-pilot" type="number" min="1" max="200" value="10" class="w80"></label>
+            <input id="g-pilot" type="number" min="1" max="200" value="12" class="w80" data-i18n-tip="ctrl.g-pilot.tip"></label>
           <label class="row"><input type="radio" name="g-sel" value="only">
             <span data-i18n="render.sel.only">Only editions</span>
-            <input id="g-only" type="text" placeholder="3,17,40" class="w160"></label>
+            <input id="g-only" type="text" placeholder="3,17,40" class="w160" data-i18n-tip="ctrl.g-only.tip"></label>
           <label class="row"><input type="radio" name="g-sel" value="first">
             <span data-i18n="render.sel.first">First N</span>
-            <input id="g-first" type="number" min="1" max="9999" value="50" class="w80"></label>
+            <input id="g-first" type="number" min="1" max="9999" value="50" class="w80" data-i18n-tip="ctrl.g-first.tip"></label>
           <label class="row"><input type="radio" name="g-sel" value="missing">
             <span data-i18n="render.sel.missing">All missing in this set</span></label>
           <label class="row"><input type="checkbox" id="g-force">
             <span data-i18n="render.sel.force">Force regenerate even if file exists</span></label>
         </fieldset>
         <div class="actions">
+          <button type="button" id="g-pilots" class="btn primary" data-i18n="render.pilots">12 пілотів — порахувати</button>
           <button type="button" id="g-estimate" class="btn" data-i18n="render.estimate">Estimate (free)</button>
-          <button type="button" id="g-run" class="btn primary" disabled data-i18n="render.run">Generate…</button>
+          <button type="button" id="g-run" class="btn" disabled data-i18n="render.run">Generate…</button>
         </div>
       </div>
       <div class="card">
@@ -531,7 +561,7 @@
           <option value="">—</option>
         </select>
       </label>
-      <select id="v-filter">
+      <select id="v-filter" data-i18n-tip="gallery.filter.all.tip">
         <option value="" data-i18n="gallery.filter.all">Усі</option>
         <option value="none" data-i18n="gallery.filter.none">Без позначки</option>
         <option value="keep" data-i18n="gallery.filter.keep">✓ Лишити</option>
@@ -547,14 +577,14 @@
     <div class="card triage-bar" style="margin: 10px 0; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px;">
       <b style="color: var(--primary, #6366f1); font-size: 13px;" data-i18n="gallery.triage.title">🤖 AI Auto-Triage &amp; Critic</b>
       <label class="small" style="margin:0; display:flex; align-items:center; gap:4px">
-        <select id="v-triage-mode" class="small">
+        <select id="v-triage-mode" class="small" data-i18n-tip="gallery.triage.mode.unmarked.tip">
           <option value="unmarked" data-i18n="gallery.triage.mode.unmarked">Лише без мітки</option>
           <option value="sample" data-i18n="gallery.triage.mode.sample">Вибірка 10 шт</option>
           <option value="all" data-i18n="gallery.triage.mode.all">Всі в наборі</option>
         </select>
       </label>
       <label class="small" style="margin:0; display:flex; align-items:center; gap:4px">
-        <select id="v-triage-provider" class="small">
+        <select id="v-triage-provider" class="small" data-i18n-tip="gallery.triage.provider.heuristic.tip">
           <option value="heuristic" data-i18n="gallery.triage.provider.heuristic">⚡ Швидка евристика (0$)</option>
           <option value="vision" data-i18n="gallery.triage.provider.vision">🤖 AI Vision (GPT-4o/Claude)</option>
         </select>
@@ -563,19 +593,22 @@
         <input type="checkbox" id="v-triage-auto-apply">
         <span data-i18n="gallery.triage.autoApply">Авто-застосування Keep/Redo</span>
       </label>
+      <button type="button" id="v-dupes" class="btn small" data-i18n="gallery.dupes.btn">Знайти схожі</button>
+      <span id="v-dupes-status" class="small muted"></span>
       <button type="button" id="v-triage-run" class="btn small" data-i18n="gallery.triage.btn">🤖 Запустити Triage</button>
       <button type="button" id="v-triage-apply" class="btn small" style="display:none" data-i18n="gallery.triage.applyBtn">✓ Застосувати рекомендації</button>
       <span id="v-triage-status" class="small muted"></span>
     </div>
+    <div id="v-dupes-list" class="card small" hidden></div>
     <div id="v-empty" class="card muted" data-i18n="gallery.empty">Поки немає зображень.</div>
     <div id="v-grid" class="gallery"></div>
     <div id="v-lightbox" class="lightbox" hidden>
       <img id="v-lightbox-img" alt="">
-      <button type="button" id="v-lightbox-close" class="btn">✕</button>
+      <button type="button" id="v-lightbox-close" class="btn" data-i18n-tip="ctrl.v-lightbox-close.tip">✕</button>
     </div>
     <div id="topup-overlay" class="overlay" hidden>
       <div class="card ver-card">
-        <h3><span data-i18n="topup.title">Поповнення кредитів</span><button type="button" id="topup-close" class="btn small">✕</button></h3>
+        <h3><span data-i18n="topup.title">Поповнення кредитів</span><button type="button" id="topup-close" class="btn small" data-i18n-tip="ctrl.topup-close.tip">✕</button></h3>
         <p class="muted small" data-i18n="topup.hint"></p>
         <div id="topup-packages" class="topup-grid"></div>
         <h4 data-i18n="holder.title">Бонус холдера Genesis</h4>
@@ -590,7 +623,7 @@
     </div>
     <div id="ver-overlay" class="overlay" hidden>
       <div class="card ver-card">
-        <h3><span id="ver-title"></span><button type="button" id="ver-close" class="btn small">✕</button></h3>
+        <h3><span id="ver-title"></span><button type="button" id="ver-close" class="btn small" data-i18n-tip="ctrl.ver-close.tip">✕</button></h3>
         <p class="muted small" data-i18n="ver.hint"></p>
         <div id="ver-list" class="ver-list"></div>
       </div>
@@ -605,6 +638,17 @@
         <ol class="guide" data-i18n-list="export.hint.li"></ol>
         <p class="muted small" data-i18n="export.hint.tip"></p>
       </details>
+    </div>
+    <div class="card">
+      <h2 data-i18n="export.release.h2">Архів випуску</h2>
+      <p class="muted small" data-i18n="export.release.hint">Один пакет: лише позначені keep, метадані OpenSea, чекліст попереду. Інші формати нижче.</p>
+      <div class="actions">
+        <button type="button" id="x-release" class="btn primary" data-i18n="export.release.run">Зібрати архів випуску</button>
+        <span id="x-release-msg" class="small"></span>
+        <a id="x-release-dl" class="btn" href="#" download hidden data-i18n="export.bundle.download">Завантажити ZIP</a>
+        <a id="x-release-next" class="btn primary" href="#" target="_blank" rel="noopener noreferrer" hidden data-i18n="export.release.next" data-i18n-tip="export.release.next.tip">Далі · портал запуску →</a>
+      </div>
+      <ul id="x-release-list" class="checklist"></ul>
     </div>
     <div class="card">
       <label class="small"><span data-i18n="export.archive">Архів</span>
@@ -652,7 +696,7 @@
         </label>
         <label class="small" style="grid-column: 1 / -1"><span data-i18n="export.bundle.uriPrefix">Image URI Prefix (Storage)</span>
           <div style="display:flex; gap:8px">
-            <input id="x-uri-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.png)" data-i18n-placeholder="export.bundle.uriPrefix.ph" style="flex:1" />
+            <input id="x-uri-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.png)" data-i18n-placeholder="export.bundle.uriPrefix.ph" data-i18n-tip="export.bundle.uriPrefix.tip" style="flex:1" />
             <button type="button" id="x-pin-pinata" class="btn small" data-i18n="export.bundle.pinPinata">📌 Upload to IPFS (Pinata)</button>
           </div>
           <span id="x-pin-status" class="small muted" style="margin-top:2px; display:block"></span>
@@ -708,33 +752,54 @@
 
   </section>
 
-  <!-- 8. RESOURCES -->
-  <section id="tab-res" class="tab">
-    <h1 data-i18n="res.h1">Ресурси</h1>
-    <div class="hint"><p data-i18n="res.hint"></p><details open>
-        <summary data-i18n="res.hint.more"></summary>
-        <ol class="guide" data-i18n-list="res.hint.li"></ol>
-        <p class="muted small" data-i18n="res.hint.tip"></p>
-      </details>
+  <!-- ADMIN: resources, stats, errors -->
+  <section id="tab-admin" class="tab">
+    <h1 data-i18n="admin.h1">Адмін-панель</h1>
+    <div class="hint"><p data-i18n="admin.hint"></p></div>
+    <div class="admin-nav" role="tablist">
+      <button type="button" data-admin="res" class="on" data-i18n="admin.tab.res">Ресурси</button>
+      <button type="button" data-admin="stats" data-i18n="admin.tab.stats">Статистика</button>
+      <button type="button" data-admin="errors" data-i18n="admin.tab.errors">Помилки</button>
     </div>
-    <p class="muted" data-i18n="res.note"></p>
-    <div id="res-grid" class="res-grid"></div>
-    <div class="card" style="margin-top:16px">
-      <h3 data-i18n="spend.h3">💰 Витрати сьогодні</h3>
-      <div id="spend-out" class="small"></div>
-    </div>
-    <div class="card" style="margin-top:16px">
-      <h3 data-i18n="trash.h3">🗑️ Кошик</h3>
-      <p class="muted small" data-i18n="trash.hint"></p>
-      <div id="trash-list" class="trash-list small"></div>
-    </div>
-    <div class="card" style="margin-top:16px">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
-        <h3>⚡ Діагностика та швидкість рушіїв генерації (Wave 22)</h3>
-        <button type="button" id="btn-test-engines" class="btn small primary">Перевірити всі підключення</button>
+
+    <div id="admin-res" class="admin-pane on">
+      <h2 data-i18n="res.h1">Ресурси й ключі</h2>
+      <div class="hint"><p data-i18n="res.hint"></p><details open>
+          <summary data-i18n="res.hint.more"></summary>
+          <ol class="guide" data-i18n-list="res.hint.li"></ol>
+          <p class="muted small" data-i18n="res.hint.tip"></p>
+        </details>
       </div>
-      <p class="muted small" style="margin:6px 0 12px 0">Перевірка зв'язку з хмарними API (Fal.ai, Replicate, OpenAI, Stability) та локальними рушіями з нульовими витратами (ComfyUI на 127.0.0.1:8188, Automatic1111 на 127.0.0.1:7860).</p>
-      <div id="engines-status-table" class="small"></div>
+      <p class="muted" data-i18n="res.note"></p>
+      <div id="res-grid" class="res-grid"></div>
+      <div class="card" style="margin-top:16px">
+        <h3 data-i18n="trash.h3">🗑️ Кошик</h3>
+        <p class="muted small" data-i18n="trash.hint"></p>
+        <div id="trash-list" class="trash-list small"></div>
+      </div>
+    </div>
+
+    <div id="admin-stats" class="admin-pane">
+      <div class="card">
+        <h3 data-i18n="spend.h3">💰 Витрати сьогодні</h3>
+        <p class="muted small" data-i18n="admin.stats.hint"></p>
+        <div id="spend-out" class="small"></div>
+      </div>
+    </div>
+
+    <div id="admin-errors" class="admin-pane">
+      <div class="card">
+        <h3 data-i18n="admin.errors.h3">Останні помилки</h3>
+        <div id="admin-errors-list" class="small"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
+          <h3 data-i18n="admin.engines.h3">⚡ Підключення рушіїв</h3>
+          <button type="button" id="btn-test-engines" class="btn small primary" data-i18n="admin.engines.test">Перевірити всі підключення</button>
+        </div>
+        <p class="muted small" style="margin:6px 0 12px 0" data-i18n="admin.engines.help"></p>
+        <div id="engines-status-table" class="small"></div>
+      </div>
     </div>
   </section>
 
@@ -745,7 +810,7 @@
       <p data-i18n="help.hint"></p>
     </div>
     <div class="help-tools card">
-      <input type="search" id="help-search" data-i18n-placeholder="help.search.ph" autocomplete="off">
+      <input type="search" id="help-search" data-i18n-placeholder="help.search.ph" data-i18n-tip="ctrl.help-search.tip" autocomplete="off">
       <span id="help-search-count" class="muted small"></span>
     </div>
     <nav id="help-toc" class="help-toc" data-i18n-aria="help.toc.title"></nav>
