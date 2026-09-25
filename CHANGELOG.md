@@ -13,6 +13,9 @@
 - `scripts/dev-tunnel.mjs`: локальний сервер + іменований тунель Cloudflare (`lab-dev.w3ir.space`) без зміни постійного `.env`.
 - Доступ лише запрошеним гаманцям (`.tunnel-wallets` / `TUNNEL_ALLOWED_WALLETS`), ліміт витрат $5/день, локальний GPU вимкнено, вітальні кредити без вимоги балансу гаманця. Деталі: `docs/HOSTING.md`.
 
+### Власні бекапи
+- `npm run backup` (`scripts/backup.mjs`): знімок леджера через SQLite online backup (узгоджений при запущеному сервері) з перевіркою цілісності, копія `data/users/` і манифест; ротація `BACKUP_KEEP` (14). `--ledger-only` — лише леджер. Тека `backups/` в `.gitignore`. Тест `test/backup.test.mjs`.
+
 ### Видалено: Helio
 - Сервіс Helio більше не використовується: прибрано `src/platform/helio.mjs`, вебхук `/webhooks/helio` (разом із його тригером видачі NFT Дропу #2), фонове звіряння, `POST /api/credits/sync`, `HELIO_*` з `.env`/`.env.example`, посилання пакетів і блок «Після оплати» у вікні поповнення, статус провайдера Helio в адмінці, тексти в довідці та підказках. Причина: сторінка оплати Helio показує «Access restricted» платникам з України.
 - Юридичні тексти (`LEGAL.md`, `UMOVY.md`) тепер описують оплату USDC у Solana; фікстуру паритету оновлено.

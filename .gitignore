@@ -16,3 +16,6 @@ dist/
 
 # tester wallets for `npm run lab:tunnel`
 .tunnel-wallets
+
+# local backups made by `npm run backup`
+backups/

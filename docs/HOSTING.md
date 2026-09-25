@@ -23,6 +23,8 @@
 | Offsite-бекап леджера | `BACKUP_RCLONE_REMOTE` + passphrase | ⏸ доки не задані в `backup.env` |
 | Зовнішнє тестування з ПК | https://lab-dev.w3ir.space (Cloudflare-тунель `w3ir-tunnel` → локальний сервер) | 🟡 `npm run lab:tunnel`; див. нижче |
 
+**Бекап власних даних Lab** — `npm run backup` (див. [GUIDE.md](./GUIDE.md#бекап)); він охоплює лише Series Lab. Розклад — за вами (Планувальник завдань Windows чи cron).
+
 ### Зовнішнє тестування через тунель (на час розробки)
 
 Сервер лишається на ПК; тестувальники заходять через іменований тунель Cloudflare (швидкі `trycloudflare.com` з цієї мережі заблоковані провайдером).

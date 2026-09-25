@@ -40,6 +40,7 @@ npm test
 npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 # Windows: start-lab.bat / stop-lab.bat · без браузера: npm run lab:serve
 # зовнішнє тестування з ПК через тунель Cloudflare: npm run lab:tunnel (docs/HOSTING.md)
+# власний бекап (леджер + дані гаманців) у backups/: npm run backup
 ```
 
 **Спробувати без ключів:** двигун **mock** на «5 · Генерація». `SERIES_MODE=local` — без входу, лише для тек репо.
