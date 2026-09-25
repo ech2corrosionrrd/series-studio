@@ -39,7 +39,7 @@
 - **Streamlit UI** — замінений Studio + `/login`.
 - **Вхід поштою** — не плануємо; лише гаманець.
 - **Ончейн-мінт / клейм зсередини Lab** — ZIP + портал лаунчпада; ключі не custodial.
-- **Кредити / Helio** — **перенесено** в `src/platform/*` (`SERIES_MODE=public`), схема як у Промт, але **окремий леджер** `data/users.db` і **самодостатній** `.env` Lab (Helio paylinks, API, Telegram — лише в цьому проєкті; `SERIES_PLATFORM_ENV` ігнорується). У UI — «Купити» + «Перевірити оплату» (`POST /api/credits/sync`).
+- **Кредити / Helio** — **перенесено** в `src/platform/*` (`SERIES_MODE=public`), схема як у Промт, але **окремий леджер** `data/users.db` і **самодостатній** `.env` Lab (Helio paylinks, API, Telegram — лише в цьому проєкті; `SERIES_PLATFORM_ENV` ігнорується). У UI — кнопка «＋ Купити» в шапці та вікно поповнення з двома способами: **Helio** (кнопка «Оплатити USDC», зарахування вебхуком або автоопитуванням, запасна «Перевірити оплату» — `POST /api/credits/sync`) і **USDC напряму в Solana** (`src/platform/solpay.mjs`, `/api/credits/sol/*`) — для платників, яким Helio недоступний (з України сторінка оплати Helio показує «Access restricted»).
 - **Адмін → Економіка** — `src/platform/margin.mjs` + `GET /api/admin/economy`: пакети, COGS, накладні (`HOSTING_MONTHLY_USD` / `SAAS_MONTHLY_USD`), Helio+FX вхід, `RESOURCE_FX_PCT` (crypto→USD на ресурси), Local GPU support fee. Деталі: [ECONOMY.md](./ECONOMY.md).
 - **`SERIES_MODE=local`** — лише теки репо без акаунтів; не може слухати поза loopback.
 

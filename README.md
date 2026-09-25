@@ -39,6 +39,7 @@ npm install
 npm test
 npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 # Windows: start-lab.bat / stop-lab.bat · без браузера: npm run lab:serve
+# зовнішнє тестування з ПК через тунель Cloudflare: npm run lab:tunnel (docs/HOSTING.md)
 ```
 
 **Спробувати без ключів:** двигун **mock** на «5 · Генерація». `SERIES_MODE=local` — без входу, лише для тек репо.
@@ -56,7 +57,8 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `ANTHROPIC_API_KEY` | Vision Assist / AI Triage через Claude (опційно) |
 | `PINATA_JWT` | Завантаження в IPFS |
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | Сповіщення від імені Series Lab |
-| `HELIO_PAYLINK_*`, `HELIO_API_*` | Поповнення кредитів (USDC Base) |
+| `HELIO_PAYLINK_*`, `HELIO_API_*` | Поповнення кредитів через Helio (криптою; для платників з деяких регіонів, зокрема з України, сторінка Helio показує «Access restricted») |
+| `SOLANA_PAY_RECIPIENT` (+ `SOLANA_RPC_URL`) | Пряма оплата USDC у Solana без посередника: публічна адреса-отримувач, ключ не потрібен |
 | `HOSTING_MONTHLY_USD`, `SAAS_MONTHLY_USD`, `PAYMENT_FEE_PCT`, `FX_FEE_PCT`, `RESOURCE_FX_PCT` | Адмін → Економіка (накладні + комісії; див. [docs/ECONOMY.md](docs/ECONOMY.md)) |
 | `SERIES_SPEND_CAP_USD` | Денна межа витрат, $ |
 | `SERIES_MAX_CONSECUTIVE_FAILURES` | Автостоп batch (5) |
