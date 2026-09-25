@@ -149,6 +149,7 @@ import { PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck
   listTransactions, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost,
 } from "../src/platform/billing.mjs";
 import { helioKeys, helioPaylinkUrl, reconcilePayments } from "../src/platform/helio.mjs";
+import { rateLimit } from "../src/platform/ratelimit.mjs";
 import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
 import { providersSnapshot, keyHealth, providerFloatStatus } from "../src/platform/providers.mjs";
 import { claim as claimHolderBonus, eligibility as holderEligibility } from "../src/platform/holders.mjs";
@@ -1245,6 +1246,8 @@ async function handleApi(req, res, url) {
     if (!helioKeys()) {
       return send(res, 503, { error: "HELIO_API_KEY / HELIO_API_SECRET not set — add them to Series Lab .env" });
     }
+    // The UI polls every ~12 s after "Pay"; each poll is 3 Helio API calls.
+    rateLimit(req, "credits_sync", Number.parseInt(process.env.CREDITS_SYNC_RATE_LIMIT || "10", 10) || 10);
     const wallet = currentWallet();
     const r = await reconcilePayments({ targetWallet: wallet, notify: notifyOperator });
     return send(res, 200, {
