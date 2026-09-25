@@ -8,6 +8,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { markFulfillment, pendingFulfillments } from "./billing.mjs";
+import { resolveSolanaRpcUrl, solanaRpcHeaders } from "./wallet.mjs";
 
 const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
@@ -60,9 +61,13 @@ export function resolveMint(catalog, index) {
   return hit.mint;
 }
 
-export function vaultRpcUrl() {
-  const key = String(process.env.ALCHEMY_API_KEY || "").trim();
-  return key ? `https://solana-mainnet.g.alchemy.com/v2/${key}` : "https://solana-rpc.publicnode.com";
+export function vaultRpcUrl(env = process.env) {
+  return resolveSolanaRpcUrl(env);
+}
+
+/** Drop #2 vault is dormant until VAULT_WALLET_ADDRESS (+ catalog) are set. */
+export function vaultConfigured(env = process.env) {
+  return Boolean(String(env.VAULT_WALLET_ADDRESS || "").trim());
 }
 
 /** Mints currently held by the vault (balance ≥ 1). Not cached on purpose. */
@@ -71,7 +76,7 @@ export async function vaultTokenMints(rpcUrl, vaultAddress, { fetchImpl = fetch,
   try {
     res = await fetchImpl(rpcUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: solanaRpcHeaders(rpcUrl),
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getTokenAccountsByOwner", params: [vaultAddress, { programId: TOKEN_PROGRAM }, { encoding: "jsonParsed" }] }),
       signal: AbortSignal.timeout(timeoutMs),
     });

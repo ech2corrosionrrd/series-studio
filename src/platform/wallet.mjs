@@ -16,6 +16,35 @@ export const SOLANA_RPC_DEFAULT = "https://api.mainnet-beta.solana.com";
 export const MIN_WELCOME_BALANCE_WEI = 200_000_000_000_000n; // 0.0002 ETH
 export const MIN_WELCOME_BALANCE_LAMPORTS = 3_000_000n; // 0.003 SOL
 
+/**
+ * Solana JSON-RPC URL for payments, holders, vault, balance checks.
+ * Order: SOLANA_PAY_RPC_URL (only if opts.pay) → SOLANA_RPC_URL → Alchemy key → fallback → public.
+ */
+export function resolveSolanaRpcUrl(env = process.env, { pay = false } = {}) {
+  if (pay) {
+    const payUrl = String(env.SOLANA_PAY_RPC_URL || "").trim();
+    if (payUrl) return payUrl;
+  }
+  const explicit = String(env.SOLANA_RPC_URL || "").trim();
+  if (explicit) return explicit;
+  const alchemy = String(env.ALCHEMY_API_KEY || env.VITE_ALCHEMY_API_KEY || "").trim();
+  if (alchemy) return `https://solana-mainnet.g.alchemy.com/v2/${alchemy}`;
+  const fallback = String(env.SOLANA_RPC_FALLBACK || "").trim();
+  if (fallback) return fallback;
+  return SOLANA_RPC_DEFAULT;
+}
+
+/** Headers for Solana JSON-RPC (Alchemy often requires a whitelisted Origin). */
+export function solanaRpcHeaders(url, env = process.env) {
+  const headers = { "Content-Type": "application/json" };
+  if (String(url || "").includes("alchemy.com")) {
+    // Whitelist in Alchemy dashboard currently includes mint.w3ir.io (Promt mint).
+    const origin = String(env.GENESIS_RPC_ORIGIN || "https://mint.w3ir.io").trim();
+    if (origin) headers.Origin = origin;
+  }
+  return headers;
+}
+
 export function b58decode(s) {
   let num = 0n;
   for (const ch of s) {
@@ -170,7 +199,7 @@ export async function ethBalanceWei(wallet, { fetchImpl } = {}) {
 /** Native SOL balance in lamports; any error → 0n (fail-closed). */
 export async function solBalanceLamports(wallet, { fetchImpl } = {}) {
   try {
-    const url = process.env.SOLANA_RPC_URL || SOLANA_RPC_DEFAULT;
+    const url = resolveSolanaRpcUrl();
     const data = fetchImpl ? await fetchImpl(url, "getBalance", [wallet]) : await rpc(url, "getBalance", [wallet]);
     return BigInt(data.result.value);
   } catch {

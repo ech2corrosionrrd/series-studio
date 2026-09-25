@@ -15,7 +15,7 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { PACKAGES, recordPayment } from "./billing.mjs";
 import { nowIso, openDb, tx } from "./db.mjs";
-import { SOLANA_RPC_DEFAULT, isSolanaWallet } from "./wallet.mjs";
+import { isSolanaWallet, resolveSolanaRpcUrl, solanaRpcHeaders } from "./wallet.mjs";
 
 export const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 export const USDC_DECIMALS = 6;
@@ -33,7 +33,7 @@ const envInt = (env, key, def) => {
 export const solPayRecipient = (env = process.env) => String(env.SOLANA_PAY_RECIPIENT || "").trim();
 export const solPayEnabled = (env = process.env) => isSolanaWallet(solPayRecipient(env));
 export const solPayMint = (env = process.env) => String(env.SOLANA_PAY_USDC_MINT || "").trim() || USDC_MINT;
-const rpcUrl = (env) => String(env.SOLANA_PAY_RPC_URL || env.SOLANA_RPC_URL || "").trim() || SOLANA_RPC_DEFAULT;
+const rpcUrl = (env) => resolveSolanaRpcUrl(env, { pay: true });
 const commitment = (env) => String(env.SOLANA_PAY_COMMITMENT || "").trim() || "confirmed";
 const orderDays = (env) => envInt(env, "SOLANA_PAY_ORDER_DAYS", 7);
 
@@ -57,10 +57,10 @@ export function solanaPayUri({ recipient, amountMicro, mint, label = "Series Lab
   return `solana:${recipient}?${q.toString()}`;
 }
 
-async function rpc(url, method, params, timeoutMs = 20_000) {
+async function rpc(url, method, params, timeoutMs = 20_000, env = process.env) {
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: solanaRpcHeaders(url, env),
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -69,7 +69,9 @@ async function rpc(url, method, params, timeoutMs = 20_000) {
 }
 
 async function call(fetchImpl, env, method, params) {
-  const data = await (fetchImpl || rpc)(rpcUrl(env), method, params);
+  const data = await (fetchImpl
+    ? fetchImpl(rpcUrl(env), method, params)
+    : rpc(rpcUrl(env), method, params, 20_000, env));
   if (data?.error) throw new Error(`Solana RPC ${method}: ${data.error.message || JSON.stringify(data.error)}`);
   return data?.result;
 }

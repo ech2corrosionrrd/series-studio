@@ -4,11 +4,11 @@
  *
  * Direct balance via API key: Stability only. Others → dashboard URL (postpaid).
  */
+import { BASE_RPC_DEFAULT, resolveSolanaRpcUrl, solanaRpcHeaders } from "./wallet.mjs";
+
 const TIMEOUT_MS = 12_000;
 const STABILITY_BALANCE_URL = "https://api.stability.ai/v1/user/balance";
 const STABILITY_USD_PER_CREDIT = 0.01;
-const BASE_RPC_DEFAULT = "https://mainnet.base.org";
-const SOLANA_RPC_DEFAULT = "https://api.mainnet-beta.solana.com";
 
 export const FLOAT_RECOMMENDED_USD = {
   OpenAI: 30,
@@ -68,11 +68,11 @@ async function httpOk(url, headers, fetchImpl = fetch) {
   }
 }
 
-async function rpcOk(url, method, fetchImpl = fetch) {
+async function rpcOk(url, method, fetchImpl = fetch, headers = { "Content-Type": "application/json" }) {
   try {
     const res = await fetchImpl(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: [] }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -151,7 +151,7 @@ export async function keyHealth(fetchImpl = fetch) {
   const fal = envVal("FAL_KEY") || envVal("FAL_API_KEY");
   const runware = envVal("RUNWARE_API_KEY");
   const baseRpc = envVal("BASE_RPC_URL") || BASE_RPC_DEFAULT;
-  const solanaRpc = envVal("SOLANA_RPC_URL") || SOLANA_RPC_DEFAULT;
+  const solanaRpc = resolveSolanaRpcUrl();
 
   const results = [];
   for (const p of PROVIDERS) {
@@ -201,7 +201,7 @@ export async function keyHealth(fetchImpl = fetch) {
       row.valid = await rpcOk(baseRpc, "eth_chainId", fetchImpl);
     } else if (p.id === "solana") {
       row.checked = true;
-      row.valid = await rpcOk(solanaRpc, "getHealth", fetchImpl);
+      row.valid = await rpcOk(solanaRpc, "getHealth", fetchImpl, solanaRpcHeaders(solanaRpc));
     }
     results.push(row);
   }

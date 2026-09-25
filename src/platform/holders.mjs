@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { dirname, resolve } from "node:path";
 import { grantCredits, normalizeWallet } from "./billing.mjs";
 import { isConstraintError, nowIso, openDb } from "./db.mjs";
-import { isSolanaWallet, SOLANA_RPC_DEFAULT } from "./wallet.mjs";
+import { isSolanaWallet, SOLANA_RPC_DEFAULT, resolveSolanaRpcUrl, solanaRpcHeaders } from "./wallet.mjs";
 
 const TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 export const CANDY_MACHINE = "BpHBqJAVeSRuEjyeEyuTkjUL9ocarY63rHBzyEVwmGrM";
@@ -32,17 +32,12 @@ export const mintsFile = () =>
   process.env.GENESIS_MINTS_FILE || resolve(process.env.SERIES_DATA_DIR || "data", "genesis_mints.json");
 
 function rpcUrls() {
-  const alchemy = String(process.env.ALCHEMY_API_KEY || process.env.VITE_ALCHEMY_API_KEY || "").trim();
-  const primary = String(process.env.SOLANA_RPC_URL || "").trim()
-    || (alchemy ? `https://solana-mainnet.g.alchemy.com/v2/${alchemy}` : process.env.SOLANA_RPC_FALLBACK || SOLANA_RPC_DEFAULT);
+  const primary = resolveSolanaRpcUrl();
   const list = [primary, ...String(process.env.SOLANA_RPC_FALLBACKS || "").split(",").map((s) => s.trim()), SOLANA_RPC_DEFAULT];
   return [...new Set(list.filter(Boolean))];
 }
 
-const rpcHeaders = (url) => {
-  const { rpcOrigin } = cfg();
-  return { "Content-Type": "application/json", ...(url.includes("alchemy.com") && rpcOrigin ? { Origin: rpcOrigin } : {}) };
-};
+const rpcHeaders = (url) => solanaRpcHeaders(url);
 
 async function rpcCall(url, method, params, fetchImpl = fetch) {
   const res = await fetchImpl(url, {
