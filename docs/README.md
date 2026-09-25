@@ -13,7 +13,7 @@
 | **Новачок** | [GUIDE.md](./GUIDE.md) — посібник простими словами (те саме, що вкладка «❓ Довідка») |
 | **Користувач майстерні** | [STAGES.md](./STAGES.md) → [STUDIO-UI.md](./STUDIO-UI.md) → [EXPORT.md](./EXPORT.md) |
 | **Розробник** | [API.md](./API.md) · [PRESET.md](./PRESET.md) · [TRAITS.md](./TRAITS.md) · [../CHANGELOG.md](../CHANGELOG.md) |
-| **Після ядра / хостинг** | [HOSTING.md](./HOSTING.md) — лише за командою власника · [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) · [MIGRATION.md](./MIGRATION.md) |
+| **Після ядра / хостинг** | [HOSTING.md](./HOSTING.md) — лише за командою власника · [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) · [STANDALONE.md](./STANDALONE.md) |
 | **Оператор / економіка** | [ECONOMY.md](./ECONOMY.md) — пакети, COGS, накладні, RESOURCE_FX, Admin → Економіка |
 
 ## Усі документи
@@ -31,11 +31,11 @@
 | [TRAITS.md](./TRAITS.md) | Паки рис, редактор опцій |
 | [PRESET.md](./PRESET.md) | Формат пресету |
 | [VISION.md](./VISION.md) | Vision Assist |
-| [MIGRATION.md](./MIGRATION.md) | Перехід Промт → Series Lab (Ф1–Ф5) |
+| [STANDALONE.md](./STANDALONE.md) | Series Lab як окремий самодостатній продукт |
 | [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) | VPS / staging / cutover |
 | [DEPLOY.md](./DEPLOY.md) | Лендінг studio.w3ir.io (Cloudflare Pages) |
 | [HOSTING.md](./HOSTING.md) | **Після ядра:** що є і що робити за командою (не автодеплой) |
-| [ROADMAP.md](./ROADMAP.md) | Хвилі 1–25 ✅ · стабілізація ▶️ · рефакторинг/Ф4 ⏸ |
+| [ROADMAP.md](./ROADMAP.md) | Хвилі 1–25 ✅ · стабілізація ▶️ · рефакторинг/власний домен ⏸ |
 | [SYNTHESIS.md](./SYNTHESIS.md) · [FROM-PROMT.md](./FROM-PROMT.md) | Донори |
 | [BRAND.md](./BRAND.md) · [BOUNDARIES.md](./BOUNDARIES.md) | Бренд і межі |
 | [CONTEXT.md](./CONTEXT.md) · [IDEAS.md](./IDEAS.md) · [PLAN.md](./PLAN.md) · [LAB.md](./LAB.md) | Історичні нотатки |

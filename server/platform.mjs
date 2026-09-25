@@ -144,14 +144,8 @@ async function routes(req, res, url) {
   const method = req.method;
   const host = String(req.headers.host || "").split(":")[0].toLowerCase();
 
-  // pay.w3ir.io exposes only health (Промт restrict_pay_subdomain).
-  if (hostSet("PAY_SUBDOMAIN_HOSTS", "pay.w3ir.io").has(host) && path !== "/health") {
-    send(res, 404, "Not Found", "text/plain");
-    return true;
-  }
-
   if (path === "/health" && (method === "GET" || method === "HEAD")) {
-    send(res, 200, { status: "ok", service: "nft-prompt-builder-payments" });
+    send(res, 200, { status: "ok", service: "series-lab" });
     return true;
   }
 

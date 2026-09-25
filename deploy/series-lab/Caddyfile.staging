@@ -1,0 +1,13 @@
+# Series Lab staging — reverse-proxy block for https://next.w3ir.io.
+# phase3.sh adds it to the shared Caddyfile (or prints it with SKIP_CADDY=1). Nothing else
+# in that file changes. Needs a DNS record `next` → this server (proxied through
+# Cloudflare, same origin certificate). Rollback: phase3-rollback.sh.
+
+http://next.w3ir.io {
+	reverse_proxy serieslab:5344
+}
+https://next.w3ir.io {
+	import origin_tls
+	import access_log
+	reverse_proxy serieslab:5344
+}

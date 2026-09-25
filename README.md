@@ -8,7 +8,7 @@
 
 > **Новачок?** Почніть з [посібника](docs/GUIDE.md) або вкладки **❓ Довідка**. Вхід — лише гаманець (MetaMask / Coinbase / Phantom); сторінка `/login`.
 
-Сервер розробки стоїть на `127.0.0.1` — це лише адреса процесу. Вхід, кредити, дані по гаманцю й адмін — повний продукт (`SERIES_MODE=public` за замовчуванням). `SERIES_MODE=local` — теки репозиторію без акаунтів, лише loopback. Хостинг / Ф4 — [docs/HOSTING.md](docs/HOSTING.md), лише за окремою командою власника.
+Сервер розробки стоїть на `127.0.0.1` — це лише адреса процесу. Вхід, кредити, дані по гаманцю й адмін — повний продукт (`SERIES_MODE=public` за замовчуванням). `SERIES_MODE=local` — теки репозиторію без акаунтів, лише loopback. Хостинг / власний домен — [docs/HOSTING.md](docs/HOSTING.md), лише за окремою командою власника.
 
 ---
 
@@ -133,7 +133,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 - [docs/ROADMAP.md](docs/ROADMAP.md) · [CHANGELOG.md](CHANGELOG.md)
 - [docs/HOSTING.md](docs/HOSTING.md) — після ядра; деплой лише за командою
 - [docs/DEPLOY.md](docs/DEPLOY.md) — https://studio.w3ir.io
-- [docs/MIGRATION.md](docs/MIGRATION.md) · [docs/DEPLOY-PLATFORM.md](docs/DEPLOY-PLATFORM.md) — Ф3–Ф5
+- [docs/STANDALONE.md](docs/STANDALONE.md) · [docs/DEPLOY-PLATFORM.md](docs/DEPLOY-PLATFORM.md) — окремий продукт і розгортання
 
 Термінологія: **базова картинка(и) серії**; `primary` = головна базова. Ончейн-мінт — зовні через лаунчпад.
 

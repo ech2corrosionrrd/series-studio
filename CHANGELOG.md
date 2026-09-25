@@ -13,6 +13,12 @@
 - `scripts/dev-tunnel.mjs`: локальний сервер + іменований тунель Cloudflare (`lab-dev.w3ir.space`) без зміни постійного `.env`.
 - Доступ лише запрошеним гаманцям (`.tunnel-wallets` / `TUNNEL_ALLOWED_WALLETS`), ліміт витрат $5/день, локальний GPU вимкнено, вітальні кредити без вимоги балансу гаманця. Деталі: `docs/HOSTING.md`.
 
+### Окремий самодостатній продукт
+- Series Lab більше не залежить від даних чи `.env` Промт: `docs/MIGRATION.md` замінено на [docs/STANDALONE.md](docs/STANDALONE.md), `docs/DEPLOY-PLATFORM.md` переписано.
+- `deploy/series-lab/phase3.sh`: власна порожня тека даних (без копії чужого леджера), секрети з власного `lab.env` (шаблон із `.env.example`; `LAB_ENV_FILE` у `upload.sh`), Caddy-блок необов'язковий (`SKIP_CADDY=1`), немає копіювання/читання чужих файлів.
+- `backup.sh` бекапить лише дані Lab (леджер, `users/`, JSON-файли). Додано `reset-staging.sh` (чистий аркуш, лише `/opt/series-lab`); `Caddyfile.switch` (перебирання чужих хостів) видалено, `Caddyfile.parallel` → `Caddyfile.staging`.
+- Код: прибрано піддомен `pay.` (`PAY_SUBDOMAIN_HOSTS`), `/health` віддає `service: "series-lab"`.
+
 ### Власні бекапи
 - `npm run backup` (`scripts/backup.mjs`): знімок леджера через SQLite online backup (узгоджений при запущеному сервері) з перевіркою цілісності, копія `data/users/` і манифест; ротація `BACKUP_KEEP` (14). `--ledger-only` — лише леджер. Тека `backups/` в `.gitignore`. Тест `test/backup.test.mjs`.
 
