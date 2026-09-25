@@ -13,3 +13,6 @@ input/*
 workspace/
 out/bundles/
 dist/
+
+# tester wallets for `npm run lab:tunnel`
+.tunnel-wallets

@@ -124,7 +124,7 @@ button[data-tip], a.btn[data-tip], label[data-tip], nav button[data-tip],
 dialog { background: var(--panel); color: var(--text); border: 1px solid var(--accent); border-radius: 12px; max-width: 460px; }
 dialog::backdrop { background: #000b; } menu { display: flex; gap: 10px; justify-content: flex-end; padding: 0; }
 .warn { color: var(--warn); font-size: 13px; }
-.toast { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); background: #0b070e; border: 1px solid var(--accent); padding: 10px 16px; border-radius: 10px; z-index: 30; }
+.toast { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); background: #0b070e; border: 1px solid var(--accent); padding: 10px 16px; border-radius: 10px; z-index: 60; }
 .prose h2 { font-size: 18px; margin: 18px 0 6px; } .prose p, .prose li { max-width: 820px; }
 .zoom { position: fixed; inset: 0; background: #000d; display: grid; place-items: center; z-index: 40; cursor: zoom-out; }
 .zoom img { max-width: 94vw; max-height: 94vh; }
@@ -626,6 +626,13 @@ ol.guide.field-guide li::before { width: 16px; height: 16px; top: 4px; left: 4px
 .acct-balance-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .acct-balance b { font-size: 15px; font-variant-numeric: tabular-nums; color: #f3e9ff; }
 .acct-balance-unit { font-size: 12px; color: var(--accent2); }
+.acct-balance.low { border-color: var(--warn); background: linear-gradient(135deg, #3a2a12, #241a0c); }
+.acct-balance.low b { color: var(--warn); }
+.acct-buy { font-weight: 600; white-space: nowrap; }
+.topup-reason {
+  margin: 0 0 12px; padding: 10px 14px; border-radius: var(--radius-sm, 9px);
+  border: 1px solid var(--warn); background: #3a2a1230; color: var(--warn); font-size: 14px;
+}
 .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn.ghost:hover:not(:disabled) { color: var(--text); border-color: var(--line); background: var(--panel2); }
 

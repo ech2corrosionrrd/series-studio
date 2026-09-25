@@ -88,6 +88,7 @@ async function api(path, opts = {}) {
       throw new Error(data.error || "Sign in required");
     }
     if (data.code === "credits" || data.code === "rate" || data.code === "freemium") refreshAccount();
+    if (data.code === "credits") openTopup({ needed: data.needed, balance: data.balance });
     if (data.code === "lint" && Array.isArray(data.hits) && data.hits.length) {
       throw new Error(t("lint.blocked", { hits: data.hits.join(", ") }));
     }
@@ -2395,6 +2396,7 @@ async function refreshAccount() {
   }
   if ($("acct-balance")) $("acct-balance").textContent = String(me.balance);
   if ($("topup-balance")) $("topup-balance").textContent = String(me.balance);
+  $("acct-topup")?.classList.toggle("low", Number(me.balance) < LOW_BALANCE);
   const topupBtn = $("acct-topup");
   if (topupBtn) topupBtn.setAttribute("aria-label", `${t("acct.topup")} · ${me.balance} ${t("acct.credits")}`);
 }
@@ -2448,13 +2450,111 @@ function setSyncStatus(el, text, kind) {
   if (kind) el.classList.add(kind);
 }
 
+const LOW_BALANCE = 10;
+const PAY_WATCH_KEY = "series.payWatchUntil";
+const PAY_WATCH_MS = 15 * 60_000;
+const PAY_POLL_MS = 12_000;
+let payWatchTimer = null;
+let paySyncBusy = false;
+
+function showToast(text) {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.setAttribute("role", "status");
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 6000);
+}
+
+/** Opens the top-up window; `needed`/`balance` explain why (refused generation). */
+function openTopup({ needed, balance } = {}) {
+  const overlay = $("topup-overlay");
+  if (!overlay) return;
+  renderTopup();
+  const reason = $("topup-reason");
+  if (reason) {
+    reason.hidden = !needed;
+    reason.textContent = needed ? t("topup.reason", { needed, balance: balance ?? state.account?.balance ?? 0 }) : "";
+  }
+  overlay.hidden = false;
+  $("topup-close")?.focus();
+  if (payWatchActive()) setSyncStatus($("topup-sync-status"), t("topup.watching"), "busy");
+}
+
+function payWatchActive() {
+  try {
+    return Number(localStorage.getItem(PAY_WATCH_KEY) || 0) > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function stopPayWatch() {
+  clearInterval(payWatchTimer);
+  payWatchTimer = null;
+  try { localStorage.removeItem(PAY_WATCH_KEY); } catch {}
+}
+
+/** One poll of Helio; credits show up in the balance without any button press. */
+async function syncPayments({ manual = false } = {}) {
+  if (paySyncBusy) return null;
+  paySyncBusy = true;
+  const status = $("topup-sync-status");
+  try {
+    const r = await api("/api/credits/sync", { method: "POST", body: "{}" });
+    if (r.error) {
+      if (manual) setSyncStatus(status, t("topup.syncFail", { err: r.error }), "bad");
+      return r;
+    }
+    if (r.credited > 0) {
+      stopPayWatch();
+      setSyncStatus(status, t("topup.synced", { n: r.credited, tx: r.newTx, balance: r.balance }), "ok");
+      showToast(t("topup.toast", { n: r.credited, balance: r.balance }));
+      await refreshAccount();
+      if (!$("topup-overlay")?.hidden) renderTopup();
+    } else if (manual) {
+      setSyncStatus(status, t("topup.syncNone", { balance: r.balance }), "");
+    }
+    return r;
+  } catch (err) {
+    // 429 = polled too fast; the next tick will retry, so stay quiet unless asked.
+    if (manual) setSyncStatus(status, err.message, "bad");
+    return null;
+  } finally {
+    paySyncBusy = false;
+  }
+}
+
+/** After "Pay" is clicked: keep polling for up to 15 min and on return to the tab. */
+function startPayWatch() {
+  try { localStorage.setItem(PAY_WATCH_KEY, String(Date.now() + PAY_WATCH_MS)); } catch {}
+  setSyncStatus($("topup-sync-status"), t("topup.watching"), "busy");
+  clearInterval(payWatchTimer);
+  payWatchTimer = setInterval(() => {
+    if (!payWatchActive()) {
+      stopPayWatch();
+      setSyncStatus($("topup-sync-status"), t("topup.watchEnded"), "");
+      return;
+    }
+    syncPayments();
+  }, PAY_POLL_MS);
+}
+
+function resumePayWatch() {
+  if (payWatchActive() && !payWatchTimer) startPayWatch();
+}
+
 function setupAccount() {
   const overlay = $("topup-overlay");
-  $("acct-topup")?.addEventListener("click", () => {
-    renderTopup();
-    overlay.hidden = false;
-    $("topup-close")?.focus();
+  $("acct-topup")?.addEventListener("click", () => openTopup());
+  $("acct-buy")?.addEventListener("click", () => openTopup());
+  $("topup-packages")?.addEventListener("click", (e) => {
+    if (e.target.closest?.(".topup-buy")) startPayWatch();
   });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && payWatchActive()) syncPayments();
+  });
+  resumePayWatch();
   $("topup-close")?.addEventListener("click", () => { overlay.hidden = true; refreshAccount(); });
   overlay?.addEventListener("click", (e) => { if (e.target === overlay) { overlay.hidden = true; refreshAccount(); } });
   document.addEventListener("keydown", (e) => {
@@ -2464,27 +2564,11 @@ function setupAccount() {
     }
   });
   $("topup-sync")?.addEventListener("click", async () => {
-    const status = $("topup-sync-status");
     const btn = $("topup-sync");
-    setSyncStatus(status, t("topup.syncBusy"), "busy");
+    setSyncStatus($("topup-sync-status"), t("topup.syncBusy"), "busy");
     if (btn) btn.disabled = true;
     try {
-      const r = await api("/api/credits/sync", { method: "POST", body: "{}" });
-      if (r.error) {
-        setSyncStatus(status, t("topup.syncFail", { err: r.error }), "bad");
-        return;
-      }
-      setSyncStatus(
-        status,
-        r.credited > 0
-          ? t("topup.synced", { n: r.credited, tx: r.newTx, balance: r.balance })
-          : t("topup.syncNone", { balance: r.balance }),
-        r.credited > 0 ? "ok" : "",
-      );
-      await refreshAccount();
-      renderTopup();
-    } catch (err) {
-      setSyncStatus(status, err.message, "bad");
+      await syncPayments({ manual: true });
     } finally {
       if (btn) btn.disabled = false;
     }
