@@ -633,6 +633,8 @@ ol.guide.field-guide li::before { width: 16px; height: 16px; top: 4px; left: 4px
 .sol-packs { display: flex; flex-wrap: wrap; gap: 8px; }
 .sol-pack.on { border-color: var(--accent); box-shadow: 0 0 0 1px #c77dff55 inset; }
 .sol-order { margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-sm, 9px); border: 1px dashed #5a3a78; }
+.sol-manual { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.sol-manual summary { cursor: pointer; }
 .sol-instr { margin: 0 0 10px; }
 .sol-fields { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0 0 10px; align-items: center; }
 .sol-fields dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }

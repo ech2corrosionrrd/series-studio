@@ -74,6 +74,13 @@ describe("Solana direct USDC orders", () => {
     assert.throws(() => sp.createSolOrder(BUYER, "nope", { db, env }), /Невідомий пакет/);
   });
 
+  test("prepareSolPayment requires a Solana payer pubkey", async () => {
+    await assert.rejects(
+      () => sp.prepareSolPayment(BUYER, "start", "0xabc", { db, env }),
+      /Solana/,
+    );
+  });
+
   test("the $0.10 test pack exists only for admins with SOLANA_PAY_TEST_PACK=1", () => {
     const on = { ...env, SOLANA_PAY_TEST_PACK: "1" };
     assert.equal(sp.solPayInfo(on).testPack, undefined, "hidden from ordinary users");
