@@ -212,6 +212,31 @@
       font-size: 12px;
       color: var(--muted);
     }
+    .mobile-wallets {
+      display: none;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #4b3563;
+      background: var(--panel2);
+      font-size: 13px;
+    }
+    .mobile-wallets.on { display: block; }
+    .mobile-wallets p { margin: 0 0 4px; color: var(--muted); }
+    .mobile-wallets a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .mobile-wallets a:hover, .mobile-wallets a:focus-visible { border-color: var(--accent); }
     .why {
       margin-top: 16px;
       padding: 14px;
@@ -371,6 +396,13 @@
           </button>
           <div id="status"></div>
 
+          <div id="mobile-wallets" class="mobile-wallets" role="region" aria-live="polite">
+            <p data-i18n="mw.hint">Цей браузер не бачить гаманця. Відкрийте сторінку в застосунку гаманця:</p>
+            <a id="mw-phantom" href="#" rel="noopener"><span aria-hidden="true">👻</span><span data-i18n="mw.phantom">Відкрити у Phantom (Solana)</span></a>
+            <a id="mw-metamask" href="#" rel="noopener"><span aria-hidden="true">🦊</span><span data-i18n="mw.metamask">Відкрити у MetaMask</span></a>
+            <a id="mw-coinbase" href="#" rel="noopener"><span aria-hidden="true">🔵</span><span data-i18n="mw.coinbase">Відкрити у Coinbase Wallet</span></a>
+          </div>
+
           <div class="why">
             <h3 data-i18n="why">Навіщо гаманець?</h3>
             <p data-i18n="why.p">Це вхід замість пароля. Підпис підтверджує, що адреса ваша.</p>
@@ -446,6 +478,10 @@
         errProvider: "Провайдер не знайдено",
         errPhantom: "Phantom не знайдено",
         errAddr: "Некоректна адреса гаманця",
+        "mw.hint": "Цей браузер не бачить гаманця. Відкрийте сторінку в застосунку гаманця (застосунок має бути встановлений):",
+        "mw.phantom": "Відкрити у Phantom (Solana)",
+        "mw.metamask": "Відкрити у MetaMask",
+        "mw.coinbase": "Відкрити у Coinbase Wallet",
       },
       en: {
         sub: "series workshop · by W3IR",
@@ -484,6 +520,10 @@
         errProvider: "Provider not found",
         errPhantom: "Phantom not found",
         errAddr: "Invalid wallet address",
+        "mw.hint": "This browser cannot see a wallet. Open this page inside a wallet app (the app must be installed):",
+        "mw.phantom": "Open in Phantom (Solana)",
+        "mw.metamask": "Open in MetaMask",
+        "mw.coinbase": "Open in Coinbase Wallet",
       },
     };
 
@@ -669,9 +709,22 @@
       else signInEVM(entry.pick());
     }
 
+    // Phones: an ordinary browser has no injected wallet — offer deep links into the wallet apps' in-app browsers.
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const showMobileWallets = () => { if (isMobile) $("mobile-wallets").classList.add("on"); };
+    (() => {
+      const url = location.href;
+      $("mw-phantom").href = `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(location.origin)}`;
+      $("mw-metamask").href = `https://metamask.app.link/dapp/${location.host}${location.pathname}${location.search}`;
+      $("mw-coinbase").href = `https://go.cb-w.com/dapp?cb_url=${encodeURIComponent(url)}`;
+      // Wallets announce themselves asynchronously (EIP-6963) — wait a moment before deciding there is none.
+      if (isMobile) setTimeout(() => { if (!detectProviders().length) showMobileWallets(); }, 800);
+    })();
+
     $("connect").onclick = () => {
       const providers = detectProviders();
-      if (!providers.length) { setStatus(t("errNoWallet"), "err"); return; }
+      if (!providers.length) { showMobileWallets(); setStatus(t("errNoWallet"), "err"); return; }
       if (providers.length === 1 && providers[0].id !== "injected") { connect(providers[0]); return; }
       openModal(providers);
     };
