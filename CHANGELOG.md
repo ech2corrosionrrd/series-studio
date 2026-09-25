@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+### Ops · Solana RPC + vault dormant
+- Єдиний `resolveSolanaRpcUrl()` (wallet): `SOLANA_PAY_RPC_URL` → `SOLANA_RPC_URL` → Alchemy → public; використовують solpay, holders, vault, providers, welcome SOL balance.
+- Фоновий reconcile Дропу #2 стартує лише з `VAULT_WALLET_ADDRESS` (інакше dormant).
+- Рекомендація: `SOLANA_PAY_TEST_PACK=0` поза мікро-тестом; `.env.example` і [STANDALONE.md](docs/STANDALONE.md) оновлено.
+
 ### Зовнішнє тестування · `npm run lab:tunnel`
 - `scripts/dev-tunnel.mjs`: локальний сервер + іменований тунель Cloudflare (`lab-dev.w3ir.space`) без зміни постійного `.env`.
 - Доступ лише запрошеним гаманцям (`.tunnel-wallets` / `TUNNEL_ALLOWED_WALLETS`), ліміт витрат $5/день, локальний GPU вимкнено, вітальні кредити без вимоги балансу гаманця. Деталі: `docs/HOSTING.md`.

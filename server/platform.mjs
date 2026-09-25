@@ -22,7 +22,7 @@ import { checkPromptSafety } from "../src/platform/safety.mjs";
 import { NonceStore, SESSION_COOKIE, clearSessionCookie, issueSessionToken, readCookie, sessionCookie, SESSION_TTL_SECONDS, verifySessionToken } from "../src/platform/session.mjs";
 import { collectionImagePath, mediaType, renderCollectionHtml, renderLanding, renderLegalHtml, siteFile } from "../src/platform/site.mjs";
 import { walletActivity } from "../src/platform/stats.mjs";
-import { loadCatalog, reconcileFulfillments, vaultRpcUrl, vaultTokenMints } from "../src/platform/vault.mjs";
+import { loadCatalog, reconcileFulfillments, vaultConfigured, vaultRpcUrl, vaultTokenMints } from "../src/platform/vault.mjs";
 import { buildSiweMessage, buildSolanaMessage, isEvmWallet, isSolanaWallet, newNonce, normalizeAddr, verifyEvmSignature, verifySolanaSignature } from "../src/platform/wallet.mjs";
 
 const envInt = (k, d) => Number.parseInt(process.env[k] || "", 10) || d;
@@ -458,7 +458,10 @@ export function startPlatformBackground({ log = console } = {}) {
     const r = await syncGenesisMints();
     if (!r.success) log.warn?.(`Holder sync: ${r.error}`);
   }, 10);
-  every(envInt("FULFILLMENT_RECONCILE_INTERVAL_SECONDS", 300), () => reconcileFulfillments({ log }), 20);
+  // Drop #2 vault: idle until VAULT_WALLET_ADDRESS is set (no Helio trigger anymore).
+  if (vaultConfigured()) {
+    every(envInt("FULFILLMENT_RECONCILE_INTERVAL_SECONDS", 300), () => reconcileFulfillments({ log }), 20);
+  }
   openDb(); // create/migrate the schema at startup, not on the first request
   return () => timers.forEach(clearTimeout);
 }
