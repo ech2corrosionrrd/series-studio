@@ -150,6 +150,7 @@ import { PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck
 } from "../src/platform/billing.mjs";
 import { helioKeys, helioPaylinkUrl, reconcilePayments } from "../src/platform/helio.mjs";
 import { rateLimit } from "../src/platform/ratelimit.mjs";
+import { checkSolOrders, createSolOrder, listSolOrders, solPayInfo } from "../src/platform/solpay.mjs";
 import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
 import { providersSnapshot, keyHealth, providerFloatStatus } from "../src/platform/providers.mjs";
 import { claim as claimHolderBonus, eligibility as holderEligibility } from "../src/platform/holders.mjs";
@@ -1179,6 +1180,7 @@ async function handleApi(req, res, url) {
       wallet,
       balance: getBalance(wallet),
       packages: Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p, url: helioPaylinkUrl(id) })),
+      solPay: solPayInfo(process.env, { admin: isAdmin(wallet) }),
       referral: code ? { code, link: `${process.env.AUTH_URI || "https://ai.w3ir.io"}/login?ref=${code}` } : null,
       localGpu: gpu,
       creditCosts: Object.fromEntries(
@@ -1254,6 +1256,32 @@ async function handleApi(req, res, url) {
       newTx: r.newTx,
       credited: r.credited,
       balance: getBalance(wallet),
+      error: r.error || null,
+    });
+  }
+
+  // Direct USDC-on-Solana top-up: order → user sends the exact amount → we find it on-chain.
+  if (pathname === "/api/credits/sol/order" && req.method === "POST") {
+    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
+    rateLimit(req, "credits_sol_order", 20);
+    const body = await readBody(req);
+    try {
+      const wallet = currentWallet();
+      return send(res, 200, { order: createSolOrder(wallet, String(body.package || ""), { admin: isAdmin(wallet) }) });
+    } catch (e) {
+      return send(res, 400, { error: e.message });
+    }
+  }
+
+  if (pathname === "/api/credits/sol/check" && req.method === "POST") {
+    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
+    rateLimit(req, "credits_sol_check", Number.parseInt(process.env.CREDITS_SYNC_RATE_LIMIT || "10", 10) * 2 || 20);
+    const wallet = currentWallet();
+    const r = await checkSolOrders({ wallet, notify: notifyOperator });
+    return send(res, 200, {
+      credited: r.credited.reduce((n, c) => n + c.credits, 0),
+      balance: getBalance(wallet),
+      orders: listSolOrders(wallet),
       error: r.error || null,
     });
   }

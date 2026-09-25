@@ -119,6 +119,8 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 |--------|------|------|
 | GET | `/api/credits` | баланс, пакети, історія (сесія) |
 | POST | `/api/credits/sync` | звірити Helio після оплати |
+| POST | `/api/credits/sol/order` | `{package}` → замовлення прямої оплати USDC (Solana): точна сума з унікальними мікро-центами, адреса, `solana:` URI |
+| POST | `/api/credits/sol/check` | знайти переказ у блокчейні й зарахувати кредити → `{credited, balance, orders, error}` |
 | GET | `/api/local-gpu` | політика Local GPU (доступність loopback / `SERIES_LOCAL_GPU`) |
 | GET | `/api/engines` | рушії + `creditCosts` (кредити за кадр) |
 | GET | `/api/admin/economy?days=` | `7` \| `30` \| `all` — маржа, накладні, сценарії (адмін) |

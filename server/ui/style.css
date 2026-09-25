@@ -629,6 +629,16 @@ ol.guide.field-guide li::before { width: 16px; height: 16px; top: 4px; left: 4px
 .acct-balance.low { border-color: var(--warn); background: linear-gradient(135deg, #3a2a12, #241a0c); }
 .acct-balance.low b { color: var(--warn); }
 .acct-buy { font-weight: 600; white-space: nowrap; }
+.sol-section { padding: 14px 20px; }
+.sol-packs { display: flex; flex-wrap: wrap; gap: 8px; }
+.sol-pack.on { border-color: var(--accent); box-shadow: 0 0 0 1px #c77dff55 inset; }
+.sol-order { margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-sm, 9px); border: 1px dashed #5a3a78; }
+.sol-instr { margin: 0 0 10px; }
+.sol-fields { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0 0 10px; align-items: center; }
+.sol-fields dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.sol-fields dd { margin: 0; min-width: 0; }
+.sol-fields code { font-size: 15px; word-break: break-all; color: #f3e9ff; }
+.sol-address { font-size: 13px !important; }
 .topup-reason {
   margin: 0 0 12px; padding: 10px 14px; border-radius: var(--radius-sm, 9px);
   border: 1px solid var(--warn); background: #3a2a1230; color: var(--warn); font-size: 14px;

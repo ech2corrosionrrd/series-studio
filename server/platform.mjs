@@ -19,6 +19,7 @@ import {
   inspectBundleZip, parseTmaBody, recordB2bUsage, resolveTmaEngine, resolveTmaStyle, validateSeed, validateTraits, verifyB2bKey,
 } from "../src/platform/partners.mjs";
 import { rateLimit } from "../src/platform/ratelimit.mjs";
+import { checkSolOrders, solPayEnabled } from "../src/platform/solpay.mjs";
 import { checkPromptSafety } from "../src/platform/safety.mjs";
 import { NonceStore, SESSION_COOKIE, clearSessionCookie, issueSessionToken, readCookie, sessionCookie, SESSION_TTL_SECONDS, verifySessionToken } from "../src/platform/session.mjs";
 import { collectionImagePath, mediaType, renderCollectionHtml, renderLanding, renderLegalHtml, siteFile } from "../src/platform/site.mjs";
@@ -519,6 +520,13 @@ export function startPlatformBackground({ log = console } = {}) {
       if (r.newTx) log.log?.(`Helio reconcile: +${r.newTx} tx, +${r.credited} credits`);
       if (r.error) log.warn?.(`Helio reconcile: ${r.error}`);
     });
+  }
+  if (solPayEnabled()) {
+    every(envInt("SOLANA_PAY_RECONCILE_INTERVAL_SECONDS", 45), async () => {
+      const r = await checkSolOrders({ notify: notifyOperator });
+      for (const c of r.credited) log.log?.(`Solana pay: order ${c.id} +${c.credits} credits (${c.signature.slice(0, 12)}…)`);
+      if (r.error) log.warn?.(`Solana pay: ${r.error}`);
+    }, 5);
   }
   every(envInt("HOLDER_SYNC_INTERVAL_SECONDS", 120), async () => {
     const r = await syncGenesisMints();

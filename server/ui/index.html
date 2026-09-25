@@ -858,6 +858,28 @@
       <div id="topup-packages" class="topup-grid"></div>
     </section>
 
+    <section id="sol-section" class="topup-section sol-section" hidden>
+      <div class="topup-section-head">
+        <h4 data-i18n="sol.title">Оплата USDC напряму (Solana)</h4>
+        <span class="muted small" data-i18n="sol.sub">Без посередників · з будь-якої країни</span>
+      </div>
+      <div id="sol-packs" class="sol-packs"></div>
+      <div id="sol-order" class="sol-order" hidden aria-live="polite">
+        <p class="sol-instr" data-i18n="sol.instr">Надішліть точно вказану суму USDC (мережа Solana) на цю адресу. Кредити зарахуються самі.</p>
+        <dl class="sol-fields">
+          <dt data-i18n="sol.amount">Сума</dt>
+          <dd><code id="sol-amount"></code> <span class="muted small">USDC</span> <button type="button" id="sol-copy-amount" class="btn small ghost" data-i18n="sol.copy">Копіювати</button></dd>
+          <dt data-i18n="sol.address">Адреса</dt>
+          <dd><code id="sol-address" class="sol-address"></code> <button type="button" id="sol-copy-address" class="btn small ghost" data-i18n="sol.copy">Копіювати</button></dd>
+        </dl>
+        <p class="muted small" data-i18n="sol.note">Сума містить унікальні копійки — вони позначають ваше замовлення, тому надішліть її без округлення. Платити можна з будь-якого Solana-гаманця.</p>
+        <div class="topup-actions">
+          <a id="sol-open" class="btn small" href="#" data-i18n="sol.open">Відкрити у гаманці</a>
+          <span id="sol-status" class="small muted"></span>
+        </div>
+      </div>
+    </section>
+
     <section class="topup-sync" aria-live="polite">
       <div class="topup-sync-text">
         <b data-i18n="topup.syncTitle">Після оплати</b>
