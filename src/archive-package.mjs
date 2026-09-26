@@ -119,6 +119,7 @@ export function buildChainReadme(locale, collection = {}) {
     collection.ready === false
       ? "Статус перевірки: НЕ готовий — див. preflight.txt"
       : "Статус перевірки: готовий, якщо preflight.txt не містить ERROR",
+    `Кадрів із missing_trait після triage: ${Number(collection.missingTraitFrames) || 0}. ZIP через це не блокується.`,
     "",
     "Що в архіві:",
     "  images/          — картинки видань",
@@ -153,6 +154,7 @@ export function buildChainReadme(locale, collection = {}) {
     collection.ready === false
       ? "Preflight: NOT ready — see preflight.txt"
       : "Preflight: ready when preflight.txt has no ERROR lines",
+    `Frames with missing_trait after triage: ${Number(collection.missingTraitFrames) || 0}. The ZIP is not blocked for this.`,
     "",
     "What is in the archive:",
     "  images/          — edition artwork",

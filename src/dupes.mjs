@@ -115,6 +115,26 @@ export function aHashFromGray(grays) {
   return hash;
 }
 
+/**
+ * Optional similarity of a frame to its base image.
+ * Average hash only: no downloaded weights, no network.
+ * A low score is a review warning. It is not a preflight error.
+ */
+export const SIMILARITY_WARN_BELOW = 0.75;
+
+export function similarityToBase(imageBuf, baseBuf) {
+  const distance = hamming(aHashPng(imageBuf), aHashPng(baseBuf));
+  const similarity = Math.round((1 - distance / 64) * 1000) / 1000;
+  return {
+    distance,
+    similarity,
+    method: "ahash-64",
+    weights: "none",
+    offline: true,
+    warn: similarity < SIMILARITY_WARN_BELOW,
+  };
+}
+
 export function aHashPng(buf) {
   const { rgba, width, height } = decodePngRgba(buf);
   return aHashFromGray(rgbaTo8x8(rgba, width, height));

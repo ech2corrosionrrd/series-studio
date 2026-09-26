@@ -332,12 +332,18 @@
         <span id="opt-count" class="muted small"></span>
       </div>
       <div id="opt-editor-wrap" class="opt-editor-wrap" hidden>
+        <label class="small row">
+          <input type="checkbox" id="opt-skip-dna">
+          <span data-i18n="ctor.options.skipDna">Цей шар не входить в DNA</span>
+        </label>
+        <p class="muted small" data-i18n="ctor.options.skipDnaHelp"></p>
         <div class="opt-table-wrap">
           <table class="opt-table" id="opt-table">
             <thead>
               <tr>
                 <th data-i18n="ctor.options.colValue">value</th>
                 <th data-i18n="ctor.options.colWeight">weight</th>
+                <th data-i18n="ctor.options.colExact">рівно N</th>
                 <th data-i18n="ctor.options.colPrompt">prompt</th>
                 <th data-i18n="ctor.options.colActions"></th>
               </tr>
@@ -423,6 +429,8 @@
     <div class="toolbar">
       <select id="r-preset" data-i18n-tip="ctrl.r-preset.tip"></select>
       <button type="button" id="r-build" class="btn primary" data-i18n="recipes.build">Зібрати тексти</button>
+      <button type="button" id="r-simulate" class="btn" data-i18n="recipes.simulate">Суха симуляція рідкості</button>
+      <span id="r-simulate-msg" class="small" role="status"></span>
       <span class="muted small" data-i18n="recipes.textsOnly">Без рендеру і без кредитів.</span>
       <button type="button" id="r-diff" class="btn" data-i18n="recipes.diff">Diff-seed</button>
       <input id="r-search" data-i18n-placeholder="recipes.search" data-i18n-tip="recipes.search.tip" placeholder="Search">
@@ -515,6 +523,15 @@
           <input type="range" id="g-strength" min="0.1" max="0.95" step="0.05" value="0.45">
         </label>
         <p id="g-strength-note" class="muted small" role="status"></p>
+        <div id="g-license" class="license-warn" hidden role="status">
+          <b data-i18n="license.warnTitle">Ліцензія FLUX.1 [dev]</b>
+          <p data-i18n="license.body"></p>
+          <button type="button" id="g-license-proceed" class="btn small" data-i18n="license.proceed">Зрозуміло, генерувати</button>
+        </div>
+        <label id="g-flux-dev-wrap" class="small row" hidden>
+          <input type="checkbox" id="g-flux-dev">
+          <span data-i18n="license.fluxDevMark">Я використовую ваги FLUX.1 dev</span>
+        </label>
         <div class="scale small">
           <span data-i18n="scale.free"></span>
           <span data-i18n="scale.balance"></span>
@@ -596,6 +613,14 @@
         <option value="redo" data-i18n="gallery.filter.redo">↻ Переробити</option>
       </select>
       <span id="v-stats" class="muted"></span>
+      <label class="small row">
+        <input type="checkbox" id="v-thumb64">
+        <span data-i18n="gallery.thumb64">Мініатюра 64px поруч</span>
+      </label>
+      <label class="small row">
+        <input type="checkbox" id="v-similarity">
+        <span data-i18n="gallery.similarity.toggle">Схожість до бази</span>
+      </label>
       <button type="button" id="v-redo" class="btn" data-i18n="gallery.redoMarked">Redo marked…</button>
       <button type="button" id="v-quick-redo" class="btn primary" data-i18n="gallery.redo.btn">↻ Перегенерувати відхилені</button>
       <span id="v-redo-status" class="small muted"></span>
@@ -665,7 +690,13 @@
         <a id="x-release-next" class="btn primary" href="#" target="_blank" rel="noopener noreferrer" hidden data-i18n="export.release.next" data-i18n-tip="export.release.next.tip">Далі · портал запуску →</a>
       </div>
       <ul id="x-release-list" class="checklist"></ul>
-      <pre id="x-preflight-report" class="log small preflight" hidden></pre>
+      <div id="x-preflight-report" class="preflight-report" hidden>
+        <div class="preflight-head">
+          <span id="x-preflight-badge" class="preflight-badge" role="status"></span>
+          <button type="button" id="x-preflight-copy" class="btn small" data-i18n="preflight.copy">Копіювати як текст</button>
+        </div>
+        <div id="x-preflight-groups"></div>
+      </div>
     </div>
     <div class="card">
       <label class="small"><span data-i18n="export.archive">Архів</span>

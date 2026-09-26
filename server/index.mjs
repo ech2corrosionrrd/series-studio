@@ -22,10 +22,12 @@ import { dirname, extname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   buildRecipes,
+  drySimulate,
   buildPrompt,
   appendSupplyWave,
   describeSupply,
   findDupes,
+  similarityToBase,
   dna,
   duplicates,
   duplicateGroups,
@@ -54,6 +56,7 @@ import {
   analyzeBaseImage,
   mapConcurrent,
   triageBatch,
+  countMissingTraitFrames,
   triageImageOffline,
   triageImageVision,
   checkStorageStatus,
@@ -99,6 +102,7 @@ import {
   clampStrength,
 } from "../src/engines.mjs";
 import { imagesDirName } from "../src/reference.mjs";
+import { licenseWarning, engineModelId, platformFluxModel } from "../src/license.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -407,6 +411,25 @@ function rejectSecrets(res, body) {
   send(res, 400, {
     error: "Series Lab does not accept private keys, seed phrases, or secrets. Sign from your own wallet.",
     code: "secrets",
+  });
+  return true;
+}
+
+const LICENSE_WARNING_ERROR = "FLUX.1 [dev] weights need a licence warning before a credit charge.";
+
+function licenseForBody(engineName, body, mode = "edit") {
+  const model = body?.model || engineModelId(engineName, mode);
+  return licenseWarning(engineName, model, { fluxDevWeights: Boolean(body?.fluxDevWeights) });
+}
+
+/** Public mode must show the warning before any credit debit. Local studio is not blocked. */
+function blockLicenseCharge(res, warning, body) {
+  if (!warning || !PUBLIC_MODE || body?.ackLicense) return false;
+  send(res, 409, {
+    error: LICENSE_WARNING_ERROR,
+    code: "license_warning",
+    licenseWarning: warning,
+    charged: false,
   });
   return true;
 }
@@ -1529,6 +1552,22 @@ async function handleApi(req, res, url) {
     });
   }
 
+  if (pathname === "/api/simulate" && req.method === "POST") {
+    const body = await readBody(req);
+    let preset = body.preset;
+    if (!preset) {
+      preset = loadPresetByFile(body.file || "demo-series.json").preset;
+    }
+    const checked = checkPreset(preset);
+    if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
+    try {
+      const sim = drySimulate(preset, body.pack || null);
+      return send(res, 200, { ok: true, ...sim });
+    } catch (e) {
+      return send(res, 400, { ok: false, error: String(e.message || e), code: "simulate" });
+    }
+  }
+
   if (pathname === "/api/diff-seed" && req.method === "POST") {
     const body = await readBody(req);
     const { preset } = loadPresetByFile(body.file || "demo-series.json");
@@ -1923,6 +1962,10 @@ async function handleApi(req, res, url) {
       "",
       "Estimate is free. Generate will call the image API.",
     ];
+    const licenseNotice = licenseForBody(engineWanted, body);
+    if (licenseNotice) {
+      lines.push("", `Licence: ${licenseNotice.en}`);
+    }
     const lint = lintPrompts((sel.recipes || []).map((r) => r.prompt || ""));
     if (!lint.ok) {
       lines.push("", `⚠ Lint warn (will block Generate): ${lint.hits.join(", ")}`);
@@ -1947,6 +1990,7 @@ async function handleApi(req, res, url) {
       capError: capMsg,
       text: lines.join("\n"),
       lint: { ok: lint.ok, hits: lint.hits },
+      licenseWarning: licenseNotice,
     });
   }
 
@@ -1972,6 +2016,8 @@ async function handleApi(req, res, url) {
         });
       }
       const eng = getEngine(engineName);
+      const licenseNotice = licenseForBody(engineName, body);
+      if (blockLicenseCharge(res, licenseNotice, body)) return;
       const image = readFileSync(join(P().input, primary.file));
       const mime = mimeOf(primary.file);
       const str = clampStrength(body.strength);
@@ -2017,6 +2063,8 @@ async function handleApi(req, res, url) {
     }
     const strength = clampStrength(body.strength);
     const engineWanted = body.engine || "kontext";
+    const licenseNotice = licenseForBody(engineWanted, body);
+    if (blockLicenseCharge(res, licenseNotice, body)) return;
     const engineName = pickAvailableEngine(engineWanted, process.env, ENGINES, { exact: true });
     if (!engineName) {
       throw httpError(400, `Engine unavailable for edit: ${engineWanted}`, {
@@ -2068,7 +2116,7 @@ async function handleApi(req, res, url) {
         "Cache-Control": "no-cache, no-transform",
         "Connection": "keep-alive",
       });
-      res.write(`data: ${JSON.stringify({ type: "start", total: sel.recipes.length, engine: engineName, requestedEngine: engineWanted, strength, set })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: "start", total: sel.recipes.length, engine: engineName, requestedEngine: engineWanted, strength, set, licenseWarning: licenseNotice })}\n\n`);
     }
 
     const results = await mapConcurrent(
@@ -2099,6 +2147,7 @@ async function handleApi(req, res, url) {
             seed: recipe.seed,
             promptHash: promptHash(recipe.prompt),
             baseSha256: sha256Hex(image),
+            ...(licenseNotice ? { licenseWarning: licenseNotice } : {}),
           });
           logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, v, ok: true, costUsd: unitCost, seed: recipe.seed });
           breaker.record(true);
@@ -2215,6 +2264,28 @@ async function handleApi(req, res, url) {
       engines: engineStatsToday(renderLog()),
       errors: recentEngineErrors(renderLog()),
     });
+  }
+
+  if (pathname === "/api/similarity" && req.method === "GET") {
+    const dirName = safeSetName(url.searchParams.get("dir") || "");
+    const setDir = join(P().out, dirName);
+    if (!existsSync(setDir)) return send(res, 400, { error: "set not found" });
+    const primary = listBases().find((f) => f.primary) || listBases()[0];
+    if (!primary) return send(res, 400, { error: "No base image found to analyze" });
+    const baseBuf = readFileSync(join(P().input, primary.file));
+    const editions = [];
+    for (const name of readdirSync(setDir)) {
+      const m = /^(\d+)\.png$/i.exec(name);
+      if (!m) continue;
+      try {
+        const row = similarityToBase(readFileSync(join(setDir, name)), baseBuf);
+        editions.push({ edition: Number(m[1]), ...row });
+      } catch {
+        editions.push({ edition: Number(m[1]), similarity: null, warn: false, skipped: true });
+      }
+    }
+    editions.sort((a, b) => a.edition - b.edition);
+    return send(res, 200, { ok: true, method: "ahash-64", offline: true, editions });
   }
 
   if (pathname === "/api/waves" && req.method === "GET") {
@@ -2369,6 +2440,14 @@ async function handleApi(req, res, url) {
     }
 
     const autoApply = Boolean(body.autoApplyMarks);
+    const missingTraits = countMissingTraitFrames(results);
+    writeJsonAtomic(join(setDir, "triage.json"), {
+      at: new Date().toISOString(),
+      provider,
+      results,
+      missingTraitFrames: missingTraits.frames,
+    });
+
     if (autoApply) {
       for (const resItem of results) {
         if (resItem.edition != null && (resItem.verdict === "keep" || resItem.verdict === "redo")) {
@@ -2387,6 +2466,7 @@ async function handleApi(req, res, url) {
       evaluated: results.length,
       results,
       marks: currentMarks,
+      missingTraitFrames: missingTraits.frames,
     });
   }
 

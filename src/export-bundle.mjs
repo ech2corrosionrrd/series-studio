@@ -28,7 +28,8 @@ import {
 import { calculateCollectionProvenance } from "./provenance.mjs";
 import { readMeta } from "./versions.mjs";
 import { creationVersion, promptHash } from "./creation.mjs";
-import { runPreflight } from "./preflight.mjs";
+import { runPreflight, formatPreflightReport } from "./preflight.mjs";
+import { countMissingTraitFrames } from "./critic.mjs";
 import {
   buildRoyalties,
   buildRarityReport,
@@ -51,6 +52,17 @@ export {
   getMimeType,
   getMediaCategory,
 };
+
+function readTriageCount(setDir) {
+  const file = join(setDir, "triage.json");
+  if (!setDir || !existsSync(file)) return { frames: 0, editions: [] };
+  try {
+    const doc = JSON.parse(readFileSync(file, "utf8"));
+    return countMissingTraitFrames(doc?.results || doc);
+  } catch {
+    return { frames: 0, editions: [] };
+  }
+}
 
 /** OpenSea / ERC-721 metadata. */
 export function buildErc721Meta(recipe, opts = {}, traitItems = []) {
@@ -503,6 +515,7 @@ export async function buildBundleZip(params) {
   zip.file("rarity.txt", formatRarityText(rarity, locale));
   zip.file("royalties.json", JSON.stringify(royalties, null, 2) + "\n");
 
+  const triageCount = readTriageCount(setDir);
   const preflight = runPreflight({
     locale,
     standard: format === "metaplex" ? "metaplex" : format === "ordinals" ? "ordinals" : "erc721",
@@ -513,6 +526,15 @@ export async function buildBundleZip(params) {
     description: opts.description || "",
     coverPresent: Boolean(cover?.buffer),
   }, opts.env || process.env);
+  if (triageCount.frames > 0) {
+    const uk = String(locale).toLowerCase().startsWith("uk");
+    const message = uk
+      ? `${triageCount.frames} кадрів мають missing_trait після triage (${triageCount.editions.slice(0, 12).join(", ")}). ZIP не блокується — вирішує людина.`
+      : `${triageCount.frames} frames have missing_trait after triage (${triageCount.editions.slice(0, 12).join(", ")}). The ZIP is not blocked — a person decides.`;
+    preflight.warnings.push(message);
+    preflight.checks.push({ level: "warning", code: "missing_trait", message });
+    preflight.report = formatPreflightReport(preflight, locale);
+  }
   zip.file("preflight.json", JSON.stringify({
     ready: preflight.ready,
     status: preflight.status,
@@ -549,6 +571,7 @@ export async function buildBundleZip(params) {
   collection.description = opts.description || "";
   collection.sellerFeeBasisPoints = royalties.sellerFeeBasisPoints;
   collection.ready = preflight.ready;
+  collection.missingTraitFrames = triageCount.frames;
   collection.preflight = {
     ready: preflight.ready,
     errors: preflight.errors.length,
