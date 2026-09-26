@@ -13,6 +13,28 @@ import { LAUNCHPAD_PROFILES } from "./launchpads.mjs";
  * @param {object} [opts={}]
  * @returns {object}
  */
+/**
+ * Core Candy Machine draft for the release hub (not a Sugar config).
+ * Fields match the deploy kit's cm-config.json. No wallet key.
+ */
+export function buildCoreCandyConfig(archive = {}, preset = {}, opts = {}) {
+  const count = Number(archive.size ?? archive.recipes?.length ?? 0);
+  const name = String(opts.name || opts.namePrefix || preset.name || archive.presetId || "Series").replace(/\s+#$/, "");
+  const symbol = String(opts.symbol || preset.symbol || "LAB").trim();
+  const description = opts.description || preset.description || "";
+  const fee = Number(opts.sellerFeeBasisPoints ?? opts.fee ?? 500);
+  const creator = String(opts.creatorAddress || "").trim();
+  return {
+    name,
+    symbol,
+    description,
+    sellerFeeBasisPoints: Number.isFinite(fee) ? fee : 500,
+    itemsAvailable: count,
+    isMutable: true,
+    creators: creator ? [{ address: creator, percentage: 100 }] : [],
+  };
+}
+
 export function buildSugarConfig(archive = {}, preset = {}, opts = {}) {
   const count = Number(archive.size ?? archive.recipes?.length ?? 10);
   const symbol = String(opts.symbol || preset.symbol || "LAB").trim();
@@ -69,6 +91,7 @@ export function buildThirdwebConfig(archive = {}, preset = {}, opts = {}) {
   const creator = String(opts.creatorAddress || "").trim() || "0x0000000000000000000000000000000000000000";
   const image = opts.imageUriPrefix || opts.coverImage || "";
 
+  const uk = String(opts.locale || "en").toLowerCase().startsWith("uk");
   return {
     name,
     symbol,
@@ -82,6 +105,12 @@ export function buildThirdwebConfig(archive = {}, preset = {}, opts = {}) {
     defaultAdmin: creator,
     total_supply: count,
     ...(opts.provenanceHash ? { provenance_hash: opts.provenanceHash } : {}),
+    delayedReveal: {
+      passwordStored: false,
+      hint: uk
+        ? "Пароль delayed reveal вводьте у своєму кабінеті thirdweb. Series Lab його не приймає і не зберігає."
+        : "Enter the delayed-reveal password in your own thirdweb dashboard. Series Lab does not accept or store it.",
+    },
   };
 }
 
@@ -102,12 +131,12 @@ export function getLaunchpadPortalUrls(profileKey = "opensea", archive = {}, opt
       name: "Magic Eden Creator Hub",
       portalUrl: "https://magiceden.io/creator-hub",
       testnetPortalUrl: "https://devnet.magiceden.io/creator-hub",
-      recommendedFile: "sugar.json",
+      recommendedFile: "cm-config.json",
       standard: "Metaplex / Solana",
       tips: [
         "1. Open Magic Eden Creator Hub and connect your creator wallet.",
         "2. Select 'Create New Drop' on Solana.",
-        "3. Upload the generated ZIP bundle containing images/ + metadata/ + sugar.json.",
+        "3. Upload the ZIP. Solana drops use the Core Candy Machine layout (cm-config.json and assets/). sugar/config.json is labelled legacy only.",
         "4. Set your drop phases (Allowlist / Public) and launch date.",
       ],
     };
@@ -197,7 +226,8 @@ export function buildReleaseGuide(locale = "en", archive = {}, opts = {}) {
       "  - images/       : оптимізовані зображення з правильною нумерацією",
       "  - metadata/     : JSON метадані кожного токена зі структурою атрибутів",
       "  - manifest.csv  : зведений CSV-маніфест для гуртового імпорту",
-      "  - sugar.json    : конфіг для Metaplex Sugar CLI (якщо Solana)",
+      "  - cm-config.json: чернетка Core Candy Machine (Solana, типово)",
+      "  - sugar/config.json : спадщина Sugar, не для нової колекції",
       "  - thirdweb.json : параметри для контракту Thirdweb Drop (якщо EVM)",
       "  - collection.json: звіт параметрів серії",
       "",
@@ -226,7 +256,8 @@ export function buildReleaseGuide(locale = "en", archive = {}, opts = {}) {
     "  - images/        : artwork files with exact indexing",
     "  - metadata/      : per-token JSON metadata formatted for the standard",
     "  - manifest.csv   : bulk upload manifest CSV",
-    "  - sugar.json     : Metaplex Sugar CLI config (for Solana)",
+    "  - cm-config.json : Core Candy Machine draft (Solana default)",
+    "  - sugar/config.json : legacy Sugar config, not for a new collection",
     "  - thirdweb.json  : Thirdweb Drop contract parameters (for EVM)",
     "  - collection.json: series summary & reproducibility metadata",
     "",

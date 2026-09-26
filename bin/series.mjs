@@ -25,6 +25,7 @@ import {
   calculateDeterministicCid,
   exportManifestCsv,
   buildSugarConfig,
+  buildCoreCandyConfig,
   buildThirdwebConfig,
   generateShowcaseHtml,
   calculateRarityScores,
@@ -36,6 +37,7 @@ import {
 } from "../src/index.mjs";
 import { loadKeys } from "../src/keys.mjs";
 import { ENGINES, TXT2IMG, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
+import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -291,7 +293,15 @@ async function cmdRender(presetPath, opts = {}) {
         breaker.record(false);
         throw e;
       }
-      const v = addVersion(outDir, recipe.edition, buf, { engine, strength, seed: recipe.seed, source: "cli" });
+      const v = addVersion(outDir, recipe.edition, buf, {
+        engine,
+        model: modelTitle(engine, "edit"),
+        strength,
+        seed: recipe.seed,
+        promptHash: promptHash(recipe.prompt),
+        baseSha256: sha256Hex(image),
+        source: "cli",
+      });
       log({ edition: recipe.edition, v, ok: true, costUsd: eng.costUsd ?? null, seed: recipe.seed });
       breaker.record(true);
       return { ok: true, edition: recipe.edition, v, path: join(outDir, `${recipe.edition}.png`) };
@@ -519,12 +529,18 @@ function cmdReleaseConfig(archivePath, opts = {}) {
     namePrefix,
   };
 
-  if (profile === "magiceden" || profile === "launchmynft") {
+  if (profile === "launchmynft" || (profile === "magiceden" && opts.legacy)) {
     const sugar = buildSugarConfig(archive, preset || {}, configOpts);
     const out = resolve(opts.out || join("out", `sugar-${archive.presetId || "series"}.json`));
     mkdirSync(dirname(out), { recursive: true });
     writeJsonAtomic(out, sugar);
-    console.log(`Wrote Metaplex Sugar CLI config: ${out} (profile: ${profile})`);
+    console.log(`Wrote legacy Sugar config: ${out} (profile: ${profile})`);
+  } else if (profile === "magiceden") {
+    const core = buildCoreCandyConfig(archive, preset || {}, configOpts);
+    const out = resolve(opts.out || join("out", `cm-config-${archive.presetId || "series"}.json`));
+    mkdirSync(dirname(out), { recursive: true });
+    writeJsonAtomic(out, core);
+    console.log(`Wrote Core Candy Machine config: ${out} (profile: ${profile})`);
   } else {
     const tw = buildThirdwebConfig(archive, preset || {}, configOpts);
     const out = resolve(opts.out || join("out", `thirdweb-${archive.presetId || "series"}.json`));
@@ -700,6 +716,7 @@ function parseOpts(args) {
     else if (a === "--trigger" || a === "--trigger-word") opts.trigger = args[++i];
     else if (a === "--images" || a === "--set-dir") opts.images = args[++i];
     else if (a === "--format") opts.format = args[++i];
+    else if (a === "--legacy") opts.legacy = true;
     else if (a === "--verify") opts.verify = true;
     else if (a === "--provenance") opts.provenance = args[++i];
   }

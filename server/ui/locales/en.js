@@ -1057,7 +1057,7 @@ export default {
   "release.hub.portalNamed": "Open {name}",
   "release.portal.magiceden.tip1": "1. Open Magic Eden Creator Hub and connect your creator wallet.",
   "release.portal.magiceden.tip2": "2. Choose Create New Drop on Solana.",
-  "release.portal.magiceden.tip3": "3. Upload the ZIP with images/, metadata/, and sugar.json.",
+  "release.portal.magiceden.tip3": "3. Upload the ZIP. Solana drops use the Core Candy Machine layout (cm-config.json and assets/). sugar/config.json is labelled legacy only.",
   "release.portal.magiceden.tip4": "4. Set the phases (allowlist / public) and the launch date.",
   "release.portal.launchmynft.tip1": "1. Open the LaunchMyNFT create page.",
   "release.portal.launchmynft.tip2": "2. Connect Phantom, Solflare, or an EVM wallet.",

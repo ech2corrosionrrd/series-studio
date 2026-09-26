@@ -102,7 +102,7 @@ node bin/series.mjs upscale out/fal-s0.45
 node bin/series.mjs pin out/fal-s0.45 --name my-series
 node bin/series.mjs manifest out/demo-archive.json --profile opensea
 node bin/series.mjs showcase out/demo-archive.json -o out/showcase.html
-node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o out/sugar.json
+node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o out/cm-config.json
 ```
 
 ---

@@ -2,7 +2,7 @@
  * Extra files that make an export a verified, ready-to-upload package:
  * cover, royalties, rarity, and a chain-specific README / next steps.
  */
-import { computeRarity } from "./rarity.mjs";
+import { computeRarity, openRarityByEdition } from "./rarity.mjs";
 import { chainForProfile } from "./deploy-kit.mjs";
 
 export function buildRoyalties(opts = {}) {
@@ -23,7 +23,10 @@ export function buildRarityReport(preset, recipes) {
   try {
     if (preset && (preset.traits || preset.id)) {
       const report = computeRarity(preset, list);
-      if (report?.traits?.length) return report;
+      if (report?.traits?.length) {
+        report.openRarity = openRarityByEdition(preset, list);
+        return report;
+      }
     }
   } catch {
     /* preset has no trait pack — count what the recipes actually used */
@@ -50,7 +53,12 @@ export function buildRarityReport(preset, recipes) {
       }))
       .sort((a, b) => b.count - a.count),
   }));
-  return { traits, sampleSize: list.length, source: "recipes" };
+  return {
+    traits,
+    sampleSize: list.length,
+    source: "recipes",
+    openRarity: openRarityByEdition(preset, list),
+  };
 }
 
 export function formatRarityText(report, locale = "en") {
@@ -71,6 +79,21 @@ export function formatRarityText(report, locale = "en") {
   }
   if (!report.traits?.length) {
     lines.push(uk ? "Рис у вибраних рецептах немає." : "No traits on the selected recipes.");
+  }
+  lines.push(uk
+    ? "Метод вище: частота (кількість / вибірка). Це попередній звіт, його не замінює OpenRarity."
+    : "Method above: frequency (count / sample). This is the existing report. OpenRarity does not replace it.");
+  const open = report.openRarity;
+  if (open?.editions?.length) {
+    lines.push("");
+    lines.push(uk
+      ? "OpenRarity = сума −log2(P). Відсутня риса шару, який є в пресеті, рахується як значення «null»."
+      : "OpenRarity = sum of -log2(P). A missing trait on a layer that exists in the preset counts as the value \"null\".");
+    for (const row of open.editions) {
+      const score = Number(row.openRarity);
+      const shown = Number.isFinite(score) ? score.toFixed(6) : "—";
+      lines.push(`  #${row.edition}: ${shown}`);
+    }
   }
   return lines.join("\n");
 }
@@ -102,11 +125,14 @@ export function buildChainReadme(locale, collection = {}) {
     "  metadata/        — метадані обраного стандарту",
     "  cover.*          — обкладинка колекції (перше зображення набору)",
     "  royalties.json   — роялті й адреса творця (без приватного ключа)",
-    "  rarity.json      — звіт рідкості рис",
+    "  rarity.json      — частота рис і окремий звіт OpenRarity",
     "  rarity.txt       — той самий звіт текстом",
+    "  creation/        — маніфест створення кожного видання (не всередині metadata/)",
     "  collection.json  — підсумок",
     "  preflight.txt    — результат перевірки",
     "  README.txt       — цей файл, наступні кроки для вашої мережі",
+    "",
+    aiDisclosure("uk"),
     "",
     "Наступні кроки:",
     "  1. Прочитайте preflight.txt. ERROR блокує позначку «готовий».",
@@ -133,11 +159,14 @@ export function buildChainReadme(locale, collection = {}) {
     "  metadata/        — metadata for the chosen standard",
     "  cover.*          — collection cover (first image in the set)",
     "  royalties.json   — royalty and creator address (no private key)",
-    "  rarity.json      — trait rarity report",
+    "  rarity.json      — trait frequency plus a separate OpenRarity report",
     "  rarity.txt       — the same report as text",
+    "  creation/        — per-edition creation manifest (not inside metadata/)",
     "  collection.json  — summary",
     "  preflight.txt    — validation result",
     "  README.txt       — this file, next steps for your chain",
+    "",
+    aiDisclosure("en"),
     "",
     "Next steps:",
     "  1. Read preflight.txt. An ERROR keeps the archive from being marked ready.",
@@ -148,6 +177,21 @@ export function buildChainReadme(locale, collection = {}) {
   ];
   const tail = uk ? chainNextUk(chain) : chainNextEn(chain);
   return [...(uk ? commonUk : commonEn), ...tail, ""].join("\n");
+}
+
+function aiDisclosure(locale) {
+  if (locale === "uk") {
+    return [
+      "----- РОЗКРИТТЯ ШІ (цей абзац можна стерти) -----",
+      "Ці зображення згенеровано моделлю в Series Lab. Людина задала пресет, зерно порядку і те, які кадри лишити. Це робочий текст розкриття, не юридичний висновок, і його можна видалити.",
+      "----- КІНЕЦЬ РОЗКРИТТЯ ШІ -----",
+    ].join("\n");
+  }
+  return [
+    "----- AI DISCLOSURE (delete this paragraph if you do not want it in the archive) -----",
+    "These images were generated with a model in Series Lab. A person set the preset, the seed, and which frames to keep. This paragraph is a working disclosure, not a legal opinion, and you may delete it.",
+    "----- END AI DISCLOSURE -----",
+  ].join("\n");
 }
 
 function chainLabel(chain, locale) {
@@ -162,8 +206,9 @@ function chainNextUk(chain) {
     return [
       "Solana:",
       "  - Метадані в metadata/ — Metaplex.",
-      "  - sugar.json у цьому архіві — чернетка. Робочий набір для CLI — «Набір деплою»:",
-      "    config.json, тека assets/ і команди sugar (спочатку devnet).",
+      "  - cm-config.json у цьому архіві — чернетка Core Candy Machine.",
+      "  - sugar/config.json і sugar/LEGACY.txt — спадщина, не для нової колекції.",
+      "  - Робочий набір CLI — «Набір деплою» (mplx, спочатку devnet).",
       "  - Далі маркетплейс: Magic Eden і Tensor, зі свого акаунта.",
     ];
   }
@@ -188,8 +233,9 @@ function chainNextEn(chain) {
     return [
       "Solana:",
       "  - metadata/ is Metaplex.",
-      "  - sugar.json in this archive is a draft. The CLI package is the Deploy kit:",
-      "    config.json, an assets/ folder, and sugar commands (devnet first).",
+      "  - cm-config.json in this archive is a Core Candy Machine draft.",
+      "  - sugar/config.json and sugar/LEGACY.txt are legacy, not for a new collection.",
+      "  - The CLI package is the Deploy kit (mplx, devnet first).",
       "  - Then the marketplace kit: Magic Eden and Tensor, from your own account.",
     ];
   }

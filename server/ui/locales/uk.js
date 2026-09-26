@@ -1057,7 +1057,7 @@ export default {
   "release.hub.portalNamed": "Відкрити {name}",
   "release.portal.magiceden.tip1": "1. Відкрийте Magic Eden Creator Hub і підключіть гаманець творця.",
   "release.portal.magiceden.tip2": "2. Оберіть «Create New Drop» на Solana.",
-  "release.portal.magiceden.tip3": "3. Завантажте ZIP: images/, metadata/ і sugar.json.",
+  "release.portal.magiceden.tip3": "3. Завантажте ZIP. Для Solana — розклад Core Candy Machine (cm-config.json і assets/). sugar/config.json — лише підписана спадщина.",
   "release.portal.magiceden.tip4": "4. Задайте фази (allowlist / public) і дату запуску.",
   "release.portal.launchmynft.tip1": "1. Відкрийте сторінку створення LaunchMyNFT.",
   "release.portal.launchmynft.tip2": "2. Підключіть Phantom, Solflare або EVM-гаманець.",
