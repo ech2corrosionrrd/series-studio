@@ -1,6 +1,6 @@
 # Документація Series Lab
 
-Стан: **v1.6.0** ([CHANGELOG](../CHANGELOG.md)) — бачення продукту, перевірений архів, набори деплою й маркетплейсу ([PRODUCT.md](./PRODUCT.md)). Ядро майстерні (хвилі 1–25) закрито раніше.
+Стан: **v1.6.1** ([CHANGELOG](../CHANGELOG.md)) — запити #1–#9: перевірений архів, Core Candy Machine, маркет, порадник, огляд якості ([PRODUCT.md](./PRODUCT.md), [RECOMMENDATIONS.md](./RECOMMENDATIONS.md), [QUALITY-REVIEW.md](./QUALITY-REVIEW.md)). Ядро майстерні (хвилі 1–25) закрито раніше.
 
 Запуск: `start-lab.bat` або `npm start` → http://127.0.0.1:5344/studio/ (у `public` — спочатку `/login`).
 
@@ -21,7 +21,8 @@
 | Документ | Про що |
 |---|---|
 | [PRODUCT.md](./PRODUCT.md) | Бачення: місія, аудиторія, етапи, економіка етапу, поза продуктом, аудит прогалин |
-| [RECOMMENDATIONS.md](./RECOMMENDATIONS.md) | План реалізації за дослідженням топ-колекцій і звіркою сили референсу (лише документ) |
+| [RECOMMENDATIONS.md](./RECOMMENDATIONS.md) | План за дослідженням колекцій. Поле «Зараз у коді» — поточна поведінка; статус кожного R — у картці |
+| [QUALITY-REVIEW.md](./QUALITY-REVIEW.md) | Огляд якості зібраного результату #1–#9 |
 | [../README.md](../README.md) | Огляд продукту, запуск, змінні `.env`, CLI, структура |
 | [GUIDE.md](./GUIDE.md) | Посібник для початківців |
 | [ECONOMY.md](./ECONOMY.md) | Кредити, юніт-маржа, хостинг/SaaS, crypto→USD, Admin → Економіка |

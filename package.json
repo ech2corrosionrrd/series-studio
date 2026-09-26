@@ -1,6 +1,6 @@
 {
   "name": "series-lab",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Series Lab — NFT series workshop (preset → recipes → render → release). Lab → Studio → Release by W3IR.",
   "type": "module",
   "license": "MIT",

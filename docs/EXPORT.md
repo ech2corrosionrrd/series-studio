@@ -86,7 +86,7 @@ Series Lab підтримує автоматичне виявлення та п�
 ## 7. Release & Deployment Hub
 
 Спеціальний блок у вкладці Експорт надає:
-- Прямі посилання на створення дропу в **OpenSea Studio**, **Magic Eden Creator Hub**, **LaunchMyNFT**, **Thirdweb**, **OrdinalsBot**.
+- Прямі посилання на створення дропу в **OpenSea Studio**, **Magic Eden Creator Hub (лише Solana)**, **LaunchMyNFT**, **Thirdweb**, **OrdinalsBot**.
 - Посилання на **Тестнет-портали** (Sepolia, Devnet).
 - Кнопку завантаження конфігурацій деплою:
   - `cm-config.json` для Core Candy Machine (типово для Solana). `sugar.json` лише з `?legacy=1` і позначкою «застарілий».

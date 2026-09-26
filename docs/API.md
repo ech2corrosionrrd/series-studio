@@ -88,11 +88,15 @@
 | POST | `/api/workspace` | зберегти / `clear` workspace |
 | GET | `/api/storage/status` | статус ключів децентралізованого зберігання (Pinata) |
 | POST | `/api/storage/pin` | завантаження набору зображень у Pinata IPFS |
-| GET | `/api/launchpads` | список підтримуваних профілів лаунчпадів (OpenSea, Magic Eden, LaunchMyNFT, Ordinals) |
+| GET | `/api/launchpads` | список профілів лаунчпадів (OpenSea, Magic Eden Drop (Solana), LaunchMyNFT, Ordinals) |
 | GET | `/api/export/manifest.csv` | експорт CSV маніфесту для гуртового імпорту (`?archive=&profile=&zeroIndexed=`) |
 | GET | `/api/export/showcase.html` | завантаження автономного HTML візуального пруфу та оцінки рідкості |
 | GET | `/api/release/portals` | отримання посилань на лаунчпади та покрокових порад (`?profile=&archive=`) |
-| GET | `/api/release/config` | конфіг деплою: `cm-config.json` для Magic Eden, `sugar.json` якщо `?legacy=1`, інакше `thirdweb.json` |
+| GET | `/api/release/config` | конфіг деплою: типово `cm-config.json` (Core Candy Machine); `sugar.json` лише якщо `?legacy=1`; для EVM — `thirdweb.json` |
+| POST | `/api/preflight` | перевірка архіву перед ZIP: помилки блокують, попередження ні |
+| POST | `/api/deploy-kit` | ZIP набору деплою. `chain` типово `solana` (Core). `solana-legacy` або `legacy: true` — застарілий Sugar. Тіло з приватним ключем — 400 `secrets` |
+| GET | `/api/launch-advisor?chain=&locale=` | офлайн-порадник. Creator Hub лише для `solana`. Біржових цін немає |
+| POST | `/api/marketplace-kit` | ZIP набору маркетплейсу. Solana: Magic Eden і Tensor. EVM: OpenSea. Bitcoin: Ordinals, без Magic Eden |
 
 ## Versions / trash / spend (захист оплачених рендерів)
 
