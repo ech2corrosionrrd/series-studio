@@ -42,5 +42,5 @@ Series Lab — **новий продукт з власною історією**.
 
 1. **Скидання staging** (потребує дій на сервері): `CONFIRM=yes bash deploy/series-lab/reset-staging.sh` (або копія на сервері), далі `upload.sh` з `lab.env` Lab.
 2. **Юридичні тексти** (`server/site/LEGAL.md`, `UMOVY.md`): назва оператора та умови — затвердити окремо.
-3. **NFT-сейф / Дроп #2** (`vault.mjs`): **залишено dormant** — API `/api/vault/status` і таблиця `nft_fulfillments` є, фоновий reconcile **не стартує** без `VAULT_WALLET_ADDRESS`. Тригера видачі після оплати немає (Helio прибрано); увімкнути лише свідомо під нову схему.
+3. **NFT-сейф / Дроп #2** (`vault.mjs`): **поза ядром продукту, відкладено і лишається вимкненим.** Бачення ([PRODUCT.md](./PRODUCT.md)) — людина деплоїть і виставляє сама; Lab не розсилає NFT покупцям. API `/api/vault/status` і таблиця `nft_fulfillments` є, фоновий reconcile **не стартує** без `VAULT_WALLET_ADDRESS`. Тригера видачі після оплати немає. Не вмикати в межах поточного продукту.
 4. **Свій домен** замість `next.w3ir.io` / SIWE `AUTH_DOMAIN` — рішення власника; до cutover лишати поточні AUTH_* або оновити разом із доменом.

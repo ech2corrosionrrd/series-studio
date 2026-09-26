@@ -25,6 +25,14 @@ import {
   buildReleaseGuide,
 } from "./deploy.mjs";
 import { calculateCollectionProvenance } from "./provenance.mjs";
+import { runPreflight } from "./preflight.mjs";
+import {
+  buildRoyalties,
+  buildRarityReport,
+  formatRarityText,
+  buildChainReadme,
+} from "./archive-package.mjs";
+import { chainForProfile } from "./deploy-kit.mjs";
 
 export {
   calculateCollectionProvenance,
@@ -272,6 +280,30 @@ export function listImageEditions(setDir) {
 }
 
 /**
+ * Editions that would go into a bundle, with image bytes. Shared by the deploy kit.
+ * @returns {{ items: object[], error: string|null }}
+ */
+export function readBundleItems({ archive, setDir, marks = {}, onlyKeep = false } = {}) {
+  const imageEditionSet = listImageEditions(setDir);
+  const sel = selectBundleRecipes(archive?.recipes || [], marks, onlyKeep, imageEditionSet);
+  if (sel.error) return { items: [], error: sel.error };
+  const items = [];
+  for (const recipe of sel.recipes) {
+    const media = findEditionMedia(setDir, recipe.edition);
+    if (!media.imagePath) continue;
+    const buffer = readFileSync(media.imagePath);
+    items.push({
+      edition: recipe.edition,
+      buffer,
+      ext: extname(media.imagePath).slice(1) || "png",
+      filename: media.imagePath,
+      recipe,
+    });
+  }
+  return { items, error: items.length ? null : "no images for the selected editions" };
+}
+
+/**
  * Build ZIP at out/bundles/<id>-<format>.zip
  * opts: format, profile, creatorAddress, zeroIndexed, onlyKeep, namePrefix, symbol, sellerFeeBasisPoints, description, locale, upscale, animationUriPrefix
  */
@@ -326,6 +358,7 @@ export async function buildBundleZip(params) {
   const metaFolder = zip.folder("metadata");
 
   const imageRecords = [];
+  const packed = [];
 
   for (const recipe of sel.recipes) {
     const ed = recipe.edition;
@@ -376,6 +409,15 @@ export async function buildBundleZip(params) {
     metaFolder.file(`${displayEd}.json`, JSON.stringify(meta, null, 2) + "\n");
     includedEditions.push(ed);
     includedRecipes.push(recipe);
+    const primary = media.imagePath ? imageRecords[imageRecords.length - 1] : null;
+    if (primary?.buffer) {
+      packed.push({
+        edition: ed,
+        filename: primary.file,
+        buffer: primary.buffer,
+        meta,
+      });
+    }
   }
 
   if (!includedEditions.length) {
@@ -413,6 +455,46 @@ export async function buildBundleZip(params) {
   // Generate localized step-by-step Release Guide
   zip.file("release-guide.txt", buildReleaseGuide(locale, archive, opts));
 
+  const chain = chainForProfile(profileKey, format);
+  const royalties = buildRoyalties(opts);
+  const cover = packed[0];
+  if (cover?.buffer) {
+    const coverExt = extname(cover.filename).replace(/^\./, "") || "png";
+    zip.file(`cover.${coverExt}`, cover.buffer);
+  }
+  const rarity = buildRarityReport(preset, includedRecipes);
+  zip.file("rarity.json", JSON.stringify(rarity, null, 2) + "\n");
+  zip.file("rarity.txt", formatRarityText(rarity, locale));
+  zip.file("royalties.json", JSON.stringify(royalties, null, 2) + "\n");
+
+  const preflight = runPreflight({
+    locale,
+    standard: format === "metaplex" ? "metaplex" : format === "ordinals" ? "ordinals" : "erc721",
+    recipes: includedRecipes,
+    images: packed.map((p) => ({ edition: p.edition, filename: p.filename, buffer: p.buffer })),
+    metadata: packed.map((p) => ({ edition: p.edition, meta: p.meta })),
+    royalties,
+    description: opts.description || "",
+    coverPresent: Boolean(cover?.buffer),
+  }, opts.env || process.env);
+  zip.file("preflight.json", JSON.stringify({
+    ready: preflight.ready,
+    status: preflight.status,
+    errors: preflight.errors,
+    warnings: preflight.warnings,
+    checks: preflight.checks,
+  }, null, 2) + "\n");
+  zip.file("preflight.txt", `${preflight.report}\n`);
+
+  if (opts.gate && !preflight.ready) {
+    const err = new Error(preflight.report);
+    err.code = "preflight_blocked";
+    err.status = 422;
+    err.preflight = preflight;
+    err.report = preflight.report;
+    throw err;
+  }
+
   const collection = buildCollectionJson({
     format,
     profile: profileKey,
@@ -427,9 +509,34 @@ export async function buildBundleZip(params) {
   if (provenance) collection.provenanceHash = provenance.provenanceHash;
   if (sel.fallback) collection.selectionFallback = sel.fallback;
   if (upscaleSkippedReason) collection.upscaleSkipped = upscaleSkippedReason;
+  collection.chain = chain;
+  collection.description = opts.description || "";
+  collection.sellerFeeBasisPoints = royalties.sellerFeeBasisPoints;
+  collection.ready = preflight.ready;
+  collection.preflight = {
+    ready: preflight.ready,
+    errors: preflight.errors.length,
+    warnings: preflight.warnings.length,
+  };
 
   zip.file("collection.json", JSON.stringify(collection, null, 2) + "\n");
-  zip.file("README.txt", buildReadme(locale, collection));
+  zip.file("README.txt", buildChainReadme(locale, collection));
+
+  if (opts.dryRun) {
+    return {
+      ok: preflight.ready,
+      ready: preflight.ready,
+      dryRun: true,
+      count: includedEditions.length,
+      missing,
+      format,
+      profile: profileKey,
+      chain,
+      preflight,
+      provenanceHash: provenance?.provenanceHash || null,
+      fallback: sel.fallback,
+    };
+  }
 
   mkdirSync(bundlesDir, { recursive: true });
   const id =
@@ -456,5 +563,8 @@ export async function buildBundleZip(params) {
     fallback: sel.fallback,
     upscaled: anyUpscaled,
     upscaleSkipped: upscaleSkippedReason,
+    ready: preflight.ready,
+    preflight,
+    chain,
   };
 }

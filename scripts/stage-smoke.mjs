@@ -340,6 +340,26 @@ async function main() {
       body: { file: presetFile, profile: "opensea", edition: 1 },
     });
     ok("7", "POST /api/export/preview-meta", preview.status === 200);
+    const quotes = await call("GET", "/api/stages/quotes");
+    ok("7", "GET /api/stages/quotes", quotes.status === 200 && quotes.json?.quotes?.archive?.credits >= 0, `archive=${quotes.json?.quotes?.archive?.credits}`);
+    const quote = await call("GET", "/api/stages/quote?stage=deploy_kit");
+    ok("7", "GET /api/stages/quote deploy_kit", quote.status === 200 && quote.json?.quote?.formula, `credits=${quote.json?.quote?.credits}`);
+    const pre = await call("POST", "/api/preflight", {
+      body: { archive: archiveName, set: setDir, profile: "magiceden", onlyKeep: false, locale: "uk" },
+    });
+    ok("7", "POST /api/preflight", pre.status === 200 && typeof pre.json?.ready === "boolean", `ready=${pre.json?.ready} ${pre.json?.error || ""}`.slice(0, 140));
+    const dep = await call("POST", "/api/deploy-kit", {
+      body: { archive: archiveName, set: setDir, chain: "solana", locale: "uk" },
+    });
+    ok("7", "POST /api/deploy-kit", dep.status === 200 && dep.json?.downloadUrl, dep.json?.file || dep.json?.error || `${dep.status}`);
+    const mkt = await call("POST", "/api/marketplace-kit", {
+      body: { archive: archiveName, set: setDir, chain: "solana", name: "Stage Smoke", locale: "uk" },
+    });
+    ok("7", "POST /api/marketplace-kit", mkt.status === 200 && mkt.json?.downloadUrl, mkt.json?.file || mkt.json?.error || `${mkt.status}`);
+    const secrets = await call("POST", "/api/deploy-kit", {
+      body: { archive: archiveName, set: setDir, chain: "solana", privateKey: "nope" },
+    });
+    ok("7", "deploy-kit відхиляє privateKey", secrets.status === 400 && secrets.json?.code === "secrets", `${secrets.status} ${secrets.json?.code || secrets.text?.slice(0, 80)}`);
     const pinStatus = await call("GET", "/api/storage/status");
     ok("7", "GET /api/storage/status (Pinata)", pinStatus.status === 200);
     const pub = await call("POST", "/api/publish", { body: { dir: setDir, title: "Stage Smoke Collection" } });
@@ -378,7 +398,7 @@ async function main() {
     const eng = await call("GET", "/api/engines/status");
     ok("9", "GET /api/engines/status", eng.status === 200);
     const econ = await call("GET", "/api/admin/economy");
-    ok("9", "GET /api/admin/economy", econ.status === 200, `${econ.status} ${econ.json?.error || econ.text?.slice(0, 160) || Object.keys(econ.json || {}).slice(0, 8).join(",")}`);
+    ok("9", "GET /api/admin/economy", econ.status === 200 && Array.isArray(econ.json?.stages?.stages), `${econ.status} stages=${econ.json?.stages?.stages?.length} ${econ.json?.error || ""}`);
     const trash = await call("GET", "/api/trash");
     ok("9", "GET /api/trash", trash.status === 200);
   }

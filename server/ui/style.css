@@ -20,6 +20,14 @@ nav { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
 nav button { background: none; border: 1px solid transparent; color: var(--muted); padding: 6px 10px; border-radius: 8px; cursor: pointer; font: inherit; }
 nav button:hover { color: var(--text); border-color: var(--line); }
 nav button.on { color: var(--text); background: var(--panel2); border-color: var(--line); }
+.path { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 16px; background: #140c18; border-bottom: 1px solid var(--line); }
+.path-steps { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+.path-steps button { background: var(--panel); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; font: inherit; }
+.path-steps button.on { color: var(--text); border-color: var(--accent); }
+.path-steps button .path-n { color: var(--accent2); margin-right: 4px; }
+.path-mode { color: var(--muted); font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.path-next { position: sticky; bottom: 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 16px 0 0; padding: 10px 12px; background: #1a101f; border: 1px solid var(--line); border-radius: 12px; }
+.preflight { margin-top: 12px; max-height: 280px; }
 .hints-toggle { color: var(--muted); font-size: 13px; cursor: pointer; }
 
 main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 120px; }

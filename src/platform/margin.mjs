@@ -13,6 +13,7 @@ import { openDb } from "./db.mjs";
 import { ENGINES } from "../engines.mjs";
 import { scopeSql } from "./ops.mjs";
 import { overview, creditsByKindSince } from "./stats.mjs";
+import { stageLedgerReport, listStagePrices } from "./stage-pricing.mjs";
 
 /** USD per API op by (family, credits charged) — same table as Промт. */
 export const API_USD_BY_TARIFF = {
@@ -469,5 +470,10 @@ export function economyReport(days = null, db = openDb()) {
     break_even: breakEvenSummary({ db }),
     model: unitEconomicsModel(),
     funnel_30d: null,
+    stages: stageLedgerReport(db, days, {
+      apiUsd: apiUsdPerOp,
+      avgUsdPerCredit: gross.avg_usd_per_credit,
+    }),
+    stage_prices: listStagePrices(),
   };
 }

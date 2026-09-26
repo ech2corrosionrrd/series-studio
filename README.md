@@ -2,7 +2,7 @@
 
 **Series Lab** від [W3IR](https://w3ir.io) — майстерня для генеративних NFT-серій і LoRA-датасетів: **Lab → Studio → Release**.
 
-- **Версія**: `1.5.0` — ядро майстерні закрито (хвилі 1–25): шлях випуску, вхід гаманцем, адмін, підказки ([CHANGELOG](CHANGELOG.md) · [ROADMAP](docs/ROADMAP.md))
+- **Версія**: `1.6.0` — перевірений архів, набір деплою й набір маркетплейсу, ціна етапу ([CHANGELOG](CHANGELOG.md) · [бачення](docs/PRODUCT.md))
 - **Папка на диску**: `series-studio` · npm-пакет `series-lab` · ліцензія MIT
 - **Розміщення розробки**: `127.0.0.1`. Ключі API не потрапляють у браузер; приватні ключі гаманців і сид-фрази майстерня не запитує й не зберігає.
 
@@ -60,6 +60,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | Сповіщення від імені Series Lab |
 | `SOLANA_PAY_RECIPIENT` (+ `SOLANA_RPC_URL`) | Поповнення кредитів: USDC у Solana переказом напряму, без посередника; публічна адреса-отримувач, ключ не потрібен |
 | `HOSTING_MONTHLY_USD`, `SAAS_MONTHLY_USD`, `PAYMENT_FEE_PCT`, `FX_FEE_PCT`, `RESOURCE_FX_PCT` | Адмін → Економіка (накладні + комісії; див. [docs/ECONOMY.md](docs/ECONOMY.md)) |
+| `STAGE_*`, `DEPLOY_*`, `MARKETPLACE_IMAGE_SIZES`, `PREFLIGHT_MAX_IMAGE_BYTES` | Ціна етапів, оцінка деплою, розміри майданчиків, стеля файлу — [docs/PRODUCT.md](docs/PRODUCT.md) |
 | `SERIES_SPEND_CAP_USD` | Денна межа витрат, $ |
 | `SERIES_MAX_CONSECUTIVE_FAILURES` | Автостоп batch (5) |
 | `SERIES_TRASH_DAYS` | Кошик (30; 0 = не чистити) |
@@ -127,6 +128,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 
 ## Документація
 
+- [docs/PRODUCT.md](docs/PRODUCT.md) — бачення: місія, етапи, економіка, що поза продуктом
 - [docs/GUIDE.md](docs/GUIDE.md) — початківцям
 - [docs/README.md](docs/README.md) — індекс
 - [docs/ECONOMY.md](docs/ECONOMY.md) — кредити, маржа, хостинг, обмін crypto→USD

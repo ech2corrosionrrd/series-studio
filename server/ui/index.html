@@ -24,6 +24,8 @@
     <button data-tab="render" data-i18n="nav.render" data-i18n-title="nav.render.title">5 · Генерація</button>
     <button data-tab="gallery" data-i18n="nav.gallery" data-i18n-title="nav.gallery.title">6 · Відбір</button>
     <button data-tab="export" data-i18n="nav.export" data-i18n-title="nav.export.title">7 · Експорт</button>
+    <button data-tab="deploy" data-i18n="nav.deploy" data-i18n-title="nav.deploy.title">Деплой</button>
+    <button data-tab="market" data-i18n="nav.market" data-i18n-title="nav.market.title">Маркет</button>
     <button data-tab="admin" id="nav-admin" hidden data-i18n="nav.admin" data-i18n-title="nav.admin.title">Адмін</button>
     <button data-tab="help" data-i18n="nav.help" data-i18n-title="nav.help.title">❓ Довідка</button>
   </nav>
@@ -48,6 +50,14 @@
     <span data-i18n="hints.toggle">Підказки</span>
   </label>
 </header>
+
+<div id="path" class="path">
+  <div id="path-steps" class="path-steps" role="navigation"></div>
+  <label class="path-mode">
+    <input type="checkbox" id="path-beginner" checked>
+    <span data-i18n="path.beginner">Шлях новачка</span>
+  </label>
+</div>
 
 <main>
   <!-- 1. OVERVIEW -->
@@ -116,7 +126,10 @@
         <li data-i18n="stages.5"></li>
         <li data-i18n="stages.6"></li>
         <li data-i18n="stages.7"></li>
+        <li data-i18n="stages.8"></li>
+        <li data-i18n="stages.9"></li>
       </ol>
+      <p class="muted small" data-i18n="stages.path"></p>
     </div>
     <ol id="steps" class="steps"></ol>
     <div class="grid2">
@@ -601,6 +614,7 @@
       <button type="button" id="v-dupes" class="btn small" data-i18n="gallery.dupes.btn">Знайти схожі</button>
       <span id="v-dupes-status" class="small muted"></span>
       <button type="button" id="v-triage-run" class="btn small" data-i18n="gallery.triage.btn">🤖 Запустити Triage</button>
+      <span id="v-triage-price" class="small muted"></span>
       <button type="button" id="v-triage-apply" class="btn small" style="display:none" data-i18n="gallery.triage.applyBtn">✓ Застосувати рекомендації</button>
       <span id="v-triage-status" class="small muted"></span>
     </div>
@@ -632,13 +646,16 @@
     <div class="card">
       <h2 data-i18n="export.release.h2">Архів випуску</h2>
       <p class="muted small" data-i18n="export.release.hint">Один пакет: лише позначені keep, метадані OpenSea, чекліст попереду. Інші формати нижче.</p>
+      <p id="x-price" class="small muted"></p>
       <div class="actions">
+        <button type="button" id="x-preflight" class="btn" data-i18n="preflight.run">Перевірити архів</button>
         <button type="button" id="x-release" class="btn primary" data-i18n="export.release.run">Зібрати архів випуску</button>
         <span id="x-release-msg" class="small"></span>
         <a id="x-release-dl" class="btn" href="#" download hidden data-i18n="export.bundle.download">Завантажити ZIP</a>
         <a id="x-release-next" class="btn primary" href="#" target="_blank" rel="noopener noreferrer" hidden data-i18n="export.release.next" data-i18n-tip="export.release.next.tip">Далі · портал запуску →</a>
       </div>
       <ul id="x-release-list" class="checklist"></ul>
+      <pre id="x-preflight-report" class="log small preflight" hidden></pre>
     </div>
     <div class="card">
       <label class="small"><span data-i18n="export.archive">Архів</span>
@@ -742,6 +759,74 @@
 
   </section>
 
+  <!-- DEPLOY KIT -->
+  <section id="tab-deploy" class="tab">
+    <h1 data-i18n="deploy.h1">Набір деплою</h1>
+    <div class="hint"><p data-i18n="deploy.hint"></p></div>
+    <div class="card">
+      <p class="muted small" data-i18n="deploy.help"></p>
+      <p id="d-price" class="small muted"></p>
+      <div class="grid2">
+        <label class="small"><span data-i18n="deploy.chain">Мережа</span>
+          <select id="d-chain">
+            <option value="solana" data-i18n="deploy.chain.solana">Solana (Sugar, спочатку devnet)</option>
+            <option value="evm" data-i18n="deploy.chain.evm">EVM (Thirdweb, спочатку тестнет)</option>
+            <option value="bitcoin" data-i18n="deploy.chain.bitcoin">Bitcoin Ordinals</option>
+          </select>
+        </label>
+        <label class="small"><span data-i18n="export.bundle.set">Набір зображень</span>
+          <select id="d-set"></select>
+        </label>
+        <label class="small"><span data-i18n="export.creator.label">Публічна адреса творця</span>
+          <input id="d-creator" type="text" data-i18n-placeholder="export.creator.ph" placeholder="публічна адреса, не ключ">
+        </label>
+        <label class="small"><span data-i18n="export.bundle.symbol">Символ</span>
+          <input id="d-symbol" type="text" value="LAB">
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" id="d-build" class="btn primary" data-i18n="deploy.build">Зібрати набір деплою</button>
+        <a id="d-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">Завантажити ZIP</a>
+        <span id="d-msg" class="small"></span>
+      </div>
+      <pre id="d-guide" class="log small preflight" hidden></pre>
+    </div>
+  </section>
+
+  <!-- MARKETPLACE KIT -->
+  <section id="tab-market" class="tab">
+    <h1 data-i18n="market.h1">Набір маркетплейсу</h1>
+    <div class="hint"><p data-i18n="market.hint"></p></div>
+    <div class="card">
+      <p class="muted small" data-i18n="market.help"></p>
+      <p id="m-price" class="small muted"></p>
+      <div class="grid2">
+        <label class="small"><span data-i18n="deploy.chain">Мережа</span>
+          <select id="m-chain">
+            <option value="solana">Solana · Magic Eden, Tensor</option>
+            <option value="evm">EVM · OpenSea</option>
+            <option value="bitcoin">Bitcoin · Ordinals</option>
+          </select>
+        </label>
+        <label class="small"><span data-i18n="export.bundle.set">Набір зображень</span>
+          <select id="m-set"></select>
+        </label>
+        <label class="small"><span data-i18n="market.name">Назва на майданчику</span>
+          <input id="m-name" type="text">
+        </label>
+        <label class="small"><span data-i18n="export.bundle.description">Опис</span>
+          <input id="m-desc" type="text">
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" id="m-build" class="btn primary" data-i18n="market.build">Зібрати набір маркетплейсу</button>
+        <a id="m-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">Завантажити ZIP</a>
+        <span id="m-msg" class="small"></span>
+      </div>
+      <pre id="m-note" class="log small preflight" hidden></pre>
+    </div>
+  </section>
+
   <!-- ADMIN: resources, stats, errors -->
   <section id="tab-admin" class="tab">
     <h1 data-i18n="admin.h1">Адмін-панель</h1>
@@ -830,6 +915,10 @@
     <nav id="help-toc" class="help-toc" data-i18n-aria="help.toc.title"></nav>
     <div id="help-body" class="help-body"></div>
   </section>
+  <div id="path-next" class="path-next" hidden>
+    <span id="path-where" class="small muted"></span>
+    <button type="button" id="path-go" class="btn small primary"></button>
+  </div>
 </main>
 
 <!-- Top-up window: must live outside the tab sections, otherwise it is hidden with an inactive tab -->
