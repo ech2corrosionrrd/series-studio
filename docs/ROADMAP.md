@@ -54,7 +54,7 @@
 | **Рефакторинг коду** | ⏸ відкладено | після стабілізації шляху / перед власним доменом — не зараз |
 | **Хостинг / власний домен** | ⏸ | [HOSTING.md](./HOSTING.md), [STANDALONE.md](./STANDALONE.md) — лише після рішення власника |
 
-Деталі запозичень з Промт — [FROM-PROMT.md](./FROM-PROMT.md). Етапи — [STAGES.md](./STAGES.md). API — [API.md](./API.md).
+Деталі запозичень з Промт — [FROM-PROMT.md](./FROM-PROMT.md). Етапи — [STAGES.md](./STAGES.md). API — [API.md](./API.md). Наступний план реалізації (сила референсу, Core Candy Machine, маркетплейси, перевірка архіву) — [RECOMMENDATIONS.md](./RECOMMENDATIONS.md). Хвилі нижче він не скасовує.
 
 ## Хвиля 1 (реалізовано)
 
