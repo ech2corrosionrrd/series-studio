@@ -912,6 +912,19 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .sim-badge.warn { color: var(--warn); }
 .license-warn { margin: 8px 0; padding: 10px 12px; border: 1px solid var(--warn); border-radius: 10px; background: rgba(245, 180, 60, 0.08); }
 .license-warn p { margin: 6px 0; }
-.advisor-card { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--line); }
-.advisor h3 { font-size: 14px; margin: 12px 0 4px; }
-.advisor p { white-space: pre-wrap; margin: 0 0 8px; }
+.advisor-card { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-3); }
+.advisor-note { margin: 0; color: var(--text); }
+.advisor { display: flex; flex-direction: column; gap: var(--space-2); }
+.advisor-section { border: 1px solid var(--line); border-radius: 12px; background: var(--panel2); }
+.advisor-section summary { cursor: pointer; font-weight: 600; color: var(--text); padding: var(--space-3) var(--space-4); list-style: none; display: flex; align-items: center; gap: var(--space-2); }
+.advisor-section summary::-webkit-details-marker { display: none; }
+.advisor-section summary::before { content: "▸"; color: var(--accent2); transition: transform .15s; }
+.advisor-section[open] summary::before { transform: rotate(90deg); }
+.advisor-body { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); }
+.advisor-lead, .advisor-body p { margin: 0; color: var(--text); }
+.advisor-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.advisor-checks label { display: flex; gap: var(--space-2); align-items: flex-start; cursor: pointer; color: var(--text); }
+.advisor-checks input { margin-top: 3px; accent-color: var(--accent); }
+.advisor-sources { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.advisor-sources a { color: var(--accent2); text-decoration: underline; text-underline-offset: 2px; }
+.advisor-sources a:hover { color: var(--text); }

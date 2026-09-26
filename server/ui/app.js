@@ -4211,6 +4211,77 @@ function setBusy(btn, on) {
   btn.setAttribute("aria-busy", on ? "true" : "false");
 }
 
+const advisorChecked = new Set();
+
+function advisorLink(href, label) {
+  if (!/^https:\/\//.test(href || "")) return null;
+  const a = document.createElement("a");
+  a.href = href;
+  a.textContent = label || href;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  return a;
+}
+
+function renderAdvisorSection(section) {
+  const det = document.createElement("details");
+  det.className = "advisor-section";
+  det.open = true;
+  const sum = document.createElement("summary");
+  sum.textContent = section.title || "";
+  det.appendChild(sum);
+  const body = document.createElement("div");
+  body.className = "advisor-body";
+  if (section.lead) {
+    const lead = document.createElement("p");
+    lead.className = "advisor-lead";
+    lead.textContent = section.lead;
+    body.appendChild(lead);
+  }
+  for (const para of section.paragraphs || []) {
+    const p = document.createElement("p");
+    p.textContent = para;
+    body.appendChild(p);
+  }
+  if (!section.paragraphs?.length && section.body) {
+    const p = document.createElement("p");
+    p.textContent = section.body;
+    body.appendChild(p);
+  }
+  if (section.checks?.length) {
+    const ul = document.createElement("ul");
+    ul.className = "advisor-checks";
+    for (const item of section.checks) {
+      const li = document.createElement("li");
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = advisorChecked.has(item.id);
+      input.addEventListener("change", () => {
+        if (input.checked) advisorChecked.add(item.id);
+        else advisorChecked.delete(item.id);
+      });
+      const span = document.createElement("span");
+      span.textContent = item.text || "";
+      label.append(input, span);
+      li.appendChild(label);
+      ul.appendChild(li);
+    }
+    body.appendChild(ul);
+  }
+  if (section.links?.length) {
+    const sources = document.createElement("p");
+    sources.className = "advisor-sources";
+    for (const item of section.links) {
+      const a = advisorLink(item.href, item.label);
+      if (a) sources.appendChild(a);
+    }
+    if (sources.childNodes.length) body.appendChild(sources);
+  }
+  det.appendChild(body);
+  return det;
+}
+
 async function loadLaunchAdvisor() {
   const root = $("d-advisor");
   if (!root) return;
@@ -4218,14 +4289,7 @@ async function loadLaunchAdvisor() {
   try {
     const data = await api(`/api/launch-advisor?chain=${encodeURIComponent(chain)}&locale=${encodeURIComponent(getLocale())}`);
     root.replaceChildren();
-    for (const section of data.sections || []) {
-      const h = document.createElement("h3");
-      h.textContent = section.title || "";
-      const p = document.createElement("p");
-      p.textContent = section.body || "";
-      root.appendChild(h);
-      root.appendChild(p);
-    }
+    for (const section of data.sections || []) root.appendChild(renderAdvisorSection(section));
     const area = $("d-holder");
     if (area && area.dataset.dirty !== "1" && data.holderTemplate) area.value = data.holderTemplate;
   } catch (e) {

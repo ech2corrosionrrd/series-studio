@@ -13,7 +13,13 @@ test("launch advisor is offline, cites ranges, and does not ask for a seed", () 
   assert.match(ukText.text, /Classic/);
   assert.match(ukText.text, /Arweave/);
   assert.match(ukText.text, /Irys/);
-  assert.match(ukText.text, /UNVERIFIED/);
+  assert.match(ukText.text, /НЕПЕРЕВІРЕНО/);
+  assert.equal(ukText.text.includes("UNVERIFIED"), false);
+  assert.match(ukText.text, /шахрайства з утечею коштів/);
+  assert.equal(/\brug\b/i.test(ukText.text.replace(/\([^)]*\)/g, " ")), false);
+  assert.equal(ukText.sections[1].checks.length, 6);
+  assert.equal(ukText.sections[0].links[0].href.includes("nftevening.com"), true);
+  assert.equal(ukText.sections[0].links.some((item) => item.href === item.label), false);
   assert.match(ukText.text, /64%/);
   assert.match(ukText.text, /5,63 млрд USD/);
   assert.match(ukText.text, /ProgramAllowList/);
@@ -26,6 +32,8 @@ test("launch advisor is offline, cites ranges, and does not ask for a seed", () 
   const evm = buildLaunchAdvisor({ chain: "evm", locale: "en" });
   assert.match(evm.text, /ERC-2981/);
   assert.match(evm.text, /OpenSea/);
+  assert.match(evm.text, /UNVERIFIED/);
+  assert.equal(/[А-Яа-яІіЇїЄєҐґ]/.test(evm.text), false);
   assert.equal(/seed/i.test(evm.text), false);
   const btc = buildLaunchAdvisor({ chain: "bitcoin", locale: "uk" });
   assert.match(btc.text, /Ordinals/);

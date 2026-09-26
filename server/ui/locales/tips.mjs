@@ -159,7 +159,7 @@ export default {
     "release.hub.configBtn.tip": "Завантажити JSON-конфіг деплою для обраного профілю.",
     "admin.tab.res.tip": "Ключі API, баланси провайдерів і Кошик.",
     "res.providers.probe.tip": "Пінгнути OpenAI / Stability / Replicate / Pinata / RPC і показати баланс Stability.",
-    "admin.tab.econ.tip": "Маржа, ARPU, пакети й тариф кредитів (модель Промт + живий леджер).",
+    "admin.tab.econ.tip": "Маржа, дохід (ARPU), пакети й тариф кредитів (модель Промт + живий леджер).",
     "admin.tab.stats.tip": "Витрати за сьогодні й частка відмов рушіїв.",
     "admin.tab.errors.tip": "Останні збої генерації та перевірка підключень.",
     "admin.engines.test.tip": "Пінганути всі налаштовані рушії: хто відповідає і як швидко.",
