@@ -2509,6 +2509,8 @@ function syncWishControls() {
   const active = useRef && hasPrimary;
   const slider = $("base-wish-str");
   if (slider) slider.disabled = !active;
+  const strengthLabel = $("base-wish-str-label");
+  if (strengthLabel) strengthLabel.classList.toggle("strength-off", !active);
   const scale = $("base-wish-scale");
   if (scale) scale.hidden = !active;
   const note = $("base-wish-str-note");
