@@ -129,6 +129,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 ## Документація
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — бачення: місія, етапи, економіка, що поза продуктом
+- [docs/RECOMMENDATIONS.md](docs/RECOMMENDATIONS.md) — план наступних змін за дослідженням колекцій (документ, не нові функції)
 - [docs/GUIDE.md](docs/GUIDE.md) — початківцям
 - [docs/README.md](docs/README.md) — індекс
 - [docs/ECONOMY.md](docs/ECONOMY.md) — кредити, маржа, хостинг, обмін crypto→USD
