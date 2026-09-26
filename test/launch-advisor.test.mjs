@@ -33,11 +33,15 @@ test("launch advisor is offline, cites ranges, and does not ask for a seed", () 
   assert.match(evm.text, /ERC-2981/);
   assert.match(evm.text, /OpenSea/);
   assert.match(evm.text, /UNVERIFIED/);
+  assert.equal(evm.text.includes("Magic Eden"), false);
+  assert.equal(evm.text.includes("Creator Hub"), false);
   assert.equal(/[А-Яа-яІіЇїЄєҐґ]/.test(evm.text), false);
   assert.equal(/seed/i.test(evm.text), false);
   const btc = buildLaunchAdvisor({ chain: "bitcoin", locale: "uk" });
   assert.match(btc.text, /Ordinals/);
   assert.equal(btc.text.includes("ProgramAllowList"), false);
+  assert.equal(btc.text.includes("Magic Eden"), false);
+  assert.equal(btc.text.includes("Creator Hub"), false);
 });
 
 test("deploy kit includes the advisor and can omit the holder statement", () => {

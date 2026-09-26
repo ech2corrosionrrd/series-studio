@@ -598,7 +598,7 @@ export default {
   "export.profile.launchmynft": "LaunchMyNFT (Metaplex / 0-index)",
   "export.profile.ordinalsbot": "Bitcoin Ordinals / Інскрипції",
   "export.creator.label": "Адреса творця / роялті (Solana / EVM)",
-  "export.creator.ph": "Solana / EVM гаманець (для Magic Eden / LaunchMyNFT)",
+  "export.creator.ph": "Публічна адреса гаманця для частки роялті (Solana / EVM)",
   "export.zeroIndex.label": "Нумерація з нуля (0.png, 0.json)",
   "export.manifest.csv": "Маніфест CSV",
   "export.showcase.btn": "Вітрина і рідкість (HTML)",

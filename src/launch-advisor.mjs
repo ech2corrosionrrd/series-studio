@@ -233,7 +233,7 @@ export function buildLaunchAdvisor({ chain = "solana", locale = "uk" } = {}) {
   const id = chainId(chain);
   const sections = [
     supplySection(uk),
-    readinessSection(uk),
+    ...(id === "solana" ? [readinessSection(uk)] : []),
     royaltySection(id, uk),
     storageSection(uk),
   ];

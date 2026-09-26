@@ -68,6 +68,16 @@ test("missing deploy chain is Solana Core; Sugar is only the explicit legacy cho
   assert.match(html, /<option value="solana" selected data-i18n="deploy\.chain\.solana">/);
   assert.match(html, /value="solana-legacy"/);
   assert.equal(html.includes("Sugar, спочатку"), false);
+  assert.match(html, /id="d-desc"/);
+  assert.equal(uk["export.creator.ph"].includes("Magic Eden"), false);
+  assert.equal(uk["export.creator.ph"].includes("LaunchMyNFT"), false);
+  assert.match(uk["export.creator.ph"], /роялті/);
+  const css = readFileSync(new URL("../server/ui/style.css", import.meta.url), "utf8");
+  assert.match(css, /--border:\s*var\(--line\)/);
+  const product = readFileSync(new URL("../docs/PRODUCT.md", import.meta.url), "utf8");
+  assert.equal(product.includes("Solana (Metaplex / Sugar)"), false);
+  assert.equal(product.includes("Sugar `config.json` + `assets/`"), false);
+  assert.match(product, /Core Candy Machine/);
 });
 
 test("solana kit defaults to Core Candy Machine, keeps Sugar as labelled legacy, and has no key slot", () => {

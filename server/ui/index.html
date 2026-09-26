@@ -575,7 +575,7 @@
             <b id="g-progress-pct">0%</b>
           </div>
           <div style="width:100%; background:var(--border); border-radius:4px; height:8px; overflow:hidden">
-            <div id="g-progress-bar" style="width:0%; height:100%; background:var(--primary, #6366f1); transition:width 0.2s"></div>
+            <div id="g-progress-bar" style="width:0%; height:100%; background:var(--accent); transition:width 0.2s"></div>
           </div>
         </div>
         <div id="g-result" hidden>
@@ -824,6 +824,9 @@
         </label>
         <label class="small"><span data-i18n="export.bundle.symbol">Символ</span>
           <input id="d-symbol" type="text" value="LAB">
+        </label>
+        <label class="small" style="grid-column: 1 / -1"><span data-i18n="export.bundle.description">Опис</span>
+          <input id="d-desc" type="text">
         </label>
       </div>
       <div id="d-advisor-card" class="advisor-card">
