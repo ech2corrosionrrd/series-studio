@@ -21,10 +21,13 @@ import {
 } from "./launchpads.mjs";
 import {
   buildSugarConfig,
+  buildCoreCandyConfig,
   buildThirdwebConfig,
   buildReleaseGuide,
 } from "./deploy.mjs";
 import { calculateCollectionProvenance } from "./provenance.mjs";
+import { readMeta } from "./versions.mjs";
+import { creationVersion, promptHash } from "./creation.mjs";
 import { runPreflight } from "./preflight.mjs";
 import {
   buildRoyalties,
@@ -42,6 +45,7 @@ export {
   formatForLaunchpad,
   exportManifestCsv,
   buildSugarConfig,
+  buildCoreCandyConfig,
   buildThirdwebConfig,
   buildReleaseGuide,
   getMimeType,
@@ -307,6 +311,32 @@ export function readBundleItems({ archive, setDir, marks = {}, onlyKeep = false 
  * Build ZIP at out/bundles/<id>-<format>.zip
  * opts: format, profile, creatorAddress, zeroIndexed, onlyKeep, namePrefix, symbol, sellerFeeBasisPoints, description, locale, upscale, animationUriPrefix
  */
+function creationDocForEdition(setDir, recipe, marks) {
+  const edition = Number(recipe?.edition);
+  let versions = [];
+  try {
+    const meta = readMeta(setDir, edition);
+    versions = (meta.versions || [])
+      .filter((row) => row && row.v != null)
+      .map((row) => creationVersion(row));
+  } catch {
+    versions = [];
+  }
+  if (!versions.length) {
+    versions = [creationVersion({
+      versionId: null,
+      engine: null,
+      seed: recipe?.seed ?? null,
+      promptHash: recipe?.prompt ? promptHash(recipe.prompt) : null,
+    })];
+  }
+  const mark = marks?.[String(edition)] ?? marks?.[edition];
+  if (mark && !versions[versions.length - 1].verdict) {
+    versions[versions.length - 1] = { ...versions[versions.length - 1], verdict: mark };
+  }
+  return { edition, versions };
+}
+
 export async function buildBundleZip(params) {
   const {
     archive,
@@ -434,7 +464,8 @@ export async function buildBundleZip(params) {
   // Calculate Collection Provenance Hash
   let provenance = null;
   if (imageRecords.length > 0) {
-    provenance = calculateCollectionProvenance(imageRecords);
+    const presetSeed = preset?.seed || archive?.seed || null;
+    provenance = calculateCollectionProvenance(imageRecords, { presetSeed });
     zip.file("provenance.json", JSON.stringify(provenance, null, 2) + "\n");
     opts.provenanceHash = provenance.provenanceHash;
   }
@@ -445,8 +476,13 @@ export async function buildBundleZip(params) {
 
   // Generate Launchpad deployment configuration files
   if (profileKey === "magiceden" || profileKey === "launchmynft" || format === "metaplex") {
+    const coreConfig = buildCoreCandyConfig(archive, preset, opts);
+    zip.file("cm-config.json", JSON.stringify(coreConfig, null, 2) + "\n");
     const sugarConfig = buildSugarConfig(archive, preset, opts);
-    zip.file("sugar.json", JSON.stringify(sugarConfig, null, 2) + "\n");
+    zip.file("sugar/config.json", JSON.stringify(sugarConfig, null, 2) + "\n");
+    zip.file("sugar/LEGACY.txt", String(locale).toLowerCase().startsWith("uk")
+      ? "СПАДЩИНА: legacy Candy Machine, не для нової колекції.\n"
+      : "LEGACY: legacy Candy Machine, not for a new collection.\n");
   } else if (profileKey === "opensea" || format === "erc721") {
     const twConfig = buildThirdwebConfig(archive, preset, opts);
     zip.file("thirdweb.json", JSON.stringify(twConfig, null, 2) + "\n");
@@ -520,6 +556,10 @@ export async function buildBundleZip(params) {
   };
 
   zip.file("collection.json", JSON.stringify(collection, null, 2) + "\n");
+  for (const recipe of includedRecipes) {
+    const doc = creationDocForEdition(setDir, recipe, marks);
+    zip.file(`creation/${recipe.edition}.json`, JSON.stringify(doc, null, 2) + "\n");
+  }
   zip.file("README.txt", buildChainReadme(locale, collection));
 
   if (opts.dryRun) {

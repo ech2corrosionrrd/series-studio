@@ -2238,7 +2238,7 @@ const HELP_CLI = [
   ["showcase", "showcase out/demo-archive.json -o out/showcase.html"],
   ["provenance", "provenance out/fal-s0.45 -o out/provenance.json"],
   ["dataset", "dataset out/demo-archive.json --images out/fal-s0.45 --trigger my_hero -o out/dataset.zip"],
-  ["release", "release-config out/demo-archive.json --profile magiceden -o out/sugar.json"],
+  ["release", "release-config out/demo-archive.json --profile magiceden -o out/cm-config.json"],
 ];
 const HELP_DOCS = [
   ["docs/GUIDE.md", "guide"], ["docs/STAGES.md", "stages"], ["docs/STUDIO-UI.md", "studioUi"],

@@ -92,7 +92,7 @@
 | GET | `/api/export/manifest.csv` | експорт CSV маніфесту для гуртового імпорту (`?archive=&profile=&zeroIndexed=`) |
 | GET | `/api/export/showcase.html` | завантаження автономного HTML візуального пруфу та оцінки рідкості |
 | GET | `/api/release/portals` | отримання посилань на лаунчпади та покрокових порад (`?profile=&archive=`) |
-| GET | `/api/release/config` | завантаження конфігів деплою (`sugar.json` / `thirdweb.json`) |
+| GET | `/api/release/config` | конфіг деплою: `cm-config.json` для Magic Eden, `sugar.json` якщо `?legacy=1`, інакше `thirdweb.json` |
 
 ## Versions / trash / spend (захист оплачених рендерів)
 
@@ -145,7 +145,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 - `diff-seed <preset.json>`
 - `showcase <archive.json> [options]` — генерація автономного HTML Showcase & Rarity Scorecard
 - `manifest <archive.json> [options]` — генерація стандартизованого CSV маніфесту
-- `release-config <archive.json> [options]` — експорт конфігурацій деплою (`sugar.json`, `thirdweb.json`)
+- `release-config <archive.json> [options]` — експорт конфіга деплою (`cm-config.json`; `--legacy` пише Sugar; EVM лишається `thirdweb.json`)
 - `render <preset.json> [options]` — автономний пакетний рендер
 - `triage <set-dir> [options]` — автоматичний аудит та оцінка якості зображень
 - `pin <set-dir> [options]` — завантаження зображень у IPFS / Pinata

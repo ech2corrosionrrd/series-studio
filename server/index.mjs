@@ -65,6 +65,7 @@ import {
   exportManifestCsv,
   getLaunchpadPortalUrls,
   buildSugarConfig,
+  buildCoreCandyConfig,
   buildThirdwebConfig,
   generateShowcaseHtml,
   calculateRarityScores,
@@ -168,6 +169,8 @@ import { economyReport } from "../src/platform/margin.mjs";
 import { funnel } from "../src/platform/stats.mjs";
 import { writeJsonAtomic } from "../src/fs-safe.mjs";
 import { addVersion, dropVersion, listVersions, setCurrent, versionCounts } from "../src/versions.mjs";
+import { containsSecretField } from "../src/secrets.mjs";
+import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
 import { appendRenderLog, capError, engineStatsToday, recentEngineErrors, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
 import { failureBreaker } from "../src/pool.mjs";
@@ -397,18 +400,6 @@ function refundCharge(charge) {
   } catch (e) {
     console.error(`[credits] refund failed for ${charge.wallet}: ${e.message}`);
   }
-}
-
-const SECRET_FIELD = /^(privatekey|secretkey|mnemonic|seedphrase|secret)$/i;
-
-/** Reject bodies that try to hand the server a key. Public addresses are fine. */
-function containsSecretField(value, depth = 0) {
-  if (!value || typeof value !== "object" || depth > 5) return false;
-  for (const [key, inner] of Object.entries(value)) {
-    if (SECRET_FIELD.test(key) && inner) return true;
-    if (inner && typeof inner === "object" && containsSecretField(inner, depth + 1)) return true;
-  }
-  return false;
 }
 
 function rejectSecrets(res, body) {
@@ -2101,7 +2092,14 @@ async function handleApi(req, res, url) {
             }, ctx),
           );
           const name = `${recipe.edition}.png`;
-          const v = addVersion(outDir, recipe.edition, buf, { engine: engineName, strength, seed: recipe.seed });
+          const v = addVersion(outDir, recipe.edition, buf, {
+            engine: engineName,
+            model: modelTitle(engineName, "edit"),
+            strength,
+            seed: recipe.seed,
+            promptHash: promptHash(recipe.prompt),
+            baseSha256: sha256Hex(image),
+          });
           logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, v, ok: true, costUsd: unitCost, seed: recipe.seed });
           breaker.record(true);
           return {
@@ -2532,13 +2530,22 @@ async function handleApi(req, res, url) {
       namePrefix: url.searchParams.get("namePrefix") || "",
     };
 
-    if (profile === "magiceden" || profile === "launchmynft") {
+    const legacy = url.searchParams.get("legacy") === "1" || url.searchParams.get("legacy") === "true";
+    if (profile === "launchmynft" || (profile === "magiceden" && legacy)) {
       const sugar = buildSugarConfig(archive || {}, preset || {}, opts);
       res.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",
         "Content-Disposition": `attachment; filename="sugar.json"`,
       });
       return res.end(JSON.stringify(sugar, null, 2) + "\n");
+    }
+    if (profile === "magiceden") {
+      const core = buildCoreCandyConfig(archive || {}, preset || {}, opts);
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Disposition": `attachment; filename="cm-config.json"`,
+      });
+      return res.end(JSON.stringify(core, null, 2) + "\n");
     }
 
     const tw = buildThirdwebConfig(archive || {}, preset || {}, opts);

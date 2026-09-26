@@ -87,6 +87,7 @@ export {
   formatForLaunchpad,
   exportManifestCsv,
   buildSugarConfig,
+  buildCoreCandyConfig,
   buildThirdwebConfig,
   buildReleaseGuide,
   getMimeType,

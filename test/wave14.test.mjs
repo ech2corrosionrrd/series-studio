@@ -75,7 +75,7 @@ test("getLaunchpadPortalUrls provides URLs and deployment steps for all profiles
   const me = getLaunchpadPortalUrls("magiceden", archiveFull);
   assert.equal(me.id, "magiceden");
   assert.ok(me.portalUrl.includes("magiceden.io/creator-hub"));
-  assert.equal(me.recommendedFile, "sugar.json");
+  assert.equal(me.recommendedFile, "cm-config.json");
 
   const lmn = getLaunchpadPortalUrls("launchmynft", archiveFull);
   assert.equal(lmn.id, "launchmynft");
@@ -90,7 +90,8 @@ test("buildReleaseGuide generates detailed localized checklist", () => {
   const guideUk = buildReleaseGuide("uk", archiveFull, { profile: "magiceden" });
   assert.ok(guideUk.includes("Інструкція з релізу"));
   assert.ok(guideUk.includes("Magic Eden"));
-  assert.ok(guideUk.includes("sugar.json"));
+  assert.ok(guideUk.includes("cm-config.json"));
+  assert.match(guideUk, /спадщина|legacy/i);
 
   const guideEn = buildReleaseGuide("en", archiveFull, { profile: "opensea" });
   assert.ok(guideEn.includes("Release & Deployment Guide"));
@@ -112,7 +113,6 @@ test("buildBundleZip packs sugar.json, thirdweb.json, and release-guide.txt into
     recipes: [{ edition: 1, traits: { hair: "Buzz" } }],
   };
 
-  // Test Solana profile bundle with sugar.json
   const resMe = await buildBundleZip({
     archive,
     preset,
@@ -130,9 +130,14 @@ test("buildBundleZip packs sugar.json, thirdweb.json, and release-guide.txt into
 
   const zipPathMe = join(testBundlesDir, resMe.file);
   const zipMe = await JSZip.loadAsync(readFileSync(zipPathMe));
-  assert.ok(zipMe.file("sugar.json") != null);
+  assert.equal(zipMe.file("sugar.json"), null);
+  assert.ok(zipMe.file("cm-config.json") != null);
+  assert.ok(zipMe.file("sugar/config.json") != null);
+  assert.match(await zipMe.file("sugar/LEGACY.txt").async("string"), /спадщина|legacy/i);
   assert.ok(zipMe.file("release-guide.txt") != null);
-  const sugarContent = JSON.parse(await zipMe.file("sugar.json").async("string"));
+  const coreContent = JSON.parse(await zipMe.file("cm-config.json").async("string"));
+  assert.equal(coreContent.creators[0].address, "8Creator111111111111111111111111111111111");
+  const sugarContent = JSON.parse(await zipMe.file("sugar/config.json").async("string"));
   assert.equal(sugarContent.creators[0].address, "8Creator111111111111111111111111111111111");
 
   // Test OpenSea EVM profile bundle with thirdweb.json
@@ -166,18 +171,28 @@ test("buildBundleZip packs sugar.json, thirdweb.json, and release-guide.txt into
 test("CLI series release-config generates deploy configs", () => {
   const scratch = mkdtempSync(join(tmpdir(), "series-w14-"));
   const archivePath = join(scratch, "demo-series.json");
+  const coreOut = join(scratch, "cm-config.json");
   const sugarOut = join(scratch, "sugar.json");
   const twOut = join(scratch, "thirdweb.json");
   writeDemoArchive(archivePath, preset);
 
-  // Generate Sugar config
-  execSync(`node bin/series.mjs release-config "${archivePath}" --profile magiceden --creator "8CreatorSol111111" -o "${sugarOut}"`, {
+  execSync(`node bin/series.mjs release-config "${archivePath}" --profile magiceden --creator "8CreatorSol111111" -o "${coreOut}"`, {
+    cwd: ROOT,
+    stdio: "pipe",
+  });
+  assert.ok(existsSync(coreOut));
+  const core = JSON.parse(readFileSync(coreOut, "utf8"));
+  assert.equal(core.creators[0].address, "8CreatorSol111111");
+  assert.equal(core.creators[0].percentage, 100);
+
+  execSync(`node bin/series.mjs release-config "${archivePath}" --profile magiceden --legacy --creator "8CreatorSol111111" -o "${sugarOut}"`, {
     cwd: ROOT,
     stdio: "pipe",
   });
   assert.ok(existsSync(sugarOut));
   const sugar = JSON.parse(readFileSync(sugarOut, "utf8"));
   assert.equal(sugar.creators[0].address, "8CreatorSol111111");
+  assert.equal(sugar.creators[0].share, 100);
 
   // Generate Thirdweb config
   execSync(`node bin/series.mjs release-config "${archivePath}" --profile opensea --creator "0xEvmCreator123" -o "${twOut}"`, {

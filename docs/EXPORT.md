@@ -20,7 +20,8 @@ metadata/
   1.json             # Метадані відповідного стандарту (ERC-721 / Metaplex / Ordinals)
   2.json
 manifest.csv         # Гуртовий CSV маніфест з усіма трейтами та посиланнями
-sugar.json           # Конфігурація для Solana Metaplex Sugar CLI (для Magic Eden / Solana)
+cm-config.json       # Чернетка Core Candy Machine (Solana, типово)
+sugar/config.json    # Спадщина Sugar, не для нової колекції
 thirdweb.json        # Конфігурація для деплою ERC-721 Drop контракту (для OpenSea / EVM)
 release-guide.txt    # Локалізована покрокова інструкція для запуску
 collection.json      # Підсумок параметрів та складу бандлу
@@ -34,7 +35,7 @@ README.txt           # Загальний опис архіву
 | Профіль | Стандарт | Підтримка | Особливості |
 |---------|----------|-----------|-------------|
 | **`opensea`** | ERC-721 | Ethereum, Polygon, Base, Arbitrum | `display_type` для числових характеристик, гуртовий CSV імпорт, `thirdweb.json` |
-| **`magiceden`** | Metaplex | Solana, EVM | Масив роялті `properties.creators`, `seller_fee_basis_points`, `sugar.json` |
+| **`magiceden`** | Metaplex | Solana | Масив роялті `properties.creators`, `seller_fee_basis_points`, `cm-config.json` (Sugar лише в `sugar/`) |
 | **`launchmynft`** | Metaplex | Solana | Підтримка 0-based індексації (`0.png`, `0.json`) |
 | **`ordinalsbot`** | Ordinals | Bitcoin | Маніфести інскрипцій з прив'язкою `collection` та `edition` |
 
@@ -88,8 +89,8 @@ Series Lab підтримує автоматичне виявлення та п�
 - Прямі посилання на створення дропу в **OpenSea Studio**, **Magic Eden Creator Hub**, **LaunchMyNFT**, **Thirdweb**, **OrdinalsBot**.
 - Посилання на **Тестнет-портали** (Sepolia, Devnet).
 - Кнопку завантаження конфігурацій деплою:
-  - `sugar.json` для розгортання через Solana Metaplex Sugar CLI.
-  - `thirdweb.json` для 1-клік деплою через Thirdweb / Hardhat.
+  - `cm-config.json` для Core Candy Machine (типово для Solana). `sugar.json` лише з `?legacy=1` і підписом спадщини.
+  - `thirdweb.json` для деплою через Thirdweb. Пароль delayed reveal туди не входить.
 - Покроковий інтерактивний чекліст підготовки до запуску.
 
 ---

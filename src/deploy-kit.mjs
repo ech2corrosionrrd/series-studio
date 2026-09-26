@@ -5,6 +5,7 @@
  * Cost figures are formulas over owner-set constants. They are not live gas quotes.
  */
 import { buildSugarConfig, buildThirdwebConfig } from "./deploy.mjs";
+import { assertNoSecrets } from "./secrets.mjs";
 import { formatForLaunchpad, exportManifestCsv } from "./launchpads.mjs";
 import { extname } from "node:path";
 
@@ -206,6 +207,7 @@ export function buildDeployKit({
   locale = "en",
   env = process.env,
 } = {}) {
+  assertNoSecrets(opts);
   const chain = normalizeChain(opts.chain, opts.profile, opts.format);
   const profile = profileForChain(chain);
   const uk = String(locale || "").toLowerCase().startsWith("uk");
@@ -226,6 +228,7 @@ export function buildDeployKit({
     description,
     creatorAddress: creator,
     namePrefix: opts.namePrefix || `${name} #`,
+    locale,
   };
 
   const files = {};
@@ -262,6 +265,8 @@ export function buildDeployKit({
       },
     };
     files["assets/collection.json"] = `${JSON.stringify(collectionMeta, null, 2)}\n`;
+    files["hidden-settings.json"] = `${JSON.stringify(hiddenSettingsDraft(), null, 2)}\n`;
+    files["HIDDEN.txt"] = hiddenSettingsNote(uk);
     const sugar = buildSugarConfig(
       { ...archive, size: count, recipes: sorted.map((s) => s.recipe).filter(Boolean) },
       preset,
@@ -298,6 +303,40 @@ export function buildDeployKit({
   const guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate, legacy: Boolean(opts.legacy) });
   files["DEPLOY.txt"] = guide;
   return { chain, files, estimate, guide, count };
+}
+
+function hiddenSettingsDraft() {
+  return {
+    name: "Hidden #",
+    uri: "https://example.invalid/hidden.json",
+    hash: null,
+  };
+}
+
+function hiddenSettingsNote(uk) {
+  return uk
+    ? [
+      "Заготовка hidden settings для Core Candy Machine",
+      "==============================================",
+      "name і uri у hidden-settings.json — заглушки. Замініть їх своїми.",
+      "hash — це SHA-256 масиву даних розкриття (name + uri кожного предмета),",
+      "як у гайді Core Candy Machine hidden settings. Формат хешу не вигадуйте:",
+      "візьміть його з тієї сторінки, коли будете заповнювати майстер.",
+      "https://www.metaplex.com/docs/smart-contracts/core-candy-machine/guides/create-a-core-candy-machine-with-hidden-settings",
+      "Пароль розкриття сюди не вписуйте. Series Lab його не приймає і не зберігає.",
+      "",
+    ].join("\n")
+    : [
+      "Core Candy Machine hidden-settings draft",
+      "=======================================",
+      "name and uri in hidden-settings.json are placeholders. Replace them with yours.",
+      "hash is the SHA-256 of the reveal-data array (name + uri of each item),",
+      "computed the way the Core Candy Machine hidden-settings guide describes.",
+      "Do not invent a hash layout: copy it from that page when you fill the wizard.",
+      "https://www.metaplex.com/docs/smart-contracts/core-candy-machine/guides/create-a-core-candy-machine-with-hidden-settings",
+      "Do not put a reveal password in this file. Series Lab does not accept or store it.",
+      "",
+    ].join("\n");
 }
 
 function coreCandyConfig({ name, symbol, description, fee, count, creator }) {
@@ -443,6 +482,7 @@ function coreGuideSteps(uk) {
       "   mplx cm create --wizard",
       "   Відповідайте майстру з cm-config.json: назва, символ, sellerFeeBasisPoints, адреса творця.",
       "   Асети: assets/0.png, assets/0.json, … і assets/collection.json.",
+      "   Приховане розкриття: hidden-settings.json — заглушки name/uri. Хеш рахуєте ви, як у гайді Core. Пароль у файл не кладіть.",
       "   Якщо майстер просить кроки окремо: mplx cm upload, потім mplx cm insert, потім mplx cm validate.",
       "   Групи гвардів (імена зі сторінки гвардів Core; дату старту не вигадуємо):",
       "   - спочатку allowlist: allowList (merkle root вписуєте ви), mintLimit, botTax",
@@ -472,6 +512,7 @@ function coreGuideSteps(uk) {
       "   mplx cm create --wizard",
       "   Answer the wizard from cm-config.json: name, symbol, sellerFeeBasisPoints, creator address.",
       "   Assets: assets/0.png, assets/0.json, … and assets/collection.json.",
+      "   Hidden reveal: hidden-settings.json holds placeholder name/uri. You hash the reveal-data array the way the Core guide describes. Do not put a password in the file.",
       "   If the wizard asks for separate steps: mplx cm upload, then mplx cm insert, then mplx cm validate.",
       "   Guard groups (names from the Core guards page; do not invent a start date):",
       "   - allowlist first: allowList (you fill the merkle root), mintLimit, botTax",
@@ -621,6 +662,7 @@ export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Seri
         "   Відкрийте https://thirdweb.com/dashboard зі свого гаманця.",
         "   Створіть Drop ERC-721 у тестнеті.",
         "   Перенесіть поля з thirdweb.json (назва, символ, seller_fee_basis_points, fee_recipient).",
+        "   Пароль delayed reveal вводьте в кабінеті thirdweb. У thirdweb.json його немає — Lab його не зберігає.",
         "   Завантажте images/ і metadata/ у сховище Thirdweb (або свій IPFS) і вкажіть base URI.",
         "   Задеплойте контракт. Підпис — у вашому гаманці (MetaMask / Coinbase / інший).",
         "   Змінтіть 1 тестовий токен і відкрийте його на тестовому OpenSea.",
@@ -640,6 +682,7 @@ export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Seri
         "   Open https://thirdweb.com/dashboard with your wallet.",
         "   Create an ERC-721 Drop on the testnet.",
         "   Copy fields from thirdweb.json (name, symbol, seller_fee_basis_points, fee_recipient).",
+        "   Enter the delayed-reveal password in the thirdweb dashboard. It is not in thirdweb.json — Lab does not store it.",
         "   Upload images/ and metadata/ to Thirdweb storage (or your IPFS) and set the base URI.",
         "   Deploy the contract. The signature happens in your wallet (MetaMask / Coinbase / another).",
         "   Mint 1 test token and open it on testnet OpenSea.",

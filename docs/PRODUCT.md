@@ -62,11 +62,11 @@ Series Lab допомагає людині створити NFT-колекцію
 | Картинки, метадані ERC-721 / Metaplex / Ordinals, Sugar/Thirdweb чернетки, provenance, showcase | Є в ZIP | Лишилось |
 | Перевірений архів як ворота перед завантаженням | Чекліст був дорадчий, дублікати картинок не блокували ZIP | `src/preflight.mjs`. Помилки → HTTP 422, ZIP не пишеться. Попередження не блокують. Звіт у UI й у `preflight.txt` |
 | Обкладинка, опис, роялті, рідкість, README під мережу | Частково: `collection.json`, showcase | `cover.*`, `royalties.json`, `rarity.json` / `rarity.txt`, `README.txt` під мережу |
-| Набір деплою з кроками devnet→mainnet і оцінкою | Посилання на портали + `sugar.json` / `thirdweb.json` | `POST /api/deploy-kit`: Sugar `config.json` + `assets/`, Thirdweb-пакет, Ordinals-інструкція, `DEPLOY.txt`, `ESTIMATE.txt` |
+| Набір деплою з кроками devnet→mainnet і оцінкою | Посилання на портали + `sugar.json` / `thirdweb.json` | `POST /api/deploy-kit`: Core `cm-config.json` + `assets/`, Sugar лише в `sugar/` як спадщина, Thirdweb, Ordinals, `hidden-settings.json` без пароля, `DEPLOY.txt`, `ESTIMATE.txt` |
 | Набір маркетплейсу | Не було окремого пакета | `POST /api/marketplace-kit`: Magic Eden, Tensor, OpenSea, Ordinals. `LISTING.txt`, `CHECKLIST.txt`, `VERIFY.txt`, PNG заданого розміру, `SIZES.json` |
 | Ціна етапу до дії і звіт собівартість/виручка | Була юніт-економіка рушіїв і накладні | `GET /api/stages/quote(s)`, списання `stage:*` у леджері, блок етапів в Адмін → Економіка |
 | Шлях новачка поруч із прямим доступом | Сім вкладок і кроки на Огляді | Смуга Lab → Studio → Випуск → Деплой → Маркет і перемикач «Шлях новачка». Вкладки не ховаються |
-| Ключі не приймаємо | Так і було для гаманця входу | Тіла наборів з полем private key / seed відхиляються (`code: secrets`) |
+| Ключі не приймаємо | Так і було для гаманця входу | Тіла наборів з полем private key / seed / password / secret відхиляються (`code: secrets`) |
 
 ## Дорожня карта (свідомо не в цій зміні)
 

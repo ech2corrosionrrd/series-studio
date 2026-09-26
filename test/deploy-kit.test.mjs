@@ -79,6 +79,13 @@ test("solana kit defaults to Core Candy Machine, keeps Sugar as labelled legacy,
   assert.match(kit.files["ROYALTIES.txt"], /ProgramAllowList/);
   assert.match(kit.files["sugar/LEGACY.txt"], /sugar/);
   assert.match(kit.files["sugar/LEGACY.txt"], /спадщина|legacy/i);
+  const hidden = JSON.parse(kit.files["hidden-settings.json"]);
+  assert.equal(hidden.name, "Hidden #");
+  assert.equal(hidden.uri, "https://example.invalid/hidden.json");
+  assert.equal(hidden.hash, null);
+  assert.equal(hidden.password, undefined);
+  assert.equal(hidden.secret, undefined);
+  assert.match(kit.files["HIDDEN.txt"], /SHA-256/);
   assert.match(kit.guide, /приватний ключ|seed/i);
   assert.equal(kit.files.privateKey, undefined);
   const guideBlob = JSON.stringify(kit.files);
@@ -111,6 +118,11 @@ test("thirdweb package and ordinals guide are chain-specific", () => {
     env: {},
   });
   assert.ok(evm.files["thirdweb.json"]);
+  const tw = JSON.parse(evm.files["thirdweb.json"]);
+  assert.equal(tw.delayedReveal.passwordStored, false);
+  assert.match(tw.delayedReveal.hint, /thirdweb/i);
+  assert.equal(tw.password, undefined);
+  assert.equal(tw.secret, undefined);
   assert.match(evm.guide, /Sepolia/);
   assert.match(evm.guide, /private key/i);
   const btc = buildDeployKit({
@@ -123,4 +135,17 @@ test("thirdweb package and ordinals guide are chain-specific", () => {
   assert.ok(btc.files["manifest.csv"]);
   assert.match(btc.guide, /[Ss]ignet/);
   assert.match(btc.guide, /[Mm]ainnet/);
+});
+
+test("deploy kit rejects a password or secret inside hidden settings", () => {
+  const item = { edition: 1, buffer: createMockPng({ seed: 1, width: 16, height: 16 }), ext: "png", recipe: { edition: 1, traits: {} } };
+  for (const field of ["password", "secret"]) {
+    assert.throws(
+      () => buildDeployKit({
+        items: [item],
+        opts: { chain: "solana", hiddenSettings: { [field]: "do-not-store" } },
+      }),
+      (err) => err.status === 400 && err.code === "secrets",
+    );
+  }
 });

@@ -120,6 +120,9 @@ export function aHashPng(buf) {
   return aHashFromGray(rgbaTo8x8(rgba, width, height));
 }
 
+/** Same default the review tool uses. Preflight warns at or under this distance. */
+export const AHASH_WARN_DISTANCE = 8;
+
 /** Hamming distance between two hashes (bigint | decimal string). */
 export function hamming(a, b) {
   let x = BigInt(a) ^ BigInt(b);
@@ -135,7 +138,7 @@ export function hamming(a, b) {
  * Pairs of images in a set folder whose average hashes are within maxDistance.
  * @returns {{ pairs: { a: string, b: string, distance: number }[], hashed: number, skipped: string[] }}
  */
-export function findDupes(dir, { maxDistance = 8 } = {}) {
+export function findDupes(dir, { maxDistance = AHASH_WARN_DISTANCE } = {}) {
   const limit = Math.max(0, Math.min(32, Number(maxDistance) || 0));
   const cacheFile = join(dir, "hashes.json");
   let cache = {};

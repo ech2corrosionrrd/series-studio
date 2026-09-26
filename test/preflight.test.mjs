@@ -5,11 +5,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import JSZip from "jszip";
 import { createMockPng } from "../src/mock-image.mjs";
+import { deflateSync, crc32 } from "node:zlib";
 import {
   runPreflight,
   metadataSchemaIssues,
   assessRoyalties,
+  PREFLIGHT_RECOMMENDED_IMAGE_BYTES,
+  dnaKey,
 } from "../src/preflight.mjs";
+import { dna } from "../src/recipes.mjs";
+import { aHashPng, hamming } from "../src/dupes.mjs";
 import { buildBundleZip } from "../src/export-bundle.mjs";
 
 function meta(edition, extra = {}) {
@@ -154,3 +159,117 @@ test("gated bundle throws on duplicate images and packs the ready files when ima
   assert.equal(royalties.sellerFeeBasisPoints, 500);
   rmSync(dir, { recursive: true, force: true });
 });
+
+function baseInput(images, recipes) {
+  return {
+    locale: "en",
+    standard: "erc721",
+    description: "Size check",
+    coverPresent: true,
+    recipes,
+    images,
+    metadata: recipes.map((r) => meta(r.edition)),
+    royalties: { sellerFeeBasisPoints: 500, creators: [{ address: "Creator11111111111111111111111111111111", share: 100 }] },
+  };
+}
+
+test("preflight warns above 1 MB and still errors above the hard cap", () => {
+  const header = createMockPng({ seed: 3, width: 8, height: 8 });
+  const twoMb = Buffer.alloc(2 * 1024 * 1024);
+  header.copy(twoMb);
+  const warned = runPreflight(baseInput(
+    [{ edition: 1, filename: "1.png", buffer: twoMb }],
+    [{ edition: 1, dna: "only", traits: { bg: "red" } }],
+  ));
+  assert.equal(warned.ready, true, warned.report);
+  assert.ok(warned.warnings.some((w) => w.code === "size" && w.message.includes("1 MB")));
+  assert.ok(twoMb.length > PREFLIGHT_RECOMMENDED_IMAGE_BYTES);
+
+  const over = Buffer.alloc(64 * 1024);
+  header.copy(over);
+  const blocked = runPreflight(baseInput(
+    [{ edition: 1, filename: "1.png", buffer: over }],
+    [{ edition: 1, dna: "only", traits: { bg: "red" } }],
+  ), { PREFLIGHT_MAX_IMAGE_BYTES: "1024" });
+  assert.equal(blocked.ready, false);
+  assert.ok(blocked.errors.some((e) => e.code === "size"));
+});
+
+test("preflight uses the recipe DNA helper and warns on a close aHash", () => {
+  const traits = { hat: "cap" };
+  const key = dnaKey({ line: "a", traits }, ["hat"]);
+  assert.equal(key, dna("a", traits, ["hat"]));
+  const dup = runPreflight(baseInput(
+    [
+      { edition: 1, filename: "1.png", buffer: createMockPng({ seed: 1, width: 16, height: 16 }) },
+      { edition: 2, filename: "2.png", buffer: createMockPng({ seed: 2, width: 16, height: 16 }) },
+    ],
+    [
+      { edition: 1, line: "a", traits },
+      { edition: 2, line: "a", traits },
+    ],
+  ));
+  assert.equal(dup.ready, false);
+  assert.ok(dup.errors.some((e) => e.code === "duplicate_dna"));
+
+  const pixels = (flip) => {
+    const out = [];
+    for (let i = 0; i < 64; i++) {
+      const on = i < 32 || (flip && i === 32);
+      out.push(on ? [100, 100, 100] : [0, 0, 0]);
+    }
+    return out;
+  };
+  const png = (flip) => rgbPng(pixels(flip), 8, 8);
+  const left = png(false);
+  const right = png(true);
+  const distance = hamming(aHashPng(left), aHashPng(right));
+  assert.ok(distance > 0 && distance <= 8, `distance ${distance}`);
+  const near = runPreflight(baseInput(
+    [
+      { edition: 1, filename: "1.png", buffer: left },
+      { edition: 2, filename: "2.png", buffer: right },
+    ],
+    [
+      { edition: 1, dna: "a", traits: { hat: "cap" } },
+      { edition: 2, dna: "b", traits: { hat: "brim" } },
+    ],
+  ));
+  assert.equal(near.ready, true, near.report);
+  assert.ok(near.warnings.some((w) => w.code === "near_duplicate" && w.message.includes("1") && w.message.includes("2")));
+});
+
+function rgbPng(pixels, w, h) {
+  const rows = [];
+  for (let y = 0; y < h; y++) {
+    const row = Buffer.alloc(1 + w * 3);
+    for (let x = 0; x < w; x++) {
+      const [r, g, b] = pixels[y * w + x];
+      const o = 1 + x * 3;
+      row[o] = r;
+      row[o + 1] = g;
+      row[o + 2] = b;
+    }
+    rows.push(row);
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk("IHDR", ihdr),
+    pngChunk("IDAT", deflateSync(Buffer.concat(rows))),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+function pngChunk(type, data) {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length);
+  const body = Buffer.concat([Buffer.from(type), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(body) >>> 0);
+  return Buffer.concat([len, body, crc]);
+}

@@ -4,8 +4,15 @@
  */
 import { createHash } from "node:crypto";
 import { pngDimensions } from "./png-fit.mjs";
+import { dna } from "./recipes.mjs";
+import { aHashPng, hamming, AHASH_WARN_DISTANCE } from "./dupes.mjs";
 
 export const DEFAULT_MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+/**
+ * Metaplex Core Candy Machine preparing-assets: "keep file sizes under 1 MB where possible".
+ * A file over this size is a warning. The hard stop stays PREFLIGHT_MAX_IMAGE_BYTES.
+ */
+export const PREFLIGHT_RECOMMENDED_IMAGE_BYTES = 1 * 1024 * 1024;
 const PLACEHOLDER_ADDRESSES = new Set([
   "11111111111111111111111111111111",
   "0x0000000000000000000000000000000000000000",
@@ -20,10 +27,17 @@ export function imageDigest(buf) {
   return createHash("sha256").update(buf).digest("hex");
 }
 
-export function dnaKey(recipe) {
+/**
+ * One DNA helper for recipes and preflight. Stored recipe.dna wins;
+ * otherwise the same `dna()` the builder uses.
+ */
+export function dnaKey(recipe, traitKeys) {
   if (recipe?.dna) return String(recipe.dna);
   const traits = recipe?.traits && typeof recipe.traits === "object" ? recipe.traits : {};
-  return Object.keys(traits).sort().map((k) => `${k}:${traits[k]}`).join("|");
+  const keys = Array.isArray(traitKeys) && traitKeys.length
+    ? traitKeys
+    : Object.keys(traits).sort();
+  return dna(recipe?.line || "", traits, keys);
 }
 
 export function sniffImage(buf, filename = "") {
@@ -147,9 +161,10 @@ export function runPreflight(input = {}, env = process.env) {
   const warnings = [];
   const L = (en, ua) => (uk ? ua : en);
 
+  const traitKeys = Array.isArray(input.traitKeys) ? input.traitKeys : null;
   const dnaGroups = new Map();
   for (const r of recipes) {
-    const key = dnaKey(r);
+    const key = dnaKey(r, traitKeys);
     const list = dnaGroups.get(key) || [];
     list.push(r.edition);
     dnaGroups.set(key, list);
@@ -276,6 +291,11 @@ export function runPreflight(input = {}, env = process.env) {
         `Edition #${img.edition}: ${info.bytes} bytes exceeds the limit of ${maxBytes} (PREFLIGHT_MAX_IMAGE_BYTES)`,
         `Видання #${img.edition}: ${info.bytes} байт понад ліміт ${maxBytes} (PREFLIGHT_MAX_IMAGE_BYTES)`,
       ));
+    } else if (info.bytes > PREFLIGHT_RECOMMENDED_IMAGE_BYTES) {
+      push(checks, errors, warnings, "warning", "size", L(
+        `Edition #${img.edition}: ${info.bytes} bytes is over 1 MB. Metaplex asks to keep files under 1 MB where possible. The ZIP still builds.`,
+        `Видання #${img.edition}: ${info.bytes} байт понад 1 МБ. Metaplex просить тримати файли до 1 МБ, де це можливо. ZIP усе одно збереться.`,
+      ));
     } else if (info.bytes < 1024) {
       push(checks, errors, warnings, "warning", "size", L(
         `Edition #${img.edition}: only ${info.bytes} bytes — very small for a marketplace image`,
@@ -293,6 +313,37 @@ export function runPreflight(input = {}, env = process.env) {
     push(checks, errors, warnings, "ok", "format", L(
       "Image formats and sizes are inside the configured limits",
       "Формати й розміри зображень у заданих межах",
+    ));
+  }
+
+  const perceptual = [];
+  for (const img of images) {
+    if (!img?.buffer) continue;
+    const info = sniffImage(img.buffer, img.filename);
+    if (info.format !== "png") continue;
+    try {
+      perceptual.push({ edition: img.edition, hash: aHashPng(img.buffer), digest: imageDigest(img.buffer) });
+    } catch {
+      /* undecodable png is already a format error or not a real png */
+    }
+  }
+  const near = [];
+  for (let i = 0; i < perceptual.length; i++) {
+    for (let j = i + 1; j < perceptual.length; j++) {
+      const a = perceptual[i];
+      const b = perceptual[j];
+      if (a.digest === b.digest) continue;
+      const distance = hamming(a.hash, b.hash);
+      if (distance <= AHASH_WARN_DISTANCE) {
+        near.push({ editions: [a.edition, b.edition], distance });
+      }
+    }
+  }
+  if (near.length) {
+    const sample = near.slice(0, 8).map((p) => `${p.editions.join("+")} (d=${p.distance})`).join(", ");
+    push(checks, errors, warnings, "warning", "near_duplicate", L(
+      `Perceptual near-duplicates (aHash): ${sample}. This does not block the ZIP.`,
+      `Майже-дублікати (aHash): ${sample}. Це не блокує ZIP.`,
     ));
   }
 

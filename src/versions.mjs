@@ -12,6 +12,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { atomicWriteFileSync, writeJsonAtomic } from "./fs-safe.mjs";
+import { creationVersion } from "./creation.mjs";
 
 const edKey = (edition) => {
   const s = String(edition);
@@ -67,10 +68,36 @@ export function addVersion(setDir, edition, buf, info = {}, now = new Date()) {
     renameSync(cur, storedPath(setDir, edition, meta.current));
   }
   atomicWriteFileSync(cur, buf);
-  meta.versions.push({ v, at: now.toISOString(), ...info });
+  const stored = { v, at: now.toISOString(), ...info };
+  meta.versions.push(stored);
   meta.current = v;
   writeMeta(setDir, edition, meta);
+  appendCreation(setDir, edition, stored);
   return v;
+}
+
+function creationPath(setDir, edition) {
+  return join(setDir, "creation", `${edKey(edition)}.json`);
+}
+
+/** Append a creation row. A new render does not drop earlier rows. */
+function appendCreation(setDir, edition, stored) {
+  const file = creationPath(setDir, edition);
+  mkdirSync(join(setDir, "creation"), { recursive: true });
+  let doc = { edition: Number(edKey(edition)), versions: [] };
+  if (existsSync(file)) {
+    try {
+      const prev = JSON.parse(readFileSync(file, "utf8"));
+      if (Array.isArray(prev?.versions)) doc.versions = prev.versions;
+    } catch {
+      /* keep the empty history and append */
+    }
+  }
+  const row = creationVersion({ ...stored, versionId: stored.v });
+  doc.versions = doc.versions.filter((x) => x.versionId !== row.versionId);
+  doc.versions.push(row);
+  doc.versions.sort((a, b) => Number(a.versionId) - Number(b.versionId));
+  writeJsonAtomic(file, doc);
 }
 
 /** Make an older version current (swap files). */
