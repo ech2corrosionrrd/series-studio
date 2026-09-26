@@ -3,10 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="refresh" content="0; url=/studio/">
-  <title>Series Lab → Studio</title>
+  <title data-i18n="title">Series Lab — майстерня</title>
   <link rel="canonical" href="/studio/">
 </head>
 <body>
-  <p>Redirecting to <a href="/studio/">/studio/</a>…</p>
+  <p data-i18n="redir">Перехід до <a href="/studio/">Studio</a>…</p>
+  <script>
+    var loc = "uk";
+    try { loc = localStorage.getItem("series-lab-locale") === "en" ? "en" : "uk"; } catch (e) {}
+    var copy = {
+      uk: { title: "Series Lab — майстерня", redir: "Перехід до <a href=\"/studio/\">Studio</a>…" },
+      en: { title: "Series Lab — Studio", redir: "Redirecting to <a href=\"/studio/\">Studio</a>…" },
+    };
+    document.documentElement.lang = loc;
+    document.title = copy[loc].title;
+    var p = document.querySelector("[data-i18n=redir]");
+    if (p) p.innerHTML = copy[loc].redir;
+  </script>
 </body>
 </html>
