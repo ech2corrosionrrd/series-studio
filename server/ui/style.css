@@ -912,3 +912,6 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .sim-badge.warn { color: var(--warn); }
 .license-warn { margin: 8px 0; padding: 10px 12px; border: 1px solid var(--warn); border-radius: 10px; background: rgba(245, 180, 60, 0.08); }
 .license-warn p { margin: 6px 0; }
+.advisor-card { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--line); }
+.advisor h3 { font-size: 14px; margin: 12px 0 4px; }
+.advisor p { white-space: pre-wrap; margin: 0 0 8px; }

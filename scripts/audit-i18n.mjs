@@ -217,6 +217,50 @@ for (const file of [...walk("server"), ...walk("src")]) {
   }
 }
 
+const SCRIPT_ALLOW = new Set(`
+series lab opensea magic eden pinata ipfs arweave irys solana ethereum bitcoin ordinals
+metaplex phantom metamask solflare tensor thirdweb launchmynft kohya replicate comfyui
+automatic1111 a1111 flux kontext schnell openai stability pollinations runware telegram
+gremlin midjourney claude sdxl sugar candy machine core mplx fal vision mock nft gpt bfl
+unisat okx gamma satflow ordzaar hashlips w3ir zip png json csv html txt jpg jpeg webp
+gif svg mp4 pdf yaml yml toml sha cid uri url http https api gpu faq dna usdc sol eth
+btc evm erc eip cli rpc env css wav webm utf ascii llm tma b2b csrf wasm rgb hsl pfp qa
+bps devnet mainnet signet sepolia img2img txt2img lora coinbase rainbow ordinalsbot sharp
+pro dev comfy genesis sybil deeplink english usd nftstorage irys studio creator hub wallet taproot
+`.split(/\s+/).filter(Boolean));
+
+const SCRIPT_EXEMPT = new Set(["base.wish.wrapPrefix", "lang.name.uk", "lang.name.en"]);
+
+function latinWordsOutsideGloss(value) {
+  const stripped = String(value)
+    .replace(/\{[^}]+\}/g, " ")
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/(?:[\w.-]+\/)+[\w.<>-]*/g, " ")
+    .replace(/\b[A-Z][A-Z0-9_]{2,}\b/g, " ")
+    .replace(/\b[\w.-]+\.[A-Za-z0-9]{1,8}\b/g, " ");
+  return [...stripped.matchAll(/[A-Za-z][A-Za-z0-9]*/g)]
+    .map((m) => m[0])
+    .filter((w) => w.replace(/[0-9]/g, "").length >= 3);
+}
+
+function auditLocaleScript(locale, dict) {
+  for (const [key, value] of Object.entries(dict)) {
+    if (SCRIPT_EXEMPT.has(key) || /\.ph$/.test(key)) continue;
+    const text = String(value);
+    if (locale === "en") {
+      if (/[\u0400-\u04FF]/.test(text)) fail(`en Cyrillic in ${key}`);
+      continue;
+    }
+    const bad = [...new Set(latinWordsOutsideGloss(text).filter((w) => !SCRIPT_ALLOW.has(w.toLowerCase())))];
+    for (const word of bad) fail(`uk Latin "${word}" in ${key}`);
+  }
+}
+
+auditLocaleScript("uk", { ...uk, ...(tips.uk || {}) });
+auditLocaleScript("en", { ...en, ...(tips.en || {}) });
+
 if (issues.length) {
   console.error(`i18n audit: ${issues.length} problem(s)`);
   for (const line of issues) console.error(" -", line);

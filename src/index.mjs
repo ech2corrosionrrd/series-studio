@@ -109,6 +109,7 @@ export {
   normalizeChain,
   DEPLOY_COST_DEFAULTS,
 } from "./deploy-kit.mjs";
+export { buildLaunchAdvisor } from "./launch-advisor.mjs";
 export {
   buildMarketplaceKit,
   marketplaceSizes,
