@@ -59,7 +59,7 @@ test("missing deploy chain is Solana Core; Sugar is only the explicit legacy cho
   assert.match(uk["deploy.chain.solana"], /Core Candy Machine/);
   assert.equal(uk["deploy.chain.solana"].includes("Sugar"), false);
   assert.match(uk["deploy.chain.solanaLegacy"], /Sugar/);
-  assert.match(uk["deploy.chain.solanaLegacy"], /спадщина/);
+  assert.match(uk["deploy.chain.solanaLegacy"], /застарілий/);
   assert.match(en["deploy.chain.solana"], /Core Candy Machine/);
   assert.equal(en["deploy.chain.solana"].includes("Sugar"), false);
   assert.match(en["deploy.chain.solanaLegacy"], /Sugar/);
@@ -103,7 +103,7 @@ test("solana kit defaults to Core Candy Machine, keeps Sugar as labelled legacy,
   assert.equal(/startDate/.test(kit.files["DEPLOY.txt"]), false);
   assert.match(kit.files["ROYALTIES.txt"], /ProgramAllowList/);
   assert.match(kit.files["sugar/LEGACY.txt"], /sugar/);
-  assert.match(kit.files["sugar/LEGACY.txt"], /спадщина|legacy/i);
+  assert.match(kit.files["sugar/LEGACY.txt"], /застаріл/i);
   const hidden = JSON.parse(kit.files["hidden-settings.json"]);
   assert.equal(hidden.name, "Hidden #");
   assert.equal(hidden.uri, "https://example.invalid/hidden.json");
@@ -128,7 +128,7 @@ test("solana kit defaults to Core Candy Machine, keeps Sugar as labelled legacy,
   });
   assert.ok(legacy.files["config.json"]);
   assert.match(legacy.guide, /sugar/);
-  assert.match(legacy.guide, /спадщина|legacy/i);
+  assert.match(legacy.guide, /застаріл/i);
   assert.match(legacy.guide, /devnet/);
   assert.ok(legacy.guide.toLowerCase().indexOf("devnet") < legacy.guide.toLowerCase().indexOf("mainnet"));
 });

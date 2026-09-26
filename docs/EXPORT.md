@@ -21,7 +21,7 @@ metadata/
   2.json
 manifest.csv         # Гуртовий CSV маніфест з усіма трейтами та посиланнями
 cm-config.json       # Чернетка Core Candy Machine (Solana, типово)
-sugar/config.json    # Спадщина Sugar, не для нової колекції
+sugar/config.json    # Застарілий Sugar, не для нової колекції
 thirdweb.json        # Конфігурація для деплою ERC-721 Drop контракту (для OpenSea / EVM)
 release-guide.txt    # Локалізована покрокова інструкція для запуску
 collection.json      # Підсумок параметрів та складу бандлу
@@ -89,7 +89,7 @@ Series Lab підтримує автоматичне виявлення та п�
 - Прямі посилання на створення дропу в **OpenSea Studio**, **Magic Eden Creator Hub**, **LaunchMyNFT**, **Thirdweb**, **OrdinalsBot**.
 - Посилання на **Тестнет-портали** (Sepolia, Devnet).
 - Кнопку завантаження конфігурацій деплою:
-  - `cm-config.json` для Core Candy Machine (типово для Solana). `sugar.json` лише з `?legacy=1` і підписом спадщини.
+  - `cm-config.json` для Core Candy Machine (типово для Solana). `sugar.json` лише з `?legacy=1` і позначкою «застарілий».
   - `thirdweb.json` для деплою через Thirdweb. Пароль delayed reveal туди не входить.
 - Покроковий інтерактивний чекліст підготовки до запуску.
 

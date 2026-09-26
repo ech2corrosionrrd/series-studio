@@ -493,7 +493,7 @@ export async function buildBundleZip(params) {
     const sugarConfig = buildSugarConfig(archive, preset, opts);
     zip.file("sugar/config.json", JSON.stringify(sugarConfig, null, 2) + "\n");
     zip.file("sugar/LEGACY.txt", String(locale).toLowerCase().startsWith("uk")
-      ? "СПАДЩИНА: legacy Candy Machine, не для нової колекції.\n"
+      ? "ЗАСТАРІЛИЙ: legacy Candy Machine, не для нової колекції.\n"
       : "LEGACY: legacy Candy Machine, not for a new collection.\n");
   } else if (profileKey === "opensea" || format === "erc721") {
     const twConfig = buildThirdwebConfig(archive, preset, opts);

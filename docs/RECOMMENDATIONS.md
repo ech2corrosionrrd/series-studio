@@ -283,13 +283,13 @@
 
 ### Набір деплою
 
-#### R18. Core Candy Machine типово, Sugar — підписана спадщина
+#### R18. Core Candy Machine типово, Sugar — позначений як застарілий
 
 - **Проблема.** Набір de-facto вчить людину ставити колекцію через Sugar і legacy Candy Machine. Metaplex на цих сторінках пише, що програма застаріла і для нових проєктів треба Core Candy Machine та MPLX CLI. Token Metadata для нових проєктів не рекомендований. Lab не має почати підписувати деплой сам: змінюється текст і форма конфіга, гаманець лишається в людини.
 - **Зараз у коді.** `src/deploy-kit.mjs` кладе Sugar `config.json`, `assets/` і команди `sugar validate`, `sugar upload`, `sugar deploy`, `sugar verify` (близько `:265-272` і `:348-384`). Оцінка газу в коментарі називає «candy machine account» (`:72`). EVM лишається пакетом thirdweb. Ordinals лишається інструкцією, спочатку signet. Профіль лаунчпада `magiceden` досі описаний як «Solana / EVM» (`src/launchpads.mjs:23-28`) — це сусідня неточність, її закриває R19.
-- **Зміна.** Типовий Solana-набір: `cm-config.json` під MPLX, розклад асетів як у документації Core (`0.png`, `0.json`, `collection.json`), команди `mplx cm create --wizard` або покроково `upload` / `insert` / `validate`, спочатку devnet. Групи гвардів з іменами **поточної** сторінки гвардів (у витязі є Allow List, Bot Tax, Allocation, Asset Gate, End Date; `startDate` зі старої нотатки на сторінці не підтверджено — не вигадувати ключ). Пресет фаз: спочатку allowlist, потім публічна, з `mintLimit` якщо це ім’я є в [CLI](https://www.metaplex.com/docs/dev-tools/cli/cm/create), і `botTax`. Окремий файл `sugar/` з тими самими командами, що зараз, і першим рядком «спадщина, legacy Candy Machine, не для нової колекції». Оцінка SOL лишається формулою власника з `.env`, без живого RPC (як у PRODUCT). Роялті: у коментарі конфіга вибір `ProgramAllowList` (примусово для програм зі списку) проти без правила (дорадчо). Список програм людина вписує сама; приклад з документації можна процитувати, не підставляти чужий гаманець отримувача.
+- **Зміна.** Типовий Solana-набір: `cm-config.json` під MPLX, розклад асетів як у документації Core (`0.png`, `0.json`, `collection.json`), команди `mplx cm create --wizard` або покроково `upload` / `insert` / `validate`, спочатку devnet. Групи гвардів з іменами **поточної** сторінки гвардів (у витязі є Allow List, Bot Tax, Allocation, Asset Gate, End Date; `startDate` зі старої нотатки на сторінці не підтверджено — не вигадувати ключ). Пресет фаз: спочатку allowlist, потім публічна, з `mintLimit` якщо це ім’я є в [CLI](https://www.metaplex.com/docs/dev-tools/cli/cm/create), і `botTax`. Окремий файл `sugar/` з тими самими командами, що зараз, і першим рядком «застарілий, legacy Candy Machine, не для нової колекції». Оцінка SOL лишається формулою власника з `.env`, без живого RPC (як у PRODUCT). Роялті: у коментарі конфіга вибір `ProgramAllowList` (примусово для програм зі списку) проти без правила (дорадчо). Список програм людина вписує сама; приклад з документації можна процитувати, не підставляти чужий гаманець отримувача.
 - **Прийняття.** Новий набір без прапорця «legacy» не містить команди `sugar deploy` у `DEPLOY.txt` першим кроком. Прасет legacy збирає сьогоднішній Sugar-набір і позначений у тексті. Секрети як і раніше відхиляються. Devnet згаданий раніше за mainnet.
-- **Тести.** Оновити `test/deploy-kit.test.mjs`: типовий solana-набір містить `mplx` і не містить `sugar deploy` у головному `DEPLOY.txt`; legacy-набір містить `sugar` і слово про спадщину.
+- **Тести.** Оновити `test/deploy-kit.test.mjs`: типовий solana-набір містить `mplx` і не містить `sugar deploy` у головному `DEPLOY.txt`; legacy-набір містить `sugar` і слово «застарілий».
 - **Обсяг / пріоритет.** L / **P0**.
 - **Залежності.** Немає кодової залежності від R4. R14 (hidden settings) лягає в цей набір, якщо йде слідом.
 - **Документація.** [банер deprecated на Sugar](https://www.metaplex.com/docs/smart-contracts/candy-machine/sugar), [Core Candy Machine](https://www.metaplex.com/docs/smart-contracts/core-candy-machine), [MPLX `cm`](https://www.metaplex.com/docs/dev-tools/cli/cm), [`mplx cm create`](https://www.metaplex.com/docs/dev-tools/cli/cm/create), [гварди](https://www.metaplex.com/docs/smart-contracts/core-candy-machine/guards), [асети](https://www.metaplex.com/docs/smart-contracts/core-candy-machine/preparing-assets), [роялті Core](https://www.metaplex.com/docs/smart-contracts/core/plugins/royalties), [Token Metadata legacy](https://www.metaplex.com/docs/smart-contracts/token-metadata).
@@ -382,7 +382,7 @@
 3. R12. Другий звіт OpenRarity з null. **Зроблено.** HowRare не чіпали.
 4. R14. `presetSeed` у провененсі; заготовка hidden settings без секретів; підказка thirdweb без пароля в Lab. **Зроблено.**
 5. R15. `creation.json` і абзац про ШІ в README архіву. **Зроблено.** LEGAL.md не змінювався.
-6. ZIP реліз-хаба: типово `cm-config.json`, `sugar.json` лише як `sugar/config.json` з підписом спадщини. **Зроблено.**
+6. ZIP реліз-хаба: типово `cm-config.json`, `sugar.json` лише як `sugar/config.json` з позначкою «застарілий». **Зроблено.**
 
 ### Фаза C — конструктор і схожість
 

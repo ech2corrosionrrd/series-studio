@@ -209,7 +209,7 @@ function chainNextUk(chain) {
       "Solana:",
       "  - Метадані в metadata/ — Metaplex.",
       "  - cm-config.json у цьому архіві — чернетка Core Candy Machine.",
-      "  - sugar/config.json і sugar/LEGACY.txt — спадщина, не для нової колекції.",
+      "  - sugar/config.json і sugar/LEGACY.txt — застарілі, не для нової колекції.",
       "  - Робочий набір CLI — «Набір деплою» (mplx, спочатку devnet).",
       "  - Далі маркетплейс: Magic Eden і Tensor, зі свого акаунта.",
     ];

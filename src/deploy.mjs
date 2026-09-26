@@ -227,7 +227,7 @@ export function buildReleaseGuide(locale = "en", archive = {}, opts = {}) {
       "  - metadata/     : JSON метадані кожного токена зі структурою атрибутів",
       "  - manifest.csv  : зведений CSV-маніфест для гуртового імпорту",
       "  - cm-config.json: чернетка Core Candy Machine (Solana, типово)",
-      "  - sugar/config.json : спадщина Sugar, не для нової колекції",
+      "  - sugar/config.json : застарілий Sugar, не для нової колекції",
       "  - thirdweb.json : параметри для контракту Thirdweb Drop (якщо EVM)",
       "  - collection.json: звіт параметрів серії",
       "",
