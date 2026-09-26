@@ -2,7 +2,7 @@
 
 **Series Lab** від [W3IR](https://w3ir.io) — майстерня для генеративних NFT-серій і LoRA-датасетів: **Lab → Studio → Release**.
 
-- **Версія**: `1.6.0` — перевірений архів, набір деплою й набір маркетплейсу, ціна етапу ([CHANGELOG](CHANGELOG.md) · [бачення](docs/PRODUCT.md))
+- **Версія**: `1.6.1` — зведення запитів #1–#9: перевірений архів, Core Candy Machine, маркет без Magic Eden для EVM і Ordinals, порадник запуску ([CHANGELOG](CHANGELOG.md) · [бачення](docs/PRODUCT.md))
 - **Папка на диску**: `series-studio` · npm-пакет `series-lab` · ліцензія MIT
 - **Розміщення розробки**: `127.0.0.1`. Ключі API не потрапляють у браузер; приватні ключі гаманців і сид-фрази майстерня не запитує й не зберігає.
 
@@ -14,7 +14,7 @@
 
 ## Що вміє
 
-**пресет + seed** → унікальні детерміновані рецепти (DNA + промпти) → **базова картинка серії** (+ Vision Assist) → рендер у кілька потоків з живим прогресом → **відбір** (keep/redo, AI Triage, версії) → **експорт** (архів випуску → портал лаунчпада; ERC-721 / Metaplex / Ordinals ZIP, CSV, IPFS, Provenance, Showcase, LoRA, Sugar / Thirdweb).
+**пресет + seed** → унікальні детерміновані рецепти (DNA + промпти) → **базова картинка серії** (+ Vision Assist) → рендер у кілька потоків з живим прогресом → **відбір** (keep/redo, AI Triage, версії) → **експорт** (перевірений архів, ERC-721 / Metaplex / Ordinals ZIP, CSV, IPFS через Pinata, хеш походження, вітрина, датасет LoRA) → **набір деплою** (типово Core Candy Machine; Sugar — застарілий; EVM: Thirdweb; Ordinals: інструкція) і **набір маркетплейсу** (Solana: Magic Eden і Tensor; EVM: OpenSea; Bitcoin: Ordinals). Продаж і мінт — з вашого гаманця, не з майстерні.
 
 **Страховка для грошей і файлів** (працює автоматично):
 
@@ -78,7 +78,9 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | 4 | **Рецепти** | «Зібрати тексти», хвилі, diff архівів, правка номера, рідкість. |
 | 5 | **Генерація** | «12 пілотів — порахувати» → оцінка → генерація. |
 | 6 | **Відбір** | ✓ / ↻, порівняння, Triage, схожі кадри, версії. |
-| 7 | **Експорт** | Архів випуску → портал; інші ZIP / CSV / IPFS / Showcase / Hub. |
+| 7 | **Експорт** | Архів випуску → портал; інші ZIP / CSV / IPFS / вітрина / хаб. Спершу «Перевірити чекліст», потім «Зібрати ZIP». |
+| — | **Деплой** | «Зібрати набір деплою». Типово Solana (Core Candy Machine, спочатку devnet). Sugar — пункт «застарілий». |
+| — | **Маркет** | «Зібрати набір маркетплейсу». Solana: Magic Eden і Tensor. EVM: OpenSea. Bitcoin: Ordinals. |
 | — | **Адмін** | Ресурси, **Економіка**, статистика, помилки — лише адмін-гаманець. |
 | — | **Довідка** | Путівник, швидкий старт, словник, FAQ. |
 
@@ -103,6 +105,7 @@ node bin/series.mjs pin out/fal-s0.45 --name my-series
 node bin/series.mjs manifest out/demo-archive.json --profile opensea
 node bin/series.mjs showcase out/demo-archive.json -o out/showcase.html
 node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o out/cm-config.json
+# --legacy пише застарілий Sugar у sugar/; без прапорця — Core Candy Machine
 ```
 
 ---
@@ -129,7 +132,8 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 ## Документація
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — бачення: місія, етапи, економіка, що поза продуктом
-- [docs/RECOMMENDATIONS.md](docs/RECOMMENDATIONS.md) — план наступних змін за дослідженням колекцій (документ, не нові функції)
+- [docs/QUALITY-REVIEW.md](docs/QUALITY-REVIEW.md) — огляд якості після запитів #1–#9
+- [docs/RECOMMENDATIONS.md](docs/RECOMMENDATIONS.md) — план і поточний статус пунктів R1–R21
 - [docs/GUIDE.md](docs/GUIDE.md) — початківцям
 - [docs/README.md](docs/README.md) — індекс
 - [docs/ECONOMY.md](docs/ECONOMY.md) — кредити, маржа, хостинг, обмін crypto→USD

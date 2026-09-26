@@ -2341,7 +2341,8 @@ function renderGallery() {
 /* ---------- Help (built from locale keys, works offline) ---------- */
 const HELP_STEPS = [
   ["s1", "home"], ["s2", "base"], ["s3", "ctor"], ["s4", "recipes"],
-  ["s5", "render"], ["s6", "gallery"], ["s7", "export"], ["s8", "admin"],
+  ["s5", "render"], ["s6", "gallery"], ["s7", "export"],
+  ["s9", "deploy"], ["s10", "market"], ["s8", "admin"],
 ];
 const HELP_CLI = [
   ["doctor", "doctor"],
