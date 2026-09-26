@@ -395,7 +395,7 @@ function coreLayoutReadme(uk) {
 function sugarLayoutReadme(uk, legacy) {
   const banner = legacy
     ? (uk
-      ? "СПАДЩИНА: legacy Candy Machine, не для нової колекції.\n"
+      ? "ЗАСТАРІЛИЙ: legacy Candy Machine, не для нової колекції.\n"
       : "LEGACY: legacy Candy Machine, not for a new collection.\n")
     : "";
   const body = uk
@@ -423,7 +423,7 @@ function sugarLayoutReadme(uk, legacy) {
 function sugarLegacyNote(uk) {
   const commands = uk
     ? [
-      "Команди Sugar (лише якщо ви свідомо лишаєтесь на спадщині):",
+      "Команди Sugar (лише якщо ви свідомо лишаєтесь на застарілому варіанті):",
       "   sugar validate",
       "   sugar upload",
       "   sugar deploy --config config.json",
@@ -442,7 +442,7 @@ function sugarLegacyNote(uk) {
     ];
   return [
     uk
-      ? "СПАДЩИНА: legacy Candy Machine, не для нової колекції."
+      ? "ЗАСТАРІЛИЙ: legacy Candy Machine, не для нової колекції."
       : "LEGACY: legacy Candy Machine, not for a new collection.",
     uk
       ? "Metaplex позначає Sugar і legacy Candy Machine як застарілі. Нова колекція — Core Candy Machine і MPLX, див. DEPLOY.txt у корені."
@@ -511,7 +511,7 @@ function coreGuideSteps(uk) {
       "",
       "Роялті: ROYALTIES.txt. ProgramAllowList примусовий для програм зі списку, який заповнюєте ви. None — дорадчо.",
       "Комісію мережі (SOL) платите ви. Оцінка — у ESTIMATE.txt, це не рахунок від Lab.",
-      "Спадщина legacy Candy Machine — файл sugar/LEGACY.txt. Не для нової колекції.",
+      "Застарілий Candy Machine — файл sugar/LEGACY.txt. Не для нової колекції.",
     ]
     : [
       "Solana · Core Candy Machine (MPLX CLI)",
@@ -547,7 +547,7 @@ function coreGuideSteps(uk) {
 
 function sugarGuideSteps(uk) {
   const banner = uk
-    ? "СПАДЩИНА: legacy Candy Machine, не для нової колекції."
+    ? "ЗАСТАРІЛИЙ: legacy Candy Machine, не для нової колекції."
     : "LEGACY: legacy Candy Machine, not for a new collection.";
   const rest = uk
     ? [

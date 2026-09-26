@@ -91,7 +91,7 @@ test("buildReleaseGuide generates detailed localized checklist", () => {
   assert.ok(guideUk.includes("Інструкція з релізу"));
   assert.ok(guideUk.includes("Magic Eden"));
   assert.ok(guideUk.includes("cm-config.json"));
-  assert.match(guideUk, /спадщина|legacy/i);
+  assert.match(guideUk, /застаріл/i);
 
   const guideEn = buildReleaseGuide("en", archiveFull, { profile: "opensea" });
   assert.ok(guideEn.includes("Release & Deployment Guide"));
@@ -133,7 +133,7 @@ test("buildBundleZip packs sugar.json, thirdweb.json, and release-guide.txt into
   assert.equal(zipMe.file("sugar.json"), null);
   assert.ok(zipMe.file("cm-config.json") != null);
   assert.ok(zipMe.file("sugar/config.json") != null);
-  assert.match(await zipMe.file("sugar/LEGACY.txt").async("string"), /спадщина|legacy/i);
+  assert.match(await zipMe.file("sugar/LEGACY.txt").async("string"), /legacy|застаріл/i);
   assert.ok(zipMe.file("release-guide.txt") != null);
   const coreContent = JSON.parse(await zipMe.file("cm-config.json").async("string"));
   assert.equal(coreContent.creators[0].address, "8Creator111111111111111111111111111111111");
