@@ -7,14 +7,23 @@ const idx = readFileSync("./server/index.mjs", "utf8");
 
 const htmlIds = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map((m) => m[1]);
 const uniq = [...new Set(htmlIds)];
+// Panels such as local GPU and the Telegram test button are built with innerHTML
+// in app.js (id="…"), not declared in index.html. Those are not missing.
+const dynamicIds = [...new Set([...app.matchAll(/\bid=["']([^"']+)["']/g)].map((m) => m[1]))];
+const known = new Set([...uniq, ...dynamicIds]);
 const usedInApp = [...app.matchAll(/\$\(["']([^"']+)["']\)/g)].map((m) => m[1]);
 const usedSet = new Set(usedInApp);
-const missingInHtml = [...usedSet].filter((id) => !uniq.includes(id)).sort();
+const missingInHtml = [...usedSet].filter((id) => !known.has(id)).sort();
+const dynamicOnly = dynamicIds.filter((id) => !uniq.includes(id) && usedSet.has(id)).sort();
 const neverInApp = uniq.filter((id) => !app.includes(id)).sort();
 
-console.log("=== HTML ids referenced in $() but missing in HTML ===");
+console.log("=== HTML ids referenced in $() but missing in HTML and not created in app.js ===");
 missingInHtml.forEach((i) => console.log("MISSING", i));
 console.log("count", missingInHtml.length);
+
+console.log("\n=== ids created in app.js (innerHTML), absent from index.html — not missing ===");
+dynamicOnly.forEach((i) => console.log("DYNAMIC", i));
+console.log("dynamic count", dynamicOnly.length);
 
 console.log("\n=== HTML ids never mentioned in app.js (sample) ===");
 neverInApp.filter((i) => /^(base|g-|ctor|export|v-|recipes|acct|topup|sol)/.test(i)).forEach((i) => console.log("UNUSED?", i));

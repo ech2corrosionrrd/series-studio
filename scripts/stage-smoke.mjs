@@ -1,6 +1,8 @@
 /**
  * Stage-by-stage smoke: spin isolated public Studio, sign in, walk Lab → Release.
  * Exit 0 if all checks pass; prints a Ukrainian report for each stage.
+ * The child does not load the project .env (SERIES_SKIP_DOTENV) and external
+ * service keys are blanked, so Telegram / paid APIs are not called.
  */
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -34,8 +36,41 @@ function evmWallet() {
 const user = evmWallet();
 const admin = evmWallet();
 
+// Do not inherit a developer .env into the child: loadKeys merges cwd .env for any
+// key that is still unset, which would send real Telegram messages and paid API calls.
+const BLOCKED_EXTERNAL = [
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "PINATA_JWT",
+  "PINATA_API_KEY",
+  "PINATA_KEY",
+  "PINATA_SECRET_API_KEY",
+  "PINATA_SECRET",
+  "ALCHEMY_API_KEY",
+  "VITE_ALCHEMY_API_KEY",
+  "REPLICATE_API_TOKEN",
+  "FAL_KEY",
+  "FAL_API_KEY",
+  "RUNWARE_API_KEY",
+  "STABILITY_API_KEY",
+  "POLLINATIONS_API_KEY",
+  "SERIES_TELEGRAM_BOT_TOKEN",
+  "SERIES_TELEGRAM_CHAT_ID",
+  "TELEGRAM_BOT_TOKEN",
+  "TELEGRAM_CHAT_ID",
+  "SOLANA_PAY_RECIPIENT",
+  "SOLANA_PAY_RPC_URL",
+  "SOLANA_RPC_URL",
+  "SOLANA_RPC_FALLBACK",
+  "VAULT_WALLET_ADDRESS",
+];
+
 const env = {
   ...process.env,
+  ...Object.fromEntries(BLOCKED_EXTERNAL.map((k) => [k, ""])),
+  SERIES_SKIP_DOTENV: "1",
+  CONTENT_SAFETY_ENABLED: "0",
+  MODERATION_API_ENABLED: "0",
   SERIES_MODE: "public",
   SERIES_DATA_DIR: dir,
   SERIES_KEYS_FILE: join(dir, "no-keys.env"),
