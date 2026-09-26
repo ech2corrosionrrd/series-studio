@@ -971,6 +971,14 @@ function syncCtorFromOverview() {
   $("c-strength-v").textContent = String($("o-strength").value);
 }
 
+function renderBaseLines(preset) {
+  const el = $("base-lines");
+  if (!el) return;
+  if (state.baseFiles?.some((f) => f.role === "line")) return;
+  const lines = preset?.lines && typeof preset.lines === "object" ? Object.keys(preset.lines) : [];
+  el.textContent = lines.length ? `${t("base.lines")}: ${lines.join(", ")}` : "";
+}
+
 function fillConstructor(preset) {
   $("c-id").value = preset.id || "";
   $("c-name").value = preset.name || "";
