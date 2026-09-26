@@ -4285,7 +4285,8 @@ function renderAdvisorSection(section) {
 async function loadLaunchAdvisor() {
   const root = $("d-advisor");
   if (!root) return;
-  const chain = $("d-chain")?.value || "solana";
+  const rawChain = $("d-chain")?.value || "solana";
+  const chain = rawChain === "solana-legacy" ? "solana" : rawChain;
   try {
     const data = await api(`/api/launch-advisor?chain=${encodeURIComponent(chain)}&locale=${encodeURIComponent(getLocale())}`);
     root.replaceChildren();
@@ -4322,6 +4323,7 @@ function setupKits() {
           archive,
           set,
           chain: $("d-chain")?.value || "solana",
+          legacy: $("d-chain")?.value === "solana-legacy",
           creatorAddress: $("d-creator")?.value || "",
           symbol: $("d-symbol")?.value || "LAB",
           description: $("x-desc")?.value || "",

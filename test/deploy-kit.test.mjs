@@ -1,12 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createMockPng } from "../src/mock-image.mjs";
+import { readFileSync } from "node:fs";
 import {
   estimateDeployCost,
   buildDeployKit,
   formatCostEstimate,
   chainForProfile,
+  deployChainChoice,
 } from "../src/deploy-kit.mjs";
+import uk from "../server/ui/locales/uk.js";
+import en from "../server/ui/locales/en.js";
 
 test("chainForProfile keeps solana first-class without dropping the others", () => {
   assert.equal(chainForProfile("magiceden", "metaplex"), "solana");
@@ -43,6 +47,27 @@ test("ordinals estimate needs an owner-set sat rate", () => {
   assert.equal(est.bytes, 1000 + 2 * 400);
   const set = estimateDeployCost({ chain: "bitcoin", count: 2, totalBytes: 1000 }, { DEPLOY_ORDINALS_SATS_PER_VBYTE: "2" });
   assert.equal(set.sats, est.bytes * 2);
+});
+
+test("missing deploy chain is Solana Core; Sugar is only the explicit legacy choice", () => {
+  assert.deepEqual(deployChainChoice(), { chain: "solana", legacy: false });
+  assert.deepEqual(deployChainChoice("solana"), { chain: "solana", legacy: false });
+  assert.deepEqual(deployChainChoice("solana-legacy"), { chain: "solana", legacy: true });
+  assert.deepEqual(deployChainChoice("sugar"), { chain: "solana", legacy: true });
+  assert.equal(deployChainChoice("evm", true).legacy, false);
+  assert.equal(deployChainChoice("evm").chain, "evm");
+  assert.match(uk["deploy.chain.solana"], /Core Candy Machine/);
+  assert.equal(uk["deploy.chain.solana"].includes("Sugar"), false);
+  assert.match(uk["deploy.chain.solanaLegacy"], /Sugar/);
+  assert.match(uk["deploy.chain.solanaLegacy"], /спадщина/);
+  assert.match(en["deploy.chain.solana"], /Core Candy Machine/);
+  assert.equal(en["deploy.chain.solana"].includes("Sugar"), false);
+  assert.match(en["deploy.chain.solanaLegacy"], /Sugar/);
+  assert.match(en["deploy.chain.solanaLegacy"], /legacy/);
+  const html = readFileSync(new URL("../server/ui/index.html", import.meta.url), "utf8");
+  assert.match(html, /<option value="solana" selected data-i18n="deploy\.chain\.solana">/);
+  assert.match(html, /value="solana-legacy"/);
+  assert.equal(html.includes("Sugar, спочатку"), false);
 });
 
 test("solana kit defaults to Core Candy Machine, keeps Sugar as labelled legacy, and has no key slot", () => {

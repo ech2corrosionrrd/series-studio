@@ -107,6 +107,7 @@ export {
   formatCostEstimate,
   chainForProfile,
   normalizeChain,
+  deployChainChoice,
   DEPLOY_COST_DEFAULTS,
 } from "./deploy-kit.mjs";
 export { buildLaunchAdvisor } from "./launch-advisor.mjs";

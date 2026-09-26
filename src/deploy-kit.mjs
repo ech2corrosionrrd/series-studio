@@ -33,10 +33,18 @@ export function chainForProfile(profile, format) {
 
 export function normalizeChain(chain, profile, format) {
   const c = String(chain || "").toLowerCase();
-  if (c === "solana" || c === "sol") return "solana";
+  if (c === "solana" || c === "sol" || c === "solana-legacy" || c === "sugar") return "solana";
   if (c === "bitcoin" || c === "btc" || c === "ordinals") return "bitcoin";
   if (c === "evm" || c === "ethereum" || c === "eth") return "evm";
   return chainForProfile(profile, format);
+}
+
+/** Missing chain is Solana Core. Sugar is only the explicit legacy choice. */
+export function deployChainChoice(chain, legacyFlag = false) {
+  const raw = String(chain || "solana").trim().toLowerCase();
+  const sugar = raw === "solana-legacy" || raw === "sugar";
+  const normalized = normalizeChain(sugar ? "solana" : raw);
+  return { chain: normalized, legacy: normalized === "solana" && (sugar || legacyFlag === true) };
 }
 
 function envInt(env, name) {
