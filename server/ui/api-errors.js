@@ -15,6 +15,7 @@ const EXACT = {
   "file and index required": "api.fileIndex",
   "could not pick a free spin-off id": "api.spinId",
   "No base image found to analyze": "api.noBase",
+  "Image-to-image needs a primary base image.": "api.noPrimary",
   "no archives — build recipes first": "api.noArchivesRecipes",
   "set not found": "api.setMissing",
   "dir required": "api.dirRequired",
@@ -93,6 +94,7 @@ const PATTERNS = [
   [/^Bundle too large \(limit (.+) MB\)$/, "api.bundleLarge", (m) => ({ mb: m[1] })],
   [/^Prompt blocked by content safety policy \((.+)\)$/, "api.safety", (m) => ({ cat: m[1] })],
   [/^Engine (.+) is currently unavailable$/, "api.engineDown", (m) => ({ engine: m[1] })],
+  [/^Engine unavailable for (edit|txt2img): (.+)$/, "api.engineUnavailable", (m) => ({ mode: m[1], engine: m[2] })],
   [/^Generation failed on AI engine \((.+)\)$/, "api.genFailed", (m) => ({ detail: m[1] })],
   [/^vault catalog invalid: (.+)$/, "api.vaultCatalog", (m) => ({ msg: m[1] })],
   [/^aborted: (.+)$/, "api.aborted", (m) => ({ msg: m[1] })],
@@ -114,6 +116,8 @@ const CODE_KEYS = {
   local_gpu: "api.localGpu",
   capacity: "api.capacity",
   spend_cap: "api.spendCap",
+  no_primary: "api.noPrimary",
+  engine_unavailable: "api.engineUnavailable",
 };
 
 function rawMessage(data) {

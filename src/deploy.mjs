@@ -103,10 +103,10 @@ export function getLaunchpadPortalUrls(profileKey = "opensea", archive = {}, opt
       portalUrl: "https://magiceden.io/creator-hub",
       testnetPortalUrl: "https://devnet.magiceden.io/creator-hub",
       recommendedFile: "sugar.json",
-      standard: "Metaplex / Solana & EVM Drops",
+      standard: "Metaplex / Solana",
       tips: [
         "1. Open Magic Eden Creator Hub and connect your creator wallet.",
-        "2. Select 'Create New Drop' (Solana or Polygon/Base).",
+        "2. Select 'Create New Drop' on Solana.",
         "3. Upload the generated ZIP bundle containing images/ + metadata/ + sugar.json.",
         "4. Set your drop phases (Allowlist / Public) and launch date.",
       ],

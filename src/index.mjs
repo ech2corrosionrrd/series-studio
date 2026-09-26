@@ -53,6 +53,8 @@ export {
   MAX_STRENGTH,
   clampStrength,
   strengthForStability,
+  strengthForFal,
+  strengthForRunware,
   kontextGuidance,
   imagesDirName,
   resolveBaseImageForRecipe,
@@ -171,6 +173,9 @@ export {
   getEngine,
   getTxt2Img,
   pickAvailableEngine,
+  listSelectableEngines,
+  planPrimaryGenerate,
+  primaryGenerateArgs,
   buildWishPrompt,
 } from "./engines.mjs";
 

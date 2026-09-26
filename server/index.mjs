@@ -91,9 +91,13 @@ import {
   getEngine,
   getTxt2Img,
   pickAvailableEngine,
+  listSelectableEngines,
+  planPrimaryGenerate,
+  primaryGenerateArgs,
   withRetry,
   clampStrength,
 } from "../src/engines.mjs";
+import { imagesDirName } from "../src/reference.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -759,10 +763,7 @@ function recipesPayload(file, archive, preset) {
 }
 
 function setDirName(engine, strength) {
-  const e = String(engine || "kontext").replace(/[^a-z0-9_-]/gi, "");
-  const s = Number(strength);
-  const str = Number.isFinite(s) ? s.toFixed(2).replace(/0+$/, "").replace(/\.$/, "") : "0.45";
-  return `${e}-s${str}`;
+  return imagesDirName(engine, strength);
 }
 
 function safeSetName(name) {
@@ -1150,38 +1151,47 @@ async function resourcesPayloadLive() {
 async function runPrimaryGenerate({ wish, engine, strength, useRef = false, makePrimary = true, seed }) {
   const text = String(wish || "").trim();
   if (!text) throw new Error("wish text required");
-  const prompt = buildWishPrompt(text);
-  const str = clampStrength(strength);
   const ctx = engineCtx(process.env);
   mkdirSync(P().input, { recursive: true });
 
-  let buf;
-  let usedEngine;
-  let mode;
-  let cost = null;
   const primary = listBases().find((f) => f.primary);
-  if (useRef && primary) {
-    usedEngine = pickAvailableEngine(engine, process.env, ENGINES);
-    if (!usedEngine) throw new Error("No image API key for edit engines (REPLICATE / OPENAI / STABILITY / POLLINATIONS)");
+  let plan;
+  try {
+    plan = planPrimaryGenerate({
+      useRef: Boolean(useRef),
+      hasPrimary: Boolean(primary),
+      engine,
+      env: process.env,
+    });
+  } catch (e) {
+    if (e.code === "no_primary" || e.code === "engine_unavailable") {
+      throw httpError(400, e.message, { code: e.code, requestedEngine: engine || "" });
+    }
+    throw e;
+  }
+
+  let buf;
+  const usedEngine = plan.engine;
+  const mode = plan.mode;
+  let cost = null;
+  if (mode === "edit") {
     const imgPath = join(P().input, primary.file);
     const image = readFileSync(imgPath);
     const mime = mimeOf(primary.file);
+    const args = primaryGenerateArgs({ mode, wish: text, strength, seed, image, mime });
     const eng = getEngine(usedEngine);
-    mode = "edit";
     cost = eng.costUsd ?? null;
     assertSpend(cost);
     buf = await paidCall({ source: "studio", kind: "base", engine: usedEngine, costUsd: cost, seed, reference: true }, () =>
-      withRetry(() => eng.generate({ prompt: text, image, mime, seed, strength: str }, ctx)),
+      withRetry(() => eng.generate(args, ctx)),
     );
   } else {
-    usedEngine = pickAvailableEngine(engine, process.env, TXT2IMG);
-    if (!usedEngine) throw new Error("No image API key for txt2img (OPENAI / REPLICATE / STABILITY / POLLINATIONS)");
+    const args = primaryGenerateArgs({ mode, wish: text, seed });
     const eng = getTxt2Img(usedEngine);
-    mode = "txt2img";
     cost = eng.costUsd ?? null;
     assertSpend(cost);
     buf = await paidCall({ source: "studio", kind: "base", engine: usedEngine, costUsd: cost, seed }, () =>
-      withRetry(() => eng.generate({ prompt, seed }, ctx)),
+      withRetry(() => eng.generate(args, ctx)),
     );
   }
 
@@ -1203,6 +1213,7 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
     stub: false,
     mode,
     engine: usedEngine,
+    requestedEngine: plan.requestedEngine,
     costUsd: cost,
     candidate: candName,
     path: `input/${candName}`,
@@ -1389,6 +1400,8 @@ async function handleApi(req, res, url) {
         txt2img: Object.keys(TXT2IMG),
         availableEdit: pickAvailableEngine("kontext", process.env, ENGINES),
         availableTxt2img: pickAvailableEngine("openai", process.env, TXT2IMG),
+        readyEdit: listSelectableEngines(process.env, ENGINES),
+        readyTxt2img: listSelectableEngines(process.env, TXT2IMG),
       },
     });
   }
@@ -1959,8 +1972,14 @@ async function handleApi(req, res, url) {
         const blocked = blockedPrompts([prompt]);
         if (blocked) return send(res, 400, blocked);
       }
-      const engineName = pickAvailableEngine(body.engine || "kontext", process.env, ENGINES);
-      if (!engineName) throw new Error("No edit-engine API key available");
+      const requestedEngine = body.engine || "kontext";
+      const engineName = pickAvailableEngine(requestedEngine, process.env, ENGINES, { exact: true });
+      if (!engineName) {
+        throw httpError(400, `Engine unavailable for edit: ${requestedEngine}`, {
+          code: "engine_unavailable",
+          requestedEngine,
+        });
+      }
       const eng = getEngine(engineName);
       const image = readFileSync(join(P().input, primary.file));
       const mime = mimeOf(primary.file);
@@ -1982,6 +2001,7 @@ async function handleApi(req, res, url) {
         ok: true,
         stub: false,
         engine: engineName,
+        requestedEngine,
         costUsd: eng.costUsd,
         path: `out/pilots/${name}`,
         file: name,
@@ -2006,8 +2026,13 @@ async function handleApi(req, res, url) {
     }
     const strength = clampStrength(body.strength);
     const engineWanted = body.engine || "kontext";
-    const engineName = pickAvailableEngine(engineWanted, process.env, ENGINES);
-    if (!engineName) throw new Error("No edit-engine API key available");
+    const engineName = pickAvailableEngine(engineWanted, process.env, ENGINES, { exact: true });
+    if (!engineName) {
+      throw httpError(400, `Engine unavailable for edit: ${engineWanted}`, {
+        code: "engine_unavailable",
+        requestedEngine: engineWanted,
+      });
+    }
     const set = setDirName(engineWanted, strength);
     const sel = resolveGenerateSelection(archive, body, set);
     if (!sel.editions.length) {
@@ -2015,6 +2040,7 @@ async function handleApi(req, res, url) {
         ok: true,
         file: archiveFile,
         engine: engineName,
+        requestedEngine: engineWanted,
         strength,
         set,
         count: 0,
@@ -2051,7 +2077,7 @@ async function handleApi(req, res, url) {
         "Cache-Control": "no-cache, no-transform",
         "Connection": "keep-alive",
       });
-      res.write(`data: ${JSON.stringify({ type: "start", total: sel.recipes.length, engine: engineName, strength, set })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: "start", total: sel.recipes.length, engine: engineName, requestedEngine: engineWanted, strength, set })}\n\n`);
     }
 
     const results = await mapConcurrent(
@@ -2118,6 +2144,7 @@ async function handleApi(req, res, url) {
       stub: false,
       file: archiveFile,
       engine: engineName,
+      requestedEngine: engineWanted,
       strength,
       set,
       count: okN,

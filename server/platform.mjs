@@ -11,6 +11,7 @@ import { openDb } from "../src/platform/db.mjs";
 import { completeWalletSignIn, getBalance, normalizeWallet, recordReferral, resolveReferrer, welcomeOffer } from "../src/platform/billing.mjs";
 import { syncGenesisMints, walletGenesisCount } from "../src/platform/holders.mjs";
 import { engineStatus, generateImage, ENGINE_FLUX } from "../src/platform/imagegen.mjs";
+import { DEFAULT_STRENGTH } from "../src/reference.mjs";
 import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
 import {
   STYLE_PRESETS, TMA_ENGINE_ALIASES, TraitError, buildGremlinPrompt, decodeReferenceImage, enhanceTmaPrompt,
@@ -395,7 +396,7 @@ async function routes(req, res, url) {
     if (engineStatus()[engine]) throw new HttpError(503, `Engine ${engine} is currently unavailable`);
     let reference = null;
     if (body.reference_image) {
-      try { reference = decodeReferenceImage(body.reference_image, body.strength ?? 0.85); } catch (e) { throw new HttpError(400, e.message); }
+      try { reference = decodeReferenceImage(body.reference_image, body.strength ?? DEFAULT_STRENGTH); } catch (e) { throw new HttpError(400, e.message); }
     }
     const prompt = enhanceTmaPrompt(body.prompt, style);
     const frames = await Promise.allSettled(Array.from({ length: body.count }, async (_, i) => {

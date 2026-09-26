@@ -45,7 +45,7 @@ test("ordinals estimate needs an owner-set sat rate", () => {
   assert.equal(set.sats, est.bytes * 2);
 });
 
-test("sugar kit has config.json, 0-based assets, devnet-then-mainnet steps, and no key slot", () => {
+test("solana kit defaults to Core Candy Machine, keeps Sugar as labelled legacy, and has no key slot", () => {
   const png = createMockPng({ seed: 3, width: 32, height: 32 });
   const kit = buildDeployKit({
     archive: { presetId: "kit", size: 2 },
@@ -59,20 +59,46 @@ test("sugar kit has config.json, 0-based assets, devnet-then-mainnet steps, and 
     env: {},
   });
   assert.equal(kit.chain, "solana");
-  assert.ok(kit.files["config.json"]);
+  assert.ok(kit.files["cm-config.json"]);
+  assert.equal(kit.files["config.json"], undefined);
   assert.ok(kit.files["assets/0.png"]);
   assert.ok(kit.files["assets/0.json"]);
   assert.ok(kit.files["assets/1.json"]);
   assert.ok(kit.files["assets/collection.json"]);
-  const cfg = JSON.parse(kit.files["config.json"]);
-  assert.equal(cfg.number, 2);
+  const cfg = JSON.parse(kit.files["cm-config.json"]);
+  assert.equal(cfg.itemsAvailable, 2);
   assert.equal(cfg.sellerFeeBasisPoints, 500);
-  assert.match(kit.guide, /devnet/);
-  assert.match(kit.guide, /mainnet/);
+  assert.equal(cfg.creators[0].address, "Creator11111111111111111111111111111111");
+  assert.match(kit.files["DEPLOY.txt"], /mplx/);
+  assert.equal(kit.files["DEPLOY.txt"].includes("sugar deploy"), false);
+  assert.ok(kit.files["DEPLOY.txt"].toLowerCase().indexOf("devnet") < kit.files["DEPLOY.txt"].toLowerCase().indexOf("mainnet"));
+  assert.match(kit.files["DEPLOY.txt"], /allowList/);
+  assert.match(kit.files["DEPLOY.txt"], /mintLimit/);
+  assert.match(kit.files["DEPLOY.txt"], /botTax/);
+  assert.equal(/startDate/.test(kit.files["DEPLOY.txt"]), false);
+  assert.match(kit.files["ROYALTIES.txt"], /ProgramAllowList/);
+  assert.match(kit.files["sugar/LEGACY.txt"], /sugar/);
+  assert.match(kit.files["sugar/LEGACY.txt"], /спадщина|legacy/i);
   assert.match(kit.guide, /приватний ключ|seed/i);
   assert.equal(kit.files.privateKey, undefined);
   const guideBlob = JSON.stringify(kit.files);
   assert.equal(/BEGIN (?:OPENSSH |RSA )?PRIVATE KEY/.test(guideBlob), false);
+
+  const legacy = buildDeployKit({
+    archive: { presetId: "kit", size: 2 },
+    preset: { id: "kit", name: "Kit Series" },
+    items: [
+      { edition: 1, buffer: png, ext: "png", recipe: { edition: 1, traits: { bg: "a" } } },
+    ],
+    opts: { chain: "solana", legacy: true, symbol: "KIT" },
+    locale: "uk",
+    env: {},
+  });
+  assert.ok(legacy.files["config.json"]);
+  assert.match(legacy.guide, /sugar/);
+  assert.match(legacy.guide, /спадщина|legacy/i);
+  assert.match(legacy.guide, /devnet/);
+  assert.ok(legacy.guide.toLowerCase().indexOf("devnet") < legacy.guide.toLowerCase().indexOf("mainnet"));
 });
 
 test("thirdweb package and ordinals guide are chain-specific", () => {

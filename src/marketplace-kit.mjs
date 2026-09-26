@@ -137,7 +137,7 @@ function checklistBlocks(chain, locale) {
         "  [ ] Увімкніть роялті, що збігаються з sellerFeeBasisPoints.",
         "  [ ] Перевірка колекції Magic Eden — їхня форма верифікації, не кнопка в Lab.",
         "Tensor",
-        "  [ ] Імпортуйте ту саму колекцію (mint address з виводу sugar).",
+        "  [ ] Імпортуйте ту саму колекцію (mint address з виводу mplx cm).",
         "  [ ] Банер tensor-banner.png, аватар tensor-avatar.png.",
         "  [ ] Звірте роялті з Magic Eden, щоб майданчики не розходились.",
       ]
@@ -148,7 +148,7 @@ function checklistBlocks(chain, locale) {
         "  [ ] Turn on the royalty that matches sellerFeeBasisPoints.",
         "  [ ] Magic Eden collection verification is their form, not a button in Lab.",
         "Tensor",
-        "  [ ] Import the same collection (the mint address from the sugar output).",
+        "  [ ] Import the same collection (the mint address from the mplx cm output).",
         "  [ ] Banner tensor-banner.png, avatar tensor-avatar.png.",
         "  [ ] Match the royalty with Magic Eden so the two sites do not disagree.",
       ],
@@ -171,16 +171,18 @@ function checklistBlocks(chain, locale) {
       ],
     bitcoin: uk
       ? [
-        "Майданчики Ordinals (Magic Eden Ordinals, OKX, Unisat)",
-        "  [ ] Колекція вже заінскрибована з вашого гаманця (див. набір деплою).",
+        "Майданчики Ordinals (Satflow, Gamma, OKX, UniSat, Ordzaar)",
+        "  [ ] Список міг застаріти. Перед друком банерів відкрийте https://www.xverse.app/blog/where-to-buy-bitcoin-ordinals-marketplaces",
+        "  [ ] Колекція вже заінскрибована з вашого гаманця (див. набір деплою і ORDINALS.txt).",
         "  [ ] На кожному майданчику, де ви хочете сторінку: банер ordinals-banner.png, аватар ordinals-avatar.png.",
         "  [ ] Опис і соцмережі — з LISTING.txt.",
         "  [ ] Верифікація — форма майданчика. Lab її не надсилає.",
         "  [ ] Перевірте, що parent/child інскрипції збігаються з тим, що показує майданчик.",
       ]
       : [
-        "Ordinals marketplaces (Magic Eden Ordinals, OKX, Unisat)",
-        "  [ ] The collection is already inscribed from your wallet (see the deploy kit).",
+        "Ordinals marketplaces (Satflow, Gamma, OKX, UniSat, Ordzaar)",
+        "  [ ] This list can go stale. Before you print banners, open https://www.xverse.app/blog/where-to-buy-bitcoin-ordinals-marketplaces",
+        "  [ ] The collection is already inscribed from your wallet (see the deploy kit and ORDINALS.txt).",
         "  [ ] On each site where you want a page: banner ordinals-banner.png, avatar ordinals-avatar.png.",
         "  [ ] Description and socials come from LISTING.txt.",
         "  [ ] Verification is that site's form. Lab does not submit it.",
@@ -211,8 +213,8 @@ export function verificationTips(chain, locale = "en") {
     ];
   if (chain === "solana") {
     lines.push(uk
-      ? "  - На Solana звірте mint address колекції з виводом `sugar verify`."
-      : "  - On Solana, match the collection mint address with the `sugar verify` output.");
+      ? "  - На Solana звірте mint address колекції з виводом `mplx cm validate`."
+      : "  - On Solana, match the collection mint address with the `mplx cm validate` output.");
   } else if (chain === "bitcoin") {
     lines.push(uk
       ? "  - На Bitcoin звірте id інскрипції в гаманці й на майданчику."
@@ -304,8 +306,47 @@ export async function buildMarketplaceKit({
   files["LISTING.txt"] = formatListing(listing, locale);
   files["CHECKLIST.txt"] = `${checklistBlocks(chain, locale).join("\n")}\n`;
   files["VERIFY.txt"] = `${verificationTips(chain, locale)}\n`;
+  if (chain === "bitcoin") {
+    files["ORDINALS.txt"] = ordinalsNote(uk, name);
+    files["inscriptions.json"] = `${JSON.stringify(inscriptionsTemplate(name), null, 2)}\n`;
+  }
   if (warnings.length) files["WARNINGS.txt"] = `${warnings.join("\n")}\n`;
   return { chain, files, listing, warnings, sizes: sizeDoc };
+}
+
+function ordinalsNote(uk, name) {
+  return uk
+    ? [
+      "Ordinals · parent і child",
+      "========================",
+      "Документація: https://docs.ordinals.com/inscriptions/provenance.html",
+      "",
+      `Батьківська інскрипція — колекція «${name}». Кожен предмет — дочірня інскрипція цього батька.`,
+      "Спалення батька закриває колекцію: нових дітей додати не можна.",
+      "",
+      "Lab не збирає транзакцію і не тримає ключ. Інскрипцію робите ви зі свого гаманця, спочатку на signet.",
+      "inscriptions.json — шаблон. Порожні id заповніть після інскрипції. Не вигадуйте id.",
+      "",
+    ].join("\n")
+    : [
+      "Ordinals · parent and child",
+      "===========================",
+      "Docs: https://docs.ordinals.com/inscriptions/provenance.html",
+      "",
+      `The parent inscription is the «${name}» collection. Each item is a child of that parent.`,
+      "Burning the parent closes the collection: no new children can be added.",
+      "",
+      "Lab does not build the transaction and does not hold a key. You inscribe from your own wallet, on signet first.",
+      "inscriptions.json is a template. Fill the empty ids after you inscribe. Do not invent ids.",
+      "",
+    ].join("\n");
+}
+
+function inscriptionsTemplate(name) {
+  return {
+    parent: { inscriptionId: "", name: String(name || "Collection") },
+    children: [{ inscriptionId: "", name: "", attributes: [] }],
+  };
 }
 
 function formatListing(listing, locale) {

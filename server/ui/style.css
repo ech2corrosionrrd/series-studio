@@ -809,6 +809,11 @@ main { padding: var(--space-6) var(--space-4) 120px; }
 .btn.is-loading { cursor: progress; }
 .release-hub-title { color: var(--ok); }
 input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
+input[type="range"]:disabled {
+  opacity: 0.4;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
 input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
   outline: 2px solid var(--accent2);
   outline-offset: 2px;
