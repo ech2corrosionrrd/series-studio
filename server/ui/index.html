@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<a class="skip-link" href="#content" data-i18n="a11y.skip">Перейти до вмісту</a>
 <header class="top">
   <div class="brand">
     <span class="logo">S</span>
@@ -16,7 +17,7 @@
       <small id="p-sub" data-i18n="brand.sub">майстерня серії · by W3IR</small>
     </div>
   </div>
-  <nav id="tabs">
+  <nav id="tabs" data-i18n-aria="a11y.mainNav" aria-label="Розділи майстерні">
     <button data-tab="home" class="on" data-i18n="nav.home" data-i18n-title="nav.home.title">1 · Огляд</button>
     <button data-tab="base" data-i18n="nav.base" data-i18n-title="nav.base.title">2 · Основа</button>
     <button data-tab="ctor" data-i18n="nav.ctor" data-i18n-title="nav.ctor.title">3 · Конструктор</button>
@@ -40,26 +41,26 @@
     <button type="button" id="acct-buy" class="btn small primary acct-buy" data-i18n="acct.buy" data-i18n-tip="acct.buy.tip">＋ Купити</button>
     <button type="button" id="acct-logout" class="btn small ghost" data-i18n="acct.logout" data-i18n-tip="acct.logout.tip">Вийти</button>
   </div>
-  <div class="lang-switch" role="group" aria-label="Language">
+  <div class="lang-switch" role="group" data-i18n-aria="a11y.language" aria-label="Мова">
     <span class="muted small" data-i18n="lang.label">Мова</span>
-    <button type="button" class="lang-btn" data-locale="uk" title="Українська">UK</button>
-    <button type="button" class="lang-btn" data-locale="en" title="English">EN</button>
+    <button type="button" class="lang-btn" data-locale="uk" data-i18n-title="lang.name.uk" data-i18n-aria="lang.name.uk" title="Українська" aria-label="Українська">UK</button>
+    <button type="button" class="lang-btn" data-locale="en" data-i18n-title="lang.name.en" data-i18n-aria="lang.name.en" title="English" aria-label="English">EN</button>
   </div>
-  <label class="hints-toggle" data-i18n-title="hints.toggle.title" title="Hints">
+  <label class="hints-toggle" data-i18n-title="hints.toggle.title" title="Показати або сховати фіолетові блоки з поясненнями">
     <input type="checkbox" id="hints-on" checked>
     <span data-i18n="hints.toggle">Підказки</span>
   </label>
 </header>
 
 <div id="path" class="path">
-  <div id="path-steps" class="path-steps" role="navigation"></div>
+  <div id="path-steps" class="path-steps" role="navigation" data-i18n-aria="a11y.pathNav" aria-label="Шлях новачка"></div>
   <label class="path-mode">
     <input type="checkbox" id="path-beginner" checked>
     <span data-i18n="path.beginner">Шлях новачка</span>
   </label>
 </div>
 
-<main>
+<main id="content">
   <!-- 1. OVERVIEW -->
   <section id="tab-home" class="tab on">
     <h1 data-i18n="home.h1">Огляд колекції</h1>
@@ -112,7 +113,7 @@
         <button type="button" id="o-save" class="btn" data-i18n="home.save">Зберегти пресет</button>
         <button type="button" id="o-spin" class="btn" data-i18n="home.spin">Спін-оф</button>
         <button type="button" id="o-next" class="btn" data-i18n="home.next">Далі · Основа →</button>
-        <span id="o-msg" class="small"></span>
+        <span id="o-msg" class="small" role="status"></span>
       </div>
     </div>
     <div class="card" id="stages-guide">
@@ -181,7 +182,7 @@
           <button type="button" id="base-upload" class="btn primary" disabled data-i18n="base.save">Завантажити</button>
         </div>
         <p id="base-pick-list" class="muted small"></p>
-        <span id="base-msg" class="small"></span>
+        <span id="base-msg" class="small" role="status"></span>
         <h3 style="margin-top:16px" data-i18n="base.gallery">Галерея input/</h3>
         <div id="base-gallery" class="base-gallery"></div>
         <div id="base-lines" class="muted small" style="margin-top:10px"></div>
@@ -291,7 +292,7 @@
       <button type="button" id="ctor-validate" class="btn" data-i18n="ctor.validate">Validate</button>
       <button type="button" id="ctor-save" class="btn primary" data-i18n="ctor.save">Зберегти промпт+трейти</button>
       <button type="button" id="ctor-next" class="btn" data-i18n="ctor.next">Далі · Рецепти →</button>
-      <span id="ctor-msg" class="small"></span>
+      <span id="ctor-msg" class="small" role="status"></span>
     </div>
 
 
@@ -396,7 +397,7 @@
         <button type="button" class="btn small matrix-btn" data-engine="kontext" data-i18n-tip="ctor.matrix.kontext.tip">Kontext Reference</button>
         <button type="button" class="btn small matrix-btn" data-engine="openai" data-i18n-tip="ctor.matrix.openai.tip">OpenAI Prose</button>
       </div>
-      <pre id="ctor-matrix-preview" class="log small" style="margin-top:8px; white-space:pre-wrap; max-height:160px; overflow:auto">Select an engine above to preview formatted prompt</pre>
+      <pre id="ctor-matrix-preview" class="log small" data-i18n="ctor.matrix.empty" style="margin-top:8px; white-space:pre-wrap; max-height:160px; overflow:auto">Оберіть рушій вище, щоб побачити відформатований промпт</pre>
     </div>
   </section>
 
@@ -544,7 +545,7 @@
         <pre id="g-plan-out" class="log small" data-i18n="render.stub">Press Estimate first.</pre>
         <div id="g-progress-wrap" style="margin-top:12px" hidden>
           <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px">
-            <span id="g-progress-text" class="muted">Генерація...</span>
+            <span id="g-progress-text" class="muted" data-i18n="render.working">Генерація…</span>
             <b id="g-progress-pct">0%</b>
           </div>
           <div style="width:100%; background:var(--border); border-radius:4px; height:8px; overflow:hidden">
@@ -623,7 +624,7 @@
     <div id="v-grid" class="gallery"></div>
     <div id="v-lightbox" class="lightbox" hidden>
       <img id="v-lightbox-img" alt="">
-      <button type="button" id="v-lightbox-close" class="btn" data-i18n-tip="ctrl.v-lightbox-close.tip">✕</button>
+      <button type="button" id="v-lightbox-close" class="btn" data-i18n-aria="a11y.close" aria-label="Закрити" data-i18n-tip="ctrl.v-lightbox-close.tip">✕</button>
     </div>
     <div id="ver-overlay" class="overlay" hidden>
       <div class="card ver-card">
@@ -725,15 +726,15 @@
         <button type="button" id="x-dataset" class="btn" data-i18n="export.dataset.btn">📦 LoRA Training Dataset</button>
         <button type="button" id="x-showcase" class="btn" data-i18n="export.showcase.btn">⬇ Showcase &amp; Rarity Scorecard</button>
         <a id="x-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">⬇ Download ZIP</a>
-        <span id="x-bundle-msg" class="small"></span>
+        <span id="x-bundle-msg" class="small" role="status"></span>
       </div>
       <div id="x-prov-result" class="card small" style="margin-top:10px; display:none; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2)">
-        <span style="font-weight:600">Provenance Hash (SHA-256): </span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
+        <span style="font-weight:600" data-i18n="export.provenance.hashLabel">Хеш походження (SHA-256)</span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
       </div>
     </div>
 
     <div class="card" style="margin-top:16px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.03);">
-      <h2 style="color: #10b981" data-i18n="release.hub.title">🚀 Release &amp; Deployment Hub</h2>
+      <h2 class="release-hub-title" data-i18n="release.hub.title">🚀 Release &amp; Deployment Hub</h2>
       <p class="muted small" data-i18n="release.hub.help"></p>
       <div class="actions" style="margin-top:12px; gap:8px; flex-wrap:wrap">
         <a id="rel-portal-btn" class="btn primary" href="https://opensea.io/studio/create" target="_blank" rel="noopener noreferrer" data-i18n="release.hub.portalBtn">🌐 Open Launch Portal</a>
@@ -751,7 +752,7 @@
       <p class="muted small" data-i18n="export.checklist.help"></p>
       <div class="actions">
         <button type="button" id="x-checklist" class="btn" data-i18n="export.checklist.run">Run checklist</button>
-        <span id="x-checklist-msg" class="small"></span>
+        <span id="x-checklist-msg" class="small" role="status"></span>
       </div>
       <ul id="x-checklist-list" class="checklist" style="margin-top:12px"></ul>
     </div>
@@ -787,7 +788,7 @@
       <div class="actions">
         <button type="button" id="d-build" class="btn primary" data-i18n="deploy.build">Зібрати набір деплою</button>
         <a id="d-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">Завантажити ZIP</a>
-        <span id="d-msg" class="small"></span>
+        <span id="d-msg" class="small" role="status"></span>
       </div>
       <pre id="d-guide" class="log small preflight" hidden></pre>
     </div>
@@ -803,9 +804,9 @@
       <div class="grid2">
         <label class="small"><span data-i18n="deploy.chain">Мережа</span>
           <select id="m-chain">
-            <option value="solana">Solana · Magic Eden, Tensor</option>
-            <option value="evm">EVM · OpenSea</option>
-            <option value="bitcoin">Bitcoin · Ordinals</option>
+            <option value="solana" data-i18n="market.chain.solana">Solana · Magic Eden, Tensor</option>
+            <option value="evm" data-i18n="market.chain.evm">EVM · OpenSea</option>
+            <option value="bitcoin" data-i18n="market.chain.bitcoin">Bitcoin · Ordinals</option>
           </select>
         </label>
         <label class="small"><span data-i18n="export.bundle.set">Набір зображень</span>
@@ -821,7 +822,7 @@
       <div class="actions">
         <button type="button" id="m-build" class="btn primary" data-i18n="market.build">Зібрати набір маркетплейсу</button>
         <a id="m-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">Завантажити ZIP</a>
-        <span id="m-msg" class="small"></span>
+        <span id="m-msg" class="small" role="status"></span>
       </div>
       <pre id="m-note" class="log small preflight" hidden></pre>
     </div>
@@ -831,7 +832,7 @@
   <section id="tab-admin" class="tab">
     <h1 data-i18n="admin.h1">Адмін-панель</h1>
     <div class="hint"><p data-i18n="admin.hint"></p></div>
-    <div class="admin-nav" role="tablist">
+    <div class="admin-nav" role="navigation" data-i18n-aria="a11y.adminNav" aria-label="Розділи адміна">
       <button type="button" data-admin="res" class="on" data-i18n="admin.tab.res">Ресурси</button>
       <button type="button" data-admin="econ" data-i18n="admin.tab.econ">Економіка</button>
       <button type="button" data-admin="stats" data-i18n="admin.tab.stats">Статистика</button>
@@ -867,10 +868,10 @@
       <div class="card econ-card">
         <div class="econ-toolbar">
           <h3 data-i18n="econ.h3">Економіка (як у Промт)</h3>
-          <div class="econ-period" role="group" aria-label="Period">
-            <button type="button" class="btn small" data-econ-days="7">7д</button>
-            <button type="button" class="btn small" data-econ-days="30">30д</button>
-            <button type="button" class="btn small on" data-econ-days="all">Усе</button>
+          <div class="econ-period" role="group" data-i18n-aria="a11y.period" aria-label="Період">
+            <button type="button" class="btn small" data-econ-days="7" data-i18n="econ.days.7">7 дн.</button>
+            <button type="button" class="btn small" data-econ-days="30" data-i18n="econ.days.30">30 дн.</button>
+            <button type="button" class="btn small on" data-econ-days="all" data-i18n="econ.days.all">Усе</button>
           </div>
         </div>
         <p class="muted small" data-i18n="econ.hint"></p>
@@ -934,7 +935,7 @@
         <b id="topup-balance">0</b>
         <span class="muted small" data-i18n="acct.credits">кредитів</span>
       </div>
-      <button type="button" id="topup-close" class="btn small topup-close" aria-label="Close" data-i18n-tip="ctrl.topup-close.tip">✕</button>
+      <button type="button" id="topup-close" class="btn small topup-close" data-i18n-aria="a11y.close" aria-label="Закрити" data-i18n-tip="ctrl.topup-close.tip">✕</button>
     </header>
 
     <p id="topup-reason" class="topup-reason" role="status" hidden></p>

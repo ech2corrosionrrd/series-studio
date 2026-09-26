@@ -768,3 +768,63 @@ ol.guide.field-guide li::before { width: 16px; height: 16px; top: 4px; left: 4px
   .topup-side { grid-template-columns: 1fr; }
   .topup-box + .topup-box { border-left: 0; border-top: 1px solid var(--line-soft); }
 }
+
+/* Tokens, targets, focus, motion — keep the dark identity, tighten the system. */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 20px;
+  --text-xl: 26px;
+  --control-min: 24px;
+  --placeholder: #b39cc4;
+}
+.skip-link {
+  position: absolute;
+  left: var(--space-3);
+  top: -48px;
+  z-index: 80;
+  padding: var(--space-2) var(--space-3);
+  background: var(--accent);
+  color: #140c18;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+.skip-link:focus { top: var(--space-2); outline: none; box-shadow: var(--focus); }
+h1 { font-size: var(--text-xl); }
+.small, .brand small, .path-mode { font-size: var(--text-sm); }
+main { padding: var(--space-6) var(--space-4) 120px; }
+.card { padding: var(--space-4); margin-bottom: var(--space-4); }
+.btn, nav#tabs button, .path-steps button, .lang-btn, .hints-toggle, .acct-balance, .ver-badge {
+  min-height: var(--control-min);
+}
+.btn.small { padding: var(--space-1) 10px; min-height: var(--control-min); }
+.btn.is-loading { cursor: progress; }
+.release-hub-title { color: var(--ok); }
+input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
+  outline: 2px solid var(--accent2);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+.path { overflow-x: auto; }
+@media (max-width: 720px) {
+  .path-steps { flex-wrap: nowrap; overflow-x: auto; }
+  .path-steps button { white-space: nowrap; }
+  main { padding: var(--space-4) var(--space-3) 100px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .steps li:hover, .tile:hover, .topup-card:hover, .btn:active { transform: none; }
+}

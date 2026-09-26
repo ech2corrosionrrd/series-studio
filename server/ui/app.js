@@ -3,6 +3,8 @@
  * Prompts/recipe content stay English for generators.
  */
 import { initI18n, setLocale, getLocale, t, applyI18n, applyTips, tipText, hasKey } from "./i18n.js";
+import { presentApiError } from "./api-errors.js";
+import { fmtNum, fmtDate, fmtUsd as fmtUsdLocale, fmtPct as fmtPctLocale } from "./format.js";
 
 function tipAttr(key) {
   const s = tipText(key);
@@ -72,7 +74,11 @@ function playCompletionChime() {
 
 async function api(path, opts = {}) {
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      "Accept-Language": getLocale(),
+      ...(opts.headers || {}),
+    },
     ...opts,
   });
   const text = await res.text();
@@ -85,7 +91,7 @@ async function api(path, opts = {}) {
   if (!res.ok) {
     if (res.status === 401 && data.code === "auth") {
       location.href = `/login${location.search}`;
-      throw new Error(data.error || "Sign in required");
+      throw new Error(presentApiError(data.error ? data : { ...data, error: data.error || "Sign in required" }, t));
     }
     if (data.code === "credits" || data.code === "rate" || data.code === "freemium") refreshAccount();
     if (data.code === "credits") openTopup({ needed: data.needed, balance: data.balance });
@@ -98,8 +104,9 @@ async function api(path, opts = {}) {
         .join("; ");
       throw new Error(t("recipes.conflict", { detail }));
     }
-    const err = data.error || data.errors || res.statusText;
-    const error = new Error(typeof err === "string" ? err : JSON.stringify(err));
+    const fallback = data.error || data.detail || data.errors || res.statusText;
+    const payload = { ...data, error: typeof fallback === "string" ? fallback : JSON.stringify(fallback ?? "") };
+    const error = new Error(presentApiError(payload, t));
     error.payload = data;
     throw error;
   }
@@ -277,6 +284,12 @@ function refreshDynamicCopy() {
   if (active === "deploy") showStagePrice("deploy_kit", "d-price");
   if (active === "market") showStagePrice("marketplace_kit", "m-price");
   if (active === "gallery") showCurationPrice();
+  if (active === "export") updateReleaseHub();
+  if ($("topup-overlay") && !$("topup-overlay").hidden && typeof renderTopup === "function") renderTopup();
+  if ($("admin-econ")?.classList.contains("on")) renderEconomy();
+  const me = $("me");
+  if (me?.dataset.mode === "port") me.textContent = t("ui.labPort", { port: me.dataset.port || "" });
+  else if (me?.dataset.mode === "offline") me.textContent = t("ui.offline");
   applyTips(document);
 }
 
@@ -387,7 +400,7 @@ function renderTemplates() {
     const title = tpl.titleUk && getLocale() === "uk" ? tpl.titleUk : tpl.name;
     card.innerHTML = `<b>${escapeHtml(title)}</b>
       <span class="tpl-blurb">${escapeHtml(tpl.blurb || tpl.id)}</span>
-      <span class="muted small">${escapeHtml(tpl.id)} · size ${tpl.size}</span>
+      <span class="muted small">${escapeHtml(tpl.id)} · ${escapeHtml(t("base.tpl.size", { n: fmtNum(tpl.size) }))}</span>
       <button type="button" class="btn small" data-id="${escapeHtml(tpl.id)}"${tipAttr("base.use")}>${t("base.use")}</button>`;
     card.querySelector("button").addEventListener("click", () => useTemplate(tpl.id));
     grid.appendChild(card);
@@ -762,7 +775,7 @@ function addOptionRow() {
   if (!trait) return;
   if (!Array.isArray(trait.options)) trait.options = [];
   const taken = new Set(trait.options.map((o) => String(o?.value || "")));
-  let value = "New option";
+  let value = t("ctor.opt.new");
   let n = 2;
   while (taken.has(value)) {
     value = `New option ${n}`;
@@ -858,7 +871,7 @@ function setupMatrixPreview() {
         traits: { outfit: "Neon Armor", hairstyle: "Buzz Cut", mood: "Determined" },
       };
       try {
-        preview.textContent = "Formatting for " + engine + "...";
+        preview.textContent = t("ctor.matrix.formatting", { engine });
         const res = await api("/api/matrix/preview", {
           method: "POST",
           body: JSON.stringify({ recipe: sampleRecipe, engine, preset }),
@@ -867,7 +880,7 @@ function setupMatrixPreview() {
           preview.textContent = res.prompt;
         }
       } catch (err) {
-        preview.textContent = "Error: " + err.message;
+        preview.textContent = t("ui.error", { msg: err.message });
       }
     });
   });
@@ -1493,7 +1506,7 @@ function renderRecipeTable() {
   if (q) rows = rows.filter((r) => JSON.stringify(r).toLowerCase().includes(q));
   if ($("r-count")) $("r-count").textContent = String(rows.length);
   const showWave = rows.some((r) => r.wave != null);
-  table.innerHTML = `<thead><tr><th>#</th>${showWave ? `<th>${t("waves.col")}</th>` : ""}<th>line</th><th>dna</th><th></th></tr></thead><tbody>` +
+  table.innerHTML = `<thead><tr><th scope="col">#</th>${showWave ? `<th scope="col">${t("waves.col")}</th>` : ""}<th scope="col">${t("recipes.col.line")}</th><th scope="col">${t("recipes.col.dna")}</th><th scope="col"></th></tr></thead><tbody>` +
     rows.map((r) => `<tr data-i="${r.index}">
       <td>${r.edition}</td>${showWave ? `<td>${r.wave ?? ""}</td>` : ""}<td>${escapeHtml(r.line)}</td>
       <td class="mono small">${escapeHtml(r.dna || "")}</td>
@@ -1900,12 +1913,12 @@ function setupRender() {
           try {
             const ev = JSON.parse(match[1]);
             if (ev.type === "start") {
-              if (progressText) progressText.textContent = `0 / ${ev.total}`;
+              if (progressText) progressText.textContent = `${fmtNum(0)} / ${fmtNum(ev.total)}`;
             } else if (ev.type === "progress") {
               const pct = Math.round((ev.completed / ev.total) * 100);
               if (progressBar) progressBar.style.width = `${pct}%`;
               if (progressPct) progressPct.textContent = `${pct}%`;
-              if (progressText) progressText.textContent = `${ev.completed} / ${ev.total}`;
+              if (progressText) progressText.textContent = `${fmtNum(ev.completed)} / ${fmtNum(ev.total)}`;
               if (ev.result?.url && thumbs) {
                 const a = document.createElement("a");
                 a.href = ev.result.url;
@@ -1925,7 +1938,9 @@ function setupRender() {
       if (lastDone) {
         playCompletionChime();
         if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("Series Lab", { body: `Batch render completed: ${lastDone.count} images in set ${lastDone.set}` });
+          new Notification(t("render.notify.title"), {
+            body: t("render.notify.body", { count: fmtNum(lastDone.count), set: lastDone.set }),
+          });
         }
         if (lastDone.set) {
           state.lastSet = lastDone.set;
@@ -2085,7 +2100,7 @@ function sideHtml(img, dirLabel) {
   const qa = img.qa?.ok === false
     ? `<span class="qa-badge" title="${escapeHtml((img.qa.issues || []).join(", "))}">${t("gallery.qa.badge")}</span>`
     : "";
-  return `<div class="side"><img src="${escapeHtml(img.url)}" alt="" data-url="${escapeHtml(img.url)}" /><span class="side-lab">${escapeHtml(dirLabel || "")}${qa}</span></div>`;
+  return `<div class="side"><img src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))}" data-url="${escapeHtml(img.url)}" /><span class="side-lab">${escapeHtml(dirLabel || "")}${qa}</span></div>`;
 }
 
 function renderGallery() {
@@ -2144,7 +2159,7 @@ function renderGallery() {
     let triageBadge = "";
     if (triage) {
       const bg = triage.verdict === "keep" ? "#10b981" : triage.verdict === "redo" ? "#ef4444" : "#f59e0b";
-      const tooltip = escapeHtml(`${triage.reason}\nIssues: ${(triage.issues || []).join(", ")}`);
+      const tooltip = escapeHtml(`${triage.reason}\n${t("gallery.triage.issues", { list: (triage.issues || []).join(", ") })}`);
       triageBadge = `<span class="triage-badge" title="${tooltip}" style="cursor:help; margin-left:6px; font-size:10px; padding:2px 6px; border-radius:8px; font-weight:bold; background:${bg}; color:#fff">${triage.score}/10 ${triage.verdict.toUpperCase()}</span>`;
     }
 
@@ -2168,7 +2183,7 @@ function renderGallery() {
         ? `<button type="button" class="ver-badge" title="${escapeHtml(t("ver.badge.title", { n: img.versions }))}" data-tip="${escapeHtml(t("ver.badge.title", { n: img.versions }))}">v·${img.versions}</button>`
         : "";
       tile.innerHTML = `
-        <img src="${escapeHtml(img.url)}" alt="#${img.edition}" />
+        <img src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${img.edition}" />
         <div class="meta">#${img.edition} ${ver}${qa}${triageBadge}</div>
         <div class="btns">
           <button type="button" class="btn small b-keep"${tipAttr("gallery.keep")}>${t("gallery.keep")}</button>
@@ -2507,7 +2522,7 @@ async function probeLocalGpu() {
 function perCreditUsd(usd, credits) {
   const c = Number(credits) || 0;
   if (!c) return "";
-  return `≈ $${(Number(usd) / c).toFixed(3)}/${t("acct.creditsShort")}`;
+  return `≈ ${fmtUsdLocale(Number(usd) / c, 3)}/${t("acct.creditsShort")}`;
 }
 
 async function refreshAccount() {
@@ -2532,8 +2547,8 @@ async function refreshAccount() {
     w.textContent = shortWallet(me.wallet);
     w.title = me.wallet;
   }
-  if ($("acct-balance")) $("acct-balance").textContent = String(me.balance);
-  if ($("topup-balance")) $("topup-balance").textContent = String(me.balance);
+  if ($("acct-balance")) $("acct-balance").textContent = fmtNum(me.balance);
+  if ($("topup-balance")) $("topup-balance").textContent = fmtNum(me.balance);
   $("acct-topup")?.classList.toggle("low", Number(me.balance) < LOW_BALANCE);
   const topupBtn = $("acct-topup");
   if (topupBtn) topupBtn.setAttribute("aria-label", `${t("acct.topup")} · ${me.balance} ${t("acct.credits")}`);
@@ -2542,7 +2557,7 @@ async function refreshAccount() {
 function renderTopup() {
   const me = state.account;
   if (!me) return;
-  if ($("topup-balance")) $("topup-balance").textContent = String(me.balance);
+  if ($("topup-balance")) $("topup-balance").textContent = fmtNum(me.balance);
   const grid = $("topup-packages");
   if (grid) {
     grid.innerHTML = (me.packages || []).map((p) => {
@@ -2552,9 +2567,9 @@ function renderTopup() {
       <article class="topup-card topup-card--${escapeHtml(p.id)}${p.recommended ? " rec" : ""}">
         ${p.recommended ? `<span class="topup-card-badge">${escapeHtml(t("topup.recommended"))}</span>` : ""}
         <div class="topup-card-name">${escapeHtml(title)}</div>
-        <div class="topup-credits"><b>${p.credits}</b> <span class="muted small">${escapeHtml(t("acct.credits"))}</span></div>
+        <div class="topup-credits"><b>${fmtNum(p.credits)}</b> <span class="muted small">${escapeHtml(t("acct.credits"))}</span></div>
         <div class="topup-price">
-          <span class="topup-usd">$${Number(p.usd).toFixed(2)}</span>
+          <span class="topup-usd">${escapeHtml(fmtUsdLocale(p.usd, 2))}</span>
           ${unit ? `<span class="topup-unit">${escapeHtml(unit)}</span>` : ""}
         </div>
         <p class="topup-note">${escapeHtml(p.note || "")}</p>
@@ -2576,7 +2591,7 @@ function renderTopup() {
     const rows = d.transactions || [];
     box.innerHTML = rows.length
       ? rows.map((tx) =>
-        `<div class="hist-row"><span>${escapeHtml(tx.created_at.replace("T", " "))}</span><span title="${escapeHtml(tx.note || tx.kind)}">${escapeHtml(tx.note || tx.kind)}</span><b class="${tx.credits < 0 ? "bad" : "ok"}">${tx.credits > 0 ? "+" : ""}${tx.credits}</b></div>`)
+        `<div class="hist-row"><span>${escapeHtml(fmtDate(tx.created_at))}</span><span title="${escapeHtml(tx.note || tx.kind)}">${escapeHtml(tx.note || tx.kind)}</span><b class="${tx.credits < 0 ? "bad" : "ok"}">${tx.credits > 0 ? "+" : ""}${fmtNum(tx.credits)}</b></div>`)
         .join("")
       : `<p class="muted hist-empty">${escapeHtml(t("history.empty"))}</p>`;
   }).catch(() => {});
@@ -2660,7 +2675,7 @@ function renderSolSection() {
   if (!section) return;
   const box = $("sol-packs");
   if (box) box.innerHTML = sp?.testPack
-    ? `<button type="button" class="btn small sol-pack" data-pack="${escapeHtml(sp.testPack.id)}">${escapeHtml(packageTitle(sp.testPack.label))} · $${Number(sp.testPack.usd).toFixed(2)} → ${sp.testPack.credits} ${escapeHtml(t("acct.credits"))}</button>`
+    ? `<button type="button" class="btn small sol-pack" data-pack="${escapeHtml(sp.testPack.id)}">${escapeHtml(packageTitle(sp.testPack.label))} · ${escapeHtml(fmtUsdLocale(sp.testPack.usd, 2))} → ${fmtNum(sp.testPack.credits)} ${escapeHtml(t("acct.credits"))}</button>`
     : "";
   section.hidden = !(sp?.enabled && (sp.testPack || solShownId));
 }
@@ -2814,7 +2829,13 @@ function setupAccount() {
   $("topup-close")?.addEventListener("click", () => { overlay.hidden = true; refreshAccount(); });
   overlay?.addEventListener("click", (e) => { if (e.target === overlay) { overlay.hidden = true; refreshAccount(); } });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && overlay && !overlay.hidden) {
+    if (e.key !== "Escape") return;
+    const light = $("v-lightbox");
+    if (light && !light.hidden) {
+      light.hidden = true;
+      return;
+    }
+    if (overlay && !overlay.hidden) {
       overlay.hidden = true;
       refreshAccount();
     }
@@ -2889,7 +2910,7 @@ function renderVersions(data) {
   for (const v of [...data.versions].reverse()) {
     const item = document.createElement("div");
     item.className = `ver-item${v.current ? " current" : ""}`;
-    const when = v.at ? new Date(v.at).toLocaleString() : "—";
+    const when = v.at ? fmtDate(v.at) : "—";
     item.innerHTML = `
       <img src="${escapeHtml(v.url)}" alt="v${v.v}" />
       <div class="small"><b>v${v.v}</b> ${v.current ? `· ${escapeHtml(t("ver.current"))}` : ""}<br>
@@ -2955,6 +2976,7 @@ function openLightbox(url) {
   const img = $("v-lightbox-img");
   if (!box || !img) return;
   img.src = url;
+  img.alt = t("gallery.zoom.alt");
   box.hidden = false;
 }
 
@@ -3209,13 +3231,18 @@ function renderPath(activeTab) {
 function fmtUsdLoose(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
-  return `$${v.toFixed(v < 0.1 ? 4 : 2)}`;
+  return fmtUsdLocale(v, v < 0.1 ? 4 : 2);
+}
+
+function stageLabel(stage, fallback) {
+  const key = `stage.${stage}`;
+  return hasKey(key) ? t(key) : (fallback || stage || "");
 }
 
 function formatQuote(q) {
   if (!q) return "";
   return t("price.line", {
-    label: q.label || q.stage,
+    label: stageLabel(q.stage, q.label),
     credits: q.credits ?? 0,
     cost: fmtUsdLoose(q.costUsd),
     margin: fmtUsdLoose(q.marginUsd),
@@ -3386,7 +3413,7 @@ async function renderChecklist() {
     return;
   }
   try {
-    if (msg) msg.textContent = "…";
+    if (msg) msg.textContent = t("ui.working");
     const q = new URLSearchParams({ archive });
     if (set) q.set("set", set);
     const data = await api(`/api/checklist?${q}`);
@@ -3563,7 +3590,7 @@ function setupExport() {
       const archive = $("x-file")?.value;
       const set = $("x-set")?.value;
       if (!archive) throw new Error(t("export.none"));
-      if (msg) msg.textContent = "…";
+      if (msg) msg.textContent = t("ui.working");
       if (dl) dl.hidden = true;
       const next = $("x-release-next");
       if (next) next.hidden = true;
@@ -3595,7 +3622,7 @@ function setupExport() {
           locale: getLocale(),
         }),
       });
-      if (msg) msg.textContent = `${t("export.bundle.ok", { n: data.count, missing: (data.missing || []).length })} · ${data.chargedCredits || 0} cr`;
+      if (msg) msg.textContent = `${t("export.bundle.ok", { n: fmtNum(data.count), missing: fmtNum((data.missing || []).length) })} · ${t("econ.creditsDebited", { n: fmtNum(data.chargedCredits || 0) })}`;
       showPreflightReport(data.preflight);
       if (dl && data.downloadUrl) {
         dl.href = data.downloadUrl;
@@ -3617,7 +3644,7 @@ function setupExport() {
   $("x-preflight")?.addEventListener("click", async () => {
     const msg = $("x-release-msg");
     try {
-      if (msg) msg.textContent = "…";
+      if (msg) msg.textContent = t("ui.working");
       const data = await api("/api/preflight", {
         method: "POST",
         body: JSON.stringify(bundleBody({ onlyKeep: true, profile: $("x-profile")?.value || "opensea" })),
@@ -3637,7 +3664,7 @@ function setupExport() {
       const set = $("x-set")?.value;
       if (!archive) throw new Error(t("export.none"));
       if (!set) throw new Error(t("export.bundle.noSets"));
-      if (msg) msg.textContent = "…";
+      if (msg) msg.textContent = t("ui.working");
       if (dl) dl.hidden = true;
       const data = await api("/api/export/bundle", {
         method: "POST",
@@ -3660,9 +3687,9 @@ function setupExport() {
       });
       if (msg) {
         msg.textContent = `${t("export.bundle.ok", {
-          n: data.count,
-          missing: (data.missing || []).length,
-        })} · ${data.chargedCredits || 0} cr`;
+          n: fmtNum(data.count),
+          missing: fmtNum((data.missing || []).length),
+        })} · ${t("econ.creditsDebited", { n: fmtNum(data.chargedCredits || 0) })}`;
         msg.className = "small ok-msg";
       }
       showPreflightReport(data.preflight);
@@ -3826,12 +3853,19 @@ async function updateReleaseHub() {
     const portal = data.portal;
     if (portal) {
       portalBtn.href = portal.portalUrl;
-      portalBtn.textContent = `🌐 ${portal.name}`;
+      portalBtn.textContent = t("release.hub.portalNamed", { name: portal.name });
       if (testnetBtn) {
         testnetBtn.href = portal.testnetPortalUrl;
       }
       if (tipsList) {
-        tipsList.innerHTML = (portal.tips || []).map((t) => `<li>${escapeHtml(t)}</li>`).join("");
+        const local = [];
+        for (let i = 1; i < 10; i++) {
+          const key = `release.portal.${portal.id}.tip${i}`;
+          if (!hasKey(key)) break;
+          local.push(t(key));
+        }
+        const lines = local.length ? local : (portal.tips || []);
+        tipsList.innerHTML = lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
       }
     }
   } catch {
@@ -3843,17 +3877,26 @@ function kitArchive() {
   return $("x-file")?.value || state.archiveFile || state.archives?.[0]?.file || "";
 }
 
+function setBusy(btn, on) {
+  if (!btn) return;
+  btn.disabled = Boolean(on);
+  btn.classList.toggle("is-loading", Boolean(on));
+  btn.setAttribute("aria-busy", on ? "true" : "false");
+}
+
 function setupKits() {
   $("d-build")?.addEventListener("click", async () => {
     const msg = $("d-msg");
     const dl = $("d-download");
     const guide = $("d-guide");
+    const btn = $("d-build");
     try {
       const archive = kitArchive();
       const set = $("d-set")?.value;
       if (!archive) throw new Error(t("export.none"));
       if (!set) throw new Error(t("export.bundle.noSets"));
-      if (msg) msg.textContent = "…";
+      setBusy(btn, true);
+      if (msg) msg.textContent = t("ui.working");
       if (dl) dl.hidden = true;
       const data = await api("/api/deploy-kit", {
         method: "POST",
@@ -3879,18 +3922,22 @@ function setupKits() {
       }
     } catch (e) {
       if (msg) msg.textContent = e.message;
+    } finally {
+      setBusy(btn, false);
     }
   });
   $("m-build")?.addEventListener("click", async () => {
     const msg = $("m-msg");
     const dl = $("m-download");
     const note = $("m-note");
+    const btn = $("m-build");
     try {
       const archive = kitArchive();
       const set = $("m-set")?.value;
       if (!archive) throw new Error(t("export.none"));
       if (!set) throw new Error(t("export.bundle.noSets"));
-      if (msg) msg.textContent = "…";
+      setBusy(btn, true);
+      if (msg) msg.textContent = t("ui.working");
       if (dl) dl.hidden = true;
       const data = await api("/api/marketplace-kit", {
         method: "POST",
@@ -3916,6 +3963,8 @@ function setupKits() {
       }
     } catch (e) {
       if (msg) msg.textContent = e.message;
+    } finally {
+      setBusy(btn, false);
     }
   });
   $("v-triage-provider")?.addEventListener("change", () => showCurationPrice());
@@ -4074,7 +4123,7 @@ async function renderSpend() {
   if (!out) return;
   try {
     const d = await api("/api/spend");
-    const by = Object.entries(d.byEngine || {}).map(([k, v]) => `${escapeHtml(k)}: $${v}`).join(" · ");
+    const by = Object.entries(d.byEngine || {}).map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(fmtUsdLocale(v, Number(v) < 0.1 ? 4 : 2))}`).join(" · ");
     const engines = Object.entries(d.engines || {}).map(([k, row]) => {
       const pct = Math.round((row.failRate || 0) * 100);
       return escapeHtml(t("spend.engine", { engine: k, ok: row.ok, fail: row.fail, pct }));
@@ -4088,7 +4137,8 @@ async function renderSpend() {
       errBox.innerHTML = rows.length
         ? rows.map((r) => {
           const where = [r.set, r.edition != null ? `#${r.edition}` : ""].filter(Boolean).join(" ");
-          return `<div class="err-row"><b>${escapeHtml(r.engine)}</b> <span class="muted">${escapeHtml(r.at || "")}${where ? ` · ${escapeHtml(where)}` : ""}</span><div>${escapeHtml(r.error || t("admin.errors.unknown"))}</div></div>`;
+          const when = r.at ? fmtDate(r.at) : "";
+          return `<div class="err-row"><b>${escapeHtml(r.engine)}</b> <span class="muted">${escapeHtml(when)}${where ? ` · ${escapeHtml(where)}` : ""}</span><div>${escapeHtml(presentApiError({ error: r.error }, t) || t("admin.errors.unknown"))}</div></div>`;
         }).join("")
         : `<p class="muted">${escapeHtml(t("admin.errors.none"))}</p>`;
     }
@@ -4104,19 +4154,17 @@ function econKpi(label, value, { sub = "", cls = "" } = {}) {
 }
 
 function fmtUsd(n, digits = 2) {
-  if (n == null || Number.isNaN(Number(n))) return "—";
-  return `$${Number(n).toFixed(digits)}`;
+  return fmtUsdLocale(n, digits);
 }
 
 function fmtPct(n) {
-  if (n == null || Number.isNaN(Number(n))) return "—";
-  return `${n}%`;
+  return fmtPctLocale(n);
 }
 
 async function renderEconomy() {
   const out = $("econ-out");
   if (!out) return;
-  out.innerHTML = `<p class="muted">…</p>`;
+  out.innerHTML = `<p class="muted">${escapeHtml(t("ui.working"))}</p>`;
   try {
     const q = state.econDays === "all" ? "all" : state.econDays;
     const d = await api(`/api/admin/economy?days=${encodeURIComponent(q)}`);
@@ -4165,11 +4213,11 @@ async function renderEconomy() {
     const ohItems = (oh.items || []).map((it) => `
       <div class="econ-pack">
         <b>${escapeHtml(it.label)}</b>
-        <div class="price">${fmtUsd(it.usd)}/міс</div>
+        <div class="price">${escapeHtml(t("econ.perMonth", { usd: fmtUsd(it.usd) }))}</div>
       </div>`).join("");
     const scenRows = (m.scenarios || []).map((r) => `
       <tr>
-        <td class="num">${r.pro_packs}× Pro</td>
+        <td class="num">${escapeHtml(t("econ.proPacks", { n: fmtNum(r.pro_packs) }))}</td>
         <td class="num">${fmtUsd(r.revenue_usd)}</td>
         <td class="num">${fmtUsd(r.api_usd)}</td>
         <td class="num">${fmtUsd(r.fees_usd)}</td>
@@ -4192,16 +4240,16 @@ async function renderEconomy() {
         <div class="econ-kpis">
           ${econKpi(t("econ.kpi.users"), ov.users_total ?? "—", { sub: `${t("econ.kpi.verified")}: ${ov.users_verified ?? "—"}` })}
           ${econKpi(t("econ.kpi.revenue"), fmtUsd(ov.revenue_usd), { sub: t("econ.ext", { ext: fmtUsd(ov.revenue_usd_external), int: fmtUsd(ov.revenue_usd_internal) }) })}
-          ${econKpi(t("econ.kpi.outstanding"), ov.credits_outstanding ?? "—", { sub: `${ov.credits_sold ?? 0} sold` })}
-          ${econKpi(t("econ.kpi.arpu"), arpu, { sub: `${g.payments_count ?? 0} pay` })}
+          ${econKpi(t("econ.kpi.outstanding"), ov.credits_outstanding == null ? "—" : fmtNum(ov.credits_outstanding), { sub: t("econ.sold", { n: fmtNum(ov.credits_sold ?? 0) }) })}
+          ${econKpi(t("econ.kpi.arpu"), arpu, { sub: t("econ.pay", { n: fmtNum(g.payments_count ?? 0) }) })}
         </div>
       </section>
       <section class="econ-section">
         <h4>${escapeHtml(t("econ.live"))} · ${escapeHtml(g.period || q)}</h4>
         <div class="econ-kpis">
-          ${econKpi(t("econ.kpi.margin"), fmtPct(g.gross_margin_pct), { cls: marginCls, sub: `${fmtUsd(g.estimated_revenue_on_debited_usd)} on debit` })}
-          ${econKpi(t("econ.kpi.api"), fmtUsd(g.estimated_api_usd, 4), { sub: `${g.credits_debited ?? 0} cr` })}
-          ${econKpi(t("econ.kpi.util"), fmtPct(g.credits_utilization_pct), { sub: `avg ${fmtUsd(g.avg_usd_per_credit, 4)}/cr` })}
+          ${econKpi(t("econ.kpi.margin"), fmtPct(g.gross_margin_pct), { cls: marginCls, sub: t("econ.onDebit", { usd: fmtUsd(g.estimated_revenue_on_debited_usd) }) })}
+          ${econKpi(t("econ.kpi.api"), fmtUsd(g.estimated_api_usd, 4), { sub: t("econ.creditsDebited", { n: fmtNum(g.credits_debited ?? 0) }) })}
+          ${econKpi(t("econ.kpi.util"), fmtPct(g.credits_utilization_pct), { sub: t("econ.avgPerCr", { usd: fmtUsd(g.avg_usd_per_credit, 4) }) })}
           ${econKpi(t("econ.kpi.net"), fmtUsd(n.net_profit_usd), { cls: n.net_profit_usd >= 0 ? "ok" : "warn", sub: fmtPct(n.net_margin_pct) })}
         </div>
         <p class="econ-note">${escapeHtml(t("econ.arpuLine", { arpu, n: g.payments_count ?? 0, avg: g.avg_usd_per_credit ?? 0, welcome: g.welcome_credits_net ?? 0 }))}</p>
@@ -4226,7 +4274,7 @@ async function renderEconomy() {
           </table>
         </div>
         <h4 style="margin-top:14px">${escapeHtml(t("econ.stages"))}</h4>
-        <p class="econ-note">${escapeHtml(t("econ.stageHint"))} · ${escapeHtml(d.stages?.usd_per_credit_basis || "")} ${fmtUsd(d.stages?.usd_per_credit, 4)}/cr</p>
+        <p class="econ-note">${escapeHtml(t("econ.stageHint"))} · ${escapeHtml(d.stages?.usd_per_credit_basis || "")} ${escapeHtml(t("econ.perCr", { usd: fmtUsd(d.stages?.usd_per_credit, 4) }))}</p>
         <div class="table-wrap">
           <table class="econ-table">
             <thead><tr>
@@ -4239,7 +4287,7 @@ async function renderEconomy() {
             </tr></thead>
             <tbody>${(d.stages?.stages || []).map((s) => `
               <tr>
-                <td>${escapeHtml(s.label || s.stage)}</td>
+                <td>${escapeHtml(stageLabel(s.stage, s.label))}</td>
                 <td class="num">${s.ops}</td>
                 <td class="num">${s.credits_spent}</td>
                 <td class="num">${fmtUsd(s.cost_usd, 4)}</td>
@@ -4271,7 +4319,7 @@ async function renderEconomy() {
             <thead><tr>
               <th>${escapeHtml(t("econ.col.volume"))}</th>
               <th class="num">${escapeHtml(t("econ.col.rev"))}</th>
-              <th class="num">API</th>
+              <th class="num">${escapeHtml(t("econ.col.api"))}</th>
               <th class="num">${escapeHtml(t("econ.col.fees"))}</th>
               <th class="num">${escapeHtml(t("econ.col.rfx"))}</th>
               <th class="num">${escapeHtml(t("econ.col.fixed"))}</th>
@@ -4312,7 +4360,7 @@ async function renderEconomy() {
               <th>${escapeHtml(t("econ.col.engine"))}</th>
               <th class="num">${escapeHtml(t("econ.col.cogs"))}</th>
               <th class="num">${escapeHtml(t("econ.col.credits"))}</th>
-              <th class="num">Rev $</th>
+              <th class="num">${escapeHtml(t("econ.col.rev"))}</th>
               <th class="num">${escapeHtml(t("econ.col.mgn"))}</th>
             </tr></thead>
             <tbody>${engRows}</tbody>
@@ -4322,10 +4370,10 @@ async function renderEconomy() {
       <section class="econ-section">
         <h4>${escapeHtml(t("econ.funnel"))}</h4>
         <div class="econ-kpis">
-          ${econKpi("New", f.new_users ?? "—")}
-          ${econKpi("Verified", f.new_verified ?? "—")}
-          ${econKpi("Paying", f.paying_wallets ?? "—", { sub: fmtPct(f.conversion_verified_to_paying_pct) })}
-          ${econKpi("Export", f.exported_wallets ?? "—", { sub: fmtPct(f.conversion_generate_to_export_pct) })}
+          ${econKpi(t("econ.funnel.new"), f.new_users ?? "—")}
+          ${econKpi(t("econ.funnel.verified"), f.new_verified ?? "—")}
+          ${econKpi(t("econ.funnel.paying"), f.paying_wallets ?? "—", { sub: fmtPct(f.conversion_verified_to_paying_pct) })}
+          ${econKpi(t("econ.funnel.export"), f.exported_wallets ?? "—", { sub: fmtPct(f.conversion_generate_to_export_pct) })}
         </div>
       </section>`;
   } catch (e) {
@@ -4364,8 +4412,8 @@ async function renderTrash() {
     const files = it.files.map((f) => f.from).join(", ");
     const kb = Math.max(1, Math.round((it.bytes || 0) / 1024));
     row.innerHTML = `
-      <div><b>${escapeHtml(new Date(it.at).toLocaleString())}</b> · ${escapeHtml(it.reason || "")}
-        <div class="muted">${escapeHtml(files)} · ${kb} KB</div></div>
+      <div><b>${escapeHtml(fmtDate(it.at))}</b> · ${escapeHtml(it.reason || "")}
+        <div class="muted">${escapeHtml(files)} · ${fmtNum(kb)} KB</div></div>
       <div class="btns">
         <button type="button" class="btn small b-restore"${tipAttr("trash.restore")}>${escapeHtml(t("trash.restore"))}</button>
         <button type="button" class="btn small b-purge"${tipAttr("trash.purge")}>${escapeHtml(t("trash.purge"))}</button>
@@ -4458,9 +4506,18 @@ async function boot() {
 
   try {
     state.health = await api("/api/health");
-    $("me").textContent = `lab · :${state.health.port || 5344}`;
+    const me = $("me");
+    if (me) {
+      me.dataset.mode = "port";
+      me.dataset.port = String(state.health.port || 5344);
+      me.textContent = t("ui.labPort", { port: me.dataset.port });
+    }
   } catch {
-    $("me").textContent = "offline";
+    const me = $("me");
+    if (me) {
+      me.dataset.mode = "offline";
+      me.textContent = t("ui.offline");
+    }
   }
 
   // one failing loader must not leave the rest of the UI uninitialised

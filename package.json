@@ -31,6 +31,7 @@
     "contract-check": "node scripts/contract-check.mjs",
     "audit:api": "node scripts/audit-api.mjs",
     "audit:ui": "node scripts/audit-ui.mjs",
+    "audit:i18n": "node scripts/audit-i18n.mjs",
     "smoke:stage": "node scripts/stage-smoke.mjs"
   },
   "keywords": [
