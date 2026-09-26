@@ -16,6 +16,7 @@ const EXACT = {
   "could not pick a free spin-off id": "api.spinId",
   "No base image found to analyze": "api.noBase",
   "Image-to-image needs a primary base image.": "api.noPrimary",
+  "FLUX.1 [dev] weights need a licence warning before a credit charge.": "api.licenseWarning",
   "no archives — build recipes first": "api.noArchivesRecipes",
   "set not found": "api.setMissing",
   "dir required": "api.dirRequired",
@@ -118,6 +119,7 @@ const CODE_KEYS = {
   spend_cap: "api.spendCap",
   no_primary: "api.noPrimary",
   engine_unavailable: "api.engineUnavailable",
+  license_warning: "api.licenseWarning",
 };
 
 function rawMessage(data) {

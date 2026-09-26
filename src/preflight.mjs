@@ -4,7 +4,7 @@
  */
 import { createHash } from "node:crypto";
 import { pngDimensions } from "./png-fit.mjs";
-import { dna } from "./recipes.mjs";
+import { dna, dnaKeysFromItems } from "./recipes.mjs";
 import { aHashPng, hamming, AHASH_WARN_DISTANCE } from "./dupes.mjs";
 
 export const DEFAULT_MAX_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -31,12 +31,16 @@ export function imageDigest(buf) {
  * One DNA helper for recipes and preflight. Stored recipe.dna wins;
  * otherwise the same `dna()` the builder uses.
  */
-export function dnaKey(recipe, traitKeys) {
+export function dnaKey(recipe, traitKeys, items) {
   if (recipe?.dna) return String(recipe.dna);
   const traits = recipe?.traits && typeof recipe.traits === "object" ? recipe.traits : {};
-  const keys = Array.isArray(traitKeys) && traitKeys.length
+  let keys = Array.isArray(traitKeys) && traitKeys.length
     ? traitKeys
     : Object.keys(traits).sort();
+  if (Array.isArray(items) && items.length) {
+    const keep = new Set(dnaKeysFromItems(items));
+    keys = keys.filter((k) => keep.has(k));
+  }
   return dna(recipe?.line || "", traits, keys);
 }
 

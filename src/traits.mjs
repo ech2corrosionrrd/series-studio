@@ -63,6 +63,10 @@ export function normalizeOption(raw) {
   if (!Number.isFinite(weight)) weight = 1;
   const prompt = String(o.prompt ?? "");
   const out = { value, weight, prompt };
+  if (o.exact != null && o.exact !== "") {
+    const exact = Number(o.exact);
+    if (Number.isFinite(exact)) out.exact = exact;
+  }
   if (Array.isArray(o.lines) && o.lines.length) {
     out.lines = o.lines.map((x) => String(x));
   }
@@ -77,6 +81,18 @@ export function normalizeOption(raw) {
  * @param {unknown} list
  * @returns {Array<{ value: string, weight: number, prompt: string }>}
  */
+/**
+ * Share of one weight inside a trait, as a percent of the option weights.
+ * @param {number} weight
+ * @param {Array<{ weight?: number }>} options
+ */
+export function weightPercent(weight, options) {
+  const sum = (Array.isArray(options) ? options : []).reduce((s, o) => s + (Number(o?.weight) || 0), 0);
+  const w = Number(weight) || 0;
+  if (!(sum > 0)) return 0;
+  return (w / sum) * 100;
+}
+
 export function normalizeOptions(list) {
   if (!Array.isArray(list)) return [];
   return list.map((o) => normalizeOption(o));
@@ -107,6 +123,12 @@ export function validateOptions(list) {
     }
     if (!String(o.prompt ?? "").trim()) {
       warnings.push(`${label}: empty prompt (recommended)`);
+    }
+    if (raw.exact != null && raw.exact !== "") {
+      const exact = Number(raw.exact);
+      if (!Number.isInteger(exact) || exact < 0) {
+        errors.push(`${label}: exact must be a non-negative integer`);
+      }
     }
     if (o.value) {
       const prev = seen.get(o.value);

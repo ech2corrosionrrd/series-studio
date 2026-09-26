@@ -33,5 +33,6 @@ export function creationVersion(info = {}) {
   };
   if (info.score != null) row.score = info.score;
   if (info.verdict) row.verdict = info.verdict;
+  if (info.licenseWarning) row.licenseWarning = info.licenseWarning;
   return row;
 }

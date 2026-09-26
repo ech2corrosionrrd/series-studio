@@ -617,6 +617,10 @@ function normalizeOptionClient(raw) {
   if (!Number.isFinite(weight)) weight = 1;
   const prompt = String(o.prompt ?? "");
   const out = { value, weight, prompt };
+  if (o.exact != null && o.exact !== "") {
+    const exact = Number(o.exact);
+    if (Number.isFinite(exact)) out.exact = exact;
+  }
   if (Array.isArray(o.lines) && o.lines.length) out.lines = o.lines.map((x) => String(x));
   if (typeof o.since === "number" && o.since >= 1) out.since = o.since;
   return out;
@@ -636,6 +640,9 @@ function validateOptionsClient(list) {
     if (!o.value) errors.push(t("ctor.options.err.value", { i: String(i + 1) }));
     if (!Number.isFinite(o.weight) || o.weight <= 0) {
       errors.push(t("ctor.options.err.weight", { i: String(i + 1) }));
+    }
+    if (raw.exact != null && raw.exact !== "" && (!Number.isInteger(Number(raw.exact)) || Number(raw.exact) < 0)) {
+      errors.push(t("ctor.options.err.exact", { i: String(i + 1) }));
     }
     if (!String(o.prompt ?? "").trim()) {
       warnings.push(t("ctor.options.warn.prompt", { i: String(i + 1) }));
@@ -709,6 +716,8 @@ function renderOptionsEditor() {
     return;
   }
   wrap.hidden = false;
+  const skip = $("opt-skip-dna");
+  if (skip) skip.checked = trait.skipDna === true;
   if (!Array.isArray(trait.options)) trait.options = [];
   const n = trait.options.length;
   if (countEl) countEl.textContent = t("ctor.options.count", { n: String(n), key: state.selectedTraitKey });
@@ -722,7 +731,11 @@ function renderOptionsEditor() {
     const promptWarn = !String(o.prompt || "").trim();
     tr.innerHTML = `
       <td><input type="text" data-field="value" data-idx="${idx}" value="${escapeHtml(o.value)}" autocomplete="off"></td>
-      <td><input class="opt-weight" type="number" min="0.01" step="any" data-field="weight" data-idx="${idx}" value="${escapeHtml(String(o.weight))}"></td>
+      <td class="opt-weight-cell">
+        <input class="opt-weight" type="number" min="0.01" step="any" data-field="weight" data-idx="${idx}" value="${escapeHtml(String(o.weight))}">
+        <span class="opt-pct" data-idx="${idx}">${escapeHtml(t("ctor.options.pct", { pct: optionPct(o.weight, trait.options) }))}</span>
+      </td>
+      <td><input class="opt-exact" type="number" min="0" step="1" data-field="exact" data-idx="${idx}" value="${o.exact == null ? "" : escapeHtml(String(o.exact))}"></td>
       <td>
         <textarea data-field="prompt" data-idx="${idx}" rows="2">${escapeHtml(o.prompt)}</textarea>
         ${promptWarn ? `<span class="muted small opt-warn">${escapeHtml(t("ctor.options.warn.promptShort"))}</span>` : ""}
@@ -757,6 +770,9 @@ function updateOptionField(idx, field, value) {
   if (field === "weight") {
     const n = Number(value);
     cur.weight = Number.isFinite(n) ? n : 0;
+  } else if (field === "exact") {
+    if (value === "" || value == null) delete cur.exact;
+    else cur.exact = Number(value);
   } else if (field === "value") {
     cur.value = String(value ?? "").trim();
   } else if (field === "prompt") {
@@ -818,6 +834,22 @@ function duplicateOptionRow(idx) {
   renderOptionsEditor();
 }
 
+function optionPct(weight, options) {
+  const sum = (options || []).reduce((s, o) => s + (Number(o?.weight) || 0), 0);
+  const w = Number(weight) || 0;
+  if (!(sum > 0)) return "0.0";
+  return ((w / sum) * 100).toFixed(1);
+}
+
+function refreshWeightPcts() {
+  const trait = findTrait(state.selectedTraitKey);
+  if (!trait) return;
+  document.querySelectorAll("#opt-tbody .opt-pct").forEach((el) => {
+    const idx = Number(el.dataset.idx);
+    el.textContent = t("ctor.options.pct", { pct: optionPct(trait.options?.[idx]?.weight, trait.options) });
+  });
+}
+
 function setupOptionsEditor() {
   const sel = $("opt-trait-key");
   if (!sel) return;
@@ -828,12 +860,30 @@ function setupOptionsEditor() {
   $("opt-tbody")?.addEventListener("change", (ev) => {
     const el = ev.target;
     if (!el || !el.dataset || el.dataset.idx == null) return;
-    if (!["value", "weight", "prompt"].includes(el.dataset.field)) return;
+    if (!["value", "weight", "prompt", "exact"].includes(el.dataset.field)) return;
     updateOptionField(Number(el.dataset.idx), el.dataset.field, el.value);
+  });
+  $("opt-skip-dna")?.addEventListener("change", () => {
+    ensureDraftTraits();
+    const trait = findTrait(state.selectedTraitKey);
+    if (!trait) return;
+    trait.skipDna = Boolean($("opt-skip-dna")?.checked);
+    if (state.draftFull) state.draftFull.traits = state.draftTraits;
   });
   $("opt-tbody")?.addEventListener("input", (ev) => {
     const el = ev.target;
-    if (!el || el.dataset?.field !== "prompt") return;
+    if (!el || el.dataset?.field !== "prompt" && el.dataset?.field !== "weight") return;
+    if (el.dataset.field === "weight") {
+      ensureDraftTraits();
+      const trait = findTrait(state.selectedTraitKey);
+      const idx = Number(el.dataset.idx);
+      if (!trait?.options?.[idx]) return;
+      const n = Number(el.value);
+      trait.options[idx] = { ...normalizeOptionClient(trait.options[idx]), weight: Number.isFinite(n) ? n : 0 };
+      if (state.draftFull) state.draftFull.traits = state.draftTraits;
+      refreshWeightPcts();
+      return;
+    }
     // live-update draft without full re-render (keep caret)
     ensureDraftTraits();
     const trait = findTrait(state.selectedTraitKey);
@@ -1691,6 +1741,21 @@ function setupRecipes() {
       alert(e.message);
     }
   });
+  $("r-simulate")?.addEventListener("click", async () => {
+    const msg = $("r-simulate-msg");
+    try {
+      if (msg) msg.textContent = t("recipes.simulate.running");
+      const file = $("r-preset")?.value;
+      const data = await api("/api/simulate", { method: "POST", body: JSON.stringify({ file }) });
+      if (data.rarity) renderRarity(data.rarity);
+      const bits = [t("recipes.simulate.done", { size: data.size, rejected: data.rejectedConflicts ?? 0 })];
+      const pairs = (data.conflictExamples || []).map((h) => `${h.a} / ${h.b}`);
+      if (pairs.length) bits.push(t("recipes.simulate.conflicts", { list: pairs.join("; ") }));
+      if (msg) msg.textContent = bits.join(" ");
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
   $("r-archive-diff")?.addEventListener("click", async () => {
     const msg = $("r-archive-diff-msg");
     const list = $("r-archive-diff-list");
@@ -1826,6 +1891,21 @@ function setupRecipes() {
   });
 }
 
+function licenseApplies() {
+  const engine = $("g-engine")?.value || "";
+  if (engine === "fal") return true;
+  if ((engine === "comfyui" || engine === "a1111") && $("g-flux-dev")?.checked) return true;
+  return false;
+}
+
+function paintLicenseWarning() {
+  const box = $("g-license");
+  const wrap = $("g-flux-dev-wrap");
+  const engine = $("g-engine")?.value || "";
+  if (wrap) wrap.hidden = engine !== "comfyui" && engine !== "a1111";
+  if (box) box.hidden = !licenseApplies();
+}
+
 /* ---------- Render / Generate ---------- */
 function setupRender() {
   const reLockPlan = () => lockGenerate(true);
@@ -1835,9 +1915,20 @@ function setupRender() {
   });
   $("g-engine")?.addEventListener("change", () => {
     reLockPlan();
+    state.licenseAck = false;
     paintStrengthNote("g-strength-note", $("g-engine")?.value);
+    paintLicenseWarning();
+  });
+  $("g-flux-dev")?.addEventListener("change", () => {
+    state.licenseAck = false;
+    paintLicenseWarning();
+  });
+  $("g-license-proceed")?.addEventListener("click", () => {
+    state.licenseAck = true;
+    $("g-run")?.click();
   });
   paintStrengthNote("g-strength-note", $("g-engine")?.value);
+  paintLicenseWarning();
   $("g-pilot")?.addEventListener("input", reLockPlan);
   $("g-first")?.addEventListener("input", reLockPlan);
   $("g-only")?.addEventListener("input", reLockPlan);
@@ -1883,6 +1974,10 @@ function setupRender() {
     const thumbs = $("g-thumbs");
 
     try {
+      if (licenseApplies() && !state.licenseAck) {
+        paintLicenseWarning();
+        return;
+      }
       $("g-run").disabled = true;
       if (progressWrap) progressWrap.hidden = false;
       if (progressBar) progressBar.style.width = "0%";
@@ -1902,6 +1997,8 @@ function setupRender() {
         force: Boolean($("g-force")?.checked),
         concurrency: Number($("g-concurrency")?.value || 2),
         stream: true,
+        ackLicense: Boolean(state.licenseAck),
+        fluxDevWeights: Boolean($("g-flux-dev")?.checked),
       };
 
       const res = await fetch("/api/generate", {
@@ -2201,14 +2298,26 @@ function renderGallery() {
       const ver = img.versions > 1
         ? `<button type="button" class="ver-badge" title="${escapeHtml(t("ver.badge.title", { n: img.versions }))}" data-tip="${escapeHtml(t("ver.badge.title", { n: img.versions }))}">v·${img.versions}</button>`
         : "";
+      const sim = state.gallerySimilarity?.[key];
+      const simBadge = $("v-similarity")?.checked && sim && sim.similarity != null
+        ? `<span class="sim-badge${sim.warn ? " warn" : ""}" title="${sim.warn ? escapeHtml(t("gallery.similarity.warn")) : ""}">${escapeHtml(t("gallery.similarity.value", { n: sim.similarity }))}</span>`
+        : "";
+      const thumb = $("v-thumb64")?.checked
+        ? `<img class="thumb64" width="64" height="64" src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.thumb64.alt"))}">`
+        : "";
       tile.innerHTML = `
-        <img src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${img.edition}" />
-        <div class="meta">#${img.edition} ${ver}${qa}${triageBadge}</div>
+        <div class="shot">
+          <img src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${img.edition}" />
+          ${thumb}
+        </div>
+        <div class="meta">#${img.edition} ${ver}${qa}${triageBadge}${simBadge}</div>
         <div class="btns">
           <button type="button" class="btn small b-keep"${tipAttr("gallery.keep")}>${t("gallery.keep")}</button>
           <button type="button" class="btn small b-redo"${tipAttr("gallery.redo")}>${t("gallery.redo")}</button>
         </div>`;
-      tile.querySelector("img").addEventListener("click", () => openLightbox(img.url));
+      tile.querySelectorAll(".shot img").forEach((el) => {
+        el.addEventListener("click", () => openLightbox(img.url));
+      });
       tile.querySelector(".ver-badge")?.addEventListener("click", () => openVersions(img.edition));
     }
 
@@ -3094,8 +3203,29 @@ function editionFromFile(name) {
   return m ? m[1] : "";
 }
 
+async function loadSimilarity() {
+  const dir = state.galleryDir || $("v-dir")?.value;
+  if (!dir || !$("v-similarity")?.checked) {
+    state.gallerySimilarity = {};
+    renderGallery();
+    return;
+  }
+  const data = await api(`/api/similarity?dir=${encodeURIComponent(dir)}`);
+  const map = {};
+  for (const row of data.editions || []) map[String(row.edition)] = row;
+  state.gallerySimilarity = map;
+  renderGallery();
+}
+
 function setupGallery() {
   $("v-filter")?.addEventListener("change", renderGallery);
+  $("v-thumb64")?.addEventListener("change", renderGallery);
+  $("v-similarity")?.addEventListener("change", () => {
+    loadSimilarity().catch((e) => {
+      const status = $("v-triage-status");
+      if (status) status.textContent = e.message;
+    });
+  });
   $("v-dupes")?.addEventListener("click", async () => {
     const status = $("v-dupes-status");
     const box = $("v-dupes-list");
@@ -3349,15 +3479,32 @@ function stageLabel(stage, fallback) {
 }
 
 function formatQuote(q) {
-  if (!q) return "";
-  return t("price.line", {
+  if (!q) return { text: "", tip: "" };
+  const text = t("price.line", {
     label: stageLabel(q.stage, q.label),
     credits: q.credits ?? 0,
-    cost: fmtUsdLoose(q.costUsd),
-    margin: fmtUsdLoose(q.marginUsd),
     price: fmtUsdLoose(q.priceUsd),
-    formula: q.formula || "",
   });
+  const tip = state.account?.admin
+    ? t("price.formulaTip", {
+      formula: q.formula || "",
+      cost: fmtUsdLoose(q.costUsd),
+      margin: fmtUsdLoose(q.marginUsd),
+    })
+    : "";
+  return { text, tip };
+}
+
+function paintQuote(el, q) {
+  const view = formatQuote(q);
+  el.textContent = view.text;
+  if (view.tip) {
+    el.title = view.tip;
+    el.dataset.tip = view.tip;
+  } else {
+    el.removeAttribute("title");
+    delete el.dataset.tip;
+  }
 }
 
 async function showStagePrice(stage, elementId, extra = {}) {
@@ -3368,7 +3515,7 @@ async function showStagePrice(stage, elementId, extra = {}) {
   if (stage === "archive" && extra.zip === false) q.set("zip", "0");
   try {
     const data = await api(`/api/stages/quote?${q}`);
-    el.textContent = formatQuote(data.quote);
+    paintQuote(el, data.quote);
   } catch (e) {
     el.textContent = e.message;
   }
@@ -3380,7 +3527,7 @@ async function showCurationPrice() {
   const provider = $("v-triage-provider")?.value || "heuristic";
   try {
     const data = await api(`/api/stages/quote?stage=curation&provider=${encodeURIComponent(provider)}&count=1`);
-    el.textContent = formatQuote(data.quote);
+    paintQuote(el, data.quote);
   } catch {
     el.textContent = "";
   }
@@ -3404,14 +3551,60 @@ function fillKitSets() {
 
 function showPreflightReport(preflight) {
   const box = $("x-preflight-report");
+  const groups = $("x-preflight-groups");
+  const badge = $("x-preflight-badge");
   if (!box) return;
-  if (!preflight?.report) {
+  if (!preflight?.report && !preflight?.checks) {
     box.hidden = true;
-    box.textContent = "";
+    if (groups) groups.replaceChildren();
+    box.dataset.report = "";
     return;
   }
   box.hidden = false;
-  box.textContent = preflight.report;
+  box.dataset.report = preflight.report || "";
+  if (badge) {
+    const ready = Boolean(preflight.ready);
+    badge.textContent = ready ? t("preflight.status.ready") : t("preflight.status.blocked");
+    badge.className = `preflight-badge ${ready ? "ready" : "blocked"}`;
+  }
+  if (!groups) return;
+  groups.replaceChildren();
+  const checks = Array.isArray(preflight.checks) ? preflight.checks : [];
+  const order = ["error", "warning", "ok"];
+  for (const level of order) {
+    const rows = checks.filter((c) => c.level === level);
+    if (!rows.length) continue;
+    const section = document.createElement("section");
+    const title = document.createElement("h3");
+    title.textContent = t(`preflight.group.${level === "error" ? "errors" : level === "warning" ? "warnings" : "ok"}`);
+    section.appendChild(title);
+    const list = document.createElement("ul");
+    list.className = "preflight-list";
+    for (const row of rows) {
+      const li = document.createElement("li");
+      li.className = `preflight-item ${level}`;
+      const icon = document.createElement("span");
+      icon.className = "preflight-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = level === "error" ? "✕" : level === "warning" ? "!" : "✓";
+      const sr = document.createElement("span");
+      sr.className = "visually-hidden";
+      sr.textContent = t(`preflight.level.${level}`);
+      const text = document.createElement("span");
+      text.textContent = row.message || "";
+      li.append(icon, sr, text);
+      if (level === "warning") {
+        const hint = document.createElement("span");
+        hint.className = "preflight-hint";
+        const key = `preflight.hint.${row.code || "generic"}`;
+        hint.textContent = hasKey(key) ? t(key) : t("preflight.hint.generic");
+        li.appendChild(hint);
+      }
+      list.appendChild(li);
+    }
+    section.appendChild(list);
+    groups.appendChild(section);
+  }
 }
 
 function setupPath() {
@@ -3749,6 +3942,22 @@ function setupExport() {
       if (msg) msg.textContent = e.message;
       showPreflightReport(e.payload?.preflight);
     }
+  });
+  $("x-preflight-copy")?.addEventListener("click", async () => {
+    const text = $("x-preflight-report")?.dataset.report || "";
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const area = document.createElement("textarea");
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+    const msg = $("x-release-msg");
+    if (msg) msg.textContent = t("preflight.copied");
   });
   $("x-preflight")?.addEventListener("click", async () => {
     const msg = $("x-release-msg");

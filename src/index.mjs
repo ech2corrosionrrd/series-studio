@@ -9,14 +9,17 @@ export {
   normalizeOption,
   normalizeOptions,
   validateOptions,
+  weightPercent,
   duplicateOption,
   validateTraitPack,
   exportPresetAsTraitPack,
 } from "./traits.mjs";
 export {
   dna,
+  dnaKeysFromItems,
   buildPrompt,
   buildRecipes,
+  drySimulate,
   duplicates,
   duplicateGroups,
   diffArchives,
@@ -33,6 +36,8 @@ export {
   hamming,
   aHashPng,
   aHashFromGray,
+  similarityToBase,
+  SIMILARITY_WARN_BELOW,
 } from "./dupes.mjs";
 export {
   validatePreset,
@@ -119,7 +124,9 @@ export {
   triageBatch,
   parseCriticJson,
   sanitizeCriticOutput,
+  countMissingTraitFrames,
 } from "./critic.mjs";
+export { licenseWarning, engineModelId, platformFluxModel } from "./license.mjs";
 export {
   buildImageUri,
   calculateDeterministicCid,

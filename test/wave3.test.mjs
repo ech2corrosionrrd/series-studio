@@ -5,6 +5,7 @@ import {
   normalizeOptions,
   validateOptions,
   duplicateOption,
+  weightPercent,
 } from "../src/index.mjs";
 
 test("normalizeOption trims value and coerces weight", () => {
@@ -56,6 +57,11 @@ test("validateOptions warns on empty prompt only", () => {
   const v = validateOptions([{ value: "Solo", weight: 1, prompt: "  " }]);
   assert.equal(v.ok, true);
   assert.equal(v.warnings.length, 1);
+});
+
+test("weightPercent is the option share of the trait", () => {
+  assert.equal(weightPercent(1, [{ weight: 1 }, { weight: 3 }]), 25);
+  assert.equal(weightPercent(0, [{ weight: 1 }]), 0);
 });
 
 test("duplicateOption picks unique value", () => {

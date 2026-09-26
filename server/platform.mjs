@@ -11,6 +11,7 @@ import { openDb } from "../src/platform/db.mjs";
 import { completeWalletSignIn, getBalance, normalizeWallet, recordReferral, resolveReferrer, welcomeOffer } from "../src/platform/billing.mjs";
 import { syncGenesisMints, walletGenesisCount } from "../src/platform/holders.mjs";
 import { engineStatus, generateImage, ENGINE_FLUX } from "../src/platform/imagegen.mjs";
+import { licenseWarning, platformFluxModel } from "../src/license.mjs";
 import { DEFAULT_STRENGTH } from "../src/reference.mjs";
 import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
 import {
@@ -399,6 +400,8 @@ async function routes(req, res, url) {
       try { reference = decodeReferenceImage(body.reference_image, body.strength ?? DEFAULT_STRENGTH); } catch (e) { throw new HttpError(400, e.message); }
     }
     const prompt = enhanceTmaPrompt(body.prompt, style);
+    const fluxModel = engine === ENGINE_FLUX ? platformFluxModel({ reference: Boolean(reference) }) : null;
+    const licenseNotice = licenseWarning(engine, fluxModel, { fluxDevWeights: Boolean(body.fluxDevWeights) });
     const frames = await Promise.allSettled(Array.from({ length: body.count }, async (_, i) => {
       let last;
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -417,7 +420,15 @@ async function routes(req, res, url) {
       console.error(`TMA generation error (${failed.length}/${body.count} frames)`);
       throw new HttpError(500, `Generation failed on AI engine (${failed.length}/${body.count} frames)`);
     }
-    send(res, 200, { ok: true, images: frames.map((f) => f.value), count: frames.length, style: body.style, engine, prompt: body.prompt });
+    send(res, 200, {
+      ok: true,
+      images: frames.map((f) => f.value),
+      count: frames.length,
+      style: body.style,
+      engine,
+      prompt: body.prompt,
+      ...(licenseNotice ? { licenseWarning: licenseNotice } : {}),
+    });
     return true;
   }
 
