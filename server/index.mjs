@@ -16,6 +16,7 @@ import {
   readdirSync,
   writeFileSync,
   statSync,
+  unlinkSync,
 } from "node:fs";
 import { dirname, extname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -75,7 +76,12 @@ import {
   sendTelegramTest,
   getTelegramConfig,
   formatEnginePrompt,
+  readBundleItems,
 } from "../src/index.mjs";
+import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
+import { buildDeployKit } from "../src/deploy-kit.mjs";
+import { buildMarketplaceKit } from "../src/marketplace-kit.mjs";
+import { writeFilesZip } from "../src/kit-zip.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
 import {
   ENGINES,
@@ -387,6 +393,69 @@ function refundCharge(charge) {
   } catch (e) {
     console.error(`[credits] refund failed for ${charge.wallet}: ${e.message}`);
   }
+}
+
+const SECRET_FIELD = /^(privatekey|secretkey|mnemonic|seedphrase|secret)$/i;
+
+/** Reject bodies that try to hand the server a key. Public addresses are fine. */
+function containsSecretField(value, depth = 0) {
+  if (!value || typeof value !== "object" || depth > 5) return false;
+  for (const [key, inner] of Object.entries(value)) {
+    if (SECRET_FIELD.test(key) && inner) return true;
+    if (inner && typeof inner === "object" && containsSecretField(inner, depth + 1)) return true;
+  }
+  return false;
+}
+
+function rejectSecrets(res, body) {
+  if (!containsSecretField(body)) return false;
+  send(res, 400, {
+    error: "Series Lab does not accept private keys, seed phrases, or secrets. Sign from your own wallet.",
+    code: "secrets",
+  });
+  return true;
+}
+
+/**
+ * Flat stage fee (archive / deploy kit / marketplace kit / optional IPFS).
+ * Does not use the generation rate limit. Local mode does not charge.
+ */
+function refundStage(paid) {
+  const charge = paid?.charge;
+  if (!charge) return;
+  try {
+    refundCredits(charge.wallet, charge.amount, { engine: charge.engine, note: `refund: ${charge.note}` });
+  } catch (e) {
+    console.error(`[credits] stage refund failed for ${charge.wallet}: ${e.message}`);
+  }
+}
+
+function chargeStage(stage, opts = {}) {
+  const quote = quoteStage(stage, opts);
+  if (!PUBLIC_MODE) return { quote, charge: null };
+  const wallet = currentWallet();
+  if (!wallet) throw httpError(401, "Sign in with your wallet first", { code: "auth" });
+  if (!quote.credits) return { quote, charge: null };
+  const note = opts.ipfs && opts.zip === false ? "ipfs pin" : String(stage).replaceAll("_", " ");
+  const engine = `stage:${stage}`;
+  if (!deductCredits(wallet, quote.credits, { engine, note })) throw insufficient(wallet, quote.credits);
+  return { quote, charge: { wallet, amount: quote.credits, engine, note } };
+}
+
+function loadSeriesContext(archiveName) {
+  if (!archiveName) {
+    const err = new Error("archive required");
+    err.status = 400;
+    throw err;
+  }
+  const { archive, file } = loadArchiveFile(archiveName);
+  let preset = null;
+  try {
+    preset = loadPresetForArchive(archive)?.preset || null;
+  } catch {
+    preset = loadPresetFileSafe(`${archive.presetId || "x"}.json`)?.preset || null;
+  }
+  return { archive, archiveFile: file, preset };
 }
 
 /** Waits (max ~2 min) for a free per-minute slot — batch mode, like Промт wait_for_generation_rate. */
@@ -2311,11 +2380,19 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: `set not found: ${dir}` });
     }
     const name = body.name || `series-${dir}`;
-    const result = await uploadToPinata({
-      dir: setDir,
-      name,
-    });
-    return send(res, 200, result);
+    const paid = chargeStage("archive", { ipfs: true, zip: false });
+    let result;
+    try {
+      result = await uploadToPinata({
+        dir: setDir,
+        name,
+      });
+    } catch (e) {
+      refundStage(paid);
+      throw e;
+    }
+    if (result && result.ok === false) refundStage(paid);
+    return send(res, 200, { ...result, quote: paid.quote, chargedCredits: paid.charge?.amount || 0 });
   }
 
   if (pathname === "/api/launchpads" && req.method === "GET") {
@@ -2509,6 +2586,23 @@ async function handleApi(req, res, url) {
     const marks = readMarks(set);
     const locale = resolveLocale(req, body);
     const onlyKeep = body.onlyKeep === undefined ? true : Boolean(body.onlyKeep);
+    const bundleOpts = {
+      format,
+      profile: profileKey,
+      creatorAddress: body.creatorAddress || null,
+      zeroIndexed: Boolean(body.zeroIndexed || body.zeroIndex),
+      onlyKeep,
+      namePrefix: body.namePrefix || `${archive.presetId || "Series"} #`,
+      symbol: body.symbol || profile.defaultSymbol || "LAB",
+      sellerFeeBasisPoints: body.sellerFeeBasisPoints ?? profile.defaultFee ?? 500,
+      description:
+        body.description ||
+        `${preset?.name || archive.presetId || "Series"} — Series Lab export`,
+      imageUriPrefix: body.imageUriPrefix || body.imagePrefix || "",
+      animationUriPrefix: body.animationUriPrefix || body.animPrefix || "",
+      locale,
+      upscale: Boolean(body.upscale),
+    };
     try {
       const result = await buildBundleZip({
         archive,
@@ -2517,32 +2611,25 @@ async function handleApi(req, res, url) {
         set,
         marks,
         bundlesDir: bundlesDir(),
-        opts: {
-          format,
-          profile: profileKey,
-          creatorAddress: body.creatorAddress || null,
-          zeroIndexed: Boolean(body.zeroIndexed || body.zeroIndex),
-          onlyKeep,
-          namePrefix: body.namePrefix || `${archive.presetId || "Series"} #`,
-          symbol: body.symbol || profile.defaultSymbol || "LAB",
-          sellerFeeBasisPoints: body.sellerFeeBasisPoints ?? profile.defaultFee ?? 500,
-          description:
-            body.description ||
-            `${preset?.name || archive.presetId || "Series"} — Series Lab export`,
-          imageUriPrefix: body.imageUriPrefix || body.imagePrefix || "",
-          animationUriPrefix: body.animationUriPrefix || body.animPrefix || "",
-          locale,
-          upscale: Boolean(body.upscale),
-        },
+        opts: { ...bundleOpts, gate: true },
       });
+      let paid;
+      try {
+        paid = chargeStage("archive", { zip: true, ipfs: false });
+      } catch (e) {
+        try { unlinkSync(join(bundlesDir(), result.file)); } catch { /* already gone */ }
+        throw e;
+      }
       return send(res, 200, {
         ok: true,
+        ready: result.ready === true,
         file: result.file,
         path: result.path,
         count: result.count,
         missing: result.missing || [],
         format: result.format,
         profile: result.profile,
+        chain: result.chain,
         provenanceHash: result.provenanceHash || null,
         upscaled: result.upscaled,
         upscaleSkipped: result.upscaleSkipped || null,
@@ -2550,11 +2637,198 @@ async function handleApi(req, res, url) {
         archive: archiveFile,
         set,
         downloadUrl: `/${result.path}`,
+        preflight: result.preflight,
+        report: result.preflight?.report || "",
+        quote: paid.quote,
+        chargedCredits: paid.charge?.amount || 0,
       });
     } catch (e) {
+      if (e.extra?.code === "credits" || e.extra?.code === "auth" || e.status === 401) throw e;
       const status =
         e.status || (e.code === "bundle_select" || e.code === "bundle_empty" ? 400 : 500);
-      return send(res, status, { error: String(e.message || e), code: e.code || "bundle" });
+      return send(res, status, {
+        error: e.report || String(e.message || e),
+        code: e.code || e.extra?.code || "bundle",
+        ready: false,
+        preflight: e.preflight || null,
+        report: e.report || e.preflight?.report || "",
+        ...(e.extra || {}),
+      });
+    }
+  }
+
+  if (pathname === "/api/preflight" && req.method === "POST") {
+    const body = await readBody(req);
+    if (rejectSecrets(res, body)) return;
+    const archiveName = body.archive || body.file;
+    const profileKey = body.profile || (body.format === "metaplex" ? "magiceden" : body.format === "ordinals" ? "ordinalsbot" : "opensea");
+    const profile = LAUNCHPAD_PROFILES[profileKey] || LAUNCHPAD_PROFILES.opensea;
+    const format = profile.format || body.format || "erc721";
+    let loaded;
+    try {
+      loaded = loadSeriesContext(archiveName);
+    } catch (e) {
+      return send(res, e.status || 404, { error: String(e.message || e) });
+    }
+    const set = safeSetName(body.set);
+    const setDir = join(P().out, set);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
+      return send(res, 400, { error: `set not found: ${set}` });
+    }
+    const locale = resolveLocale(req, body);
+    try {
+      const result = await buildBundleZip({
+        archive: loaded.archive,
+        preset: loaded.preset,
+        setDir,
+        set,
+        marks: readMarks(set),
+        bundlesDir: bundlesDir(),
+        opts: {
+          format,
+          profile: profileKey,
+          creatorAddress: body.creatorAddress || null,
+          zeroIndexed: Boolean(body.zeroIndexed || body.zeroIndex),
+          onlyKeep: body.onlyKeep === undefined ? true : Boolean(body.onlyKeep),
+          namePrefix: body.namePrefix || `${loaded.archive.presetId || "Series"} #`,
+          symbol: body.symbol || profile.defaultSymbol || "LAB",
+          sellerFeeBasisPoints: body.sellerFeeBasisPoints ?? profile.defaultFee ?? 500,
+          description: body.description || `${loaded.preset?.name || loaded.archive.presetId || "Series"} — Series Lab export`,
+          imageUriPrefix: body.imageUriPrefix || "",
+          animationUriPrefix: body.animationUriPrefix || "",
+          locale,
+          dryRun: true,
+        },
+      });
+      return send(res, 200, {
+        ok: true,
+        ready: result.ready === true,
+        count: result.count,
+        chain: result.chain,
+        profile: result.profile,
+        preflight: result.preflight,
+        report: result.preflight?.report || "",
+      });
+    } catch (e) {
+      const status = e.status || (e.code === "bundle_select" || e.code === "bundle_empty" ? 400 : 500);
+      return send(res, status, { error: String(e.message || e), code: e.code || "preflight", ready: false });
+    }
+  }
+
+  if (pathname === "/api/stages/quotes" && req.method === "GET") {
+    const count = Number(url.searchParams.get("count") || 1);
+    const engine = url.searchParams.get("engine") || "kontext";
+    const provider = url.searchParams.get("provider") || "heuristic";
+    return send(res, 200, {
+      ok: true,
+      quotes: {
+        generation: quoteStage("generation", { engine, count, reference: true }),
+        curation: quoteStage("curation", { provider, count }),
+        archive: quoteStage("archive", { zip: true }),
+        archive_ipfs: quoteStage("archive", { zip: false, ipfs: true }),
+        deploy_kit: quoteStage("deploy_kit"),
+        marketplace_kit: quoteStage("marketplace_kit"),
+      },
+    });
+  }
+
+  if (pathname === "/api/stages/quote" && req.method === "GET") {
+    const stage = url.searchParams.get("stage") || "archive";
+    try {
+      const quote = quoteStage(stage, {
+        engine: url.searchParams.get("engine") || "kontext",
+        count: Number(url.searchParams.get("count") || 1),
+        reference: url.searchParams.get("reference") !== "0",
+        provider: url.searchParams.get("provider") || "heuristic",
+        ipfs: url.searchParams.get("ipfs") === "1",
+        zip: url.searchParams.get("zip") !== "0",
+      });
+      return send(res, 200, { ok: true, quote });
+    } catch (e) {
+      return send(res, e.status || 400, { error: String(e.message || e) });
+    }
+  }
+
+  if ((pathname === "/api/deploy-kit" || pathname === "/api/marketplace-kit") && req.method === "POST") {
+    const body = await readBody(req);
+    if (rejectSecrets(res, body)) return;
+    const kind = pathname.endsWith("marketplace-kit") ? "marketplace_kit" : "deploy_kit";
+    let loaded;
+    try {
+      loaded = loadSeriesContext(body.archive || body.file);
+    } catch (e) {
+      return send(res, e.status || 404, { error: String(e.message || e) });
+    }
+    const set = safeSetName(body.set);
+    const setDir = join(P().out, set);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
+      return send(res, 400, { error: `set not found: ${set}` });
+    }
+    const locale = resolveLocale(req, body);
+    const profileKey = body.profile || (body.chain === "solana" ? "magiceden" : body.chain === "bitcoin" ? "ordinalsbot" : "opensea");
+    const onlyKeep = body.onlyKeep === undefined ? false : Boolean(body.onlyKeep);
+    const loadedItems = readBundleItems({
+      archive: loaded.archive,
+      setDir,
+      marks: readMarks(set),
+      onlyKeep,
+    });
+    if (loadedItems.error || !loadedItems.items.length) {
+      return send(res, 400, { error: loadedItems.error || "no images" });
+    }
+    const sharedOpts = {
+      chain: body.chain,
+      profile: profileKey,
+      format: body.format,
+      creatorAddress: body.creatorAddress || "",
+      symbol: body.symbol || loaded.preset?.symbol || "LAB",
+      sellerFeeBasisPoints: body.sellerFeeBasisPoints ?? 500,
+      description: body.description || loaded.preset?.description || `${loaded.preset?.name || loaded.archive.presetId || "Series"} — Series Lab`,
+      name: body.name || loaded.preset?.name || loaded.archive.presetId,
+      namePrefix: body.namePrefix,
+      price: body.price,
+    };
+    const stamp = Date.now().toString(36);
+    const file = `${kind === "deploy_kit" ? "deploy" : "market"}-${String(loaded.archive.presetId || "series").replace(/[^a-zA-Z0-9_-]/g, "")}-${stamp}.zip`;
+    let paid;
+    try {
+      paid = chargeStage(kind);
+    } catch (e) {
+      return send(res, e.status || 402, { error: String(e.message || e), code: e.extra?.code || e.code || "credits", ...(e.extra || {}) });
+    }
+    try {
+      const built = kind === "deploy_kit"
+        ? buildDeployKit({
+          archive: loaded.archive,
+          preset: loaded.preset,
+          items: loadedItems.items,
+          opts: sharedOpts,
+          locale,
+        })
+        : await buildMarketplaceKit({
+          coverBuffer: loadedItems.items.slice().sort((a, b) => a.edition - b.edition)[0]?.buffer,
+          opts: sharedOpts,
+          locale,
+          preset: loaded.preset,
+          archive: loaded.archive,
+        });
+      await writeFilesZip(built.files, join(bundlesDir(), file));
+      return send(res, 200, {
+        ok: true,
+        file,
+        path: `out/bundles/${file}`,
+        downloadUrl: `/out/bundles/${file}`,
+        chain: built.chain,
+        count: built.count ?? loadedItems.items.length,
+        estimate: built.estimate || null,
+        warnings: built.warnings || [],
+        quote: paid.quote,
+        chargedCredits: paid.charge?.amount || 0,
+        guide: kind === "deploy_kit" ? built.guide : undefined,
+      });
+    } catch (e) {
+      refundStage(paid);
+      return send(res, 500, { error: String(e.message || e), code: kind });
     }
   }
 

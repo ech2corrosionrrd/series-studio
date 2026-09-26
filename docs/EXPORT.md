@@ -94,6 +94,12 @@ Series Lab підтримує автоматичне виявлення та п�
 
 ---
 
+## 7a. Перевірка перед завантаженням
+
+`POST /api/preflight` і збірка ZIP (`gate`) проганяють `src/preflight.mjs`: унікальні DNA і байти картинок, кількість файлів = кількості метаданих, схема ERC-721 / Metaplex / Ordinals, роялті в межах 0–10000 bps, формат і розмір. Помилка блокує ZIP (HTTP 422) і звіт показується в UI. Попередження (порожній опис, локальні URI, заглушка адреси) не блокують. У архіві також `cover.*`, `royalties.json`, `rarity.json`, `rarity.txt`, `README.txt` під обрану мережу.
+
+Набір деплою і набір маркетплейсу — `POST /api/deploy-kit`, `POST /api/marketplace-kit`. Деталі й ціни: [PRODUCT.md](./PRODUCT.md).
+
 ## 8. NFT Readiness Checklist
 
 `GET /api/checklist?archive=…&set=…` виконує автоматичну перевірку готовності до ship:

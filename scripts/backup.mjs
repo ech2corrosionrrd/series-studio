@@ -13,7 +13,7 @@
  */
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { backup, DatabaseSync } from "node:sqlite";
+import { backupDatabase, DatabaseSync } from "../src/platform/sqlite-backup.mjs";
 
 const dataDir = resolve(process.env.SERIES_DATA_DIR || "data");
 const dbPath = resolve(process.env.USERS_DB_PATH || join(dataDir, "users.db"));
@@ -37,7 +37,7 @@ const copyPath = join(dest, "users.db");
 const src = new DatabaseSync(dbPath, { readOnly: true, timeout: 30_000 });
 let pages = 0;
 try {
-  pages = await backup(src, copyPath);
+  pages = await backupDatabase(src, copyPath);
 } finally {
   src.close();
 }

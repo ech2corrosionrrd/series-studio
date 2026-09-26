@@ -99,7 +99,9 @@ async function api(path, opts = {}) {
       throw new Error(t("recipes.conflict", { detail }));
     }
     const err = data.error || data.errors || res.statusText;
-    throw new Error(typeof err === "string" ? err : JSON.stringify(err));
+    const error = new Error(typeof err === "string" ? err : JSON.stringify(err));
+    error.payload = data;
+    throw error;
   }
   return data;
 }
@@ -122,7 +124,14 @@ function showTab(name) {
   if (name === "export") {
     fillExportSets();
     fillArchiveSelect();
+    showStagePrice("archive", "x-price", { zip: true });
   }
+  if (name === "deploy" || name === "market") {
+    fillExportSets().then(() => fillKitSets()).catch(() => {});
+    showStagePrice(name === "deploy" ? "deploy_kit" : "marketplace_kit", name === "deploy" ? "d-price" : "m-price");
+  }
+  if (name === "gallery") showCurationPrice();
+  renderPath(name);
   try {
     history.replaceState(null, "", `#${name}`);
   } catch {
@@ -148,6 +157,25 @@ async function ensureGalleryLoaded() {
   await loadGallerySets();
   if (state.galleryDir) await loadGalleryDir(state.galleryDir);
   else renderGallery();
+}
+
+async function ensureRecipesLoaded() {
+  if (state.recipes?.length) {
+    renderRecipeTable();
+    return;
+  }
+  try {
+    if (!state.archives?.length) await loadArchives();
+  } catch {
+    return;
+  }
+  const file = state.archiveFile || state.archives[0]?.file;
+  if (!file) return;
+  try {
+    await loadRecipesArchive(file);
+  } catch {
+    /* the recipes tab still opens; build stays available */
+  }
 }
 
 function setupTabs() {
@@ -243,6 +271,12 @@ function refreshDynamicCopy() {
   if (stub && !stub.dataset.dirty) stub.textContent = t("render.stub");
   const allOpt = $("r-line")?.querySelector('option[value=""]');
   if (allOpt) allOpt.textContent = t("recipes.allLines");
+  const active = document.querySelector(".tab.on")?.id?.replace(/^tab-/, "") || "home";
+  renderPath(active);
+  if (active === "export") showStagePrice("archive", "x-price", { zip: true });
+  if (active === "deploy") showStagePrice("deploy_kit", "d-price");
+  if (active === "market") showStagePrice("marketplace_kit", "m-price");
+  if (active === "gallery") showCurationPrice();
   applyTips(document);
 }
 
@@ -3118,6 +3152,147 @@ function setupGallery() {
 }
 
 /* ---------- Export + workspace + checklist ---------- */
+
+const PATH_PHASES = [
+  { id: "lab", tabs: ["home", "base", "ctor", "recipes"], entry: "home" },
+  { id: "studio", tabs: ["render", "gallery"], entry: "render" },
+  { id: "release", tabs: ["export"], entry: "export" },
+  { id: "deploy", tabs: ["deploy"], entry: "deploy" },
+  { id: "market", tabs: ["market"], entry: "market" },
+];
+const PATH_ORDER = ["home", "base", "ctor", "recipes", "render", "gallery", "export", "deploy", "market"];
+
+function phaseForTab(name) {
+  return PATH_PHASES.find((p) => p.tabs.includes(name)) || PATH_PHASES[0];
+}
+
+function beginnerOn() {
+  return Boolean($("path-beginner")?.checked);
+}
+
+function renderPath(activeTab) {
+  const box = $("path-steps");
+  if (!box) return;
+  const phase = phaseForTab(activeTab);
+  box.innerHTML = "";
+  PATH_PHASES.forEach((p, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    if (p.id === phase.id) btn.classList.add("on");
+    btn.innerHTML = `<span class="path-n">${i + 1}</span>${escapeHtml(t(`path.${p.id}`))}`;
+    btn.addEventListener("click", () => showTab(p.entry));
+    box.appendChild(btn);
+  });
+  const nextWrap = $("path-next");
+  const idx = PATH_ORDER.indexOf(activeTab);
+  const next = idx >= 0 ? PATH_ORDER[idx + 1] : null;
+  if (!nextWrap) return;
+  if (!beginnerOn() || activeTab === "admin" || activeTab === "help") {
+    nextWrap.hidden = true;
+    return;
+  }
+  nextWrap.hidden = false;
+  const where = $("path-where");
+  const go = $("path-go");
+  if (where) where.textContent = t("path.youAre", { step: t(`path.${phase.id}`) });
+  if (!go) return;
+  if (!next) {
+    go.hidden = true;
+    if (where) where.textContent = t("path.done");
+    return;
+  }
+  go.hidden = false;
+  go.textContent = t("path.next", { step: t(`nav.${next}`) });
+  go.onclick = () => showTab(next);
+}
+
+function fmtUsdLoose(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "—";
+  return `$${v.toFixed(v < 0.1 ? 4 : 2)}`;
+}
+
+function formatQuote(q) {
+  if (!q) return "";
+  return t("price.line", {
+    label: q.label || q.stage,
+    credits: q.credits ?? 0,
+    cost: fmtUsdLoose(q.costUsd),
+    margin: fmtUsdLoose(q.marginUsd),
+    price: fmtUsdLoose(q.priceUsd),
+    formula: q.formula || "",
+  });
+}
+
+async function showStagePrice(stage, elementId, extra = {}) {
+  const el = $(elementId);
+  if (!el) return;
+  const q = new URLSearchParams({ stage, ...Object.fromEntries(Object.entries(extra).map(([k, v]) => [k, String(v)])) });
+  if (stage === "archive" && extra.ipfs) q.set("ipfs", "1");
+  if (stage === "archive" && extra.zip === false) q.set("zip", "0");
+  try {
+    const data = await api(`/api/stages/quote?${q}`);
+    el.textContent = formatQuote(data.quote);
+  } catch (e) {
+    el.textContent = e.message;
+  }
+}
+
+async function showCurationPrice() {
+  const el = $("v-triage-price");
+  if (!el) return;
+  const provider = $("v-triage-provider")?.value || "heuristic";
+  try {
+    const data = await api(`/api/stages/quote?stage=curation&provider=${encodeURIComponent(provider)}&count=1`);
+    el.textContent = formatQuote(data.quote);
+  } catch {
+    el.textContent = "";
+  }
+}
+
+function fillKitSets() {
+  const source = $("x-set");
+  for (const id of ["d-set", "m-set"]) {
+    const sel = $(id);
+    if (!sel || !source) continue;
+    const cur = sel.value;
+    sel.innerHTML = source.innerHTML;
+    if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+    else if (source.value) sel.value = source.value;
+  }
+  const name = $("m-name");
+  if (name && !name.value) name.value = $("o-name")?.value || "";
+  const desc = $("m-desc");
+  if (desc && !desc.value) desc.value = $("x-desc")?.value || "";
+}
+
+function showPreflightReport(preflight) {
+  const box = $("x-preflight-report");
+  if (!box) return;
+  if (!preflight?.report) {
+    box.hidden = true;
+    box.textContent = "";
+    return;
+  }
+  box.hidden = false;
+  box.textContent = preflight.report;
+}
+
+function setupPath() {
+  const box = $("path-beginner");
+  if (!box) return;
+  try {
+    const saved = localStorage.getItem("series-lab-beginner");
+    if (saved === "0") box.checked = false;
+  } catch { /* ignore */ }
+  box.addEventListener("change", () => {
+    try { localStorage.setItem("series-lab-beginner", box.checked ? "1" : "0"); } catch { /* ignore */ }
+    const active = document.querySelector(".tab.on")?.id?.replace(/^tab-/, "") || "home";
+    renderPath(active);
+  });
+  renderPath(document.querySelector(".tab.on")?.id?.replace(/^tab-/, "") || "home");
+}
+
 async function fillExportSets() {
   const sel = $("x-set");
   if (!sel) return;
@@ -3258,6 +3433,22 @@ async function updateMetadataPreview() {
   } catch (e) {
     box.textContent = JSON.stringify({ error: e.message }, null, 2);
   }
+}
+
+function bundleBody(extra = {}) {
+  return {
+    archive: $("x-file")?.value,
+    set: extra.set || $("x-set")?.value,
+    profile: extra.profile || $("x-profile")?.value || "opensea",
+    onlyKeep: extra.onlyKeep ?? Boolean($("x-onlyKeep")?.checked),
+    namePrefix: $("x-namePrefix")?.value || "Series #",
+    symbol: $("x-symbol")?.value || "LAB",
+    sellerFeeBasisPoints: Number($("x-fee")?.value ?? 500),
+    description: $("x-desc")?.value || "",
+    creatorAddress: $("x-creator-address")?.value || "",
+    locale: getLocale(),
+    ...extra,
+  };
 }
 
 function setupExport() {
@@ -3404,7 +3595,8 @@ function setupExport() {
           locale: getLocale(),
         }),
       });
-      if (msg) msg.textContent = t("export.bundle.ok", { n: data.count, missing: (data.missing || []).length });
+      if (msg) msg.textContent = `${t("export.bundle.ok", { n: data.count, missing: (data.missing || []).length })} · ${data.chargedCredits || 0} cr`;
+      showPreflightReport(data.preflight);
       if (dl && data.downloadUrl) {
         dl.href = data.downloadUrl;
         dl.download = data.file || "release.zip";
@@ -3419,6 +3611,22 @@ function setupExport() {
       }
     } catch (e) {
       if (msg) msg.textContent = e.message;
+      showPreflightReport(e.payload?.preflight);
+    }
+  });
+  $("x-preflight")?.addEventListener("click", async () => {
+    const msg = $("x-release-msg");
+    try {
+      if (msg) msg.textContent = "…";
+      const data = await api("/api/preflight", {
+        method: "POST",
+        body: JSON.stringify(bundleBody({ onlyKeep: true, profile: $("x-profile")?.value || "opensea" })),
+      });
+      showPreflightReport(data.preflight);
+      if (msg) msg.textContent = data.ready ? t("preflight.ready") : t("preflight.blocked");
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+      showPreflightReport(e.payload?.preflight);
     }
   });
   $("x-bundle")?.addEventListener("click", async () => {
@@ -3451,12 +3659,13 @@ function setupExport() {
         }),
       });
       if (msg) {
-        msg.textContent = t("export.bundle.ok", {
+        msg.textContent = `${t("export.bundle.ok", {
           n: data.count,
           missing: (data.missing || []).length,
-        });
+        })} · ${data.chargedCredits || 0} cr`;
         msg.className = "small ok-msg";
       }
+      showPreflightReport(data.preflight);
       if (dl && data.downloadUrl) {
         dl.href = data.downloadUrl;
         dl.download = data.file || "bundle.zip";
@@ -3476,6 +3685,7 @@ function setupExport() {
         msg.textContent = e.message;
         msg.className = "small err-msg";
       }
+      showPreflightReport(e.payload?.preflight);
     }
   });
 
@@ -3627,6 +3837,88 @@ async function updateReleaseHub() {
   } catch {
     /* ignore */
   }
+}
+
+function kitArchive() {
+  return $("x-file")?.value || state.archiveFile || state.archives?.[0]?.file || "";
+}
+
+function setupKits() {
+  $("d-build")?.addEventListener("click", async () => {
+    const msg = $("d-msg");
+    const dl = $("d-download");
+    const guide = $("d-guide");
+    try {
+      const archive = kitArchive();
+      const set = $("d-set")?.value;
+      if (!archive) throw new Error(t("export.none"));
+      if (!set) throw new Error(t("export.bundle.noSets"));
+      if (msg) msg.textContent = "…";
+      if (dl) dl.hidden = true;
+      const data = await api("/api/deploy-kit", {
+        method: "POST",
+        body: JSON.stringify({
+          archive,
+          set,
+          chain: $("d-chain")?.value || "solana",
+          creatorAddress: $("d-creator")?.value || "",
+          symbol: $("d-symbol")?.value || "LAB",
+          description: $("x-desc")?.value || "",
+          locale: getLocale(),
+        }),
+      });
+      if (msg) msg.textContent = t("deploy.ok", { chain: data.chain, credits: data.chargedCredits || 0 });
+      if (dl && data.downloadUrl) {
+        dl.href = data.downloadUrl;
+        dl.download = data.file || "deploy-kit.zip";
+        dl.hidden = false;
+      }
+      if (guide) {
+        guide.hidden = false;
+        guide.textContent = data.guide || "";
+      }
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
+  $("m-build")?.addEventListener("click", async () => {
+    const msg = $("m-msg");
+    const dl = $("m-download");
+    const note = $("m-note");
+    try {
+      const archive = kitArchive();
+      const set = $("m-set")?.value;
+      if (!archive) throw new Error(t("export.none"));
+      if (!set) throw new Error(t("export.bundle.noSets"));
+      if (msg) msg.textContent = "…";
+      if (dl) dl.hidden = true;
+      const data = await api("/api/marketplace-kit", {
+        method: "POST",
+        body: JSON.stringify({
+          archive,
+          set,
+          chain: $("m-chain")?.value || "solana",
+          name: $("m-name")?.value || "",
+          description: $("m-desc")?.value || "",
+          locale: getLocale(),
+        }),
+      });
+      if (msg) msg.textContent = t("market.ok", { chain: data.chain, credits: data.chargedCredits || 0 });
+      if (dl && data.downloadUrl) {
+        dl.href = data.downloadUrl;
+        dl.download = data.file || "marketplace-kit.zip";
+        dl.hidden = false;
+      }
+      if (note) {
+        note.hidden = false;
+        const warns = (data.warnings || []).join("\n");
+        note.textContent = warns || t("preflight.ready");
+      }
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
+  $("v-triage-provider")?.addEventListener("change", () => showCurationPrice());
 }
 
 
@@ -3933,6 +4225,30 @@ async function renderEconomy() {
             <tbody>${costRows}</tbody>
           </table>
         </div>
+        <h4 style="margin-top:14px">${escapeHtml(t("econ.stages"))}</h4>
+        <p class="econ-note">${escapeHtml(t("econ.stageHint"))} · ${escapeHtml(d.stages?.usd_per_credit_basis || "")} ${fmtUsd(d.stages?.usd_per_credit, 4)}/cr</p>
+        <div class="table-wrap">
+          <table class="econ-table">
+            <thead><tr>
+              <th>${escapeHtml(t("econ.col.engine"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.ops"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.spent"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.cogs"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.rev"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.net"))}</th>
+            </tr></thead>
+            <tbody>${(d.stages?.stages || []).map((s) => `
+              <tr>
+                <td>${escapeHtml(s.label || s.stage)}</td>
+                <td class="num">${s.ops}</td>
+                <td class="num">${s.credits_spent}</td>
+                <td class="num">${fmtUsd(s.cost_usd, 4)}</td>
+                <td class="num">${fmtUsd(s.revenue_usd, 4)}</td>
+                <td class="num">${fmtUsd(s.margin_usd, 4)}</td>
+              </tr>`).join("") || `<tr><td colspan="6" class="muted">${escapeHtml(t("econ.empty"))}</td></tr>`}
+            </tbody>
+          </table>
+        </div>
       </section>
       <section class="econ-section">
         <h4>${escapeHtml(t("econ.be"))}</h4>
@@ -4132,6 +4448,8 @@ async function boot() {
   setupEngineDiagnostics();
   setupVersions();
   setupExport();
+  setupKits();
+  setupPath();
   setupHelp();
   setupAccount();
   setupEconomy();
