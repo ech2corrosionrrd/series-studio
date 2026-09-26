@@ -7,6 +7,7 @@
 import { buildSugarConfig, buildThirdwebConfig } from "./deploy.mjs";
 import { assertNoSecrets } from "./secrets.mjs";
 import { formatForLaunchpad, exportManifestCsv } from "./launchpads.mjs";
+import { buildLaunchAdvisor } from "./launch-advisor.mjs";
 import { extname } from "node:path";
 
 export const DEPLOY_COST_DEFAULTS = {
@@ -302,7 +303,13 @@ export function buildDeployKit({
   files["ESTIMATE.txt"] = `${formatCostEstimate(estimate, locale)}\n`;
   const guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate, legacy: Boolean(opts.legacy) });
   files["DEPLOY.txt"] = guide;
-  return { chain, files, estimate, guide, count };
+  const advisor = buildLaunchAdvisor({ chain, locale });
+  files["ADVISOR.txt"] = `${advisor.text}\n`;
+  if (opts.includeHolderLicence !== false) {
+    const custom = typeof opts.holderLicence === "string" ? opts.holderLicence.trim() : "";
+    files["HOLDER-LICENCE.txt"] = `${custom || advisor.holderTemplate}\n`;
+  }
+  return { chain, files, estimate, guide, count, advisor };
 }
 
 function hiddenSettingsDraft() {

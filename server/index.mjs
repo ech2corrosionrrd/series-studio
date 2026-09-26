@@ -84,6 +84,7 @@ import {
 } from "../src/index.mjs";
 import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
 import { buildDeployKit } from "../src/deploy-kit.mjs";
+import { buildLaunchAdvisor } from "../src/launch-advisor.mjs";
 import { buildMarketplaceKit } from "../src/marketplace-kit.mjs";
 import { writeFilesZip } from "../src/kit-zip.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
@@ -2863,6 +2864,12 @@ async function handleApi(req, res, url) {
     }
   }
 
+  if (pathname === "/api/launch-advisor" && req.method === "GET") {
+    const chain = url.searchParams.get("chain") || "solana";
+    const locale = url.searchParams.get("locale") || resolveLocale(req, {});
+    return send(res, 200, { ok: true, ...buildLaunchAdvisor({ chain, locale }) });
+  }
+
   if ((pathname === "/api/deploy-kit" || pathname === "/api/marketplace-kit") && req.method === "POST") {
     const body = await readBody(req);
     if (rejectSecrets(res, body)) return;
@@ -2901,6 +2908,8 @@ async function handleApi(req, res, url) {
       name: body.name || loaded.preset?.name || loaded.archive.presetId,
       namePrefix: body.namePrefix,
       price: body.price,
+      includeHolderLicence: body.includeHolderLicence !== false,
+      holderLicence: typeof body.holderLicence === "string" ? body.holderLicence : "",
     };
     const stamp = Date.now().toString(36);
     const file = `${kind === "deploy_kit" ? "deploy" : "market"}-${String(loaded.archive.presetId || "series").replace(/[^a-zA-Z0-9_-]/g, "")}-${stamp}.zip`;

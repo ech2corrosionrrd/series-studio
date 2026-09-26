@@ -259,6 +259,7 @@ function setupLang() {
 }
 
 function refreshDynamicCopy() {
+  loadLaunchAdvisor();
   renderSteps();
   renderFacts();
   renderCtorSummary();
@@ -4210,7 +4211,34 @@ function setBusy(btn, on) {
   btn.setAttribute("aria-busy", on ? "true" : "false");
 }
 
+async function loadLaunchAdvisor() {
+  const root = $("d-advisor");
+  if (!root) return;
+  const chain = $("d-chain")?.value || "solana";
+  try {
+    const data = await api(`/api/launch-advisor?chain=${encodeURIComponent(chain)}&locale=${encodeURIComponent(getLocale())}`);
+    root.replaceChildren();
+    for (const section of data.sections || []) {
+      const h = document.createElement("h3");
+      h.textContent = section.title || "";
+      const p = document.createElement("p");
+      p.textContent = section.body || "";
+      root.appendChild(h);
+      root.appendChild(p);
+    }
+    const area = $("d-holder");
+    if (area && area.dataset.dirty !== "1" && data.holderTemplate) area.value = data.holderTemplate;
+  } catch (e) {
+    root.textContent = e.message;
+  }
+}
+
 function setupKits() {
+  $("d-chain")?.addEventListener("change", () => { loadLaunchAdvisor(); });
+  $("d-holder")?.addEventListener("input", () => {
+    if ($("d-holder")) $("d-holder").dataset.dirty = "1";
+  });
+  loadLaunchAdvisor();
   $("d-build")?.addEventListener("click", async () => {
     const msg = $("d-msg");
     const dl = $("d-download");
@@ -4234,6 +4262,8 @@ function setupKits() {
           symbol: $("d-symbol")?.value || "LAB",
           description: $("x-desc")?.value || "",
           locale: getLocale(),
+          includeHolderLicence: Boolean($("d-holder-on")?.checked),
+          holderLicence: $("d-holder")?.value || "",
         }),
       });
       if (msg) msg.textContent = t("deploy.ok", { chain: data.chain, credits: data.chargedCredits || 0 });

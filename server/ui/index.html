@@ -703,17 +703,17 @@
         <select id="x-file"></select>
       </label>
       <div class="actions" style="margin-top:12px; gap:8px; flex-wrap:wrap">
-        <a id="x-json" class="btn" href="#" download data-i18n="export.json">⬇ Archive JSON</a>
-        <button type="button" id="x-csv" class="btn" data-i18n="export.csv">⬇ Prompts CSV</button>
-        <button type="button" id="x-txt" class="btn" data-i18n="export.txt">⬇ Prompts TXT</button>
-        <button type="button" id="x-manifest-csv" class="btn primary" data-i18n="export.manifest.csv">⬇ Manifest CSV</button>
+        <a id="x-json" class="btn" href="#" download data-i18n="export.json">⬇ Архів JSON</a>
+        <button type="button" id="x-csv" class="btn" data-i18n="export.csv">⬇ Промпти CSV</button>
+        <button type="button" id="x-txt" class="btn" data-i18n="export.txt">⬇ Промпти TXT</button>
+        <button type="button" id="x-manifest-csv" class="btn primary" data-i18n="export.manifest.csv">Маніфест CSV</button>
         <span id="x-msg" class="small"></span>
       </div>
       <p class="muted small" style="margin-top:12px" data-i18n="export.note"></p>
     </div>
 
     <div class="card" style="margin-top:16px">
-      <h2 data-i18n="export.bundle.title">Mint-ready ZIP</h2>
+      <h2 data-i18n="export.bundle.title">ZIP до мінту</h2>
       <p class="muted small" data-i18n="export.bundle.help"></p>
       <div class="grid-2">
         <label class="small"><span data-i18n="export.profile.label">Launchpad Profile</span>
@@ -758,13 +758,13 @@
         <pre id="x-meta-preview" class="log small" style="margin-top:8px; max-height:220px; overflow:auto">{}</pre>
       </details>
       <div class="actions" style="margin-top:12px; gap:12px; flex-wrap:wrap">
-        <label class="small"><input type="checkbox" id="x-onlyKeep" checked /> <span data-i18n="export.bundle.onlyKeep">Only keep-marked</span></label>
-        <label class="small"><input type="checkbox" id="x-zero-index" /> <span data-i18n="export.zeroIndex.label">0-based indexing</span></label>
-        <label class="small"><input type="checkbox" id="x-upscale" /> <span data-i18n="export.bundle.upscale">Upscale 2×</span></label>
-        <button type="button" id="x-bundle" class="btn primary" data-i18n="export.bundle.build">Build ZIP</button>
-        <button type="button" id="x-provenance" class="btn" data-i18n="export.provenance.btn">🔐 Provenance Hash</button>
-        <button type="button" id="x-dataset" class="btn" data-i18n="export.dataset.btn">📦 LoRA Training Dataset</button>
-        <button type="button" id="x-showcase" class="btn" data-i18n="export.showcase.btn">⬇ Showcase &amp; Rarity Scorecard</button>
+        <label class="small"><input type="checkbox" id="x-onlyKeep" checked /> <span data-i18n="export.bundle.onlyKeep">Лише позначені «Лишити»</span></label>
+        <label class="small"><input type="checkbox" id="x-zero-index" /> <span data-i18n="export.zeroIndex.label">Нумерація з нуля (0.png, 0.json)</span></label>
+        <label class="small"><input type="checkbox" id="x-upscale" /> <span data-i18n="export.bundle.upscale">Збільшити 2×</span></label>
+        <button type="button" id="x-bundle" class="btn primary" data-i18n="export.bundle.build">Зібрати ZIP</button>
+        <button type="button" id="x-provenance" class="btn" data-i18n="export.provenance.btn">Хеш походження (provenance)</button>
+        <button type="button" id="x-dataset" class="btn" data-i18n="export.dataset.btn">Датасет для донавчання (LoRA)</button>
+        <button type="button" id="x-showcase" class="btn" data-i18n="export.showcase.btn">Вітрина і рідкість (HTML)</button>
         <a id="x-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">⬇ Download ZIP</a>
         <span id="x-bundle-msg" class="small" role="status"></span>
       </div>
@@ -774,7 +774,7 @@
     </div>
 
     <div class="card" style="margin-top:16px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.03);">
-      <h2 class="release-hub-title" data-i18n="release.hub.title">🚀 Release &amp; Deployment Hub</h2>
+      <h2 class="release-hub-title" data-i18n="release.hub.title">Центр випуску</h2>
       <p class="muted small" data-i18n="release.hub.help"></p>
       <div class="actions" style="margin-top:12px; gap:8px; flex-wrap:wrap">
         <a id="rel-portal-btn" class="btn primary" href="https://opensea.io/studio/create" target="_blank" rel="noopener noreferrer" data-i18n="release.hub.portalBtn">🌐 Open Launch Portal</a>
@@ -788,10 +788,10 @@
     </div>
 
     <div class="card" style="margin-top:16px">
-      <h2 data-i18n="export.checklist.title">NFT checklist</h2>
+      <h2 data-i18n="export.checklist.title">Чекліст NFT</h2>
       <p class="muted small" data-i18n="export.checklist.help"></p>
       <div class="actions">
-        <button type="button" id="x-checklist" class="btn" data-i18n="export.checklist.run">Run checklist</button>
+        <button type="button" id="x-checklist" class="btn" data-i18n="export.checklist.run">Перевірити чекліст</button>
         <span id="x-checklist-msg" class="small" role="status"></span>
       </div>
       <ul id="x-checklist-list" class="checklist" style="margin-top:12px"></ul>
@@ -824,6 +824,18 @@
         <label class="small"><span data-i18n="export.bundle.symbol">Символ</span>
           <input id="d-symbol" type="text" value="LAB">
         </label>
+      </div>
+      <div id="d-advisor-card" class="advisor-card">
+        <h2 data-i18n="advisor.h2">Порадник запуску</h2>
+        <div id="d-advisor" class="advisor" aria-live="polite"></div>
+        <label class="small row">
+          <input type="checkbox" id="d-holder-on" checked>
+          <span data-i18n="advisor.holder.include">Додати заяву для власників у набір</span>
+        </label>
+        <label class="small"><span data-i18n="advisor.holder.label">Заява для власників (заповніть пропуски)</span>
+          <textarea id="d-holder" rows="8"></textarea>
+        </label>
+        <p class="muted small" data-i18n="advisor.holder.help"></p>
       </div>
       <div class="actions">
         <button type="button" id="d-build" class="btn primary" data-i18n="deploy.build">Зібрати набір деплою</button>
@@ -948,6 +960,7 @@
     <h1 data-i18n="help.h1">Довідка</h1>
     <div class="hint">
       <p data-i18n="help.hint"></p>
+      <p data-i18n="help.aiMark"></p>
     </div>
     <div class="help-tools card">
       <input type="search" id="help-search" data-i18n-placeholder="help.search.ph" data-i18n-tip="ctrl.help-search.tip" autocomplete="off">
