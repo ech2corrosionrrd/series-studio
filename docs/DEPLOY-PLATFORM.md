@@ -20,7 +20,7 @@
 | `GREMLIN_API_KEY`, `TMA_API_KEY`, `W3IR_B2B_KEYS` | ключі партнерів (Passport, Telegram), опційно |
 | `OPENAI_API_KEY`, `REPLICATE_API_TOKEN`, `STABILITY_API_KEY`, … | рушії студії |
 | `WELCOME_*`, `EARLY_WELCOME_*`, `GENERATION_RATE_LIMIT_PER_MINUTE`, `FREEMIUM_DAILY_LIMIT`, `REFERRAL_BONUS_CREDITS` | правила кредитів |
-| `ADMIN_WALLETS`, `OPERATOR_WALLET`, `DOGFOOD_WALLETS` | внутрішні гаманці / адмін |
+| `ADMIN_WALLETS`, `TEAM_WALLETS`, `OPERATOR_WALLET`, `DOGFOOD_WALLETS` | адміни й внутрішні гаманці. `ADMIN_WALLETS` і `TEAM_WALLETS` не задані — типові адреси; заданий список замінює типові (порожній `ADMIN_WALLETS=` прибирає адмінів). `OPERATOR_WALLET` і `DOGFOOD_WALLETS` лише додають внутрішні |
 | `SOLANA_RPC_URL`/`ALCHEMY_API_KEY`, `GENESIS_*`, `VAULT_*` | холдери Genesis і NFT-сейф |
 
 Додатково: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (запобіжник на весь сервер), `SERIES_ALLOWED_HOSTS` (обов'язково, бо образ слухає `0.0.0.0` і без списку не перевіряє `Host`), `LANDING_HOSTS`, `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби). Staging пише `SERIES_ALLOWED_HOSTS=next.w3ir.io`.
@@ -68,6 +68,20 @@ LAB_ENV_FILE=./.env SERIES_ALLOWED_WALLETS=0x…,So1… bash deploy/series-lab/u
 ## Власний домен
 
 Series Lab не перебирає чужі хости: для власного домену додайте до proxy блок за зразком `Caddyfile.staging`, задайте `SERIES_ALLOWED_HOSTS`, `AUTH_DOMAIN`, `AUTH_URI` і (для прийому оплат) `SOLANA_PAY_RECIPIENT` у `lab.env`. Перед відкриттям — `npm run backup` / `backup.sh` і перевірка: `/health`, вхід, тестовий переказ USDC (Solana), одна зі сторінок `/c/<slug>`.
+
+## Користувач контейнера
+
+Образ працює не від root, а як користувач `node` (**uid/gid 1000**). Леджер, `users/` і `render-log.jsonl` пишуться в том `/data` (на хості — `data-next` або `SERIES_LAB_DATA`).
+
+Порожній каталог, який створює Docker, наслідує власника з образу. Каталог, який раніше наповнював root, процес у контейнері не зможе оновити.
+
+Один раз на сервері, до перезапуску нового образу:
+
+```bash
+sudo chown -R 1000:1000 /opt/series-lab/data-next
+```
+
+`phase3.sh` робить цей `chown` сам після `chown` дерева на користувача хоста. Якщо дані лежать в іншій теці — та сама команда на неї. Опційний `/opt/sugar` змонтовано лише для читання: каталог має бути читабельним для uid 1000 (типово `755`).
 
 ## Відомі обмеження
 
