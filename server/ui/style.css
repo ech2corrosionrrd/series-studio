@@ -472,7 +472,7 @@ tr.edited td:first-child::after { content: " ✎"; color: var(--accent); font-we
    help centre. Appended last so it refines the base rules above.
    ====================================================================== */
 :root {
-  --bg: #110b15; --panel: #1b1322; --panel2: #251a2e; --line: #3a2c46; --line-soft: #2c2136;
+  --bg: #110b15; --panel: #1b1322; --panel2: #251a2e; --line: #3a2c46; --line-soft: #2c2136; --border: var(--line);
   --text: #f1e9f7; --muted: #ab98bb; --accent: #c77dff; --accent2: #7ad7ff;
   --grad: linear-gradient(135deg, #9b4ddb 0%, #c23d8a 100%);
   --radius: 14px; --radius-sm: 9px;

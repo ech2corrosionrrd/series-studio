@@ -3556,6 +3556,8 @@ function fillKitSets() {
   if (name && !name.value) name.value = $("o-name")?.value || "";
   const desc = $("m-desc");
   if (desc && !desc.value) desc.value = $("x-desc")?.value || "";
+  const deployDesc = $("d-desc");
+  if (deployDesc && !deployDesc.value) deployDesc.value = $("x-desc")?.value || "";
 }
 
 function showPreflightReport(preflight) {
@@ -4326,7 +4328,7 @@ function setupKits() {
           legacy: $("d-chain")?.value === "solana-legacy",
           creatorAddress: $("d-creator")?.value || "",
           symbol: $("d-symbol")?.value || "LAB",
-          description: $("x-desc")?.value || "",
+          description: $("d-desc")?.value || "",
           locale: getLocale(),
           includeHolderLicence: Boolean($("d-holder-on")?.checked),
           holderLicence: $("d-holder")?.value || "",
