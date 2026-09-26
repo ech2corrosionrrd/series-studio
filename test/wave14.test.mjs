@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
@@ -12,11 +13,12 @@ import {
   buildReleaseGuide,
   buildBundleZip,
 } from "../src/index.mjs";
+import { buildDemoArchive, loadDemoPreset, writeDemoArchive } from "./helpers/demo-archive.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const preset = JSON.parse(readFileSync(join(ROOT, "presets", "demo-series.json"), "utf8"));
-const archiveFull = JSON.parse(readFileSync(join(ROOT, "out", "demo-series.json"), "utf8"));
+const preset = loadDemoPreset();
+const archiveFull = buildDemoArchive(preset);
 
 function mockPng() {
   const header = Buffer.from(
@@ -162,9 +164,11 @@ test("buildBundleZip packs sugar.json, thirdweb.json, and release-guide.txt into
 });
 
 test("CLI series release-config generates deploy configs", () => {
-  const archivePath = join(ROOT, "out", "demo-series.json");
-  const sugarOut = join(ROOT, "out", "test-cli-sugar.json");
-  const twOut = join(ROOT, "out", "test-cli-thirdweb.json");
+  const scratch = mkdtempSync(join(tmpdir(), "series-w14-"));
+  const archivePath = join(scratch, "demo-series.json");
+  const sugarOut = join(scratch, "sugar.json");
+  const twOut = join(scratch, "thirdweb.json");
+  writeDemoArchive(archivePath, preset);
 
   // Generate Sugar config
   execSync(`node bin/series.mjs release-config "${archivePath}" --profile magiceden --creator "8CreatorSol111111" -o "${sugarOut}"`, {
@@ -184,8 +188,5 @@ test("CLI series release-config generates deploy configs", () => {
   const tw = JSON.parse(readFileSync(twOut, "utf8"));
   assert.equal(tw.fee_recipient, "0xEvmCreator123");
 
-  try {
-    rmSync(sugarOut, { force: true });
-    rmSync(twOut, { force: true });
-  } catch {}
+  rmSync(scratch, { recursive: true, force: true });
 });
