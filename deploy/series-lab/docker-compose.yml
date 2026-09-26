@@ -16,9 +16,12 @@ services:
     image: ${SERIES_LAB_IMAGE:-series-lab:local}
     container_name: series-lab
     env_file: .env.series-lab
+    # Image runs as uid 1000 (node). The data dir on the host must be writable by 1000.
+    user: "1000:1000"
     volumes:
       - ./${SERIES_LAB_DATA:-data-next}:/data
       # Optional: Sugar checkout for NFT vault transfers (scripts/transfer-nft.mjs), read-only.
+      # The directory must be readable by uid 1000 (typically mode 755).
       - ${SUGAR_HOST_PATH:-/opt/sugar}:/opt/sugar:ro
     environment:
       SUGAR_PROJECT_PATH: /opt/sugar
