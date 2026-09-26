@@ -9,6 +9,7 @@ import uk from "../server/ui/locales/uk.js";
 import en from "../server/ui/locales/en.js";
 import tips from "../server/ui/locales/tips.mjs";
 import { exactErrorKeys, errorPatternCovers } from "../server/ui/api-errors.js";
+import { buildLaunchAdvisor } from "../src/launch-advisor.mjs";
 
 const issues = [];
 const fail = (msg) => issues.push(msg);
@@ -226,20 +227,21 @@ unisat okx gamma satflow ordzaar hashlips w3ir zip png json csv html txt jpg jpe
 gif svg mp4 pdf yaml yml toml sha cid uri url http https api gpu faq dna usdc sol eth
 btc evm erc eip cli rpc env css wav webm utf ascii llm tma b2b csrf wasm rgb hsl pfp qa
 bps devnet mainnet signet sepolia img2img txt2img lora coinbase rainbow ordinalsbot sharp
-pro dev comfy genesis sybil deeplink english usd nftstorage irys studio creator hub wallet taproot
+pro dev comfy genesis sybil deeplink english usd nftstorage irys studio creator hub wallet taproot discord
 `.split(/\s+/).filter(Boolean));
 
 const SCRIPT_EXEMPT = new Set(["base.wish.wrapPrefix", "lang.name.uk", "lang.name.en"]);
 
-function latinWordsOutsideGloss(value) {
-  const stripped = String(value)
+function latinWordsOutsideGloss(value, { keepCaps = false } = {}) {
+  let stripped = String(value)
     .replace(/\{[^}]+\}/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/\([^)]*\)/g, " ")
     .replace(/`[^`]*`/g, " ")
     .replace(/(?:[\w.-]+\/)+[\w.<>-]*/g, " ")
-    .replace(/\b[A-Z][A-Z0-9_]{2,}\b/g, " ")
     .replace(/\b[\w.-]+\.[A-Za-z0-9]{1,8}\b/g, " ");
+  if (keepCaps) stripped = stripped.replace(/\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/g, " ");
+  else stripped = stripped.replace(/\b[A-Z][A-Z0-9_]{2,}\b/g, " ");
   return [...stripped.matchAll(/[A-Za-z][A-Za-z0-9]*/g)]
     .map((m) => m[0])
     .filter((w) => w.replace(/[0-9]/g, "").length >= 3);
@@ -253,13 +255,41 @@ function auditLocaleScript(locale, dict) {
       if (/[\u0400-\u04FF]/.test(text)) fail(`en Cyrillic in ${key}`);
       continue;
     }
-    const bad = [...new Set(latinWordsOutsideGloss(text).filter((w) => !SCRIPT_ALLOW.has(w.toLowerCase())))];
+    const bad = [...new Set(latinWordsOutsideGloss(text, { keepCaps: true }).filter((w) => !SCRIPT_ALLOW.has(w.toLowerCase())))];
     for (const word of bad) fail(`uk Latin "${word}" in ${key}`);
   }
 }
 
 auditLocaleScript("uk", { ...uk, ...(tips.uk || {}) });
 auditLocaleScript("en", { ...en, ...(tips.en || {}) });
+
+for (const word of ["rug", "unverified"]) {
+  if (SCRIPT_ALLOW.has(word)) fail(`allowlist must not include ${word}`);
+}
+
+function advisorFields(locale) {
+  const rows = [];
+  for (const chain of ["solana", "evm", "bitcoin"]) {
+    const data = buildLaunchAdvisor({ chain, locale });
+    rows.push(["holder", data.holderTemplate]);
+    for (const section of data.sections) {
+      rows.push([`${section.id}.title`, section.title]);
+      rows.push([`${section.id}.lead`, section.lead]);
+      for (const [i, para] of (section.paragraphs || []).entries()) rows.push([`${section.id}.p${i}`, para]);
+      for (const item of section.checks || []) rows.push([item.id, item.text]);
+      for (const [i, item] of (section.links || []).entries()) rows.push([`${section.id}.link${i}`, item.label]);
+    }
+  }
+  return rows;
+}
+
+for (const [key, value] of advisorFields("uk")) {
+  const bad = [...new Set(latinWordsOutsideGloss(value, { keepCaps: true }).filter((w) => !SCRIPT_ALLOW.has(w.toLowerCase())))];
+  for (const word of bad) fail(`uk Latin "${word}" in advisor ${key}`);
+}
+for (const [key, value] of advisorFields("en")) {
+  if (/[\u0400-\u04FF]/.test(String(value))) fail(`en Cyrillic in advisor ${key}`);
+}
 
 if (issues.length) {
   console.error(`i18n audit: ${issues.length} problem(s)`);
