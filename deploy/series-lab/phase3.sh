@@ -110,6 +110,7 @@ services:
     image: series-lab:$REV
     container_name: serieslab
     env_file: .env.series-lab
+    user: "1000:1000"
     volumes:
       - ./data-next:/data
     expose:
@@ -130,6 +131,9 @@ networks:
     external: true
 EOF
 chown -R "$LAB_USER:$LAB_USER" "$BASE"
+# Container is uid 1000, not root. Secrets stay with $LAB_USER; only the data volume
+# is given to the process. Existing root-owned ledgers need this chown once.
+chown -R 1000:1000 "$BASE/data-next"
 
 echo "==> 5. container"
 docker compose -f "$BASE/docker-compose.yml" up -d
