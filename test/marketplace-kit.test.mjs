@@ -43,7 +43,7 @@ test("solana kit exports Magic Eden and Tensor images at the documented sizes", 
   assert.match(kit.files["CHECKLIST.txt"], /Magic Eden/);
   assert.match(kit.files["CHECKLIST.txt"], /Tensor/);
   assert.match(kit.files["LISTING.txt"], /\{\{twitter\}\}/);
-  assert.match(kit.files["VERIFY.txt"], /sugar verify/);
+  assert.match(kit.files["VERIFY.txt"], /mplx cm validate/);
   const sizes = JSON.parse(kit.files["SIZES.json"]);
   assert.match(sizes.source, /cover/i);
   for (const [file, w, h] of [
@@ -76,7 +76,22 @@ test("evm kit is OpenSea-only and bitcoin kit names ordinals marketplaces", asyn
     locale: "en",
     env: {},
   });
-  assert.match(btc.files["CHECKLIST.txt"], /Unisat/);
+  assert.match(btc.files["CHECKLIST.txt"], /UniSat/);
+  assert.match(btc.files["CHECKLIST.txt"], /Satflow/);
+  assert.match(btc.files["CHECKLIST.txt"], /Gamma/);
+  assert.match(btc.files["CHECKLIST.txt"], /OKX/);
+  assert.match(btc.files["CHECKLIST.txt"], /Ordzaar/);
+  const btcText = ["CHECKLIST.txt", "LISTING.txt", "VERIFY.txt", "ORDINALS.txt", "inscriptions.json", "SIZES.json"]
+    .map((name) => String(btc.files[name] || ""))
+    .join("\n");
+  assert.equal(/magic eden/i.test(btcText), false);
+  assert.match(btc.files["ORDINALS.txt"], /parent/i);
+  assert.match(btc.files["ORDINALS.txt"], /child/i);
+  const ids = JSON.parse(btc.files["inscriptions.json"]);
+  assert.equal(ids.parent.inscriptionId, "");
+  assert.equal(ids.children[0].inscriptionId, "");
+  const evmText = ["CHECKLIST.txt", "LISTING.txt", "VERIFY.txt"].map((name) => String(evm.files[name] || "")).join("\n");
+  assert.equal(/magic eden/i.test(evmText), false);
   const dim = pngDimensions(btc.files["images/ordinals-avatar.png"]);
   assert.equal(dim.width, 400);
   assert.equal(dim.height, 400);

@@ -69,13 +69,13 @@ export function estimateDeployCost(input = {}, env = process.env) {
     assumptions.push(
       "ESTIMATE, not an RPC quote.",
       "lamports = DEPLOY_SOL_BASE_LAMPORTS + count × DEPLOY_SOL_PER_ITEM_LAMPORTS",
-      `DEPLOY_SOL_BASE_LAMPORTS=${base} (default ${DEPLOY_COST_DEFAULTS.solana.baseLamports} = 0.02 SOL: collection NFT + candy machine account, a rent-shaped assumption)`,
+      `DEPLOY_SOL_BASE_LAMPORTS=${base} (default ${DEPLOY_COST_DEFAULTS.solana.baseLamports} = 0.02 SOL: collection asset + Core Candy Machine account, a rent-shaped assumption)`,
       `DEPLOY_SOL_PER_ITEM_LAMPORTS=${per} (default ${DEPLOY_COST_DEFAULTS.solana.perItemLamports}: config-line storage per item)`,
       solUsd == null
         ? "DEPLOY_SOL_USD is unset, so USD is omitted on purpose (no fabricated SOL price)."
         : `DEPLOY_SOL_USD=${solUsd} (owner-set rate)`,
       "Upload bandwidth and priority fees are not included.",
-      "You pay this from your wallet when you run sugar. Series Lab does not.",
+      "You pay this from your wallet when you run the commands in DEPLOY.txt. Series Lab does not hold the key or send the transaction.",
     );
     return {
       chain,
@@ -269,26 +269,18 @@ export function buildDeployKit({
     );
     sugar.number = count;
     sugar.isSequential = true;
-    files["config.json"] = `${JSON.stringify(sugar, null, 2)}\n`;
-    files["assets/README.txt"] = uk
-      ? [
-        "Розклад Sugar",
-        "=============",
-        "assets/0.png + assets/0.json … — предмети з нуля, у порядку видань.",
-        "assets/collection.png + assets/collection.json — обкладинка колекції.",
-        "config.json у корені — конфіг Sugar CLI.",
-        "Не кладіть сюди ключ гаманця.",
-        "",
-      ].join("\n")
-      : [
-        "Sugar layout",
-        "============",
-        "assets/0.png + assets/0.json … — items from zero, in edition order.",
-        "assets/collection.png + assets/collection.json — collection cover.",
-        "config.json at the root is the Sugar CLI config.",
-        "Do not put a wallet key in this folder.",
-        "",
-      ].join("\n");
+    const sugarJson = `${JSON.stringify(sugar, null, 2)}\n`;
+    const legacy = Boolean(opts.legacy);
+    if (legacy) {
+      files["config.json"] = sugarJson;
+      files["assets/README.txt"] = sugarLayoutReadme(uk, true);
+    } else {
+      files["cm-config.json"] = `${JSON.stringify(coreCandyConfig({ name, symbol, description, fee, count, creator }), null, 2)}\n`;
+      files["ROYALTIES.txt"] = royaltiesNote(uk);
+      files["assets/README.txt"] = coreLayoutReadme(uk);
+      files["sugar/config.json"] = sugarJson;
+      files["sugar/LEGACY.txt"] = sugarLegacyNote(uk);
+    }
   } else if (chain === "evm") {
     const tw = buildThirdwebConfig(
       { ...archive, size: count },
@@ -303,12 +295,259 @@ export function buildDeployKit({
 
   const estimate = estimateDeployCost({ chain, count, totalBytes, profile }, env);
   files["ESTIMATE.txt"] = `${formatCostEstimate(estimate, locale)}\n`;
-  const guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate });
+  const guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate, legacy: Boolean(opts.legacy) });
   files["DEPLOY.txt"] = guide;
   return { chain, files, estimate, guide, count };
 }
 
-export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Series", symbol = "LAB", creator = "", estimate } = {}) {
+function coreCandyConfig({ name, symbol, description, fee, count, creator }) {
+  return {
+    name,
+    symbol,
+    description,
+    sellerFeeBasisPoints: fee,
+    itemsAvailable: count,
+    isMutable: true,
+    creators: creator ? [{ address: creator, percentage: 100 }] : [],
+  };
+}
+
+function coreLayoutReadme(uk) {
+  return uk
+    ? [
+      "Розклад Core Candy Machine",
+      "===========================",
+      "assets/0.png + assets/0.json … — предмети з нуля, у порядку видань.",
+      "assets/collection.png + assets/collection.json — обкладинка колекції.",
+      "cm-config.json — поля для майстра `mplx cm create --wizard` (назва, символ, роялті, творець).",
+      "Гварди (allowList, mintLimit, botTax) вписуєте в майстрі. Див. DEPLOY.txt.",
+      "Роялті Core — у ROYALTIES.txt. Список програм заповнюєте ви.",
+      "Не кладіть сюди ключ гаманця.",
+      "",
+    ].join("\n")
+    : [
+      "Core Candy Machine layout",
+      "=========================",
+      "assets/0.png + assets/0.json … — items from zero, in edition order.",
+      "assets/collection.png + assets/collection.json — collection cover.",
+      "cm-config.json — fields for the `mplx cm create --wizard` (name, symbol, royalty, creator).",
+      "Guards (allowList, mintLimit, botTax) are entered in the wizard. See DEPLOY.txt.",
+      "Core royalties are explained in ROYALTIES.txt. You fill the program list.",
+      "Do not put a wallet key in this folder.",
+      "",
+    ].join("\n");
+}
+
+function sugarLayoutReadme(uk, legacy) {
+  const banner = legacy
+    ? (uk
+      ? "СПАДЩИНА: legacy Candy Machine, не для нової колекції.\n"
+      : "LEGACY: legacy Candy Machine, not for a new collection.\n")
+    : "";
+  const body = uk
+    ? [
+      "Розклад Sugar",
+      "=============",
+      "assets/0.png + assets/0.json … — предмети з нуля, у порядку видань.",
+      "assets/collection.png + assets/collection.json — обкладинка колекції.",
+      "config.json у корені — конфіг Sugar CLI.",
+      "Не кладіть сюди ключ гаманця.",
+      "",
+    ].join("\n")
+    : [
+      "Sugar layout",
+      "============",
+      "assets/0.png + assets/0.json … — items from zero, in edition order.",
+      "assets/collection.png + assets/collection.json — collection cover.",
+      "config.json at the root is the Sugar CLI config.",
+      "Do not put a wallet key in this folder.",
+      "",
+    ].join("\n");
+  return banner + body;
+}
+
+function sugarLegacyNote(uk) {
+  const commands = uk
+    ? [
+      "Команди Sugar (лише якщо ви свідомо лишаєтесь на спадщині):",
+      "   sugar validate",
+      "   sugar upload",
+      "   sugar deploy --config config.json",
+      "   sugar verify",
+      "Запускайте з теки sugar/, конфіг — sugar/config.json. Асети лишаються в assets/ у корені набору.",
+      "Гаманець і ключ — у вас. Lab транзакцію не підписує.",
+    ]
+    : [
+      "Sugar commands (only if you deliberately stay on the legacy program):",
+      "   sugar validate",
+      "   sugar upload",
+      "   sugar deploy --config config.json",
+      "   sugar verify",
+      "Run them from the kit root with --config sugar/config.json, or copy the config. Assets stay in assets/ at the kit root.",
+      "The wallet and the key stay with you. Lab does not sign the transaction.",
+    ];
+  return [
+    uk
+      ? "СПАДЩИНА: legacy Candy Machine, не для нової колекції."
+      : "LEGACY: legacy Candy Machine, not for a new collection.",
+    uk
+      ? "Metaplex позначає Sugar і legacy Candy Machine як застарілі. Нова колекція — Core Candy Machine і MPLX, див. DEPLOY.txt у корені."
+      : "Metaplex marks Sugar and the legacy Candy Machine as deprecated. A new collection uses Core Candy Machine and MPLX; see DEPLOY.txt at the kit root.",
+    "",
+    ...commands,
+    "",
+  ].join("\n");
+}
+
+function royaltiesNote(uk) {
+  return uk
+    ? [
+      "Роялті Core",
+      "============",
+      "ProgramAllowList — роялті примусові лише для програм, які ви самі вписали в список.",
+      "None (без правила) — дорадчі: майданчик може їх проігнорувати.",
+      "",
+      "Список програм порожній навмисно. Впишіть адреси програм самі.",
+      "Не підставляйте чужий гаманець отримувача.",
+      "",
+      "programs: []",
+      "",
+    ].join("\n")
+    : [
+      "Core royalties",
+      "===============",
+      "ProgramAllowList — royalties are enforced only for the programs you put on the list.",
+      "None (no rule) — advisory: a marketplace may ignore them.",
+      "",
+      "The program list is empty on purpose. Fill in program addresses yourself.",
+      "Do not paste someone else's treasury wallet.",
+      "",
+      "programs: []",
+      "",
+    ].join("\n");
+}
+
+function coreGuideSteps(uk) {
+  return uk
+    ? [
+      "Solana · Core Candy Machine (MPLX CLI)",
+      "--------------------------------------",
+      "Встановіть Solana CLI і MPLX собі на машину. Lab їх за вас не запускає.",
+      "Гаманець лишається у вас. Lab не підписує транзакцію і не тримає ключ.",
+      "",
+      "1. Devnet (сухий прогін)",
+      "   solana config set --url https://api.devnet.solana.com",
+      "   solana config set --keypair <шлях-до-вашого-keypair.json>   # файл лишається у вас",
+      "   solana airdrop 2",
+      "   cd <ця тека>",
+      "   mplx cm create --wizard",
+      "   Відповідайте майстру з cm-config.json: назва, символ, sellerFeeBasisPoints, адреса творця.",
+      "   Асети: assets/0.png, assets/0.json, … і assets/collection.json.",
+      "   Якщо майстер просить кроки окремо: mplx cm upload, потім mplx cm insert, потім mplx cm validate.",
+      "   Групи гвардів (імена зі сторінки гвардів Core; дату старту не вигадуємо):",
+      "   - спочатку allowlist: allowList (merkle root вписуєте ви), mintLimit, botTax",
+      "   - потім public: mintLimit, botTax",
+      "   Перевірте колекцію на devnet-експлорері.",
+      "",
+      "2. Mainnet — лише якщо devnet виглядає правильно",
+      "   solana config set --url https://api.mainnet-beta.solana.com",
+      "   Переконайтесь, що адреса творця — ваш гаманець.",
+      "   Повторіть mplx cm create --wizard (або upload / insert / validate) уже на mainnet.",
+      "",
+      "Роялті: ROYALTIES.txt. ProgramAllowList примусовий для програм зі списку, який заповнюєте ви. None — дорадчо.",
+      "Комісію мережі (SOL) платите ви. Оцінка — у ESTIMATE.txt, це не рахунок від Lab.",
+      "Спадщина legacy Candy Machine — файл sugar/LEGACY.txt. Не для нової колекції.",
+    ]
+    : [
+      "Solana · Core Candy Machine (MPLX CLI)",
+      "--------------------------------------",
+      "Install the Solana CLI and MPLX on your machine. Lab does not run them for you.",
+      "The wallet stays with you. Lab does not sign the transaction and does not hold the key.",
+      "",
+      "1. Devnet (dry run)",
+      "   solana config set --url https://api.devnet.solana.com",
+      "   solana config set --keypair <path-to-your-keypair.json>   # the file stays with you",
+      "   solana airdrop 2",
+      "   cd <this folder>",
+      "   mplx cm create --wizard",
+      "   Answer the wizard from cm-config.json: name, symbol, sellerFeeBasisPoints, creator address.",
+      "   Assets: assets/0.png, assets/0.json, … and assets/collection.json.",
+      "   If the wizard asks for separate steps: mplx cm upload, then mplx cm insert, then mplx cm validate.",
+      "   Guard groups (names from the Core guards page; do not invent a start date):",
+      "   - allowlist first: allowList (you fill the merkle root), mintLimit, botTax",
+      "   - then public: mintLimit, botTax",
+      "   Check the collection on a devnet explorer.",
+      "",
+      "2. Mainnet — only after devnet looks right",
+      "   solana config set --url https://api.mainnet-beta.solana.com",
+      "   Confirm the creator address is your wallet.",
+      "   Repeat mplx cm create --wizard (or upload / insert / validate) on mainnet.",
+      "",
+      "Royalties: ROYALTIES.txt. ProgramAllowList is enforced for programs you list. None is advisory.",
+      "You pay the network fee (SOL). The figure in ESTIMATE.txt is an estimate, not a Lab invoice.",
+      "The legacy Candy Machine note is sugar/LEGACY.txt. It is not the path for a new collection.",
+    ];
+}
+
+function sugarGuideSteps(uk) {
+  const banner = uk
+    ? "СПАДЩИНА: legacy Candy Machine, не для нової колекції."
+    : "LEGACY: legacy Candy Machine, not for a new collection.";
+  const rest = uk
+    ? [
+      "Solana · Sugar CLI",
+      "------------------",
+      "Встановіть Solana CLI і Sugar (Metaplex) собі на машину. Lab їх за вас не запускає.",
+      "",
+      "1. Devnet (сухий прогін)",
+      "   solana config set --url https://api.devnet.solana.com",
+      "   solana config set --keypair <шлях-до-вашого-keypair.json>   # файл лишається у вас",
+      "   solana airdrop 2",
+      "   cd <ця тека>",
+      "   sugar validate",
+      "   sugar upload",
+      "   sugar deploy --config config.json",
+      "   sugar verify",
+      "   Перевірте колекцію на devnet-експлорері. Ціна в config.json зараз для прогону.",
+      "",
+      "2. Mainnet — лише якщо devnet виглядає правильно",
+      "   solana config set --url https://api.mainnet-beta.solana.com",
+      "   Переконайтесь, що creators у config.json — це ваш гаманець, не заглушка.",
+      "   sugar upload",
+      "   sugar deploy --config config.json",
+      "   sugar verify",
+      "",
+      "Комісію мережі (SOL) платите ви. Оцінка — у ESTIMATE.txt, це не рахунок від Lab.",
+    ]
+    : [
+      "Solana · Sugar CLI",
+      "------------------",
+      "Install the Solana CLI and Metaplex Sugar on your machine. Lab does not run them for you.",
+      "",
+      "1. Devnet (dry run)",
+      "   solana config set --url https://api.devnet.solana.com",
+      "   solana config set --keypair <path-to-your-keypair.json>   # the file stays with you",
+      "   solana airdrop 2",
+      "   cd <this folder>",
+      "   sugar validate",
+      "   sugar upload",
+      "   sugar deploy --config config.json",
+      "   sugar verify",
+      "   Check the collection on a devnet explorer. The price in config.json is for this run.",
+      "",
+      "2. Mainnet — only after devnet looks right",
+      "   solana config set --url https://api.mainnet-beta.solana.com",
+      "   Confirm creators in config.json is your wallet, not a placeholder.",
+      "   sugar upload",
+      "   sugar deploy --config config.json",
+      "   sugar verify",
+      "",
+      "You pay the network fee (SOL). The figure in ESTIMATE.txt is an estimate, not a Lab invoice.",
+    ];
+  return [banner, "", ...rest];
+}
+
+export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Series", symbol = "LAB", creator = "", estimate, legacy = false } = {}) {
   const uk = String(locale || "").toLowerCase().startsWith("uk");
   const who = creator || (uk ? "<ВАША_ПУБЛІЧНА_АДРЕСА>" : "<YOUR_PUBLIC_ADDRESS>");
   const head = uk
@@ -334,57 +573,7 @@ export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Seri
     ];
   let steps;
   if (chain === "solana") {
-    steps = uk
-      ? [
-        "Solana · Sugar CLI",
-        "------------------",
-        "Встановіть Solana CLI і Sugar (Metaplex) собі на машину. Lab їх за вас не запускає.",
-        "",
-        "1. Devnet (сухий прогін)",
-        "   solana config set --url https://api.devnet.solana.com",
-        "   solana config set --keypair <шлях-до-вашого-keypair.json>   # файл лишається у вас",
-        "   solana airdrop 2",
-        "   cd <ця тека>",
-        "   sugar validate",
-        "   sugar upload",
-        "   sugar deploy --config config.json",
-        "   sugar verify",
-        "   Перевірте колекцію на devnet-експлорері. Ціна в config.json зараз для прогону.",
-        "",
-        "2. Mainnet — лише якщо devnet виглядає правильно",
-        "   solana config set --url https://api.mainnet-beta.solana.com",
-        "   Переконайтесь, що creators у config.json — це ваш гаманець, не заглушка.",
-        "   sugar upload",
-        "   sugar deploy --config config.json",
-        "   sugar verify",
-        "",
-        "Комісію мережі (SOL) платите ви. Оцінка — у ESTIMATE.txt, це не рахунок від Lab.",
-      ]
-      : [
-        "Solana · Sugar CLI",
-        "------------------",
-        "Install the Solana CLI and Metaplex Sugar on your machine. Lab does not run them for you.",
-        "",
-        "1. Devnet (dry run)",
-        "   solana config set --url https://api.devnet.solana.com",
-        "   solana config set --keypair <path-to-your-keypair.json>   # the file stays with you",
-        "   solana airdrop 2",
-        "   cd <this folder>",
-        "   sugar validate",
-        "   sugar upload",
-        "   sugar deploy --config config.json",
-        "   sugar verify",
-        "   Check the collection on a devnet explorer. The price in config.json is for this run.",
-        "",
-        "2. Mainnet — only after devnet looks right",
-        "   solana config set --url https://api.mainnet-beta.solana.com",
-        "   Confirm creators in config.json is your wallet, not a placeholder.",
-        "   sugar upload",
-        "   sugar deploy --config config.json",
-        "   sugar verify",
-        "",
-        "You pay the network fee (SOL). The figure in ESTIMATE.txt is an estimate, not a Lab invoice.",
-      ];
+    steps = legacy ? sugarGuideSteps(uk) : coreGuideSteps(uk);
   } else if (chain === "bitcoin") {
     steps = uk
       ? [

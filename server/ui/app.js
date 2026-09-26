@@ -1091,6 +1091,8 @@ function setupOverview() {
       renderSteps();
     });
   }
+  $("o-engine")?.addEventListener("change", () => paintStrengthNote("o-strength-note", $("o-engine").value));
+  paintStrengthNote("o-strength-note", $("o-engine")?.value);
   async function saveOverviewPreset() {
     syncCtorFromOverview();
     const name = $("o-name").value.trim();
@@ -1320,6 +1322,7 @@ async function refreshBaseStatus() {
       };
     }
     renderSteps();
+    syncWishControls();
   } catch {
     /* ignore */
   }
@@ -1396,8 +1399,19 @@ function setupBase() {
   $("base-wish-str")?.addEventListener("input", () => {
     if ($("base-wish-str-v")) $("base-wish-str-v").textContent = $("base-wish-str").value;
   });
+  $("base-wish-ref")?.addEventListener("change", () => relabelEngineSelects());
+  $("base-wish-engine")?.addEventListener("change", () => syncWishControls());
+  $("base-wish")?.addEventListener("input", () => paintWishPrompt());
+  syncWishControls();
   $("base-wish-gen")?.addEventListener("click", async () => {
+    const useRef = Boolean($("base-wish-ref")?.checked);
+    const hasPrimary = (state.baseFiles || []).some((f) => f.primary);
+    if (useRef && !hasPrimary) {
+      syncWishControls();
+      return;
+    }
     try {
+      $("base-wish-gen").dataset.busy = "1";
       $("base-wish-gen").disabled = true;
       const data = await api("/api/base/generate", {
         method: "POST",
@@ -1420,7 +1434,8 @@ function setupBase() {
       $("base-msg").textContent = e.message;
       $("base-msg").className = "small err-msg";
     } finally {
-      $("base-wish-gen").disabled = false;
+      if ($("base-wish-gen")) delete $("base-wish-gen").dataset.busy;
+      syncWishControls();
     }
   });
 
@@ -1818,7 +1833,11 @@ function setupRender() {
     if ($("g-strength-v")) $("g-strength-v").textContent = $("g-strength").value;
     reLockPlan();
   });
-  $("g-engine")?.addEventListener("change", reLockPlan);
+  $("g-engine")?.addEventListener("change", () => {
+    reLockPlan();
+    paintStrengthNote("g-strength-note", $("g-engine")?.value);
+  });
+  paintStrengthNote("g-strength-note", $("g-engine")?.value);
   $("g-pilot")?.addEventListener("input", reLockPlan);
   $("g-first")?.addEventListener("input", reLockPlan);
   $("g-only")?.addEventListener("input", reLockPlan);
@@ -2360,14 +2379,48 @@ function packageTitle(label) {
   return String(label || "").replace(/^[\p{Extended_Pictographic}\s🟢🟡🔵]+\s*/u, "").trim() || label;
 }
 
-function engineBaseLabel(id) {
+function engineBaseLabel(id, mode) {
+  if (mode) {
+    const specific = `engine.${id}.${mode}`;
+    if (hasKey(specific)) return t(specific);
+  }
   const key = `engine.${id}`;
   return hasKey(key) ? t(key) : String(id || "");
 }
 
+function selectEngineMode(sel) {
+  if (!sel) return null;
+  if (sel.id === "base-wish-engine") return $("base-wish-ref")?.checked ? "edit" : "txt";
+  if (sel.id === "o-engine" || sel.id === "g-engine" || sel.id === "c-engine") return "edit";
+  return null;
+}
+
+const STRENGTH_KIND = {
+  kontext: "words",
+  openai: "words",
+  pollinations: "words",
+  stability: "denoise",
+  comfyui: "denoise",
+  a1111: "denoise",
+  runware: "runware",
+  fal: "fal",
+  mock: "ignored",
+  schnell: "ignored",
+};
+
+function strengthNote(engineId) {
+  const kind = STRENGTH_KIND[engineId] || "ignored";
+  return t(`strength.note.${kind}`);
+}
+
+function paintStrengthNote(noteId, engineId) {
+  const el = $(noteId);
+  if (el) el.textContent = strengthNote(engineId);
+}
+
 /** User-facing price: credits in public mode; plain name otherwise (no fake $). */
-function engineOptionLabel(id) {
-  const base = engineBaseLabel(id);
+function engineOptionLabel(id, mode) {
+  const base = engineBaseLabel(id, mode);
   const me = state.account;
   const gpu = me?.localGpu;
   const localOn = !!gpu?.enabled;
@@ -2394,6 +2447,7 @@ function relabelEngineSelects() {
   document.body.classList.toggle("local-gpu-on", localOn);
   for (const sel of document.querySelectorAll("select")) {
     let any = false;
+    const mode = selectEngineMode(sel);
     for (const opt of sel.options) {
       const isLocalGpu = opt.hasAttribute("data-local-gpu") || opt.value === "comfyui" || opt.value === "a1111";
       if (isLocalGpu) {
@@ -2406,13 +2460,66 @@ function relabelEngineSelects() {
           if (fallback) sel.value = fallback.value;
         }
       }
-      if (!hasKey(`engine.${opt.value}`)) continue;
+      if (!hasKey(`engine.${opt.value}`) && !(mode && hasKey(`engine.${opt.value}.${mode}`))) continue;
       any = true;
-      opt.textContent = engineOptionLabel(opt.value);
+      opt.textContent = engineOptionLabel(opt.value, mode);
     }
     if (!any) continue;
   }
   renderLocalGpuPanel();
+  syncWishControls();
+  paintStrengthNote("o-strength-note", $("o-engine")?.value);
+  paintStrengthNote("g-strength-note", $("g-engine")?.value);
+}
+
+function paintWishPrompt() {
+  const el = $("base-wish-prompt");
+  if (!el) return;
+  const wish = ($("base-wish")?.value || "").trim();
+  const useRef = Boolean($("base-wish-ref")?.checked);
+  el.textContent = useRef
+    ? `${t("base.wish.promptEdit")}\n${wish}`
+    : `${t("base.wish.promptTxt")}\n${t("base.wish.wrapPrefix")}${wish}`;
+}
+
+function syncWishControls() {
+  const sel = $("base-wish-engine");
+  const useRef = Boolean($("base-wish-ref")?.checked);
+  const hasPrimary = (state.baseFiles || []).some((f) => f.primary);
+  const mode = useRef ? "edit" : "txt";
+  const ready = useRef ? state.health?.engines?.readyEdit : state.health?.engines?.readyTxt2img;
+  const gpuOn = !!state.account?.localGpu?.enabled;
+  if (sel) {
+    for (const opt of sel.options) {
+      const where = opt.dataset.mode || "both";
+      const inMode = where === "both" || where === mode;
+      const gpuOff = (opt.value === "comfyui" || opt.value === "a1111") && !gpuOn;
+      const listed = !Array.isArray(ready) || ready.includes(opt.value);
+      const show = inMode && !gpuOff;
+      opt.hidden = !show;
+      opt.disabled = !show || !listed;
+      if (show) opt.textContent = engineOptionLabel(opt.value, mode);
+    }
+    const current = sel.selectedOptions[0];
+    if (!current || current.disabled || current.hidden) {
+      const next = [...sel.options].find((o) => !o.disabled && !o.hidden);
+      if (next) sel.value = next.value;
+    }
+  }
+  const active = useRef && hasPrimary;
+  const slider = $("base-wish-str");
+  if (slider) slider.disabled = !active;
+  const scale = $("base-wish-scale");
+  if (scale) scale.hidden = !active;
+  const note = $("base-wish-str-note");
+  if (note) {
+    if (!useRef) note.textContent = t("strength.note.needRef");
+    else if (!hasPrimary) note.textContent = t("strength.note.needPrimary");
+    else note.textContent = strengthNote(sel?.value);
+  }
+  const gen = $("base-wish-gen");
+  if (gen && gen.dataset.busy !== "1") gen.disabled = useRef && !hasPrimary;
+  paintWishPrompt();
 }
 
 function localGpuDotClass(online) {

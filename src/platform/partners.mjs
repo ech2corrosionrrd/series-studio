@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 import JSZip from "jszip";
 import { nowIso, openDb } from "./db.mjs";
 import { ENGINE_FLUX, ENGINE_GPT_IMAGE, ENGINE_STABILITY, ENGINES } from "./imagegen.mjs";
+import { DEFAULT_STRENGTH } from "../reference.mjs";
 
 // ── Gremlin Passport ─────────────────────────────────────────────────────────
 export const TRAIT_OPTIONS = {
@@ -100,7 +101,7 @@ export function parseTmaBody(body) {
   if (typeof b.prompt !== "string" || b.prompt.length < 1 || b.prompt.length > 1000) fail("prompt: 1..1000 characters required");
   const count = b.count ?? 4;
   if (!Number.isInteger(count) || count < 1 || count > 4) fail("count: integer 1..4");
-  const strength = b.strength ?? 0.85;
+  const strength = b.strength ?? DEFAULT_STRENGTH;
   if (strength !== null && (typeof strength !== "number" || strength < 0.1 || strength > 0.95)) fail("strength: 0.1..0.95");
   return {
     prompt: b.prompt,
@@ -131,7 +132,7 @@ export function decodeReferenceImage(raw, strength) {
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) mime = "image/jpeg";
   else if (bytes.subarray(0, 4).toString("latin1") === "RIFF" && bytes.subarray(0, 12).includes(Buffer.from("WEBP"))) mime = "image/webp";
   else if (bytes.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]))) mime = "image/png";
-  return { bytes, mime, strength: strength ?? 0.85 };
+  return { bytes, mime, strength: strength ?? DEFAULT_STRENGTH };
 }
 
 // ── B2B keys (table b2b_keys in users.db) ────────────────────────────────────
