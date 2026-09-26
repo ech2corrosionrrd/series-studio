@@ -6,28 +6,37 @@
   <title>Series Lab — вхід</title>
   <meta name="description" content="Увійдіть у Series Lab гаманцем: пресет → рецепти → генерація → архів випуску. Підпис без gas і без доступу до коштів." />
   <meta name="robots" content="noindex, nofollow" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238a3fd0'/%3E%3Cstop offset='1' stop-color='%23c23d8a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Ctext x='16' y='22' font-family='system-ui,Segoe UI,sans-serif' font-size='16' font-weight='900' fill='%23eee4f6' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239b4dff'/%3E%3Cstop offset='1' stop-color='%23e04d8a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Ctext x='16' y='22' font-family='Sora,system-ui,sans-serif' font-size='15' font-weight='800' fill='%23f6eef8' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,550;9..144,700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #120c16;
-      --panel: #1d1424;
-      --panel2: #261b2f;
+      --bg: #0e0a12;
+      --panel: #18121f;
+      --panel2: #221a2b;
       --line: #3a2c46;
-      --text: #eee4f6;
-      --muted: #a894b8;
-      --accent: #c77dff;
-      --accent2: #7ad7ff;
+      --text: #f4ecf8;
+      --muted: #b09bc0;
+      --accent: #d4a0ff;
+      --accent2: #8fd4ff;
       --ok: #7be38a;
       --bad: #ff6b7d;
-      --lo: #6e5a7e;
+      --lo: #7a668a;
+      --brand-a: #9b4dff;
+      --brand-b: #e04d8a;
+      --font: "Sora", system-ui, sans-serif;
+      --display: "Fraunces", Georgia, serif;
     }
     * { box-sizing: border-box; }
+    html { color-scheme: dark; }
     body {
       margin: 0;
       min-height: 100vh;
       background: var(--bg);
       color: var(--text);
-      font: 15px/1.5 system-ui, "Segoe UI", sans-serif;
+      font: 15px/1.55 var(--font);
+      -webkit-font-smoothing: antialiased;
     }
     a { color: var(--accent2); text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -37,39 +46,52 @@
       grid-template-columns: 1fr;
     }
     @media (min-width: 960px) {
-      .shell { grid-template-columns: 1fr 1fr; }
+      .shell { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
     }
     .brand-pane {
       display: none;
       flex-direction: column;
       justify-content: space-between;
-      padding: 40px 48px;
+      gap: 28px;
+      padding: 44px 52px;
       border-right: 1px solid var(--line);
       background:
-        radial-gradient(42% 38% at 18% 22%, rgba(138, 63, 208, 0.45), transparent 62%),
-        radial-gradient(40% 36% at 82% 18%, rgba(194, 61, 138, 0.28), transparent 60%),
-        radial-gradient(46% 40% at 70% 88%, rgba(122, 215, 255, 0.12), transparent 64%),
-        var(--bg);
+        radial-gradient(48% 42% at 12% 18%, rgba(155, 77, 255, 0.38), transparent 64%),
+        radial-gradient(44% 40% at 88% 12%, rgba(224, 77, 138, 0.22), transparent 62%),
+        radial-gradient(50% 46% at 70% 92%, rgba(143, 212, 255, 0.1), transparent 66%),
+        linear-gradient(165deg, #14101a 0%, var(--bg) 55%);
+      animation: pane-in .7s ease both;
     }
     @media (min-width: 960px) { .brand-pane { display: flex; } }
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }
     .logo {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
       display: grid;
       place-items: center;
-      font-weight: 900;
+      font-family: var(--font);
+      font-weight: 700;
       font-size: 18px;
-      color: var(--text);
-      background: linear-gradient(135deg, #8a3fd0, #c23d8a);
+      letter-spacing: -0.04em;
+      color: #fff;
+      background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
+      box-shadow: 0 10px 28px rgba(155, 77, 255, 0.28);
+      flex-shrink: 0;
     }
-    .brand b { display: block; font-size: 17px; }
-    .brand small { color: var(--muted); font-size: 12px; }
+    .brand b {
+      display: block;
+      font-family: var(--display);
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    .brand small { color: var(--muted); font-size: 12px; font-weight: 500; }
     .stages {
       list-style: none;
       margin: 0;
@@ -81,36 +103,56 @@
       display: flex;
       gap: 12px;
       align-items: baseline;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: #1d1424aa;
+      padding: 11px 13px;
+      border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--panel) 72%, transparent);
+      backdrop-filter: blur(8px);
+      transition: border-color .2s ease, transform .2s ease;
     }
-    .stages li span { color: var(--accent); font-weight: 700; font-size: 12px; min-width: 1.5rem; }
-    .stages li b { display: block; font-size: 14px; }
-    .stages li em { display: block; font-style: normal; color: var(--muted); font-size: 12px; }
+    .stages li:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); transform: translateX(2px); }
+    .stages li span {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      min-width: 2rem;
+    }
+    .stages li b { display: block; font-size: 14px; font-weight: 600; }
+    .stages li em { display: block; font-style: normal; color: var(--muted); font-size: 12px; margin-top: 2px; }
     .hero h1 {
-      margin: 0 0 10px;
-      font-size: 28px;
-      line-height: 1.2;
-      letter-spacing: -0.02em;
+      margin: 0 0 12px;
+      font-family: var(--display);
+      font-size: clamp(28px, 3.2vw, 40px);
+      font-weight: 700;
+      line-height: 1.12;
+      letter-spacing: -0.03em;
     }
-    .hero p { margin: 0; color: var(--muted); max-width: 28rem; }
-    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .hero p { margin: 0; color: var(--muted); max-width: 30rem; font-size: 15px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
     .pill {
       border: 1px solid var(--line);
       border-radius: 999px;
-      padding: 4px 12px;
+      padding: 5px 12px;
       font-size: 12px;
-      color: var(--lo);
+      font-weight: 500;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--panel) 55%, transparent);
     }
     .auth-pane {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 28px 20px 40px;
+      padding: 28px 20px 44px;
+      background:
+        radial-gradient(55% 40% at 80% 0%, rgba(155, 77, 255, 0.12), transparent 70%),
+        var(--bg);
     }
-    .auth-wrap { width: 100%; max-width: 420px; }
+    .auth-wrap {
+      width: 100%;
+      max-width: 420px;
+      animation: rise .55s ease both;
+    }
     .top-row {
       display: flex;
       justify-content: space-between;
@@ -118,14 +160,14 @@
       margin-bottom: 18px;
       gap: 12px;
     }
-    .back { color: var(--lo); font-size: 13px; }
-    .back:hover { color: var(--muted); }
+    .back { color: var(--lo); font-size: 13px; font-weight: 500; }
+    .back:hover { color: var(--muted); text-decoration: none; }
     .lang {
       display: flex;
       gap: 4px;
       border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 2px;
+      border-radius: 10px;
+      padding: 3px;
       background: var(--panel);
     }
     .lang button {
@@ -135,48 +177,70 @@
       font: inherit;
       font-size: 12px;
       font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 6px;
+      padding: 5px 11px;
+      border-radius: 7px;
       cursor: pointer;
     }
     .lang button.on { background: var(--panel2); color: var(--text); }
     .mobile-brand {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: 12px;
+      margin-bottom: 20px;
     }
+    .mobile-brand .logo { width: 48px; height: 48px; font-size: 20px; }
+    .mobile-brand b { font-size: 24px; }
     @media (min-width: 960px) { .mobile-brand { display: none; } }
+    .mobile-stages {
+      display: flex;
+      gap: 6px;
+      margin: 0 0 16px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .mobile-stages::-webkit-scrollbar { display: none; }
+    .mobile-stages span {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--panel);
+      white-space: nowrap;
+    }
+    @media (min-width: 960px) { .mobile-stages { display: none; } }
     .card {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 24px;
+      border-radius: 18px;
+      padding: 26px 24px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
     }
-    .card h2 { margin: 0; font-size: 22px; letter-spacing: -0.02em; }
-    .card .lead { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
-    .path {
-      display: flex;
-      justify-content: space-between;
-      gap: 4px;
-      margin: 18px 0 0;
-      text-align: center;
-      font-size: 11px;
-      color: var(--muted);
+    .card h2 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
     }
-    .path b { display: block; color: var(--accent); font-size: 13px; margin-bottom: 2px; }
+    .card .lead { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
     .offer {
       display: none;
-      margin-top: 16px;
-      padding: 12px 14px;
-      border-radius: 10px;
-      border: 1px solid #4b3563;
-      background: linear-gradient(90deg, #2b1d3a, #22182c);
+      margin-top: 18px;
+      padding: 13px 14px;
+      border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--brand-a) 35%, var(--line));
+      background: linear-gradient(120deg, rgba(155, 77, 255, 0.16), rgba(224, 77, 138, 0.08));
       font-size: 13px;
     }
     .offer.on { display: block; }
-    .offer .muted { color: var(--muted); margin-top: 4px; }
-    .offer .lo { color: var(--lo); margin-top: 4px; font-size: 12px; }
+    .offer #wo-headline { font-weight: 600; }
+    .offer .muted { color: var(--muted); margin-top: 5px; }
+    .offer .lo { color: var(--lo); margin-top: 5px; font-size: 12px; }
     .btn-primary {
       margin-top: 18px;
       width: 100%;
@@ -185,16 +249,22 @@
       justify-content: center;
       gap: 10px;
       border: 0;
-      border-radius: 10px;
-      padding: 12px 16px;
+      border-radius: 12px;
+      padding: 13px 16px;
       font: inherit;
       font-weight: 700;
       color: #fff;
       cursor: pointer;
-      background: linear-gradient(135deg, #8a3fd0, #c23d8a);
+      background: linear-gradient(135deg, var(--brand-a), var(--brand-b));
+      box-shadow: 0 10px 28px rgba(155, 77, 255, 0.32);
+      transition: filter .15s ease, transform .15s ease, box-shadow .15s ease;
     }
-    .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
-    .btn-primary:disabled { opacity: 0.55; cursor: wait; }
+    .btn-primary:hover:not(:disabled) {
+      filter: brightness(1.07);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 32px rgba(155, 77, 255, 0.4);
+    }
+    .btn-primary:disabled { opacity: 0.55; cursor: wait; transform: none; }
     .spin {
       width: 16px;
       height: 16px;
@@ -205,6 +275,17 @@
     }
     .spin.hidden { display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes pane-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .brand-pane, .auth-wrap, .stages li, .btn-primary { animation: none; transition: none; }
+    }
     #status {
       min-height: 1.25rem;
       margin-top: 10px;
@@ -216,8 +297,8 @@
       display: none;
       margin-top: 12px;
       padding: 12px 14px;
-      border-radius: 10px;
-      border: 1px solid #4b3563;
+      border-radius: 12px;
+      border: 1px solid var(--line);
       background: var(--panel2);
       font-size: 13px;
     }
@@ -226,10 +307,10 @@
     .mobile-wallets a {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       margin-top: 8px;
-      padding: 10px 12px;
-      border-radius: 10px;
+      padding: 11px 12px;
+      border-radius: 11px;
       border: 1px solid var(--line);
       background: var(--panel);
       color: var(--text);
@@ -237,25 +318,29 @@
       text-decoration: none;
     }
     .mobile-wallets a:hover, .mobile-wallets a:focus-visible { border-color: var(--accent); }
+    .w-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .w-icon svg { width: 28px; height: 28px; display: block; }
     .why {
-      margin-top: 16px;
+      margin-top: 18px;
       padding: 14px;
-      border-radius: 10px;
+      border-radius: 12px;
       border: 1px solid var(--line);
       background: var(--panel2);
       font-size: 13px;
     }
-    .why h3 { margin: 0; font-size: 14px; }
+    .why h3 { margin: 0; font-size: 14px; font-weight: 600; }
     .why p { margin: 6px 0 0; color: var(--muted); }
     .why ul { margin: 10px 0 0; padding: 0; list-style: none; }
     .why li { display: flex; gap: 8px; margin: 6px 0; color: var(--muted); }
     .why li::before { content: "✓"; color: var(--ok); font-weight: 700; }
-    .divider {
-      display: none;
-    }
-    .email-soon {
-      display: none;
-    }
     .wallets-note {
       margin-top: 14px;
       text-align: center;
@@ -263,7 +348,7 @@
       color: var(--lo);
     }
     .foot {
-      margin-top: 18px;
+      margin-top: 16px;
       text-align: center;
       font-size: 12px;
       color: var(--lo);
@@ -276,8 +361,8 @@
       align-items: center;
       justify-content: center;
       padding: 16px;
-      background: #0d0811cc;
-      backdrop-filter: blur(4px);
+      background: #0a0710cc;
+      backdrop-filter: blur(6px);
     }
     .modal.on { display: flex; }
     .modal-card {
@@ -285,8 +370,10 @@
       max-width: 360px;
       background: var(--panel2);
       border: 1px solid var(--line);
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 18px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+      animation: rise .25s ease both;
     }
     .modal-card header {
       display: flex;
@@ -294,13 +381,20 @@
       align-items: center;
       margin-bottom: 12px;
     }
-    .modal-card header h3 { margin: 0; font-size: 16px; }
+    .modal-card header h3 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 700;
+    }
     .modal-card header button {
       border: 0;
       background: transparent;
       color: var(--lo);
       font-size: 18px;
       cursor: pointer;
+      line-height: 1;
+      padding: 4px;
     }
     .wallet-row {
       width: 100%;
@@ -310,14 +404,22 @@
       margin-top: 8px;
       padding: 12px 14px;
       border: 1px solid var(--line);
-      border-radius: 10px;
+      border-radius: 12px;
       background: var(--panel);
       color: var(--text);
       font: inherit;
       cursor: pointer;
       text-align: left;
+      transition: border-color .15s ease, background .15s ease;
     }
-    .wallet-row:hover { border-color: var(--accent); }
+    .wallet-row:hover { border-color: var(--accent); background: color-mix(in srgb, var(--panel) 80%, var(--brand-a)); }
+    .wallet-row .label { font-weight: 600; }
+    .wallet-row .chain {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--lo);
+      font-weight: 500;
+    }
     .modal-note {
       margin: 14px 0 0;
       text-align: center;
@@ -330,7 +432,7 @@
   <div class="shell">
     <aside class="brand-pane">
       <div class="brand">
-        <span class="logo">S</span>
+        <span class="logo" aria-hidden="true">S</span>
         <div>
           <b>Series Lab</b>
           <small data-i18n="sub">майстерня серії · by W3IR</small>
@@ -348,9 +450,9 @@
         <h1 data-i18n="hero">Серія від пресету<br>до архіву випуску.</h1>
         <p data-i18n="hero.p">Один гаманець — ваші пресети, набори й кредити. Підпис лише для входу: без gas і без доступу до коштів.</p>
         <div class="pills">
-          <span class="pill">SIWE · Phantom</span>
+          <span class="pill" data-i18n="pill.sign">Лише підпис</span>
           <span class="pill" data-i18n="pill.nc">Non-custodial</span>
-          <span class="pill" data-i18n="pill.studio">→ /studio/</span>
+          <span class="pill" data-i18n="pill.credits">Кредити за кадри</span>
         </div>
       </div>
     </aside>
@@ -366,23 +468,23 @@
         </div>
 
         <div class="mobile-brand brand">
-          <span class="logo">S</span>
+          <span class="logo" aria-hidden="true">S</span>
           <div>
             <b>Series Lab</b>
             <small data-i18n="sub">майстерня серії · by W3IR</small>
           </div>
         </div>
 
+        <div class="mobile-stages" aria-hidden="true">
+          <span data-i18n="ms1">1–2 Огляд</span>
+          <span data-i18n="ms2">3–4 Рецепти</span>
+          <span data-i18n="ms3">5–6 Кадри</span>
+          <span data-i18n="ms4">7 ZIP</span>
+        </div>
+
         <div class="card">
           <h2 data-i18n="title">Увійти в майстерню</h2>
-          <p class="lead" data-i18n="lead">Підключіть гаманець, щоб відкрити Studio: окремі дані для кожного акаунта, кредити за кадри, адмін — лише для оператора.</p>
-
-          <div class="path" aria-hidden="true">
-            <div><b>1</b><span data-i18n="p1">Пресет</span></div>
-            <div><b>2</b><span data-i18n="p2">Тексти</span></div>
-            <div><b>3</b><span data-i18n="p3">Кадри</span></div>
-            <div><b>4</b><span data-i18n="p4">ZIP</span></div>
-          </div>
+          <p class="lead" data-i18n="lead">Підключіть гаманець, щоб відкрити Studio: ваші пресети, набори й кредити — окремо для кожного акаунта.</p>
 
           <div id="welcome-offer" class="offer">
             <div id="wo-headline"></div>
@@ -398,9 +500,9 @@
 
           <div id="mobile-wallets" class="mobile-wallets" role="region" aria-live="polite">
             <p data-i18n="mw.hint">Цей браузер не бачить гаманця. Відкрийте сторінку в застосунку гаманця:</p>
-            <a id="mw-phantom" href="#" rel="noopener"><span aria-hidden="true">👻</span><span data-i18n="mw.phantom">Відкрити у Phantom (Solana)</span></a>
-            <a id="mw-metamask" href="#" rel="noopener"><span aria-hidden="true">🦊</span><span data-i18n="mw.metamask">Відкрити у MetaMask</span></a>
-            <a id="mw-coinbase" href="#" rel="noopener"><span aria-hidden="true">🔵</span><span data-i18n="mw.coinbase">Відкрити у Coinbase Wallet</span></a>
+            <a id="mw-phantom" href="#" rel="noopener"><span class="w-icon" data-icon="phantom"></span><span data-i18n="mw.phantom">Відкрити у Phantom (Solana)</span></a>
+            <a id="mw-metamask" href="#" rel="noopener"><span class="w-icon" data-icon="metamask"></span><span data-i18n="mw.metamask">Відкрити у MetaMask</span></a>
+            <a id="mw-coinbase" href="#" rel="noopener"><span class="w-icon" data-icon="coinbase"></span><span data-i18n="mw.coinbase">Відкрити у Coinbase Wallet</span></a>
           </div>
 
           <div class="why">
@@ -409,13 +511,13 @@
             <ul>
               <li data-i18n="why.1">Без gas і транзакцій — лише підпис</li>
               <li data-i18n="why.2">Ми не маємо доступу до коштів</li>
-              <li data-i18n="why.3">Після входу відкривається /studio/</li>
+              <li data-i18n="why.3">Після входу відкривається майстерня</li>
             </ul>
           </div>
 
-          <p class="wallets-note" data-i18n="wallets">Підтримуються MetaMask, Coinbase Wallet (EVM) і Phantom (Solana).</p>
+          <p class="wallets-note" data-i18n="wallets">Підтримуються MetaMask, Coinbase Wallet і Phantom.</p>
           <p class="foot">
-            <a href="/studio/" data-i18n="help">Що таке Series Lab →</a>
+            <a href="/" data-i18n="help">Що таке Series Lab →</a>
           </p>
         </div>
       </div>
@@ -429,7 +531,7 @@
         <button type="button" id="modal-close" aria-label="Close">✕</button>
       </header>
       <div id="wallet-list"></div>
-      <p class="modal-note">EVM · MetaMask / Coinbase · Solana · Phantom</p>
+      <p class="modal-note" data-i18n="modal.note">EVM · MetaMask / Coinbase · Solana · Phantom</p>
     </div>
   </div>
 
@@ -440,6 +542,22 @@
     // Placeholder replaced by server/platform.mjs → AUTH_APP_URL || "/studio/"
     const APP_URL = 'https://ai.w3ir.io';
 
+    const ICONS = {
+      metamask: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1a1520"/><path fill="#E2761B" d="M16.4 6.2 24.2 11l-1.4 8.4-2.5 1.3-2.1-1.5-2.1 1.5-2.5-1.3L11 11l5.4-4.8z"/><path fill="#E4761B" d="m16.4 6.2 1.8 5.6-4.2.2 2.4-5.8zm0 0-1.8 5.6 4.2.2-2.4-5.8z"/><path fill="#D7C1B3" d="m19.3 20.7 2.1-1.5 1.1 2.4-3.2.9v-1.8zm-6.6 0v1.8l-3.2-.9 1.1-2.4 2.1 1.5z"/><path fill="#233447" d="m12.7 20.7 2.1 1.5-.5 2.1-1.6-3.6zm6.6 0 1.6 3.6-.5-2.1 2.1-1.5-3.2 0z"/><path fill="#CD6116" d="m12.7 20.7-1.1-6.7 3.8.9.4 2.3.5 2.1-3.6 1.4zm6.6 0 3.6-1.4.5-2.1.4-2.3 3.8-.9-1.1 6.7-7.2 0z"/><path fill="#E4751F" d="m15.8 17.2-.4-2.3 4.2-.2v.5l-3.8 2zm.4 0 3.8-2 .4 2.3-4.2-.3z"/></svg>`,
+      coinbase: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0052FF"/><rect x="10" y="10" width="12" height="12" rx="3" fill="#fff"/></svg>`,
+      phantom: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="ph" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#AB9FF2"/><stop offset="1" stop-color="#4E44CE"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#ph)"/><ellipse cx="16" cy="17" rx="8.5" ry="9" fill="#fff" opacity=".92"/><circle cx="12.8" cy="16.2" r="1.6" fill="#4E44CE"/><circle cx="19.2" cy="16.2" r="1.6" fill="#4E44CE"/></svg>`,
+      wallet: `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2a2033"/><rect x="7" y="10" width="18" height="13" rx="3" fill="#c77dff"/><rect x="18" y="14" width="7" height="5" rx="1.5" fill="#1d1424"/><circle cx="21.5" cy="16.5" r="1.2" fill="#c77dff"/></svg>`,
+    };
+
+    const iconKey = (id) => {
+      const s = String(id || "").toLowerCase();
+      if (s.includes("metamask") || s === "io.metamask") return "metamask";
+      if (s.includes("coinbase") || s === "com.coinbase.wallet") return "coinbase";
+      if (s.includes("phantom") || s === "app.phantom") return "phantom";
+      return "wallet";
+    };
+    const iconHtml = (id) => `<span class="w-icon">${ICONS[iconKey(id)] || ICONS.wallet}</span>`;
+
     const I18N = {
       uk: {
         sub: "майстерня серії · by W3IR",
@@ -449,20 +567,21 @@
         st7t: "Експорт", st7d: "Архів випуску OpenSea / launchpad",
         hero: "Серія від пресету<br>до архіву випуску.",
         "hero.p": "Один гаманець — ваші пресети, набори й кредити. Підпис лише для входу: без gas і без доступу до коштів.",
-        "pill.nc": "Non-custodial", "pill.studio": "→ /studio/",
+        "pill.sign": "Лише підпис", "pill.nc": "Non-custodial", "pill.credits": "Кредити за кадри",
+        ms1: "1–2 Огляд", ms2: "3–4 Рецепти", ms3: "5–6 Кадри", ms4: "7 ZIP",
         back: "← На старт",
         title: "Увійти в майстерню",
-        lead: "Підключіть гаманець, щоб відкрити Studio: окремі дані для кожного акаунта, кредити за кадри, адмін — лише для оператора.",
-        p1: "Пресет", p2: "Тексти", p3: "Кадри", p4: "ZIP",
+        lead: "Підключіть гаманець, щоб відкрити Studio: ваші пресети, набори й кредити — окремо для кожного акаунта.",
         connect: "Підключити гаманець", waiting: "Чекаємо…",
         why: "Навіщо гаманець?",
         "why.p": "Це вхід замість пароля. Підпис підтверджує, що адреса ваша.",
         "why.1": "Без gas і транзакцій — лише підпис",
         "why.2": "Ми не маємо доступу до коштів",
-        "why.3": "Після входу відкривається /studio/",
-        wallets: "Підтримуються MetaMask, Coinbase Wallet (EVM) і Phantom (Solana).",
+        "why.3": "Після входу відкривається майстерня",
+        wallets: "Підтримуються MetaMask, Coinbase Wallet і Phantom.",
         help: "Що таке Series Lab →",
         modal: "Оберіть гаманець",
+        "modal.note": "EVM · MetaMask / Coinbase · Solana · Phantom",
         woEarly: "{n} безкоштовних кредитів — перші {limit} (лишилось {left})",
         woNormal: "{n} безкоштовних кредитів при першому вході",
         woCond: "Умова: гаманець не порожній — щонайменше {sol} SOL або {eth} ETH на Base. Антибот-перевірка; нічого не списується.",
@@ -482,6 +601,8 @@
         "mw.phantom": "Відкрити у Phantom (Solana)",
         "mw.metamask": "Відкрити у MetaMask",
         "mw.coinbase": "Відкрити у Coinbase Wallet",
+        chainEvm: "EVM",
+        chainSol: "Solana",
       },
       en: {
         sub: "series workshop · by W3IR",
@@ -491,20 +612,21 @@
         st7t: "Export", st7d: "Release archive for OpenSea / launchpad",
         hero: "From preset<br>to release archive.",
         "hero.p": "One wallet — your presets, sets and credits. Signature is for sign-in only: no gas, no access to funds.",
-        "pill.nc": "Non-custodial", "pill.studio": "→ /studio/",
+        "pill.sign": "Signature only", "pill.nc": "Non-custodial", "pill.credits": "Credits per frame",
+        ms1: "1–2 Overview", ms2: "3–4 Recipes", ms3: "5–6 Frames", ms4: "7 ZIP",
         back: "← Home",
         title: "Sign in to the workshop",
-        lead: "Connect a wallet to open Studio: per-wallet data, credits per frame, admin for the operator only.",
-        p1: "Preset", p2: "Texts", p3: "Frames", p4: "ZIP",
+        lead: "Connect a wallet to open Studio: your presets, sets and credits — separate for each account.",
         connect: "Connect wallet", waiting: "Waiting…",
         why: "Why a wallet?",
         "why.p": "It is your login instead of a password. The signature proves the address is yours.",
         "why.1": "No gas or transactions — signature only",
         "why.2": "We never have access to your funds",
-        "why.3": "After sign-in you land on /studio/",
-        wallets: "Supported: MetaMask, Coinbase Wallet (EVM) and Phantom (Solana).",
+        "why.3": "After sign-in the workshop opens",
+        wallets: "Supported: MetaMask, Coinbase Wallet and Phantom.",
         help: "What is Series Lab →",
         modal: "Choose wallet",
+        "modal.note": "EVM · MetaMask / Coinbase · Solana · Phantom",
         woEarly: "{n} free credits — first {limit} users ({left} left)",
         woNormal: "{n} free credits on your first sign-in",
         woCond: "Condition: the wallet must not be empty — at least {sol} SOL or {eth} ETH on Base. Anti-bot check; nothing is charged.",
@@ -524,6 +646,8 @@
         "mw.phantom": "Open in Phantom (Solana)",
         "mw.metamask": "Open in MetaMask",
         "mw.coinbase": "Open in Coinbase Wallet",
+        chainEvm: "EVM",
+        chainSol: "Solana",
       },
     };
 
@@ -536,6 +660,12 @@
     };
     const $ = (id) => document.getElementById(id);
 
+    function fillStaticIcons() {
+      document.querySelectorAll("[data-icon]").forEach((el) => {
+        el.innerHTML = ICONS[el.getAttribute("data-icon")] || ICONS.wallet;
+      });
+    }
+
     function applyLocale() {
       document.documentElement.lang = locale === "uk" ? "uk" : "en";
       document.title = locale === "uk" ? "Series Lab — вхід" : "Series Lab — sign in";
@@ -544,9 +674,6 @@
         const val = t(key);
         if (val.includes("<br>")) el.innerHTML = val;
         else el.textContent = val;
-      });
-      document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
-        el.placeholder = t(el.getAttribute("data-i18n-ph"));
       });
       document.querySelectorAll(".lang button").forEach((b) => {
         b.classList.toggle("on", b.dataset.locale === locale);
@@ -605,26 +732,25 @@
       $("connect-label").textContent = on ? t("waiting") : t("connect");
     };
 
-    const _EVM_ICONS = { "io.metamask": "🦊", "com.coinbase.wallet": "🔵" };
     function detectProviders() {
       const out = [];
       for (const { info, provider } of _eip6963) {
         if (info.rdns === "app.phantom") continue;
-        out.push({ id: info.rdns, label: info.name, icon: _EVM_ICONS[info.rdns] || "👛", chain: "evm", pick: () => provider });
+        out.push({ id: info.rdns, label: info.name, chain: "evm", pick: () => provider });
       }
       if (!out.length) {
         const eth = window.ethereum;
         if (eth) {
           const list = Array.isArray(eth.providers) ? eth.providers : [eth];
           const mm = list.find((p) => p.isMetaMask && !p.isCoinbaseWallet && !p.isPhantom);
-          if (mm) out.push({ id: "metamask", label: "MetaMask", icon: "🦊", chain: "evm", pick: () => mm });
+          if (mm) out.push({ id: "metamask", label: "MetaMask", chain: "evm", pick: () => mm });
           const cb = list.find((p) => p.isCoinbaseWallet);
-          if (cb) out.push({ id: "coinbase", label: "Coinbase Wallet", icon: "🔵", chain: "evm", pick: () => cb });
-          if (!out.length) out.push({ id: "injected", label: "Browser Wallet", icon: "👛", chain: "evm", pick: () => eth });
+          if (cb) out.push({ id: "coinbase", label: "Coinbase Wallet", chain: "evm", pick: () => cb });
+          if (!out.length) out.push({ id: "injected", label: "Browser Wallet", chain: "evm", pick: () => eth });
         }
       }
       const sol = window.phantom?.solana || (window.solana?.isPhantom ? window.solana : null);
-      if (sol) out.push({ id: "phantom", label: "Phantom (Solana)", icon: "👻", chain: "solana", pick: () => sol });
+      if (sol) out.push({ id: "phantom", label: "Phantom", chain: "solana", pick: () => sol });
       return out;
     }
 
@@ -635,7 +761,8 @@
         const b = document.createElement("button");
         b.type = "button";
         b.className = "wallet-row";
-        b.innerHTML = `<span style="font-size:20px">${p.icon}</span><span style="font-weight:600">${p.label}</span>`;
+        const chain = p.chain === "solana" ? t("chainSol") : t("chainEvm");
+        b.innerHTML = `${iconHtml(p.id)}<span class="label">${p.label}</span><span class="chain">${chain}</span>`;
         b.onclick = () => { closeModal(); connect(p); };
         wrap.appendChild(b);
       });
@@ -709,7 +836,6 @@
       else signInEVM(entry.pick());
     }
 
-    // Phones: an ordinary browser has no injected wallet — offer deep links into the wallet apps' in-app browsers.
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const showMobileWallets = () => { if (isMobile) $("mobile-wallets").classList.add("on"); };
@@ -718,7 +844,6 @@
       $("mw-phantom").href = `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(location.origin)}`;
       $("mw-metamask").href = `https://metamask.app.link/dapp/${location.host}${location.pathname}${location.search}`;
       $("mw-coinbase").href = `https://go.cb-w.com/dapp?cb_url=${encodeURIComponent(url)}`;
-      // Wallets announce themselves asynchronously (EIP-6963) — wait a moment before deciding there is none.
       if (isMobile) setTimeout(() => { if (!detectProviders().length) showMobileWallets(); }, 800);
     })();
 
@@ -731,6 +856,7 @@
     $("modal-close").onclick = closeModal;
     $("modal").onclick = (e) => { if (e.target === $("modal")) closeModal(); };
 
+    fillStaticIcons();
     applyLocale();
   </script>
 </body>

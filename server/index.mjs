@@ -154,6 +154,8 @@ import { providersSnapshot, keyHealth, providerFloatStatus } from "../src/platfo
 import { claim as claimHolderBonus, eligibility as holderEligibility } from "../src/platform/holders.mjs";
 import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs";
 import { publishCollection } from "../src/platform/site.mjs";
+import { economyReport } from "../src/platform/margin.mjs";
+import { funnel } from "../src/platform/stats.mjs";
 import { writeJsonAtomic } from "../src/fs-safe.mjs";
 import { addVersion, dropVersion, listVersions, setCurrent, versionCounts } from "../src/versions.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
@@ -1672,7 +1674,17 @@ async function handleApi(req, res, url) {
     const role = String(body.role || "primary");
     let name;
     if (role === "primary") {
-      name = "primary" + ext;
+      // If a main base already exists, keep it and store the new file as an extra
+      // (matches Studio help: don’t silently overwrite the current primary).
+      const hasPrimary = listBases().some((f) => f.primary);
+      if (hasPrimary) {
+        const stamp = Date.now().toString(36);
+        const safe = orig.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 40) || "base";
+        name = `extra-${stamp}-${safe}`;
+        if (!name.endsWith(ext)) name += ext;
+      } else {
+        name = "primary" + ext;
+      }
     } else if (role === "line") {
       const line = String(body.line || "a").replace(/[^a-zA-Z0-9_-]/g, "") || "a";
       name = `base-${line}${ext}`;

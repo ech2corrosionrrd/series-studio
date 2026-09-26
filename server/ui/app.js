@@ -816,7 +816,7 @@ function setupMatrixPreview() {
       });
       btn.classList.add("primary");
       const engine = btn.dataset.engine || "flux";
-      const preset = readCtorPreset() || {};
+      const preset = readConstructor() || {};
       const sampleRecipe = state.recipes?.[0] || {
         edition: 1,
         who: preset?.lines && Object.values(preset.lines)[0]?.who ? Object.values(preset.lines)[0].who : "cyber character",
@@ -1258,6 +1258,13 @@ async function refreshBaseStatus() {
     const data = await api("/api/base/list");
     state.baseFiles = data.files || [];
     renderBaseGallery(state.baseFiles);
+    const linesEl = $("base-lines");
+    if (linesEl) {
+      const lines = state.baseFiles.filter((f) => f.role === "line");
+      linesEl.textContent = lines.length
+        ? `${t("base.lines")}: ${lines.map((f) => f.line || f.file).join(", ")}`
+        : "";
+    }
     if (state.health) {
       state.health.base = {
         exists: state.baseFiles.some((f) => f.primary) || state.baseFiles.length > 0,
@@ -1272,15 +1279,33 @@ async function refreshBaseStatus() {
 }
 
 function setupBase() {
+  const syncBasePick = () => {
+    const input = $("base-file");
+    const btn = $("base-upload");
+    const list = $("base-pick-list");
+    const files = [...(input?.files || [])];
+    if (btn) btn.disabled = files.length === 0;
+    if (list) {
+      list.textContent = files.length
+        ? files.map((f) => f.name).join(", ")
+        : "";
+    }
+  };
+
   $("base-role")?.addEventListener("change", () => {
     const role = $("base-role").value;
     if ($("base-line-wrap")) $("base-line-wrap").hidden = role !== "line";
   });
+  $("base-file")?.addEventListener("change", syncBasePick);
+  syncBasePick();
+
   $("base-upload")?.addEventListener("click", async () => {
+    const btn = $("base-upload");
     try {
       const input = $("base-file");
       const files = [...(input?.files || [])];
-      if (!files.length) throw new Error(t("base.msg.needFiles"));
+      if (!files.length) throw new Error(t("base.msg.needFile"));
+      if (btn) btn.disabled = true;
       let last = null;
       for (const file of files) {
         const data = await fileToB64(file);
@@ -1294,12 +1319,18 @@ function setupBase() {
           }),
         });
       }
-      $("base-msg").textContent = t("base.msg.uploaded");
+      if (input) input.value = "";
+      syncBasePick();
+      const asExtra = last?.role === "extra" && ($("base-role")?.value || "primary") === "primary";
+      $("base-msg").textContent = asExtra
+        ? t("base.msg.asExtra", { file: last?.file || "" })
+        : t("base.msg.saved");
       $("base-msg").className = "small ok-msg";
       await refreshBaseStatus();
     } catch (e) {
       $("base-msg").textContent = e.message;
       $("base-msg").className = "small err-msg";
+      syncBasePick();
     }
   });
   $("base-wish-save")?.addEventListener("click", async () => {
@@ -1446,7 +1477,10 @@ function openRecipeEditor(index) {
   state.editingIndex = index;
   if ($("r-editor")) $("r-editor").hidden = false;
   if ($("r-ed-title")) $("r-ed-title").textContent = `#${recipe.edition}`;
-  if ($("r-prompt")) $("r-prompt").value = recipe.prompt || "";
+  if ($("r-prompt")) {
+    $("r-prompt").hidden = false;
+    $("r-prompt").textContent = recipe.prompt || "";
+  }
   if ($("r-ed-note")) $("r-ed-note").value = recipe.note || "";
   const fields = $("r-ed-fields");
   if (fields) {
@@ -1669,24 +1703,81 @@ function setupRecipes() {
         index: state.editingIndex,
         traits,
         note: $("r-ed-note")?.value || "",
-        prompt: $("r-prompt")?.value || undefined,
       };
       await api("/api/recipe", { method: "POST", body: JSON.stringify(body) });
       await loadRecipesArchive(state.archiveFile);
+      openRecipeEditor(state.editingIndex);
       if ($("r-ed-msg")) $("r-ed-msg").textContent = t("recipes.saved") || "Saved";
     } catch (e) {
       if ($("r-ed-msg")) $("r-ed-msg").textContent = e.message;
     }
   });
-  $("r-ed-reset")?.addEventListener("click", () => {
-    if (state.editingIndex != null) openRecipeEditor(state.editingIndex);
+  $("r-ed-redo")?.addEventListener("click", async () => {
+    try {
+      if (state.editingIndex == null) return;
+      const recipe = state.recipes.find((r) => r.index === state.editingIndex);
+      const edition = recipe?.edition;
+      if (edition == null) throw new Error(t("recipes.noEdition") || "No edition number");
+      const traits = {};
+      $("r-ed-fields")?.querySelectorAll("input[data-k]")?.forEach((inp) => {
+        traits[inp.dataset.k] = inp.value;
+      });
+      await api("/api/recipe", {
+        method: "POST",
+        body: JSON.stringify({
+          file: state.archiveFile,
+          index: state.editingIndex,
+          traits,
+          note: $("r-ed-note")?.value || "",
+        }),
+      });
+      await loadRecipesArchive(state.archiveFile);
+      const only = document.querySelector('input[name="g-sel"][value="only"]');
+      if (only) only.checked = true;
+      if ($("g-only")) $("g-only").value = String(edition);
+      if ($("g-force")) $("g-force").checked = true;
+      showTab("render");
+      lockGenerate(true);
+      if ($("g-plan-out")) $("g-plan-out").textContent = t("render.redoHint", { n: edition });
+      if ($("r-ed-msg")) $("r-ed-msg").textContent = t("recipes.saved") || "Saved";
+    } catch (e) {
+      if ($("r-ed-msg")) $("r-ed-msg").textContent = e.message;
+    }
+  });
+  $("r-ed-reset")?.addEventListener("click", async () => {
+    try {
+      if (state.editingIndex == null) return;
+      await api("/api/recipe", {
+        method: "POST",
+        body: JSON.stringify({
+          file: state.archiveFile,
+          index: state.editingIndex,
+          reset: true,
+        }),
+      });
+      await loadRecipesArchive(state.archiveFile);
+      openRecipeEditor(state.editingIndex);
+      if ($("r-ed-msg")) $("r-ed-msg").textContent = t("recipes.resetOk") || "Reset";
+    } catch (e) {
+      if ($("r-ed-msg")) $("r-ed-msg").textContent = e.message;
+    }
   });
 }
 
 /* ---------- Render / Generate ---------- */
 function setupRender() {
+  const reLockPlan = () => lockGenerate(true);
   $("g-strength")?.addEventListener("input", () => {
     if ($("g-strength-v")) $("g-strength-v").textContent = $("g-strength").value;
+    reLockPlan();
+  });
+  $("g-engine")?.addEventListener("change", reLockPlan);
+  $("g-pilot")?.addEventListener("input", reLockPlan);
+  $("g-first")?.addEventListener("input", reLockPlan);
+  $("g-only")?.addEventListener("input", reLockPlan);
+  $("g-force")?.addEventListener("change", reLockPlan);
+  document.querySelectorAll('input[name="g-sel"]').forEach((el) => {
+    el.addEventListener("change", reLockPlan);
   });
   $("g-pilots")?.addEventListener("click", () => {
     const radio = document.querySelector('input[name="g-sel"][value="pilot"]');
@@ -1818,7 +1909,8 @@ function setupRender() {
     } catch (e) {
       if (progressText) progressText.textContent = e.message;
     } finally {
-      $("g-run").disabled = false;
+      // Plan may be stale after a run — require Estimate again.
+      lockGenerate(true);
     }
   });
   $("g-open-gallery")?.addEventListener("click", () => showTab("gallery"));
@@ -2104,9 +2196,11 @@ const helpList = (prefix, tag = "ul") =>
   `<${tag}>${tList(prefix).map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</${tag}>`;
 
 function helpSections() {
-  const steps = HELP_STEPS.map(([id, tab], i) => `
+  const isAdmin = Boolean(state.account?.admin);
+  const stepDefs = isAdmin ? HELP_STEPS : HELP_STEPS.filter(([id]) => id !== "s8");
+  const steps = stepDefs.map(([id, tab], i) => `
     <details class="help-step help-item" ${i === 0 ? "open" : ""}>
-      <summary><span class="help-step-n">${i < 7 ? i + 1 : "⚙"}</span>${escapeHtml(t(`help.${id}.title`).replace(/^(\d+\s*·|💰|⚙)\s*/u, ""))}</summary>
+      <summary><span class="help-step-n">${id === "s8" ? "⚙" : (i + 1)}</span>${escapeHtml(t(`help.${id}.title`).replace(/^(\d+\s*·|💰|⚙)\s*/u, ""))}</summary>
       <div class="help-step-body">
         <p class="help-why"><b>${esc("help.label.why")}:</b> ${esc(`help.${id}.why`)}</p>
         <h4>${esc("help.label.do")}</h4>${helpList(`help.${id}.do`, "ol")}
@@ -2130,7 +2224,11 @@ function helpSections() {
   const docs = HELP_DOCS.map(([file, k]) =>
     `<li class="help-item"><code>${file}</code> — ${esc(`help.doc.${k}`)}</li>`).join("");
 
-  return [
+  const localGpuEnv = isAdmin
+    ? `<h4>${esc("help.localgpu.envTitle")}</h4>${helpList("help.localgpu.env.li")}`
+    : "";
+
+  const sections = [
     ["whatis", `<p>${esc("help.whatis.p1")}</p><p>${esc("help.whatis.p2")}</p>
       <div class="help-cards">${[1, 2, 3].map((n) => `<div class="help-card"><b>${esc(`help.whatis.card${n}.title`)}</b><span>${esc(`help.whatis.card${n}.desc`)}</span></div>`).join("")}</div>`],
     ["quick", `<p>${esc("help.quick.desc")}</p>${helpList("help.quick.li", "ol")}<p class="help-note">${esc("help.quick.tip")}</p>`],
@@ -2141,14 +2239,19 @@ function helpSections() {
       <h4>${esc("help.localgpu.whyTitle")}</h4><p>${esc("help.localgpu.why")}</p>
       <h4>${esc("help.localgpu.webTitle")}</h4>${helpList("help.localgpu.web.li")}
       <h4>${esc("help.localgpu.pcTitle")}</h4>${helpList("help.localgpu.pc.li", "ol")}
-      <h4>${esc("help.localgpu.envTitle")}</h4>${helpList("help.localgpu.env.li")}
+      ${localGpuEnv}
       <p class="help-note">${esc("help.localgpu.note")}</p>`],
     ["glossary", `<p>${esc("help.glossary.desc")}</p><dl class="help-gl">${glossary}</dl>`],
     ["faq", `<p>${esc("help.faq.desc")}</p>${faq}`],
-    ["cli", `<p>${esc("help.cli.desc")}</p><div class="help-cli">${cli}</div>`],
-    ["docs", `<ul class="help-docs">${docs}</ul>`],
-    ["run", `<p>${esc("help.run.desc")}</p>`],
   ];
+  if (isAdmin) {
+    sections.push(
+      ["cli", `<p>${esc("help.cli.desc")}</p><div class="help-cli">${cli}</div>`],
+      ["docs", `<ul class="help-docs">${docs}</ul>`],
+      ["run", `<p>${esc("help.run.desc")}</p>`],
+    );
+  }
+  return sections;
 }
 
 function renderHelp() {
@@ -2382,6 +2485,7 @@ async function refreshAccount() {
   }
   state.account = me;
   applyAdminNav();
+  renderHelp();
   const box = $("acct");
   const isPublic = me.mode === "public";
   if (box) box.hidden = !isPublic;
@@ -2896,6 +3000,7 @@ function setupGallery() {
     if ($("g-only")) $("g-only").value = eds.join(",");
     if ($("g-force")) $("g-force").checked = true;
     showTab("render");
+    lockGenerate(true);
     if ($("g-plan-out")) $("g-plan-out").textContent = t("render.redoList", { list: eds.join(", ") });
   });
   $("v-quick-redo")?.addEventListener("click", async () => {
@@ -2916,8 +3021,8 @@ function setupGallery() {
       const data = await api("/api/generate", {
         method: "POST",
         body: JSON.stringify({
-          mode: "redo",
-          dir: state.galleryDir,
+          mode: "only",
+          only: eds.join(","),
           engine: $("g-engine")?.value || $("o-engine")?.value || "kontext",
           strength: Number($("g-strength")?.value || $("o-strength")?.value || 0.45),
           force: true,
