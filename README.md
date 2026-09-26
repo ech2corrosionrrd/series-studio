@@ -23,7 +23,7 @@
 | Версії рендерів | Перегенерація не затирає оплачену картинку — попередня йде в `out/<набір>/versions/<N>/`, у Відборі її можна повернути. |
 | Кошик | Видалення й заміна файлів переносять їх у `out/trash/`; відновлення — **Адмін → Ресурси**. |
 | Денна межа витрат | `SERIES_SPEND_CAP_USD` блокує запуск понад межу ще до виклику платного API. |
-| Журнал витрат | Кожен платний виклик → `out/render-log.jsonl`. |
+| Журнал витрат | Кожен платний виклик: `out/render-log.jsonl` у `SERIES_MODE=local`; у public — `data/render-log.jsonl` (спільний журнал сервера). |
 | Автостоп batch | Після 5 помилок рушія поспіль решта черги не запускається. |
 | DNA / оцінка | Пакетна генерація блокується при збіжній DNA; «Згенерувати» — лише після безкоштовної оцінки. |
 | Захист API | Сервер відхиляє запити з інших сайтів (CSRF) і чужі `Host` (DNS rebinding). |
@@ -52,7 +52,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | Змінна | Призначення |
 |---|---|
 | `SERIES_MODE` | `public` (типово) — вхід гаманцем; `local` — без акаунтів, лише loopback |
-| `AUTH_SESSION_SECRET`, `ADMIN_WALLETS` | Сесія й адміни (оператор уже в коді) |
+| `AUTH_SESSION_SECRET`, `ADMIN_WALLETS`, `TEAM_WALLETS` | Сесія, адміни й командні гаманці. Якщо `ADMIN_WALLETS` / `TEAM_WALLETS` не задані — лишаються типові адреси; заданий список їх замінює |
 | `FAL_KEY`, `REPLICATE_API_TOKEN`, `OPENAI_API_KEY`, `STABILITY_API_KEY`, `RUNWARE_API_KEY`, `POLLINATIONS_API_KEY` | Хмарні рушії |
 | `COMFYUI_URL`, `A1111_URL`, `LOCAL_GPU_CREDIT_COST` | Local GPU на ПК; у public — плата підтримки Lab (кр/кадр) |
 | `ANTHROPIC_API_KEY` | Vision Assist / AI Triage через Claude (опційно) |
@@ -114,8 +114,8 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 | `libraries/traits/` | Паки рис |
 | `templates/` | Шаблони пресетів і ComfyUI |
 | `input/` | Базові картинки |
-| `out/` | Архіви, набори, `versions/`, `trash/`, `render-log.jsonl`, бандли |
-| `data/` | Леджер / дані користувачів (gitignored; public mode) |
+| `out/` | Архіви, набори, `versions/`, `trash/`, бандли; у local ще `render-log.jsonl` |
+| `data/` | Леджер, дані гаманців і (у public) `render-log.jsonl` (gitignored) |
 | `workspace/` | Автозбереження UI |
 | `src/` | Ядро + `platform/` (вхід, кредити) |
 | `server/` | HTTP, `/login`, Studio UI, guard |

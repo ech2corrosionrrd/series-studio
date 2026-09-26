@@ -9,6 +9,33 @@
 
 ## [Unreleased]
 
+### CI · тести без локального `out/`
+- `test/wave2`, `wave13`, `wave14` більше не читають gitignored `out/demo-series.json` на старті: архів збирається з `presets/demo-series.json` у самому тесті. `npm ci && npm test` проходить на чистому клоні.
+
+### CI · Node 22 і 24
+- `test.yml` ганяє матрицю Node 22 і 24 (`engines` — `>=22.13`, образ — `node:24`).
+- `deploy-site.yml` спочатку проганяє ту саму матрицю; деплой Cloudflare Pages стартує лише після зелених тестів.
+
+### Адмін · регресія «Економіка»
+- `test/admin-economy.test.mjs`: `GET /api/admin/economy` під адмін-сесією повертає звіт (`overview`, `gross`, `net`, `funnel_30d`), а інші операторські ендпоінти не падають з `ReferenceError`.
+
+### Ops · гаманці з env
+- `ADMIN_WALLETS` і `TEAM_WALLETS`: змінна не задана — лишаються поточні адреси; заданий список їх **замінює** (можна прибрати типовий гаманець). Порожній `ADMIN_WALLETS=` прибирає всіх адмінів. Усі адміни лишаються внутрішніми. `OPERATOR_WALLET` і `DOGFOOD_WALLETS` як і раніше лише додають внутрішні.
+- Якщо в `lab.env` уже є `ADMIN_WALLETS` **без** типової адреси `63u6SDZckvzcJhC4V5yJn6bZ15qx1iM8c6iB3Z9xD1tn`, допишіть її, інакше цей гаманець перестане бути адміном.
+
+### Docker · не root
+- Образ працює як `node` (uid/gid 1000). `/data` в образі належить цьому користувачу.
+- **Один раз на сервері** перед новим образом: `sudo chown -R 1000:1000 /opt/series-lab/data-next` (або ваша тека даних). `phase3.sh` робить цей `chown` сам. Опційний `/opt/sugar` має бути читабельним для uid 1000.
+
+### Смоук
+- `npm run smoke:stage` не читає проєктний `.env` (`SERIES_SKIP_DOTENV=1`) і затирає ключі Telegram, OpenAI, Anthropic, Pinata, Alchemy та інших платних сервісів у середовищі дочірнього процесу. `MODERATION_API_ENABLED=0`.
+
+### Аудит UI
+- `local-gpu-msg`, `local-gpu-probe`, `res-tg-msg`, `res-tg-test` створюються в `app.js` через `innerHTML`. `audit-ui.mjs` більше не позначає їх як відсутні в `index.html`.
+
+### Документація
+- Журнал витрат: `out/render-log.jsonl` у `SERIES_MODE=local`, `data/render-log.jsonl` у public (README, GUIDE, API).
+
 ### Ops · Solana RPC + vault dormant
 - Єдиний `resolveSolanaRpcUrl()` (wallet): `SOLANA_PAY_RPC_URL` → `SOLANA_RPC_URL` → Alchemy → public; використовують solpay, holders, vault, providers, welcome SOL balance.
 - Фоновий reconcile Дропу #2 стартує лише з `VAULT_WALLET_ADDRESS` (інакше dormant).
