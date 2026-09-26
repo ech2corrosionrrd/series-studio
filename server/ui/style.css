@@ -809,10 +809,56 @@ main { padding: var(--space-6) var(--space-4) 120px; }
 .btn.is-loading { cursor: progress; }
 .release-hub-title { color: var(--ok); }
 input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
-input[type="range"]:disabled {
-  opacity: 0.4;
-  filter: grayscale(1);
+/* accent-color still paints a coloured track/thumb on a disabled range.
+   Draw a muted track and thumb so the control does not look active. */
+label.strength-off {
+  opacity: 0.55;
   cursor: not-allowed;
+}
+input[type="range"]:disabled {
+  accent-color: #6e6278;
+  opacity: 1;
+  filter: none;
+  cursor: not-allowed;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 22px;
+  background: transparent;
+}
+input[type="range"]:disabled::-webkit-slider-runnable-track {
+  height: 6px;
+  background: #3a3144;
+  border: 1px solid #4a4054;
+  border-radius: 999px;
+}
+input[type="range"]:disabled::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #8a7c96;
+  border: 1px solid #5c5168;
+  cursor: not-allowed;
+}
+input[type="range"]:disabled::-moz-range-track {
+  height: 6px;
+  background: #3a3144;
+  border: 1px solid #4a4054;
+  border-radius: 999px;
+}
+input[type="range"]:disabled::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: #8a7c96;
+  cursor: not-allowed;
+}
+#base-wish-str-note {
+  color: var(--muted);
+  opacity: 1;
 }
 input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
   outline: 2px solid var(--accent2);
