@@ -83,7 +83,7 @@ import {
   readBundleItems,
 } from "../src/index.mjs";
 import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
-import { buildDeployKit } from "../src/deploy-kit.mjs";
+import { buildDeployKit, deployChainChoice } from "../src/deploy-kit.mjs";
 import { buildLaunchAdvisor } from "../src/launch-advisor.mjs";
 import { buildMarketplaceKit } from "../src/marketplace-kit.mjs";
 import { writeFilesZip } from "../src/kit-zip.mjs";
@@ -2886,7 +2886,8 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: `set not found: ${set}` });
     }
     const locale = resolveLocale(req, body);
-    const profileKey = body.profile || (body.chain === "solana" ? "magiceden" : body.chain === "bitcoin" ? "ordinalsbot" : "opensea");
+    const choice = deployChainChoice(body.chain, body.legacy === true);
+    const profileKey = body.profile || (choice.chain === "solana" ? "magiceden" : choice.chain === "bitcoin" ? "ordinalsbot" : "opensea");
     const onlyKeep = body.onlyKeep === undefined ? false : Boolean(body.onlyKeep);
     const loadedItems = readBundleItems({
       archive: loaded.archive,
@@ -2898,7 +2899,8 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: loadedItems.error || "no images" });
     }
     const sharedOpts = {
-      chain: body.chain,
+      chain: choice.chain,
+      legacy: choice.legacy,
       profile: profileKey,
       format: body.format,
       creatorAddress: body.creatorAddress || "",
