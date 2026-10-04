@@ -11,7 +11,7 @@
 #   2. builds the image series-lab:<rev>;
 #   3. creates Lab's OWN empty data dir (data-next) — the ledger starts from zero;
 #   4. builds .env.series-lab from Lab's own secrets file lab.env + overrides. Default is a
-#      locked staging: no payments, no Telegram, invite-only, $5/day cap, SIWE domain next.w3ir.io.
+#      locked staging: no payments, no Telegram, invite-only, no spend cap, SIWE domain next.w3ir.io.
 #      Public mode is opt-in per knob (all forwarded by upload.sh):
 #        OPEN_ACCESS=1      any wallet may sign in (no SERIES_ALLOWED_WALLETS list)
 #        ENABLE_PAYMENTS=1  keep SOLANA_PAY_RECIPIENT (public address) / RPC from lab.env
@@ -100,8 +100,9 @@ APP_ENV=production
 AUTH_DOMAIN=next.w3ir.io
 AUTH_URI=https://next.w3ir.io
 VAULT_WALLET_ADDRESS=
-# real API keys are used — cap the daily bill
-SERIES_SPEND_CAP_USD=${SERIES_SPEND_CAP_USD:-5}
+# Daily spend cap: off by default on the host (users pay with credits; a cap would refuse
+# paying users with "at daily capacity"). Pass SERIES_SPEND_CAP_USD=<usd> to upload.sh to set one.
+SERIES_SPEND_CAP_USD=${SERIES_SPEND_CAP_USD:-off}
 # Public bind is 0.0.0.0; without this list the Host check is skipped.
 SERIES_ALLOWED_HOSTS=next.w3ir.io
 LANDING_HOSTS=
