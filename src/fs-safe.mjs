@@ -5,7 +5,7 @@
  * Ported from gremlin-nft src/fs-safe.mjs.
  */
 import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, isAbsolute, relative, resolve } from "node:path";
 
 // Windows: antivirus / indexer may briefly lock the target → EPERM/EBUSY on rename.
 const RETRY_CODES = new Set(["EPERM", "EBUSY", "EACCES"]);
@@ -31,4 +31,13 @@ export function atomicWriteFileSync(filePath, content, encoding) {
 
 export function writeJsonAtomic(filePath, data, space = 2) {
   atomicWriteFileSync(filePath, JSON.stringify(data, null, space) + "\n", "utf8");
+}
+
+/**
+ * True when `target` is `root` or lies inside it. Works with both path separators
+ * (a plain `startsWith(root + "/")` never matches on Windows) and rejects `..` escapes.
+ */
+export function isInsideDir(root, target) {
+  const rel = relative(resolve(root), resolve(target));
+  return rel === "" || (!/^\.\.(?:[\\/]|$)/.test(rel) && !isAbsolute(rel));
 }

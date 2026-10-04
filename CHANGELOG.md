@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Шари PNG на Windows
+- `POST /api/compose` («Скласти шари») на Windows завжди відповідав «layers directory must stay inside the project»: перевірка шляху порівнювала з `root + "/"`, а на Windows роздільник `\`. Додано кросплатформний `isInsideDir` у `src/fs-safe.mjs` (відкидає також вихід через `..`) і тест `test/fs-safe-inside.test.mjs`. Тепер без теки `layers/` сервер чесно каже «layers directory not found».
+
 ### База серії — видання #0 (Genesis)
 - Рішення власника 05.10.2026: базова картинка — частина колекції. Пресет має поле `genesis` (галочка «База — частина колекції (видання #0)» на «Огляді»; нові серії із шаблонів `templates/` починають із `genesis: true`, наявні пресети без поля не змінюються).
 - «Відбір»: перша плитка `#0 · Genesis` (копія `input/primary.*` у `out/<набір>/0.*`), без keep/redo.
