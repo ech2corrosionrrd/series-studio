@@ -82,8 +82,8 @@ Options:
   --fee <bps>             Seller fee basis points (e.g. 500 = 5%)
   --symbol <str>          Collection token symbol
   --zero-index            Use 0-based edition indexing
-  --image-prefix <uri>    URI prefix for images (e.g. ipfs://CID/)
-  --anim-prefix <uri>     URI prefix for animations/videos (e.g. ipfs://CID/)
+  --image-prefix <uri>    URI prefix for images (e.g. ar://<id>/ or ipfs://<cid>/)
+  --anim-prefix <uri>     URI prefix for animations/videos (e.g. ar://<id>/ or ipfs://<cid>/)
   --name-prefix <str>     Token name prefix (e.g. Series #)
   --name <str>            Collection name
   --provider <name>       Triage/Storage provider (heuristic, vision)
@@ -451,7 +451,7 @@ async function cmdPin(setDirPath, opts = {}) {
 
   if (opts.dryRun) {
     const mockCid = calculateDeterministicCid(files.join(","));
-    console.log(`[DRY-RUN] Simulated content ID: ${mockCid}`);
+    console.log(`[DRY-RUN] Local stand-in, not an Arweave id: ${mockCid}`);
     console.log(`[DRY-RUN] Would upload ${files.length} files to Arweave (Irys): ar://<manifest-id>/`);
     return;
   }

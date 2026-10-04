@@ -148,10 +148,10 @@ export function getLaunchpadPortalUrls(profileKey = "opensea", archive = {}, opt
       portalUrl: "https://launchmynft.io/create",
       testnetPortalUrl: "https://launchmynft.io/create",
       recommendedFile: "bundle.zip",
-      standard: "Metaplex / Multi-chain",
+      standard: "Metaplex / Solana",
       tips: [
         "1. Visit LaunchMyNFT Create page.",
-        "2. Connect Phantom, Solflare, or EVM wallet.",
+        "2. Connect Phantom or Solflare.",
         "3. Drag-and-drop the extracted images/ and metadata/ folders.",
         "4. Set mint price and launch your collection.",
       ],

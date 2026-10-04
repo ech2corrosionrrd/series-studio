@@ -423,21 +423,25 @@ function sugarLayoutReadme(uk, legacy) {
 function sugarLegacyNote(uk) {
   const commands = uk
     ? [
-      "Команди Sugar (лише якщо ви свідомо лишаєтесь на застарілому варіанті):",
+      "Команди Sugar (лише якщо ви свідомо лишаєтесь на застарілому варіанті).",
+      "Запускайте їх з кореня набору — теки, де лежить assets/, не з теки sugar/:",
       "   sugar validate",
-      "   sugar upload",
-      "   sugar deploy --config config.json",
+      "   sugar upload --config sugar/config.json",
+      "   sugar deploy --config sugar/config.json",
       "   sugar verify",
-      "Запускайте з теки sugar/, конфіг — sugar/config.json. Асети лишаються в assets/ у корені набору.",
+      "Конфіг — sugar/config.json. Асети лишаються в assets/ у корені набору.",
+      "sugar validate і sugar verify не приймають --config: вони читають assets/ і cache.json з поточної теки.",
       "Гаманець і ключ — у вас. Lab транзакцію не підписує.",
     ]
     : [
-      "Sugar commands (only if you deliberately stay on the legacy program):",
+      "Sugar commands (only if you deliberately stay on the legacy program).",
+      "Run them from the kit root — the folder that contains assets/, not from sugar/:",
       "   sugar validate",
-      "   sugar upload",
-      "   sugar deploy --config config.json",
+      "   sugar upload --config sugar/config.json",
+      "   sugar deploy --config sugar/config.json",
       "   sugar verify",
-      "Run them from the kit root with --config sugar/config.json, or copy the config. Assets stay in assets/ at the kit root.",
+      "The config is sugar/config.json. Assets stay in assets/ at the kit root.",
+      "sugar validate and sugar verify do not take --config: they read assets/ and cache.json from the current folder.",
       "The wallet and the key stay with you. Lab does not sign the transaction.",
     ];
   return [

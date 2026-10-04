@@ -4,7 +4,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdirSync, readdirSync, writeFileSync, readFileSync } from "node:fs";
 import JSZip from "jszip";
 import {
   buildImageUri,
@@ -74,9 +74,12 @@ describe("Wave 12: IPFS / Arweave Storage Dispatcher", () => {
     mkdirSync(testDir, { recursive: true });
     writeFileSync(join(testDir, "1.png"), tinyPng());
     writeFileSync(join(testDir, "2.png"), tinyPng());
+    writeFileSync(join(testDir, "marks.json"), "{}\n");
+    writeFileSync(join(testDir, "triage.json"), "{}\n");
 
     const calls = [];
     const funded = [];
+    const uploaded = [];
     let price = 0.00001;
     let balance = 1;
     const createUploader = async (key, rpc) => {
@@ -86,12 +89,17 @@ describe("Wave 12: IPFS / Arweave Storage Dispatcher", () => {
         getPrice: async () => price,
         getLoadedBalance: async () => balance,
         fund: async (x) => funded.push(x),
-        uploadFolder: async (dir) => ({ id: "MockManifestId123", dir }),
+        uploadFolder: async (dir) => {
+          uploaded.push({ dir, names: readdirSync(dir).sort() });
+          return { id: "MockManifestId123", dir };
+        },
       };
     };
 
     const res = await uploadToIrys({ dir: testDir, irysPrivateKey: "k", rpcUrl: "http://rpc", createUploader });
     assert.equal(res.ok, true);
+    assert.deepEqual(uploaded[0].names, ["1.png", "2.png"]);
+    assert.notEqual(uploaded[0].dir, testDir);
     assert.equal(res.arweaveId, "MockManifestId123");
     assert.equal(res.arweaveUri, "ar://MockManifestId123/");
     assert.equal(res.gatewayUrl, "https://gateway.irys.xyz/MockManifestId123/");
@@ -201,7 +209,8 @@ describe("Wave 12: IPFS / Arweave Storage Dispatcher", () => {
 
     assert.equal(stderr, "");
     assert.ok(stdout.includes("Series Lab CLI Pin"));
-    assert.ok(stdout.includes("[DRY-RUN] Simulated content ID: Qm"));
+    assert.match(stdout, /\[DRY-RUN\] Local stand-in, not an Arweave id: Qm/);
     assert.ok(stdout.includes("Arweave (Irys): ar://<manifest-id>/"));
+    assert.equal(stdout.includes("Simulated content ID"), false);
   });
 });

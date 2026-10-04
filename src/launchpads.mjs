@@ -35,7 +35,7 @@ export const LAUNCHPAD_PROFILES = {
   },
   launchmynft: {
     id: "launchmynft",
-    name: "LaunchMyNFT (Solana / Multi-chain)",
+    name: "LaunchMyNFT (Solana)",
     standard: "metaplex",
     format: "metaplex",
     description: "LaunchMyNFT format supporting creator royalty shares and optional 0-based indexing.",
