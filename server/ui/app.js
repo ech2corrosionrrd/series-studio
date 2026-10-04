@@ -3800,9 +3800,51 @@ const PROFILE_UI = {
   ordinalsbot: { chain: "bitcoin", storage: false, pin: false },
 };
 
+/**
+ * One network for Export, Deploy kit and Marketplace kit. Whichever selector the user
+ * changes is the source; the other two follow without firing their own change events.
+ *   profile: opensea → evm · magiceden / launchmynft → solana · ordinalsbot → bitcoin
+ *   deploy:  solana / solana-legacy / evm / bitcoin (Sugar stays Sugar while the network is Solana)
+ */
+function syncNetwork(source) {
+  const x = $("x-profile");
+  const d = $("d-chain");
+  const m = $("m-chain");
+  const chain = source === "profile"
+    ? (PROFILE_UI[x?.value] || PROFILE_UI.opensea).chain
+    : source === "deploy"
+      ? (d?.value === "solana-legacy" ? "solana" : d?.value || "solana")
+      : m?.value || "solana";
+  if (source !== "profile" && x && (PROFILE_UI[x.value] || PROFILE_UI.opensea).chain !== chain) {
+    x.value = chain === "evm" ? "opensea" : chain === "bitcoin" ? "ordinalsbot" : "magiceden";
+    applyProfileUi();
+    updateMetadataPreview();
+    updateReleaseHub();
+  }
+  if (source !== "deploy" && d) {
+    const cur = d.value === "solana-legacy" ? "solana" : d.value;
+    if (cur !== chain) {
+      d.value = chain;
+      loadLaunchAdvisor();
+    }
+  }
+  if (source !== "market" && m && m.value !== chain) m.value = chain;
+}
+
 function applyProfileUi() {
   const prof = $("x-profile")?.value || "opensea";
   const cfg = PROFILE_UI[prof] || PROFILE_UI.opensea;
+  const fee = $("x-fee");
+  if (fee) {
+    // Ordinals has no royalty: remember the value and bring it back when the profile changes again.
+    if (prof === "ordinalsbot") {
+      if (fee.dataset.prevFee === undefined) fee.dataset.prevFee = fee.value;
+      fee.value = "0";
+    } else if (fee.dataset.prevFee !== undefined) {
+      fee.value = fee.dataset.prevFee;
+      delete fee.dataset.prevFee;
+    }
+  }
   const hint = $("x-profile-hint");
   if (hint) {
     hint.setAttribute("data-i18n", `export.profileHint.${prof}`);
@@ -3841,19 +3883,8 @@ function setupExport() {
     scheduleWorkspaceSave();
   });
   $("x-profile")?.addEventListener("change", () => {
-    const prof = $("x-profile")?.value;
-    const fee = $("x-fee");
-    if (fee) {
-      // Ordinals has no royalty: remember the value and bring it back when the profile changes again.
-      if (prof === "ordinalsbot") {
-        if (fee.dataset.prevFee === undefined) fee.dataset.prevFee = fee.value;
-        fee.value = "0";
-      } else if (fee.dataset.prevFee !== undefined) {
-        fee.value = fee.dataset.prevFee;
-        delete fee.dataset.prevFee;
-      }
-    }
     applyProfileUi();
+    syncNetwork("profile");
     updateMetadataPreview();
   });
   $("x-creator-address")?.addEventListener("input", updateMetadataPreview);
@@ -4354,7 +4385,13 @@ async function loadLaunchAdvisor() {
 }
 
 function setupKits() {
-  $("d-chain")?.addEventListener("change", () => { loadLaunchAdvisor(); });
+  $("d-chain")?.addEventListener("change", () => {
+    syncNetwork("deploy");
+    loadLaunchAdvisor();
+  });
+  $("m-chain")?.addEventListener("change", () => syncNetwork("market"));
+  // Solana is the default network (Core Candy Machine): align Export and Market with the Deploy default.
+  syncNetwork("deploy");
   $("d-holder")?.addEventListener("input", () => {
     if ($("d-holder")) $("d-holder").dataset.dirty = "1";
   });
