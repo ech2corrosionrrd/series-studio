@@ -36,6 +36,9 @@ import {
   sendTelegramNotification,
 } from "../src/index.mjs";
 import { loadKeys } from "../src/keys.mjs";
+import { uploadBundle, planUpload, loadKeypairFile } from "../src/arweave-upload.mjs";
+import { releaseFromArchive, validateRelease, guardUpdateConfig } from "../src/release-config.mjs";
+import { verifyRelease } from "../src/candy-verify.mjs";
 import { ENGINES, TXT2IMG, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 
@@ -56,6 +59,10 @@ Usage:
   series render <preset.json> [options]
   series triage <set-dir> [options]
   series pin <set-dir> [options]
+  series release-init <archive.json> [-o release.json] [options]
+  series upload <bundle-dir> --keypair <file> [--dry-run] [--max-price <sol>] [--no-fund]
+  series guards <release.json> [-o guard-config.json]
+  series verify <release.json> [--rpc <url>]
   series engines
   series doctor
   series upscale <images-dir> [options]
@@ -82,6 +89,10 @@ Options:
   --apply                 Apply triage keep/redo verdicts to marks.json
   --limit <num>           Process only first N recipes/images
   --dry-run               Simulate execution without external API calls
+  --keypair <file>        Solana keypair JSON for upload (stays on this machine)
+  --max-price <sol>       Refuse upload when the estimated cost is higher
+  --no-fund               Do not top up the Irys balance automatically
+  --rpc <url>             Solana RPC for upload / verify
   -h, --help              Show help
 `;
   process.stdout.write(text);
@@ -453,6 +464,79 @@ async function cmdPin(setDirPath, opts = {}) {
   console.log(`Gateway URL: ${res.gatewayUrl}`);
 }
 
+
+function cmdReleaseInit(archivePath, opts = {}) {
+  const archive = loadJson(archivePath);
+  let preset = {};
+  const presetPath = opts.preset || (archive.presetId ? resolve("presets", `${archive.presetId}.json`) : null);
+  if (presetPath && existsSync(presetPath)) {
+    try { preset = loadJson(presetPath); } catch {}
+  }
+  const cfg = releaseFromArchive(archive, preset, opts);
+  const out = resolve(opts.out || "release.json");
+  if (existsSync(out)) {
+    console.error(`[ERROR] ${out} already exists; remove it or pass -o`);
+    process.exit(1);
+  }
+  writeJsonAtomic(out, cfg);
+  console.log(`Release config written: ${out}`);
+  console.log("Fill in creators[0].address, price, mint.startDate and mint.limitPerWallet, then run: series guards release.json");
+}
+
+function cmdGuards(releasePath, opts = {}) {
+  const cfg = loadJson(releasePath);
+  const { errors, warnings } = validateRelease(cfg);
+  for (const w of warnings) console.log(`warning: ${w}`);
+  if (errors.length) {
+    for (const e of errors) console.error(`[ERROR] ${e}`);
+    process.exit(1);
+  }
+  const conf = guardUpdateConfig(cfg);
+  const out = resolve(opts.out || "guard-config.json");
+  writeJsonAtomic(out, conf);
+  console.log(`Guard config written: ${out}`);
+  console.log(JSON.stringify(conf.guards.default));
+  console.log("Guard update REPLACES the whole rule set; the payment rule is always included.");
+  console.log(`Apply (Sugar / Candy Machine v3): sugar guard update --config ${out} --cache cache.json --keypair <deployer.json>`);
+}
+
+async function cmdUpload(bundleDir, opts = {}) {
+  const dir = resolve(bundleDir);
+  if (opts.dryRun && !opts.keypair) {
+    const p = planUpload(dir);
+    console.log(`${p.total} entries, ${p.uploaded} already uploaded, ${p.todo.length} to upload (${(p.bytes / 1024 / 1024).toFixed(2)} MB). Price needs --keypair.`);
+    return;
+  }
+  if (!opts.keypair) {
+    console.error("[ERROR] --keypair <file> is required (the key never leaves this machine)");
+    process.exit(1);
+  }
+  const res = await uploadBundle({
+    bundleDir: dir,
+    key: loadKeypairFile(resolve(opts.keypair)),
+    rpcUrl: opts.rpc || process.env.SOLANA_RPC_URL || undefined,
+    dryRun: Boolean(opts.dryRun),
+    fund: !opts.noFund,
+    maxPriceSol: Number.isFinite(opts.maxPrice) ? opts.maxPrice : undefined,
+    log: (m) => console.log(m),
+  });
+  console.log(`
+Done: ${res.uploadedNow} uploaded now, ${res.alreadyUploaded} were already in cache. Cache: ${res.cacheFile}`);
+}
+
+async function cmdVerify(releasePath, opts = {}) {
+  const cfg = loadJson(releasePath);
+  const r = await verifyRelease(cfg, { rpcUrl: opts.rpc });
+  console.log(`Candy Machine: ${r.minted} of ${r.total} minted`);
+  console.log(`Guard authority: ${r.authority}`);
+  console.log(`Guards on chain: ${Object.keys(r.guards).join(", ") || "(none)"}`);
+  if (r.ok) console.log("Matches release.json ✓");
+  else {
+    for (const p of r.problems) console.error(`[PROBLEM] ${p}`);
+    process.exit(1);
+  }
+}
+
 function cmdManifest(archivePath, opts = {}) {
   const archive = loadJson(archivePath);
   let preset = null;
@@ -708,6 +792,10 @@ function parseOpts(args) {
     else if (a === "--apply") opts.apply = true;
     else if (a === "--limit" || a === "--sample") opts.limit = Number(args[++i]);
     else if (a === "--dry-run") opts.dryRun = true;
+    else if (a === "--keypair") opts.keypair = args[++i];
+    else if (a === "--max-price") opts.maxPrice = Number(args[++i]);
+    else if (a === "--no-fund") opts.noFund = true;
+    else if (a === "--rpc") opts.rpc = args[++i];
     else if (a === "--notify") opts.notify = true;
     else if (a === "--trigger" || a === "--trigger-word") opts.trigger = args[++i];
     else if (a === "--images" || a === "--set-dir") opts.images = args[++i];
@@ -870,6 +958,26 @@ async function main(argv) {
     if (!args[1]) usage(1);
     const opts = parseOpts(args.slice(2));
     await cmdPin(args[1], opts);
+    return;
+  }
+  if (cmd === "release-init") {
+    if (!args[1]) usage(1);
+    cmdReleaseInit(args[1], parseOpts(args.slice(2)));
+    return;
+  }
+  if (cmd === "guards") {
+    if (!args[1]) usage(1);
+    cmdGuards(args[1], parseOpts(args.slice(2)));
+    return;
+  }
+  if (cmd === "upload") {
+    if (!args[1]) usage(1);
+    await cmdUpload(args[1], parseOpts(args.slice(2)));
+    return;
+  }
+  if (cmd === "verify") {
+    if (!args[1]) usage(1);
+    await cmdVerify(args[1], parseOpts(args.slice(2)));
     return;
   }
   if (cmd === "notify") {
