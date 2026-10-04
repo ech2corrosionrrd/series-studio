@@ -51,7 +51,7 @@
 | **Безпека й страховка · хвиля 23** | ✅ | захист API (CSRF / DNS rebinding) · версії рендерів · кошик · журнал і денна межа витрат · автостоп batch · атомарний запис JSON |
 | **Довідка й дизайн · хвиля 24** | ✅ | підказки з локалей на кожній вкладці · довідка-путівник з пошуком (uk/en) · `docs/GUIDE.md` · mock у списках рушіїв · оновлений дизайн і мобільна верстка |
 | **Шлях випуску · хвиля 25** | ✅ | «Почати серію» / спін-оф / 12 пілотів / тексти без кредитів · DNA-блок · diff архівів · overrides · архів випуску → портал · підказки hover · `/login` Series Lab · вхід лише гаманцем |
-| **Шлях випуску · upload→guards→verify** | ✅ | `release.json`, `series upload` (відновлюване, з `cache.json`), `series guards`, `series verify` — [RELEASE.md](./RELEASE.md) |
+| **Шлях випуску · upload→guards→verify** | ✅ | `release.json`, `series upload` (відновлюване, з `cache.json`), `series guards` (allowlist — група `allowList`), `series hidden` / `series reveal`, `series compose`, `series verify` — [RELEASE.md](./RELEASE.md) |
 | **Release Lab-side** | ✅ | ZIP + чекліст + Release Hub (посилання на лаунчпад). Ончейн-клейм — зовні, не в Lab |
 | **Реліз v1.7.0** | ✅ 04.10.2026 | Arweave (Irys), шлях випуску upload → guards → verify (Core і v3), підказки й мережа за вибором — [CHANGELOG.md](../CHANGELOG.md) |
 | **Стабілізація на живих даних** | ▶️ зараз | `series verify` на справжній Core-машині, пробне відновлення `series upload` на mainnet, проходження шляху користувачем; **без** великого рефакторингу (див. «Поточні рішення») |

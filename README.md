@@ -113,6 +113,10 @@ node bin/series.mjs pin out/fal-s0.45 --dry-run
 node bin/series.mjs release-init out/demo-archive.json -o release.json --creator <адреса> --price 0.2
 node bin/series.mjs upload <тека-набору> --keypair deployer.json --max-price 1
 node bin/series.mjs guards release.json -o guard-config.json
+node bin/series.mjs guards release.json --allowlist wallets.txt
+node bin/series.mjs hidden <тека-набору> --uri <посилання-на-hidden.json>
+node bin/series.mjs reveal <тека-набору>
+node bin/series.mjs compose out/demo-archive.json --layers layers --base input/primary.png -o out/layers
 node bin/series.mjs verify release.json
 node bin/series.mjs notify "Готово"
 node bin/series.mjs manifest out/demo-archive.json --profile opensea

@@ -38,8 +38,11 @@ import {
 } from "../src/index.mjs";
 import { loadKeys } from "../src/keys.mjs";
 import { uploadBundle, planUpload, loadKeypairFile } from "../src/arweave-upload.mjs";
-import { releaseFromArchive, validateRelease, guardUpdateConfig, coreGuardConfig } from "../src/release-config.mjs";
+import { releaseFromArchive, validateRelease, guardUpdateConfig, coreGuardConfig, allowlistOf } from "../src/release-config.mjs";
 import { verifyRelease } from "../src/candy-verify.mjs";
+import { parseAllowlistText } from "../src/allowlist.mjs";
+import { hiddenSettings, loadRevealItems, placeholderMetadata, placeholderPng, revealUpdates, checkReveal } from "../src/reveal.mjs";
+import { composeArchive } from "../src/layers.mjs";
 import { ENGINES, TXT2IMG, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 
@@ -62,7 +65,10 @@ Usage:
   series pin <set-dir> [options]
   series release-init <archive.json> [-o release.json] [options]
   series upload <bundle-dir> --keypair <file> [--dry-run] [--max-price <sol>] [--no-fund]
-  series guards <release.json> [-o guard-config.json]
+  series guards <release.json> [-o guard-config.json] [--allowlist <file>]
+  series hidden <bundle-dir> --uri <hidden.json-link> [--uri-prefix <prefix>] [--name <text>]
+  series reveal <bundle-dir> [--check <revealed.json>]
+  series compose <archive.json> --layers <dir> --base <png> [-o out/layers]
   series verify <release.json> [--rpc <url>]
   series engines
   series doctor
@@ -94,6 +100,12 @@ Options:
   --max-price <sol>       Refuse upload when the estimated cost is higher
   --no-fund               Do not top up the Irys balance automatically
   --rpc <url>             Solana RPC for upload / verify
+  --allowlist <file>      Wallet list (one address per line) merged into series guards
+  --uri <url>             Uploaded hidden.json link for series hidden
+  --uri-prefix <prefix>   Build reveal URIs as <prefix><index>.json instead of cache.json
+  --layers <dir>          PNG layers directory for series compose
+  --base <png>            Base image under the trait layers
+  --check <file>          Revealed name/uri list to compare in series reveal
   -h, --help              Show help
 `;
   process.stdout.write(text);
@@ -481,11 +493,17 @@ function cmdReleaseInit(archivePath, opts = {}) {
   }
   writeJsonAtomic(out, cfg);
   console.log(`Release config written: ${out}`);
-  console.log("Fill in creators[0].address, price, mint.startDate and mint.limitPerWallet, then run: series guards release.json");
+  console.log("Fill in creators[0].address, price, mint.startDate and mint.limitPerWallet.");
+  console.log("Allowlist: set allowlist to a list of wallets (or { label, wallets }), then: series guards release.json");
+  console.log("Hidden reveal: after series upload, run series hidden <bundle> --uri <hidden.json link>, then series reveal.");
 }
 
 function cmdGuards(releasePath, opts = {}) {
   const cfg = loadJson(releasePath);
+  if (opts.allowlist) {
+    const text = readFileSync(resolve(opts.allowlist), "utf8");
+    cfg.allowlist = { ...(typeof cfg.allowlist === "object" && cfg.allowlist ? cfg.allowlist : {}), wallets: parseAllowlistText(text) };
+  }
   const { errors, warnings } = validateRelease(cfg);
   for (const w of warnings) console.log(`warning: ${w}`);
   if (errors.length) {
@@ -498,11 +516,14 @@ function cmdGuards(releasePath, opts = {}) {
     writeJsonAtomic(out, conf);
     console.log(`Core guard config written: ${out}`);
     console.log(JSON.stringify(conf.guardConfig));
-    console.log("Format: the guardConfig object of an `mplx cm create` config (prices in lamports).");
+    console.log("Format: guardConfig (and groups, when an allowlist is set) for an `mplx cm create` config. Prices are lamports.");
+    console.log("The default guard set is the public phase. allowList is the wl group: a group replaces the default set, so payment is repeated there.");
     console.log("mplx has no command to change guards on an existing Core Candy Machine. Use it when creating the machine,");
     console.log("or apply the same set with the SDK (updateCandyGuard), which REPLACES all guards: keep the payment rule.");
     if (conf.guardConfig.startDate) console.log("Note: the Metaplex docs show the start date only for the SDK (ISO 8601); run `mplx cm validate` to confirm your mplx version accepts it in JSON.");
     console.log("Check on chain afterwards: series verify release.json");
+    writeAllowlistProofs(cfg, out);
+    if (conf.groups) console.log(JSON.stringify(conf.groups));
     return;
   }
   const conf = guardUpdateConfig(cfg);
@@ -511,6 +532,145 @@ function cmdGuards(releasePath, opts = {}) {
   console.log(JSON.stringify(conf.guards.default));
   console.log("Guard update REPLACES the whole rule set; the payment rule is always included.");
   console.log(`Apply (Sugar / Candy Machine v3): sugar guard update --config ${out} --cache cache.json --keypair <deployer.json>`);
+  writeAllowlistProofs(cfg, out);
+}
+
+function writeAllowlistProofs(cfg, guardFile) {
+  const al = allowlistOf(cfg);
+  if (!al) return;
+  const proofs = resolve(dirname(guardFile), "allowlist-proofs.json");
+  writeJsonAtomic(proofs, {
+    label: al.label,
+    algorithm: al.algorithm,
+    merkleRoot: al.merkleRoot,
+    merkleRootBase58: al.merkleRootBase58,
+    wallets: al.proofs,
+  });
+  console.log(`Allowlist ${al.label}: ${al.wallets.length} wallets, merkle root ${al.merkleRoot}`);
+  console.log(`Proofs: ${proofs}`);
+}
+
+function cmdHidden(bundleDir, opts = {}) {
+  const dir = resolve(bundleDir);
+  if (!existsSync(dir)) {
+    console.error(`[ERROR] Directory not found: ${dir}`);
+    process.exit(1);
+  }
+  const uri = String(opts.uri || "").trim();
+  if (!uri) {
+    console.error("[ERROR] --uri <link of the uploaded hidden.json> is required");
+    process.exit(1);
+  }
+  let items;
+  try {
+    items = loadRevealItems(dir, { uriPrefix: opts.uriPrefix });
+  } catch (e) {
+    console.error(`[ERROR] ${e.message}`);
+    process.exit(1);
+  }
+  const name = opts.name || "Hidden #";
+  let settings;
+  try {
+    settings = hiddenSettings({ name, uri, revealData: items });
+  } catch (e) {
+    console.error(`[ERROR] ${e.message}`);
+    process.exit(1);
+  }
+  writeJsonAtomic(join(dir, "reveal-data.json"), items);
+  writeJsonAtomic(join(dir, "hidden-settings.json"), settings);
+  writeJsonAtomic(join(dir, "hidden.json"), placeholderMetadata({ name, description: opts.description || "Hidden until reveal." }));
+  const png = join(dir, "hidden.png");
+  if (!existsSync(png)) writeFileSync(png, placeholderPng());
+  console.log(`Hidden settings written: ${join(dir, "hidden-settings.json")}`);
+  console.log(`hash ${settings.hash}`);
+  console.log(`${items.length} reveal rows in reveal-data.json`);
+  console.log("Put hiddenSettings on the Core Candy Machine (config lines off). After the mint: series reveal " + bundleDir);
+}
+
+function cmdReveal(bundleDir, opts = {}) {
+  const dir = resolve(bundleDir);
+  if (!existsSync(dir)) {
+    console.error(`[ERROR] Directory not found: ${dir}`);
+    process.exit(1);
+  }
+  const dataFile = join(dir, "reveal-data.json");
+  let items;
+  if (existsSync(dataFile)) items = loadJson(dataFile);
+  else {
+    try {
+      items = loadRevealItems(dir, { uriPrefix: opts.uriPrefix });
+    } catch (e) {
+      console.error(`[ERROR] ${e.message}`);
+      process.exit(1);
+    }
+  }
+  const hiddenFile = join(dir, "hidden-settings.json");
+  const hidden = existsSync(hiddenFile) ? loadJson(hiddenFile) : null;
+  if (opts.check) {
+    const actual = loadJson(opts.check);
+    const report = checkReveal(items, actual);
+    if (!report.ok) {
+      for (const p of report.problems) console.error(`[PROBLEM] ${p}`);
+      process.exit(1);
+    }
+    if (hidden?.hash && hidden.hash !== report.hash) {
+      console.error(`[PROBLEM] hidden-settings hash ${hidden.hash} != ${report.hash}`);
+      process.exit(1);
+    }
+    console.log(`Reveal matches (${report.hash})`);
+    return;
+  }
+  let updates;
+  try {
+    updates = revealUpdates(items, hidden);
+  } catch (e) {
+    console.error(`[ERROR] ${e.message}`);
+    process.exit(1);
+  }
+  const out = join(dir, "reveal-updates.json");
+  writeJsonAtomic(out, updates);
+  console.log(`Reveal updates: ${out}`);
+  console.log(`hash ${updates.hash} · ${updates.items.length} items`);
+  console.log("Hidden settings mint in order 0, 1, 2, …. Set each Core asset name and uri from this list.");
+  console.log("Lab does not sign that update. EVM delayed reveal stays in the thirdweb dashboard.");
+}
+
+function cmdCompose(archivePath, opts = {}) {
+  const archive = loadJson(archivePath);
+  let preset = {};
+  const presetPath = opts.preset || (archive.presetId ? resolve("presets", `${archive.presetId}.json`) : null);
+  if (presetPath && existsSync(presetPath)) preset = loadJson(presetPath);
+  const items = preset?.traits?.items;
+  if (!Array.isArray(items) || !items.length) {
+    console.error("[ERROR] preset traits are required (pass --preset)");
+    process.exit(1);
+  }
+  if (!opts.layers || !opts.base) {
+    console.error("[ERROR] --layers <dir> and --base <png> are required");
+    process.exit(1);
+  }
+  const layerDir = resolve(opts.layers);
+  const baseFile = resolve(opts.base);
+  if (!existsSync(layerDir) || !existsSync(baseFile)) {
+    console.error("[ERROR] layers directory or base image is missing");
+    process.exit(1);
+  }
+  const outDir = resolve(opts.out || join("out", "layers"));
+  try {
+    const report = composeArchive({
+      archive,
+      items,
+      basePng: readFileSync(baseFile),
+      layerDir,
+      outDir,
+      limit: opts.limit,
+    });
+    console.log(`Composed ${report.count} editions → ${outDir}`);
+    console.log("Prompts on the recipes were left as they are. DNA is in dna.json.");
+  } catch (e) {
+    console.error(`[ERROR] ${e.message}`);
+    process.exit(1);
+  }
 }
 
 async function cmdUpload(bundleDir, opts = {}) {
@@ -809,6 +969,12 @@ function parseOpts(args) {
     else if (a === "--max-price") opts.maxPrice = Number(args[++i]);
     else if (a === "--no-fund") opts.noFund = true;
     else if (a === "--rpc") opts.rpc = args[++i];
+    else if (a === "--allowlist") opts.allowlist = args[++i];
+    else if (a === "--uri") opts.uri = args[++i];
+    else if (a === "--uri-prefix") opts.uriPrefix = args[++i];
+    else if (a === "--layers") opts.layers = args[++i];
+    else if (a === "--base") opts.base = args[++i];
+    else if (a === "--check") opts.check = args[++i];
     else if (a === "--notify") opts.notify = true;
     else if (a === "--trigger" || a === "--trigger-word") opts.trigger = args[++i];
     else if (a === "--images" || a === "--set-dir") opts.images = args[++i];
@@ -981,6 +1147,21 @@ async function main(argv) {
   if (cmd === "guards") {
     if (!args[1]) usage(1);
     cmdGuards(args[1], parseOpts(args.slice(2)));
+    return;
+  }
+  if (cmd === "hidden") {
+    if (!args[1]) usage(1);
+    cmdHidden(args[1], parseOpts(args.slice(2)));
+    return;
+  }
+  if (cmd === "reveal") {
+    if (!args[1]) usage(1);
+    cmdReveal(args[1], parseOpts(args.slice(2)));
+    return;
+  }
+  if (cmd === "compose") {
+    if (!args[1]) usage(1);
+    cmdCompose(args[1], parseOpts(args.slice(2)));
     return;
   }
   if (cmd === "upload") {

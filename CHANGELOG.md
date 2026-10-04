@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+### Allowlist, приховане розкриття Solana і шари PNG
+- **Allowlist.** `release.json → allowlist` (список адрес або `{ label, wallets, priceSol }`) і `series guards --allowlist wallets.txt` рахують merkle root так, як Candy Guard: keccak256 від тексту адреси в base58, пари сортовані, непарний вузол піднімається. Для Core група `wl` містить `allowList.merkleRoot` (hex) і повторює оплату; публічний `guardConfig` лишається без allowList. Для v3 той самий корінь у групі — base58. Докази — `allowlist-proofs.json`. У наборі деплою (Solana) те саме поле дає `allowlist.json`. `series verify` звіряє корінь групи.
+- **Приховане розкриття.** Набір деплою кладе `hidden.json` і `hidden.png`. `series hidden <тека> --uri <посилання>` пише справжній SHA-256 від `JSON.stringify([{name,uri}])` у `hidden-settings.json` (з `cache.json` або `--uri-prefix`). `series reveal` пише `reveal-updates.json` і звіряє хеш; підпис оновлення Core-асетів лишається на ПК. EVM як і раніше — пароль у кабінеті Thirdweb, у файл не потрапляє.
+- **Шари PNG.** `series compose` і `POST /api/compose` складають базову картинку і `layers/<риса>/<значення>.png` у видання з тією самою DNA. Промпти не видаляються. Кредити за складання не списуються.
+
 ### Зауваження після релізу 1.7.0
 - `series guards` для `standard: "core"` (типово) більше не пише Sugar і не радить `sugar guard update`: видає `guardConfig` для `mplx cm create` (ціна в лампортах, ціле), а для застосування до готової машини вказує на SDK `updateCandyGuard`, бо в `mplx` такої команди немає. Для `v3` лишився Sugar.
 - Кнопка Arweave в Експорті ховається, якщо на сервері немає `IRYS_PRIVATE_KEY`, з поясненням і підказкою про `series upload --keypair`.

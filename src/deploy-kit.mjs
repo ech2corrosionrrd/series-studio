@@ -8,6 +8,8 @@ import { buildSugarConfig, buildThirdwebConfig } from "./deploy.mjs";
 import { assertNoSecrets } from "./secrets.mjs";
 import { formatForLaunchpad, exportManifestCsv } from "./launchpads.mjs";
 import { buildLaunchAdvisor } from "./launch-advisor.mjs";
+import { normalizeAllowlist } from "./allowlist.mjs";
+import { placeholderMetadata, placeholderPng } from "./reveal.mjs";
 import { extname } from "node:path";
 
 export const DEPLOY_COST_DEFAULTS = {
@@ -274,7 +276,10 @@ export function buildDeployKit({
       },
     };
     files["assets/collection.json"] = `${JSON.stringify(collectionMeta, null, 2)}\n`;
-    files["hidden-settings.json"] = `${JSON.stringify(hiddenSettingsDraft(), null, 2)}\n`;
+    const hiddenName = "Hidden #";
+    files["hidden.json"] = `${JSON.stringify(placeholderMetadata({ name: hiddenName, symbol, description }), null, 2)}\n`;
+    files["hidden.png"] = placeholderPng();
+    files["hidden-settings.json"] = `${JSON.stringify(hiddenSettingsDraft(hiddenName), null, 2)}\n`;
     files["HIDDEN.txt"] = hiddenSettingsNote(uk);
     const sugar = buildSugarConfig(
       { ...archive, size: count, recipes: sorted.map((s) => s.recipe).filter(Boolean) },
@@ -307,9 +312,33 @@ export function buildDeployKit({
     files["manifest.csv"] = exportManifestCsv(recipes, traitItems, kitOpts);
   }
 
+  let allowlist = null;
+  if (chain === "solana" && String(opts.allowlist || "").trim()) {
+    try {
+      allowlist = normalizeAllowlist(opts.allowlist);
+    } catch (e) {
+      e.status = e.status || 400;
+      throw e;
+    }
+  }
+  if (allowlist) {
+    files["allowlist.json"] = `${JSON.stringify({
+      label: allowlist.label,
+      algorithm: allowlist.algorithm,
+      merkleRoot: allowlist.merkleRoot,
+      merkleRootBase58: allowlist.merkleRootBase58,
+      wallets: allowlist.proofs,
+    }, null, 2)}\n`;
+  }
+
   const estimate = estimateDeployCost({ chain, count, totalBytes, profile }, env);
   files["ESTIMATE.txt"] = `${formatCostEstimate(estimate, locale)}\n`;
-  const guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate, legacy: Boolean(opts.legacy) });
+  let guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate, legacy: Boolean(opts.legacy) });
+  if (allowlist) {
+    guide += uk
+      ? `\nAllowlist: група "${allowlist.label}", merkle root (hex, поле allowList.merkleRoot для mplx):\n${allowlist.merkleRoot}\nГаманці і докази: allowlist.json. Повний guard з оплатою: series guards release.json (ті самі гаманці в release.json → allowlist).\n`
+      : `\nAllowlist: group "${allowlist.label}", merkle root (hex, the mplx allowList.merkleRoot field):\n${allowlist.merkleRoot}\nWallets and proofs: allowlist.json. The full guard, including payment: series guards release.json (the same wallets in release.json → allowlist).\n`;
+  }
   files["DEPLOY.txt"] = guide;
   const advisor = buildLaunchAdvisor({ chain, locale });
   files["ADVISOR.txt"] = `${advisor.text}\n`;
@@ -320,10 +349,10 @@ export function buildDeployKit({
   return { chain, files, estimate, guide, count, advisor };
 }
 
-function hiddenSettingsDraft() {
+function hiddenSettingsDraft(name = "Hidden #") {
   return {
-    name: "Hidden #",
-    uri: "https://example.invalid/hidden.json",
+    name,
+    uri: "",
     hash: null,
   };
 }
@@ -331,25 +360,43 @@ function hiddenSettingsDraft() {
 function hiddenSettingsNote(uk) {
   return uk
     ? [
-      "Заготовка hidden settings для Core Candy Machine",
-      "==============================================",
-      "name і uri у hidden-settings.json — заглушки. Замініть їх своїми.",
-      "hash — це SHA-256 масиву даних розкриття (name + uri кожного предмета),",
-      "як у гайді Core Candy Machine hidden settings. Формат хешу не вигадуйте:",
-      "візьміть його з тієї сторінки, коли будете заповнювати майстер.",
+      "Приховане розкриття Core Candy Machine",
+      "======================================",
+      "hidden.json і hidden.png — метадані, які бачить покупець до розкриття.",
+      "hash у hidden-settings.json ще порожній: посилання на метадані з'являються після завантаження.",
+      "",
+      "1. series upload <ця тека> --keypair <ваш.json>",
+      "2. Завантажте hidden.json (і hidden.png) тим самим шляхом і візьміть посилання на JSON.",
+      "3. series hidden <ця тека> --uri <посилання на hidden.json>",
+      "   Команда читає cache.json і пише SHA-256 від JSON.stringify([{name,uri}, ...]) —",
+      "   той самий хеш, що в гайді Core Candy Machine hidden settings.",
+      "4. Після мінту: series reveal <ця тека>",
+      "   Пише reveal-updates.json (індекс, name, uri) і звіряє хеш.",
+      "   Lab не підписує оновлення асетів. Ключ лишається у вас.",
+      "   Приховані налаштування мінтять по порядку 0, 1, 2, … — індекс у файлі це і є порядок мінту.",
+      "",
+      "EVM: пароль delayed reveal вводите в кабінеті thirdweb. У цей файл його не кладуть.",
       "https://www.metaplex.com/docs/smart-contracts/core-candy-machine/guides/create-a-core-candy-machine-with-hidden-settings",
-      "Пароль розкриття сюди не вписуйте. Series Lab його не приймає і не зберігає.",
       "",
     ].join("\n")
     : [
-      "Core Candy Machine hidden-settings draft",
-      "=======================================",
-      "name and uri in hidden-settings.json are placeholders. Replace them with yours.",
-      "hash is the SHA-256 of the reveal-data array (name + uri of each item),",
-      "computed the way the Core Candy Machine hidden-settings guide describes.",
-      "Do not invent a hash layout: copy it from that page when you fill the wizard.",
+      "Core Candy Machine hidden reveal",
+      "================================",
+      "hidden.json and hidden.png are what a buyer sees before the reveal.",
+      "hash in hidden-settings.json is still empty: metadata links exist only after upload.",
+      "",
+      "1. series upload <this folder> --keypair <yours.json>",
+      "2. Upload hidden.json (and hidden.png) the same way and copy the JSON link.",
+      "3. series hidden <this folder> --uri <link of hidden.json>",
+      "   The command reads cache.json and writes the SHA-256 of JSON.stringify([{name,uri}, ...]) —",
+      "   the hash from the Core Candy Machine hidden-settings guide.",
+      "4. After the mint: series reveal <this folder>",
+      "   It writes reveal-updates.json (index, name, uri) and checks the hash.",
+      "   Lab does not sign the asset updates. The key stays with you.",
+      "   Hidden settings mint in order 0, 1, 2, … — the index in the file is the mint order.",
+      "",
+      "EVM: enter the delayed-reveal password in the thirdweb dashboard. It does not go in this file.",
       "https://www.metaplex.com/docs/smart-contracts/core-candy-machine/guides/create-a-core-candy-machine-with-hidden-settings",
-      "Do not put a reveal password in this file. Series Lab does not accept or store it.",
       "",
     ].join("\n");
 }
@@ -374,7 +421,7 @@ function coreLayoutReadme(uk) {
       "assets/0.png + assets/0.json … — предмети з нуля, у порядку видань.",
       "assets/collection.png + assets/collection.json — обкладинка колекції.",
       "cm-config.json — поля для майстра `mplx cm create --wizard` (назва, символ, роялті, творець).",
-      "Гварди (allowList, mintLimit, botTax) вписуєте в майстрі. Див. DEPLOY.txt.",
+      "Гварди: series guards пише allowList (група wl) разом з оплатою. Див. DEPLOY.txt.",
       "Роялті Core — у ROYALTIES.txt. Список програм заповнюєте ви.",
       "Не кладіть сюди ключ гаманця.",
       "",
@@ -385,7 +432,7 @@ function coreLayoutReadme(uk) {
       "assets/0.png + assets/0.json … — items from zero, in edition order.",
       "assets/collection.png + assets/collection.json — collection cover.",
       "cm-config.json — fields for the `mplx cm create --wizard` (name, symbol, royalty, creator).",
-      "Guards (allowList, mintLimit, botTax) are entered in the wizard. See DEPLOY.txt.",
+      "Guards: series guards writes allowList (group wl) next to the payment rule. See DEPLOY.txt.",
       "Core royalties are explained in ROYALTIES.txt. You fill the program list.",
       "Do not put a wallet key in this folder.",
       "",
@@ -497,10 +544,10 @@ function coreGuideSteps(uk) {
       "   mplx cm create --wizard",
       "   Відповідайте майстру з cm-config.json: назва, символ, sellerFeeBasisPoints, адреса творця.",
       "   Асети: assets/0.png, assets/0.json, … і assets/collection.json.",
-      "   Приховане розкриття: hidden-settings.json — заглушки name/uri. Хеш рахуєте ви, як у гайді Core. Пароль у файл не кладіть.",
+      "   Приховане розкриття: hidden.json + hidden.png, далі series hidden (хеш SHA-256) і series reveal. Пароль у файл не кладіть.",
       "   Якщо майстер просить кроки окремо: mplx cm upload, потім mplx cm insert, потім mplx cm validate.",
-      "   Групи гвардів (імена зі сторінки гвардів Core; дату старту не вигадуємо):",
-      "   - спочатку allowlist: allowList (merkle root вписуєте ви), mintLimit, botTax",
+      "   Групи гвардів (імена зі сторінки гвардів Core):",
+      "   - спочатку allowlist: allowList (merkle root з series guards або allowlist.json), mintLimit, botTax",
       "   - потім public: mintLimit, botTax",
       "   Перевірте колекцію на devnet-експлорері.",
       "",
@@ -527,10 +574,10 @@ function coreGuideSteps(uk) {
       "   mplx cm create --wizard",
       "   Answer the wizard from cm-config.json: name, symbol, sellerFeeBasisPoints, creator address.",
       "   Assets: assets/0.png, assets/0.json, … and assets/collection.json.",
-      "   Hidden reveal: hidden-settings.json holds placeholder name/uri. You hash the reveal-data array the way the Core guide describes. Do not put a password in the file.",
+      "   Hidden reveal: hidden.json + hidden.png, then series hidden (the SHA-256) and series reveal. Do not put a password in the file.",
       "   If the wizard asks for separate steps: mplx cm upload, then mplx cm insert, then mplx cm validate.",
-      "   Guard groups (names from the Core guards page; do not invent a start date):",
-      "   - allowlist first: allowList (you fill the merkle root), mintLimit, botTax",
+      "   Guard groups (names from the Core guards page):",
+      "   - allowlist first: allowList (merkle root from series guards or allowlist.json), mintLimit, botTax",
       "   - then public: mintLimit, botTax",
       "   Check the collection on a devnet explorer.",
       "",

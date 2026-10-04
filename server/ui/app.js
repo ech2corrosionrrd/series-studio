@@ -1917,6 +1917,25 @@ function paintLicenseWarning() {
 
 /* ---------- Render / Generate ---------- */
 function setupRender() {
+  $("g-compose")?.addEventListener("click", async () => {
+    const msg = $("g-compose-msg");
+    const btn = $("g-compose");
+    try {
+      const archive = kitArchive();
+      if (!archive) throw new Error(t("export.none"));
+      setBusy(btn, true);
+      if (msg) msg.textContent = t("ui.working");
+      const data = await api("/api/compose", {
+        method: "POST",
+        body: JSON.stringify({ archive }),
+      });
+      if (msg) msg.textContent = t("render.layers.ok", { count: data.count, dir: data.dir });
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    } finally {
+      setBusy(btn, false);
+    }
+  });
   const reLockPlan = () => lockGenerate(true);
   $("g-strength")?.addEventListener("input", () => {
     if ($("g-strength-v")) $("g-strength-v").textContent = $("g-strength").value;
@@ -2358,6 +2377,10 @@ const HELP_CLI = [
   ["provenance", "provenance out/fal-s0.45 -o out/provenance.json"],
   ["dataset", "dataset out/demo-archive.json --images out/fal-s0.45 --trigger my_hero -o out/dataset.zip"],
   ["release", "release-config out/demo-archive.json --profile magiceden -o out/cm-config.json"],
+  ["guards", "guards release.json --allowlist wallets.txt"],
+  ["hidden", "hidden <bundle-dir> --uri <hidden.json-link>"],
+  ["reveal", "reveal <bundle-dir>"],
+  ["compose", "compose out/demo-archive.json --layers layers --base input/primary.png"],
 ];
 const HELP_DOCS = [
   ["docs/GUIDE.md", "guide"], ["docs/STAGES.md", "stages"], ["docs/STUDIO-UI.md", "studioUi"],
@@ -3851,6 +3874,11 @@ function syncNetwork(source) {
   const key = `${x?.value}|${d?.value}|${m?.value}`;
   if (builtNetworkKey !== null && builtNetworkKey !== key) clearBuiltKits();
   builtNetworkKey = key;
+  const allow = $("d-allowlist-wrap");
+  if (allow) {
+    const deployChain = d?.value || "solana";
+    allow.hidden = deployChain !== "solana" && deployChain !== "solana-legacy";
+  }
 }
 
 /** null until /api/storage/status answered; false = the server has no IRYS_PRIVATE_KEY. */
@@ -4452,6 +4480,7 @@ function setupKits() {
           creatorAddress: $("d-creator")?.value || "",
           symbol: $("d-symbol")?.value || "LAB",
           description: $("d-desc")?.value || "",
+          allowlist: ($("d-chain")?.value === "evm" || $("d-chain")?.value === "bitcoin") ? "" : ($("d-allowlist")?.value || ""),
           locale: getLocale(),
           includeHolderLicence: Boolean($("d-holder-on")?.checked),
           holderLicence: $("d-holder")?.value || "",
