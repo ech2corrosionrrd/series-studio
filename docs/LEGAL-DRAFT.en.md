@@ -90,7 +90,7 @@ Operator: `[name, country, address]`. Data contact: `[email]`.
 | **Your files**: base images, presets, recipes, generated images and their versions, PNG layers, export packages, review marks | providing the Service | server, a separate folder per wallet |
 | **Usage events**: "generated", "exported", "published" (wallet + event + time) | knowing whether the Service works, not profiling | database |
 | **Paid-call log**: engine, cost, success or failure | spend accounting, spotting outages | server |
-| **Technical logs**: IP address, time, request path | security, rate limiting, diagnostics | reverse proxy (kept up to `[30]` days `[confirm]`) and process logs |
+| **Technical logs**: IP address, time, request path | security, rate limiting, diagnostics | reverse proxy (up to 30 days and at most 5 files of 10 MB; cookies and authorization headers are not written) and process logs |
 
 We **do not collect** your name, email, phone or other traditional personal data: there is no account beyond the wallet. A wallet address and payment data may be personal data under your country's law, so we treat them accordingly.
 
@@ -102,7 +102,7 @@ To provide the Service, keep credit accounting, accept and verify payments, prev
 - **Blockchain and Solana RPC nodes** `[provider]`: addresses and transaction signatures to verify payments, read balances at sign-in (welcome credits) and check NFT holdings.
 - **Arweave/Irys**: files you publish through the Arweave button become **public and immutable**.
 - **Cloudflare**: traffic delivery and protection (it sees traffic to the Service). **Hosting** `[Hetzner, Germany]`: the server holding the data.
-- Operational notices to the operator (for example about payments or failures) go to a messenger `[Telegram]`: `[confirm exactly what data the notices contain]`.
+- Operational notices to the operator about **payments and referral bonuses** go to Telegram: credit amount, price, a shortened wallet address (first and last characters) and balance. Notices about users' generations are **not sent** on the public server.
 - Each party has its own policy. **We do not sell your data.** We may disclose data where the law requires it.
 
 ### 2.5. Retention
@@ -116,10 +116,10 @@ To provide the Service, keep credit accounting, accept and verify payments, prev
 Signed sessions (HttpOnly), request-origin checks, service keys kept on the server and never sent to the browser, per-wallet data isolation, backups with restore checks, monitoring. No system is 100% secure.
 
 ### 2.7. Your rights
-You may ask for **access to, correction or deletion of** your wallet's data (email `[email]` with the wallet address; to confirm, we may ask you to sign a message with that wallet). This does not cover on-chain records. `[For EU/EEA residents: GDPR rights and the right to complain to a supervisory authority: confirm with a lawyer. Technical note: deleting a wallet's data is currently manual; there is no button in the Service.]`
+You may ask for **access to, correction or deletion of** your wallet's data (email `[email]` with the wallet address; to confirm, we may ask you to sign a message with that wallet). This does not cover on-chain records. **You can delete your data yourself:** the "My data" button in the top bar (after sign-in) deletes all your files, usage events, referral code and sign-in codes, and removes your series names from the spend log. **Kept** are the wallet address, credit balance and payment and spend history (money accounting, refunds), because they must be retained; the button says so. Backups are cleared as they rotate. `[For EU/EEA residents: GDPR rights, the right to complain to a supervisory authority, accounting periods: confirm with a lawyer.]`
 
 ### 2.8. Cookies
-Only an **essential session cookie** `w3ir_session` (HttpOnly, SameSite=Lax, Secure; valid up to 4 hours). Cloudflare may set technical security cookies. We use no third-party advertising or analytics cookies `[confirm]`.
+Only an **essential session cookie** `w3ir_session` (HttpOnly, SameSite=Lax, Secure; valid up to 4 hours). Cloudflare may set technical security cookies. The Service has no third-party advertising or analytics cookies or scripts.
 
 ### 2.9. Children
 The Service is not intended for anyone under 18.
@@ -160,10 +160,9 @@ If a generation fails, credits are **refunded automatically** to your balance; n
 6. **Rights in AI outputs:** check each provider's terms for commercial use, especially the free Pollinations tier; whether users need warnings about copyrightability.
 7. **Liability cap and age:** limits allowed by your law, whether a self-declaration of 18+ is enough.
 8. **Sanctions and restricted regions:** whether to block access and which list.
-9. **Technical gaps worth closing before publishing:**
-   - a "delete my data" button or process (currently manual);
-   - `/terms` and `/privacy` pages with links in the footer and at first sign-in (with explicit consent if the lawyer requires it);
-   - record exactly what data operator Telegram notices contain;
-   - confirm reverse-proxy log retention and that no analytics cookies are used.
+9. **Technical items:**
+   - closed on 2026-10-05: the "My data" button (deletes files and usage records, money accounting stays); content of operator notices (payments and referral bonuses only, shortened addresses); proxy log retention (30 days, 5×10 MB); no third-party analytics;
+   - open: `/terms` and `/privacy` pages with links in the footer and at first sign-in (with explicit consent if the lawyer requires it): publish only after the texts are approved;
+   - the lawyer should confirm that keeping the balance and payment history after "My data" is permissible under your law.
 
 *Prepared against the code as of 2026-10-05. Each data statement was checked against `src/platform/db.mjs`, `src/platform/session.mjs`, the `.env.example` settings and the server configuration.*

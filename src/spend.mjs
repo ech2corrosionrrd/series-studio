@@ -9,6 +9,7 @@
  * Adapted from gremlin-nft src/spend.mjs + render-log.jsonl.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { atomicWriteFileSync } from "./fs-safe.mjs";
 import { dirname } from "node:path";
 
 /** Cap in USD from env value, or null (no cap). "", "off", "0" → no cap. */
@@ -32,6 +33,35 @@ export function appendRenderLog(file, entry, now = new Date()) {
   const line = { at: now.toISOString(), ...entry };
   appendFileSync(file, JSON.stringify(line) + "\n", "utf8");
   return line;
+}
+
+/**
+ * "Delete my data": the spend log is the operator's cost record, so lines stay, but the wallet is
+ * replaced by "erased" and the series name (`set`) is dropped. Returns the number of lines changed.
+ */
+export function anonymizeRenderLog(file, wallet) {
+  if (!wallet || !existsSync(file)) return 0;
+  let changed = 0;
+  const out = [];
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    let rec;
+    try {
+      rec = JSON.parse(line);
+    } catch {
+      out.push(line);
+      continue;
+    }
+    if (rec && rec.wallet === wallet) {
+      const { set: _set, ...rest } = rec;
+      out.push(JSON.stringify({ ...rest, wallet: "erased" }));
+      changed += 1;
+    } else {
+      out.push(line);
+    }
+  }
+  if (changed) atomicWriteFileSync(file, out.join("\n") + "\n", "utf8");
+  return changed;
 }
 
 export function readRenderLog(file) {

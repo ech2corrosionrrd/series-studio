@@ -3320,6 +3320,35 @@ function setupAccount() {
       }
     }
   });
+  const dataOverlay = $("data-overlay");
+  const dataConfirm = $("data-confirm");
+  const dataRun = $("data-run");
+  $("acct-data")?.addEventListener("click", () => {
+    if (!dataOverlay) return;
+    dataOverlay.hidden = false;
+    if (dataConfirm) dataConfirm.value = "";
+    if (dataRun) dataRun.disabled = true;
+    if ($("data-msg")) $("data-msg").textContent = "";
+    dataConfirm?.focus();
+  });
+  $("data-close")?.addEventListener("click", () => { if (dataOverlay) dataOverlay.hidden = true; });
+  dataConfirm?.addEventListener("input", () => {
+    if (dataRun) dataRun.disabled = dataConfirm.value.trim() !== "DELETE";
+  });
+  dataRun?.addEventListener("click", async () => {
+    const msg = $("data-msg");
+    try {
+      setBusy(dataRun, true);
+      if (msg) msg.textContent = t("ui.working");
+      await api("/api/account/delete-data", { method: "POST", body: JSON.stringify({ confirm: dataConfirm.value.trim() }) });
+      if (msg) msg.textContent = t("data.done");
+      await fetch("/auth/logout", { method: "POST" }).catch(() => {});
+      setTimeout(() => { location.href = "/login"; }, 1500);
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+      setBusy(dataRun, false);
+    }
+  });
   $("acct-logout")?.addEventListener("click", async () => {
     await fetch("/auth/logout", { method: "POST" }).catch(() => {});
     location.href = "/login";
