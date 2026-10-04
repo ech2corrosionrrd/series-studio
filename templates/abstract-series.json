@@ -3,6 +3,7 @@
   "id": "abstract-series",
   "name": "Abstract Series",
   "seed": "template-abstract-series-v1",
+  "genesis": true,
   "size": 32,
   "base": {
     "path": "input/mother.png",

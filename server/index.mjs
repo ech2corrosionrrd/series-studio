@@ -111,6 +111,7 @@ import { imagesDirName } from "../src/reference.mjs";
 import { licenseWarning, engineModelId, platformFluxModel } from "../src/license.mjs";
 import { studioDocsResponse } from "../scripts/site-html.mjs";
 
+import { genesisEnabled, syncGenesisImage, withGenesis } from "../src/genesis.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const UI = join(__dirname, "ui");
@@ -488,6 +489,20 @@ function chargeStage(stage, opts = {}) {
   return { quote, charge: { wallet, amount: quote.credits, engine, note } };
 }
 
+/**
+ * Archive as it is released: with the genesis lot (base image = edition #0) when the series
+ * asks for it. Copies the base into the set folder as 0.<ext> so every consumer finds it.
+ */
+function releaseArchive(archive, preset, setDir) {
+  if (!genesisEnabled(preset)) return archive;
+  try {
+    syncGenesisImage({ inputDir: P().input, setDir });
+  } catch (e) {
+    console.warn(`[genesis] base image not synced: ${e.message}`);
+  }
+  return withGenesis(archive, preset);
+}
+
 function loadSeriesContext(archiveName) {
   if (!archiveName) {
     const err = new Error("archive required");
@@ -841,6 +856,28 @@ function listImageSets() {
   return sets.sort((a, b) => b.mtime - a.mtime);
 }
 
+/**
+ * Review shows the base image as edition #0 when the series has a genesis lot. The preset is
+ * found through the set's archive (out/<presetId>*.json); a set with no known preset is left alone.
+ */
+function presetForSet(_dirName) {
+  const newest = listArchives().sort((x, y) => y.mtime - x.mtime)[0];
+  if (!newest?.presetId) return null;
+  return loadPresetFileSafe(`${newest.presetId}.json`)?.preset || null;
+}
+
+function syncGenesisForSet(setName) {
+  try {
+    const dirName = safeSetName(setName);
+    const setDir = join(P().out, dirName);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) return;
+    const preset = presetForSet(dirName);
+    if (genesisEnabled(preset)) syncGenesisImage({ inputDir: P().input, setDir });
+  } catch (e) {
+    console.warn(`[genesis] review sync skipped: ${e.message}`);
+  }
+}
+
 function listSetImages(setName) {
   const dirName = safeSetName(setName);
   const dir = join(P().out, dirName);
@@ -872,6 +909,7 @@ function listSetImages(setName) {
 }
 
 function setPayload(setName) {
+  syncGenesisForSet(setName);
   const payload = listSetImages(setName);
   return {
     ...payload,
@@ -2856,7 +2894,7 @@ async function handleApi(req, res, url) {
     };
     try {
       const result = await buildBundleZip({
-        archive,
+        archive: releaseArchive(archive, preset, setDir),
         preset,
         setDir,
         set,
@@ -2929,7 +2967,7 @@ async function handleApi(req, res, url) {
     const locale = resolveLocale(req, body);
     try {
       const result = await buildBundleZip({
-        archive: loaded.archive,
+        archive: releaseArchive(loaded.archive, loaded.preset, setDir),
         preset: loaded.preset,
         setDir,
         set,
@@ -3025,8 +3063,9 @@ async function handleApi(req, res, url) {
     const choice = deployChainChoice(body.chain, body.legacy === true);
     const profileKey = body.profile || (choice.chain === "solana" ? "magiceden" : choice.chain === "bitcoin" ? "ordinalsbot" : "opensea");
     const onlyKeep = body.onlyKeep === undefined ? false : Boolean(body.onlyKeep);
+    const relArchive = releaseArchive(loaded.archive, loaded.preset, setDir);
     const loadedItems = readBundleItems({
-      archive: loaded.archive,
+      archive: relArchive,
       setDir,
       marks: readMarks(set),
       onlyKeep,
@@ -3061,7 +3100,7 @@ async function handleApi(req, res, url) {
     try {
       const built = kind === "deploy_kit"
         ? buildDeployKit({
-          archive: loaded.archive,
+          archive: relArchive,
           preset: loaded.preset,
           items: loadedItems.items,
           opts: sharedOpts,
@@ -3072,7 +3111,7 @@ async function handleApi(req, res, url) {
           opts: sharedOpts,
           locale,
           preset: loaded.preset,
-          archive: loaded.archive,
+          archive: relArchive,
         });
       await writeFilesZip(built.files, join(bundlesDir(), file));
       return send(res, 200, {
