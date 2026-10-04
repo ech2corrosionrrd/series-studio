@@ -4,6 +4,7 @@
  * addresses written after deploy. Adapted from gremlin-nft collection.config.mjs
  * + src/guards.mjs + src/mint.mjs. No network, no keys.
  */
+import { normalizeAllowlist } from "./allowlist.mjs";
 
 /** Id of the per-wallet limit inside one Candy Machine. Changing it resets wallet counters. */
 export const MINT_LIMIT_ID = 1;
@@ -43,8 +44,19 @@ export function releaseFromArchive(archive = {}, preset = {}, opts = {}) {
     standard: "core",
     reserve: { count: 0, note: "" },
     mint: { startDate: null, limitPerWallet: null },
+    allowlist: null,
+    reveal: null,
     deployed: { candyMachine: null, candyGuard: null, collection: null },
   };
+}
+
+/**
+ * Allowlist on the release, or null. Throws when the field is present but invalid.
+ * Wallets are not copied into the public guard set: they become the `wl` group.
+ */
+export function allowlistOf(cfg) {
+  if (cfg?.allowlist == null || cfg.allowlist === "") return null;
+  return normalizeAllowlist(cfg.allowlist);
 }
 
 /** @returns {{ errors: string[], warnings: string[] }} */
@@ -89,6 +101,19 @@ export function validateRelease(cfg = {}) {
   } else warnings.push("mint.startDate is empty: the mint opens the moment the guard is set");
   if (!cfg.mint?.limitPerWallet) warnings.push("no per-wallet limit: one wallet can buy everything");
   if (!["core", "v3"].includes(cfg.standard)) errors.push('standard must be "core" or "v3"');
+  try {
+    allowlistOf(cfg);
+  } catch (e) {
+    errors.push(e.message);
+  }
+  if (cfg.reveal != null && cfg.reveal !== false) {
+    if (typeof cfg.reveal !== "object" || !cfg.reveal.enabled) errors.push('reveal must be { "enabled": true, "name", "uri", "hash" } or null');
+    else {
+      if (!String(cfg.reveal.hash || "").trim()) errors.push("reveal.hash is required when reveal is enabled");
+      else if (!/^[0-9a-fA-F]{64}$/.test(String(cfg.reveal.hash))) errors.push("reveal.hash must be 64 hex characters");
+      if (!String(cfg.reveal.uri || "").trim()) errors.push("reveal.uri is required when reveal is enabled");
+    }
+  }
   return { errors, warnings };
 }
 
@@ -111,28 +136,65 @@ export function buildReleaseGuards(cfg) {
   return guards;
 }
 
-/**
- * Core Candy Machine guard config, the `guardConfig` object of an `mplx cm create` config file
- * (https://metaplex.com/docs/dev-tools/cli/cm). Prices are lamports, not SOL.
- * The CLI has no command to change guards on an existing Core machine; that needs the SDK (`updateCandyGuard`),
- * which replaces the whole guard set, so payment is always included here as well.
- */
-export function coreGuardConfig(cfg) {
+function publicCoreGuards(cfg) {
   const g = buildReleaseGuards(cfg);
   const lamports = Math.round(g.solPayment.value * 1e9);
   const guardConfig = { solPayment: { lamports, destination: g.solPayment.destination } };
   if (cfg.mint?.startDate) guardConfig.startDate = { date: new Date(cfg.mint.startDate).toISOString() };
   if (g.mintLimit) guardConfig.mintLimit = { id: g.mintLimit.id, limit: g.mintLimit.limit };
-  return { guardConfig };
+  return guardConfig;
 }
 
-/** Sugar-format guard config (`sugar guard update --config …`). */
+function withPhasePrice(solPayment, al, core) {
+  if (al.priceSol == null) return solPayment;
+  if (core) return { lamports: Math.round(al.priceSol * 1e9), destination: solPayment.destination };
+  return { value: al.priceSol, destination: solPayment.destination };
+}
+
+/**
+ * Core Candy Machine guard config, the `guardConfig` object of an `mplx cm create` config file
+ * (https://metaplex.com/docs/dev-tools/cli). Prices are lamports, not SOL.
+ * The CLI has no command to change guards on an existing Core machine; that needs the SDK (`updateCandyGuard`),
+ * which replaces the whole guard set, so payment is always included here as well.
+ *
+ * The default set is the public phase. An allowlist is a separate group (`wl` unless renamed):
+ * Candy Guard groups replace the default set, so the group repeats payment and the limit.
+ * `allowList.merkleRoot` is hex — that is what the current MPLX guard parser accepts.
+ */
+export function coreGuardConfig(cfg) {
+  const guardConfig = publicCoreGuards(cfg);
+  const al = allowlistOf(cfg);
+  const out = { guardConfig };
+  if (!al) return out;
+  const guards = {
+    allowList: { merkleRoot: al.merkleRoot },
+    solPayment: withPhasePrice(guardConfig.solPayment, al, true),
+  };
+  if (guardConfig.mintLimit) guards.mintLimit = guardConfig.mintLimit;
+  if (guardConfig.startDate) guards.startDate = guardConfig.startDate;
+  out.groups = [{ label: al.label, guards }];
+  return out;
+}
+
+/** Sugar-format guard config (`sugar guard update --config …`). Allowlist root is base58. */
 export function guardUpdateConfig(cfg) {
+  const al = allowlistOf(cfg);
+  let groups = null;
+  if (al) {
+    const pub = buildReleaseGuards(cfg);
+    const guards = {
+      allowList: { merkleRoot: al.merkleRootBase58 },
+      solPayment: withPhasePrice(pub.solPayment, al, false),
+    };
+    if (pub.mintLimit) guards.mintLimit = pub.mintLimit;
+    if (pub.startDate) guards.startDate = pub.startDate;
+    groups = [{ label: al.label, guards }];
+  }
   return {
     number: publicSize(cfg),
     symbol: cfg.symbol,
     sellerFeeBasisPoints: cfg.sellerFeeBasisPoints,
     creators: cfg.creators,
-    guards: { default: buildReleaseGuards(cfg), groups: null },
+    guards: { default: buildReleaseGuards(cfg), groups },
   };
 }

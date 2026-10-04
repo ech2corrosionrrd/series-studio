@@ -199,10 +199,41 @@ export {
   buildReleaseGuards,
   guardUpdateConfig,
   coreGuardConfig,
+  allowlistOf,
   publicSize,
   sugarDate,
   mintLimitGuard,
 } from "./release-config.mjs";
+export {
+  buildAllowlist,
+  normalizeAllowlist,
+  parseAllowlistText,
+  verifyMerkleProof,
+  ALLOWLIST_ALGORITHM,
+} from "./allowlist.mjs";
+export {
+  revealDataHash,
+  hiddenSettings,
+  placeholderMetadata,
+  placeholderPng,
+  revealItemsFromCache,
+  loadRevealItems,
+  revealUpdates,
+  checkReveal,
+  REVEAL_ALGORITHM,
+} from "./reveal.mjs";
+export { composeEdition, composeArchive, compositeOver, layerFileFor } from "./layers.mjs";
+export {
+  planCoreMint,
+  planCoreReveal,
+  selectMintGroup,
+  buildUpdateV1,
+  readCollectionUpdateAuthority,
+  allowListProofPda,
+  candyMachineAuthorityPda,
+  mintLimitPda,
+  MPL_CORE_PROGRAM,
+} from "./core-flow.mjs";
 export {
   decodeGuardAccount,
   decodeCoreCandyMachine,
