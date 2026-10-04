@@ -1,0 +1,5 @@
+#!/bin/sh
+# Documentation must be current before every commit (see CLAUDE.md).
+# Skip for a pure refactor with no visible change: SKIP_DOCS_CHECK=1 git commit ...
+[ -n "$SKIP_DOCS_CHECK" ] && exit 0
+node scripts/check-docs.mjs --staged

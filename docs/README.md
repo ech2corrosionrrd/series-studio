@@ -11,7 +11,7 @@
 | Хто ви | Читайте |
 |---|---|
 | **Новачок** | [GUIDE.md](./GUIDE.md) — посібник простими словами (те саме, що вкладка «❓ Довідка») |
-| **Користувач майстерні** | [STAGES.md](./STAGES.md) → [STUDIO-UI.md](./STUDIO-UI.md) → [EXPORT.md](./EXPORT.md) |
+| **Користувач майстерні** | [STAGES.md](./STAGES.md) → [STUDIO-UI.md](./STUDIO-UI.md) → [EXPORT.md](./EXPORT.md) → [RELEASE.md](./RELEASE.md) |
 | **Розробник** | [API.md](./API.md) · [PRESET.md](./PRESET.md) · [TRAITS.md](./TRAITS.md) · [../CHANGELOG.md](../CHANGELOG.md) |
 | **Після ядра / хостинг** | [HOSTING.md](./HOSTING.md) — лише за командою власника · [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) · [STANDALONE.md](./STANDALONE.md) |
 | **Оператор / економіка** | [ECONOMY.md](./ECONOMY.md) — пакети, COGS, накладні, RESOURCE_FX, Admin → Економіка |
@@ -29,7 +29,8 @@
 | [STAGES.md](./STAGES.md) | Етапи майстерні |
 | [STUDIO-UI.md](./STUDIO-UI.md) | Інтерфейс, підказки, довідка, локалізація, безпека |
 | [API.md](./API.md) | HTTP-маршрути `/api/*` |
-| [EXPORT.md](./EXPORT.md) | ZIP, маніфест, IPFS, Showcase, конфіги |
+| [EXPORT.md](./EXPORT.md) | ZIP, маніфест, Arweave, Showcase, конфіги; поля Експорту залежать від профілю |
+| [RELEASE.md](./RELEASE.md) | Шлях випуску: `release.json` → `series upload` → deploy → `series guards` → `series verify` |
 | [BASE.md](./BASE.md) | Базові картинки, Vision Assist |
 | [TRAITS.md](./TRAITS.md) | Паки рис, редактор опцій |
 | [PRESET.md](./PRESET.md) | Формат пресету |
@@ -41,7 +42,14 @@
 | [ROADMAP.md](./ROADMAP.md) | Хвилі 1–25 ✅ · стабілізація ▶️ · рефакторинг/власний домен ⏸ |
 | [SYNTHESIS.md](./SYNTHESIS.md) · [FROM-PROMT.md](./FROM-PROMT.md) | Донори |
 | [BRAND.md](./BRAND.md) · [BOUNDARIES.md](./BOUNDARIES.md) | Бренд і межі |
+| [DESIGN-AUDIT.md](./DESIGN-AUDIT.md) | Аудит дизайну інтерфейсу |
 | [CONTEXT.md](./CONTEXT.md) · [IDEAS.md](./IDEAS.md) · [PLAN.md](./PLAN.md) · [LAB.md](./LAB.md) | Історичні нотатки |
+
+---
+
+## Правила репозиторію
+
+[../CLAUDE.md](../CLAUDE.md) — **документація оновлюється до коміту**, перевірки перед комітом, мова й підказки, ключі. Автоперевірка: `npm run docs:check`, хук `.githooks/pre-commit`.
 
 ---
 

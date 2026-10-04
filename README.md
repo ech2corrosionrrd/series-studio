@@ -14,7 +14,7 @@
 
 ## Що вміє
 
-**пресет + seed** → унікальні детерміновані рецепти (DNA + промпти) → **базова картинка серії** (+ Vision Assist) → рендер у кілька потоків з живим прогресом → **відбір** (keep/redo, AI Triage, версії) → **експорт** (перевірений архів, ERC-721 / Metaplex / Ordinals ZIP, CSV, IPFS через Pinata, хеш походження, вітрина, датасет LoRA) → **набір деплою** (типово Core Candy Machine; Sugar — застарілий; EVM: Thirdweb; Ordinals: інструкція) і **набір маркетплейсу** (Solana: Magic Eden і Tensor; EVM: OpenSea; Bitcoin: Ordinals). Продаж і мінт — з вашого гаманця, не з майстерні.
+**пресет + seed** → унікальні детерміновані рецепти (DNA + промпти) → **базова картинка серії** (+ Vision Assist) → рендер у кілька потоків з живим прогресом → **відбір** (keep/redo, AI Triage, версії) → **експорт** (перевірений архів, ERC-721 / Metaplex / Ordinals ZIP, CSV, Arweave через Irys, хеш походження, вітрина, датасет LoRA) → **набір деплою** (типово Core Candy Machine; Sugar — застарілий; EVM: Thirdweb; Ordinals: інструкція) і **набір маркетплейсу** (Solana: Magic Eden і Tensor; EVM: OpenSea; Bitcoin: Ordinals). Продаж і мінт — з вашого гаманця, не з майстерні.
 
 **Страховка для грошей і файлів** (працює автоматично):
 
@@ -56,11 +56,18 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `FAL_KEY`, `REPLICATE_API_TOKEN`, `OPENAI_API_KEY`, `STABILITY_API_KEY`, `RUNWARE_API_KEY`, `POLLINATIONS_API_KEY` | Хмарні рушії |
 | `COMFYUI_URL`, `A1111_URL`, `LOCAL_GPU_CREDIT_COST` | Local GPU на ПК; у public — плата підтримки Lab (кр/кадр) |
 | `ANTHROPIC_API_KEY` | Vision Assist / AI Triage через Claude (опційно) |
-| `PINATA_JWT` | Завантаження в IPFS |
+| `IRYS_PRIVATE_KEY` | Серверна кнопка Arweave в Експорті (окремий гаманець з малим балансом). Для випуску краще `series upload --keypair` — ключ лишається на ПК |
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | Сповіщення від імені Series Lab |
 | `SOLANA_PAY_RECIPIENT` (+ `SOLANA_RPC_URL`) | Поповнення кредитів: USDC у Solana переказом напряму, без посередника; публічна адреса-отримувач, ключ не потрібен |
 | `HOSTING_MONTHLY_USD`, `SAAS_MONTHLY_USD`, `PAYMENT_FEE_PCT`, `FX_FEE_PCT`, `RESOURCE_FX_PCT` | Адмін → Економіка (накладні + комісії; див. [docs/ECONOMY.md](docs/ECONOMY.md)) |
 | `STAGE_*`, `DEPLOY_*`, `MARKETPLACE_IMAGE_SIZES`, `PREFLIGHT_MAX_IMAGE_BYTES` | Ціна етапів, оцінка деплою, розміри майданчиків, стеля файлу — [docs/PRODUCT.md](docs/PRODUCT.md) |
+| `SERIES_DATA_DIR`, `AUTH_COOKIE_INSECURE` | Каталог даних; прапорець для входу по http (лише тест) |
+| `COMFYUI_ENABLED`, `A1111_ENABLED`, `MOCK_ENABLED` | Увімкнути локальні рушії й mock |
+| `WELCOME_CREDITS`, `EARLY_WELCOME_LIMIT` | Вітальні кредити та ліміт перших |
+| `CONTENT_SAFETY_ENABLED`, `MODERATION_API_ENABLED` | Фільтр вмісту й зовнішня модерація |
+| `SOLANA_PAY_USDC_MINT`, `SOLANA_PAY_COMMITMENT` | Mint USDC і рівень підтвердження (типово mainnet; міняти лише для тесту) |
+| `TUNNEL_HOST`, `TUNNEL_NAME`, `TUNNEL_PORT`, `TUNNEL_WELCOME_REQUIRE_BALANCE` | Зовнішнє тестування через тунель (`npm run lab:tunnel`, [docs/HOSTING.md](docs/HOSTING.md)) |
+| `HOLDER_SYNC_INTERVAL_SECONDS`, `SUGAR_PROJECT_PATH` | Синхронізація власників і шлях до проєкту Sugar |
 | `SERIES_SPEND_CAP_USD` | Денна межа витрат, $ |
 | `SERIES_MAX_CONSECUTIVE_FAILURES` | Автостоп batch (5) |
 | `SERIES_TRASH_DAYS` | Кошик (30; 0 = не чистити) |
@@ -101,7 +108,12 @@ node bin/series.mjs triage out/mock-s0.45 --provider heuristic --apply
 node bin/series.mjs provenance out/fal-s0.45 -o out/provenance.json
 node bin/series.mjs dataset out/demo-archive.json --images out/fal-s0.45 --trigger my_hero -o out/dataset.zip
 node bin/series.mjs upscale out/fal-s0.45
-node bin/series.mjs pin out/fal-s0.45 --name my-series
+node bin/series.mjs pin out/fal-s0.45 --dry-run
+node bin/series.mjs release-init out/demo-archive.json -o release.json --creator <адреса> --price 0.2
+node bin/series.mjs upload <тека-набору> --keypair deployer.json --max-price 1
+node bin/series.mjs guards release.json -o guard-config.json
+node bin/series.mjs verify release.json
+node bin/series.mjs notify "Готово"
 node bin/series.mjs manifest out/demo-archive.json --profile opensea
 node bin/series.mjs showcase out/demo-archive.json -o out/showcase.html
 node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o out/cm-config.json
