@@ -2,6 +2,8 @@
 /**
  * Series Lab Studio.
  * Development placement: http://127.0.0.1:5344/studio/ (HOST).
+ * The same process can listen for a host (HOST=0.0.0.0 plus SERIES_ALLOWED_HOSTS
+ * and a matching AUTH_DOMAIN). studio.w3ir.io is the static site, not this process.
  * The product itself is always the full platform: wallet sign-in, per-wallet
  * data, credits. SERIES_MODE=local is an explicit file-folder workshop and
  * may listen only on loopback.
@@ -160,7 +162,7 @@ if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 
 
 import { testEngineConnection } from "../src/connectors.mjs";
-import { allowedHostnames, checkApiRequest, openAccessError } from "./guard.mjs";
+import { allowedHostnames, checkApiRequest, hostedConfigError, hostedConfigWarning, openAccessError } from "./guard.mjs";
 import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
 import { PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck, freemiumRecord, getBalance,
   listTransactions, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost,
@@ -3328,26 +3330,32 @@ try {
   console.warn(`Trash prune skipped: ${e.message}`);
 }
 
-if (PLATFORM_ON) startPlatformBackground();
-
-const openErr = openAccessError(HOST, PUBLIC_MODE);
+const openErr = openAccessError(HOST, PUBLIC_MODE) || hostedConfigError(HOST, PUBLIC_MODE, process.env);
 if (openErr) {
   console.error(openErr);
-  process.exit(1);
-}
+  process.exitCode = 1;
+} else {
+  const hostWarn = hostedConfigWarning(HOST, PUBLIC_MODE, process.env);
+  if (hostWarn) console.warn(hostWarn);
 
-server.listen(PORT, HOST, () => {
-  const href = `http://${HOST}:${PORT}/studio/`;
-  console.log(`Series Lab Studio (${PUBLIC_MODE ? "public" : "local"})  ${href}`);
-  console.log(`Also: http://${HOST}:${PORT}/`);
-  console.log("Lab + Studio: keys from Prompt .env; generate is live. Ctrl+C to stop.");
-  if (OPEN) {
-    const cmd =
-      process.platform === "win32"
-        ? `cmd /c start "" "${href}"`
-        : process.platform === "darwin"
-          ? `open "${href}"`
-          : `xdg-open "${href}"`;
-    exec(cmd, { windowsHide: true }, () => {});
-  }
-});
+  if (PLATFORM_ON) startPlatformBackground();
+
+  server.listen(PORT, HOST, () => {
+    const href = `http://${HOST}:${PORT}/studio/`;
+    console.log(`Series Lab Studio (${PUBLIC_MODE ? "public" : "local"})  ${href}`);
+    console.log(`Also: http://${HOST}:${PORT}/`);
+    if (!isLoopbackHost(HOST)) {
+      console.log(`Hosted studio names: ${process.env.SERIES_ALLOWED_HOSTS || HOST}`);
+    }
+    console.log("API keys stay in this process environment and are not sent to the browser. Ctrl+C to stop.");
+    if (OPEN) {
+      const cmd =
+        process.platform === "win32"
+          ? `cmd /c start "" "${href}"`
+          : process.platform === "darwin"
+            ? `open "${href}"`
+            : `xdg-open "${href}"`;
+      exec(cmd, { windowsHide: true }, () => {});
+    }
+  });
+}
