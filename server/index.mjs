@@ -179,7 +179,7 @@ import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs
 import { publishCollection } from "../src/platform/site.mjs";
 import { economyReport } from "../src/platform/margin.mjs";
 import { funnel } from "../src/platform/stats.mjs";
-import { writeJsonAtomic } from "../src/fs-safe.mjs";
+import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
 import { containsSecretField } from "../src/secrets.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
@@ -3149,7 +3149,7 @@ async function handleApi(req, res, url) {
     }
     const root = resolve(P().root);
     const layerDir = resolve(root, String(body.layers || "layers"));
-    if (layerDir !== root && !layerDir.startsWith(`${root}/`)) {
+    if (!isInsideDir(root, layerDir)) {
       return send(res, 400, { error: "layers directory must stay inside the project" });
     }
     if (!existsSync(layerDir)) {
