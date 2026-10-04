@@ -35,6 +35,7 @@
 | щогодини, :05 | `BACKUP_MODE=hourly` — лише `users.db` (платежі й баланси) | 48 копій у `backups/hourly/` |
 | щодня 03:15 | повний знімок + хмарна копія, якщо ввімкнена | 7 у `backups/daily/` і 4 тижневі у `backups/weekly/` |
 | кожні 6 год | `verify-backup.sh fresh` — найновіша погодинна копія не старша за `VERIFY_MAX_AGE_HOURS` (3) | — |
+| кожні 6 год (:25) | `verify-backup.sh disk`: диск з даними заповнений менше ніж на `DISK_WARN_PCT` (80%); алерт у Telegram інакше. Потрібен, бо гаманці завантажують шари PNG і генерують картинки | — |
 | неділя 05:00 | `verify-backup.sh drill` — найновіша добова копія відкривається, `integrity_check` ок, є таблиці `users`, `payments`, `transactions`, `wallet_nonces` | — |
 
 Копія, яку ніхто не пробував відкрити, не є бекапом, тому перевірки не пропускайте. За збою `verify-backup.sh` завершується з кодом 1 і пише в `logs/verify.log`; якщо в `backup.env` задано `SERIES_TELEGRAM_BOT_TOKEN` і `SERIES_TELEGRAM_CHAT_ID`, надсилає алерт у Telegram. Локально те саме робить `npm run backup` ([GUIDE.md](./GUIDE.md#бекап)); окрему копію перевіряє `node scripts/verify-backup.mjs --path users.db`.

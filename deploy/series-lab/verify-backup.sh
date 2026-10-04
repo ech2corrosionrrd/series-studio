@@ -4,6 +4,9 @@
 #                            contain the core tables
 #   verify-backup.sh fresh   daily: newest HOURLY snapshot must be younger than
 #                            VERIFY_MAX_AGE_HOURS (default 3) — catches a silently dead cron
+#   verify-backup.sh disk    the disk holding the data (DISK_PATH, default $BASE) must be below
+#                            DISK_WARN_PCT (default 80) full: wallets upload PNG layers and
+#                            generate images, a full disk would stop the ledger
 # On a problem: exit 1 and, if set in backup.env, a Telegram alert
 # (SERIES_TELEGRAM_BOT_TOKEN + SERIES_TELEGRAM_CHAT_ID).
 set -uo pipefail
@@ -32,10 +35,23 @@ alert() {
   fi
 }
 
+if [ "$MODE" = disk ]; then
+  path=${DISK_PATH:-$BASE}
+  limit=${DISK_WARN_PCT:-80}
+  used=$(df -P "$path" 2>/dev/null | awk 'NR==2 {gsub("%","",$5); print $5}')
+  [ -n "$used" ] || { alert "disk: cannot read usage of $path"; exit 1; }
+  if [ "$used" -ge "$limit" ]; then
+    alert "disk: $path is ${used}% full (limit ${limit}%) — free space or grow the disk"
+    exit 1
+  fi
+  note "disk ok: $path ${used}% (limit ${limit}%)"
+  exit 0
+fi
+
 case "$MODE" in
   drill) sub=daily;  max=0 ;;
   fresh) sub=hourly; max=${VERIFY_MAX_AGE_HOURS:-3} ;;
-  *) echo "usage: $0 drill|fresh"; exit 2 ;;
+  *) echo "usage: $0 drill|fresh|disk"; exit 2 ;;
 esac
 
 snap=$(ls -1dt "$DEST/$sub"/*/ 2>/dev/null | head -1)
