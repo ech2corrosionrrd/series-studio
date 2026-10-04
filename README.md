@@ -56,6 +56,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `FAL_KEY`, `REPLICATE_API_TOKEN`, `OPENAI_API_KEY`, `STABILITY_API_KEY`, `RUNWARE_API_KEY`, `POLLINATIONS_API_KEY` | Хмарні рушії |
 | `COMFYUI_URL`, `A1111_URL`, `LOCAL_GPU_CREDIT_COST` | Local GPU на ПК; у public — плата підтримки Lab (кр/кадр) |
 | `ANTHROPIC_API_KEY` | Vision Assist / AI Triage через Claude (опційно) |
+| `IRYS_MAX_PRICE_SOL` | Ліміт ціни серверного завантаження в Arweave, SOL (0.05); вище — відмова до оплати, нестача на Irys поповнюється з гаманця |
 | `IRYS_PRIVATE_KEY` | Серверна кнопка Arweave в Експорті (окремий гаманець з малим балансом). Для випуску краще `series upload --keypair` — ключ лишається на ПК |
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | Сповіщення від імені Series Lab |
 | `SOLANA_PAY_RECIPIENT` (+ `SOLANA_RPC_URL`) | Поповнення кредитів: USDC у Solana переказом напряму, без посередника; публічна адреса-отримувач, ключ не потрібен |
