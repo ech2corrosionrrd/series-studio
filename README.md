@@ -64,7 +64,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `STAGE_*`, `DEPLOY_*`, `MARKETPLACE_IMAGE_SIZES`, `PREFLIGHT_MAX_IMAGE_BYTES` | Ціна етапів, оцінка деплою, розміри майданчиків, стеля файлу — [docs/PRODUCT.md](docs/PRODUCT.md) |
 | `SERIES_DATA_DIR`, `AUTH_COOKIE_INSECURE` | Каталог даних; прапорець для входу по http (лише тест) |
 | `COMFYUI_ENABLED`, `A1111_ENABLED`, `MOCK_ENABLED` | Увімкнути локальні рушії й mock |
-| `WELCOME_CREDITS`, `EARLY_WELCOME_LIMIT` | Вітальні кредити та ліміт перших |
+| `WELCOME_CREDITS`, `EARLY_WELCOME_LIMIT`, `GENERATION_RATE_LIMIT_PER_MINUTE` | Разові вітальні кредити (типово 20) і ліміт перших. Денної безкоштовної стелі немає. Гаманець без оплати і без гранту — до 10 генерацій на хвилину; оплата або грант цю стелю знімає |
 | `CONTENT_SAFETY_ENABLED`, `MODERATION_API_ENABLED` | Фільтр вмісту й зовнішня модерація |
 | `SOLANA_PAY_USDC_MINT`, `SOLANA_PAY_COMMITMENT` | Mint USDC і рівень підтвердження (типово mainnet; міняти лише для тесту) |
 | `TUNNEL_HOST`, `TUNNEL_NAME`, `TUNNEL_PORT`, `TUNNEL_WELCOME_REQUIRE_BALANCE` | Зовнішнє тестування через тунель (`npm run lab:tunnel`, [docs/HOSTING.md](docs/HOSTING.md)) |
