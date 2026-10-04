@@ -2,7 +2,7 @@
 
 > **The Service is in development and testing (beta).** It is provided **"as is"**: expect outages, feature changes, data resets and downtime. By using Series Lab you confirm that you know this, that you are fine with it, and that you accept these Terms and the [Privacy Policy](https://studio.w3ir.io/en/privacy/). If you do not agree, do not use the Service.
 
-Effective 5 October 2026 · Contact: w3ir@pm.me · Service: https://next.w3ir.io
+Effective 5 October 2026 · Contact: w3ir@pm.me · Service: https://lab.w3ir.io
 
 ## 1. Who we are and what the Service is
 

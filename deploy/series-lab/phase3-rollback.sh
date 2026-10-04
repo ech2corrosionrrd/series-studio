@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Undo the Series Lab staging deploy on the server (run as root). Nothing else on the host is
-# touched except the proxy block for next.w3ir.io, which is removed. Data is kept unless PURGE=1.
+# touched except the proxy blocks for lab.w3ir.io / next.w3ir.io, which are removed. Data is kept unless PURGE=1.
 set -euo pipefail
 BASE=/opt/series-lab
 CADDY_HOME="${CADDY_HOME:-/opt/w3ir}"

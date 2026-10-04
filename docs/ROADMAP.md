@@ -5,7 +5,7 @@
 
 Хвиля 12 нижче називає диспетчер сховища. Кнопка завантаження ходить в Arweave через Irys (Pinata/IPFS прибрано з коду). Хвиля 14 описує перший хаб випуску; поточний типовий конфіг Solana — `cm-config.json`, не Sugar.
 
-Папка на диску може лишатись `series-studio`; основний лендінг та робочий домен: [studio.w3ir.io](https://studio.w3ir.io) · staging: [next.w3ir.io](https://next.w3ir.io) (може відставати від `main`). **У разі високого попиту на сервіс (масштабування), для нього буде виділено окреме доменне ім'я та повністю ізольований хостинг.**
+Папка на диску може лишатись `series-studio`; основний лендінг та робочий домен: [studio.w3ir.io](https://studio.w3ir.io) · staging: [lab.w3ir.io](https://lab.w3ir.io) (може відставати від `main`). **У разі високого попиту на сервіс (масштабування), для нього буде виділено окреме доменне ім'я та повністю ізольований хостинг.**
 
 Джерела ідей: `C:\Промт` + `C:\Gremlins\gremlin-nft`  
 **Не** є форком GFAM; lore / treasury / мінт з головної — поза scope Lab.
@@ -54,10 +54,10 @@
 | **Шлях випуску · upload→guards→verify** | ✅ | `release.json`, `series upload` (відновлюване, з `cache.json`), `series guards` (allowlist — група `allowList`), `series hidden`, `series mint` (route + mintV1), `series reveal --keypair`, `series compose`, `series verify` — [RELEASE.md](./RELEASE.md) |
 | **Release Lab-side** | ✅ | ZIP + чекліст + Release Hub (посилання на лаунчпад). Ончейн-клейм — зовні, не в Lab |
 | **Реліз v1.7.0** | ✅ 04.10.2026 | Arweave (Irys), шлях випуску upload → guards → verify (Core і v3), підказки й мережа за вибором — [CHANGELOG.md](../CHANGELOG.md) |
-| **Хост у публічному режимі (v1.8.0)** | ✅ 04.10.2026 | next.w3ir.io: вхід гаманцем, оплата USDC (тест $4.99 зараховано), Telegram, бекапи (погодинні, `drill`, `backup:pull` на ПК) і зовнішній health. Лишилось: остаточне ім'я, хмарна копія S3, умови користування |
+| **Хост у публічному режимі (v1.8.0)** | ✅ 04.10.2026 | lab.w3ir.io: вхід гаманцем, оплата USDC (тест $4.99 зараховано), Telegram, бекапи (погодинні, `drill`, `backup:pull` на ПК) і зовнішній health. Лишилось: остаточне ім'я, хмарна копія S3, умови користування |
 | **Стабілізація на живих даних** | ▶️ зараз | `series verify` на справжній Core-машині, пробне відновлення `series upload` на mainnet, проходження шляху користувачем; **без** великого рефакторингу (див. «Поточні рішення») |
 | **Рефакторинг коду** | ⏸ відкладено | після стабілізації шляху / перед власним доменом — не зараз |
-| **Хостинг студії / власний домен** | ✅ хост, ⏸ окреме ім'я | [HOSTING.md](./HOSTING.md): той самий `server/index.mjs`, не Pages. [studio.w3ir.io](https://studio.w3ir.io) лишається статичним лендінгом; майстерня на [next.w3ir.io](https://next.w3ir.io) (v1.8.0). Остаточний домен — рішення власника |
+| **Хостинг студії / власний домен** | ✅ хост, ⏸ окреме ім'я | [HOSTING.md](./HOSTING.md): той самий `server/index.mjs`, не Pages. [studio.w3ir.io](https://studio.w3ir.io) лишається статичним лендінгом; майстерня на [lab.w3ir.io](https://lab.w3ir.io) (v1.8.0). Остаточний домен — рішення власника |
 
 Деталі запозичень з Промт — [FROM-PROMT.md](./FROM-PROMT.md). Етапи — [STAGES.md](./STAGES.md). API — [API.md](./API.md). Наступний план реалізації (сила референсу, Core Candy Machine, маркетплейси, перевірка архіву) — [RECOMMENDATIONS.md](./RECOMMENDATIONS.md). Хвилі нижче він не скасовує.
 
