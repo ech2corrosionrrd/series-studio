@@ -25,7 +25,7 @@
 | `/traits/` · `/en/traits/` | Паки рис, редактор опцій і файли `layers/<риса>/<значення>.png` |
 | `/export/` · `/en/export/` | ZIP, мережа, Arweave через Irys, список дозволених, `series mint` і `series reveal` зі свого ключа |
 | `/preset/` · `/en/preset/` | Короткий довідник файлу пресету, не повна схема. Мінт і розкриття — у `release.json`, не тут |
-| `/terms/` · `/privacy/` (і `/en/…`) | **Лише коли в `docs/legal/published/` лежать затверджені тексти** (uk і en, без `[плейсхолдерів]`); посилання з'являються у футері. Без них сторінок немає. Інструкція: [legal/published/README.md](./legal/published/README.md) |
+| `/terms/` · `/privacy/` (і `/en/…`) | Умови і Політика конфіденційності (бета-версія від 05.10.2026) з `docs/legal/published/`; посилання у футері. Збираються лише коли є обидві мови і немає `[плейсхолдерів]`; на сервері майстерні `/legal` переспрямовує сюди. Інструкція: [legal/published/README.md](./legal/published/README.md) |
 | `/404.html` | Сторінка «не знайдено» |
 | `/_headers` | Заголовки безпеки: CSP без скриптів, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` |
 | `/robots.txt`, `/sitemap.xml` | Індексація |
