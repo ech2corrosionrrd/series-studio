@@ -10,7 +10,7 @@
 
 | Хто ви | Читайте |
 |---|---|
-| **Новачок** | [GUIDE.md](./GUIDE.md) — посібник простими словами (те саме, що вкладка «❓ Довідка») |
+| **Новачок** | вкладка «❓ Довідка» або http://127.0.0.1:5344/studio/docs/ (посібник, етапи, вкладки, основа, риси, експорт, короткий пресет; англійською `/studio/docs/en/`). Друкована версія посібника — [GUIDE.md](./GUIDE.md) |
 | **Користувач майстерні** | [STAGES.md](./STAGES.md) → [STUDIO-UI.md](./STUDIO-UI.md) → [EXPORT.md](./EXPORT.md) → [RELEASE.md](./RELEASE.md) |
 | **Розробник** | [API.md](./API.md) · [PRESET.md](./PRESET.md) · [TRAITS.md](./TRAITS.md) · [../CHANGELOG.md](../CHANGELOG.md) |
 | **Після ядра / хостинг** | [HOSTING.md](./HOSTING.md) — лише за командою власника · [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) · [STANDALONE.md](./STANDALONE.md) |
