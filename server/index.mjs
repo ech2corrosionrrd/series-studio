@@ -6,6 +6,7 @@
  * data, credits. SERIES_MODE=local is an explicit file-folder workshop and
  * may listen only on loopback.
  */
+import "../src/require-node.mjs";
 import { createServer } from "node:http";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { exec } from "node:child_process";
@@ -436,7 +437,7 @@ function blockLicenseCharge(res, warning, body) {
 }
 
 /**
- * Flat stage fee (archive / deploy kit / marketplace kit / optional IPFS).
+ * Flat stage fee (archive / deploy kit / marketplace kit / optional Arweave upload).
  * Does not use the generation rate limit. Local mode does not charge.
  */
 function refundStage(paid) {
@@ -455,7 +456,7 @@ function chargeStage(stage, opts = {}) {
   const wallet = currentWallet();
   if (!wallet) throw httpError(401, "Sign in with your wallet first", { code: "auth" });
   if (!quote.credits) return { quote, charge: null };
-  const note = opts.ipfs && opts.zip === false ? "ipfs pin" : String(stage).replaceAll("_", " ");
+  const note = (opts.storage ?? opts.ipfs) && opts.zip === false ? "arweave upload" : String(stage).replaceAll("_", " ");
   const engine = `stage:${stage}`;
   if (!deductCredits(wallet, quote.credits, { engine, note })) throw insufficient(wallet, quote.credits);
   return { quote, charge: { wallet, amount: quote.credits, engine, note } };
@@ -2486,7 +2487,7 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: `set not found: ${dir}` });
     }
     const name = body.name || `series-${dir}`;
-    const paid = chargeStage("archive", { ipfs: true, zip: false });
+    const paid = chargeStage("archive", { storage: true, zip: false });
     let result;
     try {
       result = await uploadToIrys({
@@ -2729,7 +2730,7 @@ async function handleApi(req, res, url) {
       });
       let paid;
       try {
-        paid = chargeStage("archive", { zip: true, ipfs: false });
+        paid = chargeStage("archive", { zip: true, storage: false });
       } catch (e) {
         try { unlinkSync(join(bundlesDir(), result.file)); } catch { /* already gone */ }
         throw e;
@@ -2839,7 +2840,7 @@ async function handleApi(req, res, url) {
         generation: quoteStage("generation", { engine, count, reference: true }),
         curation: quoteStage("curation", { provider, count }),
         archive: quoteStage("archive", { zip: true }),
-        archive_ipfs: quoteStage("archive", { zip: false, ipfs: true }),
+        archive_storage: quoteStage("archive", { zip: false, storage: true }),
         deploy_kit: quoteStage("deploy_kit"),
         marketplace_kit: quoteStage("marketplace_kit"),
       },
@@ -2854,7 +2855,7 @@ async function handleApi(req, res, url) {
         count: Number(url.searchParams.get("count") || 1),
         reference: url.searchParams.get("reference") !== "0",
         provider: url.searchParams.get("provider") || "heuristic",
-        ipfs: url.searchParams.get("ipfs") === "1",
+        storage: url.searchParams.get("storage") === "1" || url.searchParams.get("ipfs") === "1",
         zip: url.searchParams.get("zip") !== "0",
       });
       return send(res, 200, { ok: true, quote });

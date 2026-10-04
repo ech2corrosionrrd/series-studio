@@ -26,7 +26,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 |---|---|
 | **Lab — план** | Рецепти й промпти рахуються на вашому ПК. Безкоштовно, без інтернету. |
 | **Studio — картинки** | Генерація, відбір, версії. Гроші витрачаються лише тут і лише коли ви натискаєте «Згенерувати» з платним двигуном. |
-| **Release — випуск** | ZIP, метадані, IPFS, чекліст, набір деплою і набір маркетплейсу. Продаж і мінт ви робите самі. |
+| **Release — випуск** | ZIP, метадані, посилання на сховище (Arweave для Solana; IPFS або https для EVM), чекліст, набір деплою і набір маркетплейсу. Продаж і мінт ви робите самі. |
 
 ## Швидкий старт за 10 хвилин і $0
 
@@ -349,7 +349,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 | `node bin/series.mjs upload <тека-набору> --keypair deployer.json` | відновлюване завантаження набору деплою в Arweave (див. RELEASE.md) |
 | `node bin/series.mjs pin out/fal-s0.45 --dry-run` | швидка перевірка набору перед завантаженням в Arweave (без ключа) |
 | `node bin/series.mjs release-init out/demo-archive.json -o release.json` | скелет `release.json` (роялті, творці, ціна, правила мінту) |
-| `node bin/series.mjs guards release.json` | конфіг правил мінту для `sugar guard update` |
+| `node bin/series.mjs guards release.json` | конфіг правил мінту: для Core — `guardConfig` для `mplx cm create` (лампорти), для v3 — Sugar-конфіг для `sugar guard update` |
 | `node bin/series.mjs verify release.json` | звірка Core Candy Machine або Candy Machine v3 у блокчейні з `release.json` (лише читання) |
 | `node bin/series.mjs notify "Готово"` | тестове сповіщення в Telegram |
 | `node bin/series.mjs manifest out/demo-archive.json --profile opensea` | CSV-маніфест для лаунчпада |

@@ -198,6 +198,7 @@ export {
   validateRelease,
   buildReleaseGuards,
   guardUpdateConfig,
+  coreGuardConfig,
   publicSize,
   sugarDate,
   mintLimitGuard,
