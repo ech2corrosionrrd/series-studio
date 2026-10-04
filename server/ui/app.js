@@ -149,7 +149,10 @@ function showTab(name) {
   }
   if (name === "recipes") ensureRecipesLoaded();
   if (name === "gallery") ensureGalleryLoaded();
-  if (name === "render") lockGenerate(true);
+  if (name === "render") {
+    lockGenerate(true);
+    refreshLayersStatus();
+  }
   if (name === "admin") {
     const current = document.querySelector(".admin-pane.on")?.id?.replace(/^admin-/, "");
     showAdminPane(adminPane || current || "res");
@@ -1625,6 +1628,7 @@ async function loadRecipesArchive(file) {
   state.recipes = data.recipes || data.archive?.recipes || [];
   state.archiveFile = file;
   state.archiveOut = `out/${file}`;
+  refreshLayersStatus();
   renderRecipeTable();
   if (data.rarity) renderRarity(data.rarity);
   else {
@@ -1667,6 +1671,7 @@ async function loadArchives() {
   if (sel && state.presets?.length) {
     /* keep */
   }
+  refreshLayersStatus(); // coverage needs the archive: it is only known once the list is loaded
   return state.archives;
 }
 
@@ -2001,7 +2006,104 @@ async function applyGenerateOutcome(settled, ui) {
   if (progressPct) progressPct.textContent = "100%";
 }
 
+const mbText = (bytes) => fmtNum(Math.round((Number(bytes) || 0) / 104857.6) / 10);
+
+function renderLayersStatus(st) {
+  const el = $("g-layers-status");
+  if (!el) return;
+  el.textContent = "";
+  const line = (text, cls = "") => {
+    const d = document.createElement("div");
+    if (cls) d.className = cls;
+    d.textContent = text;
+    el.appendChild(d);
+  };
+  if (!st?.exists) {
+    line(t("render.layers.empty"), "muted");
+    return;
+  }
+  line(t("render.layers.status", { files: fmtNum(st.files), keys: fmtNum(st.keys?.length || 0), mb: mbText(st.bytes) }));
+  const cov = st.coverage;
+  if (cov) {
+    line(t("render.layers.coverage", { present: fmtNum(cov.present), expected: fmtNum(cov.expected) }), cov.missingCount > 0 ? "warn" : "ok");
+    if (cov.missingCount > 0) {
+      const shown = cov.missing.slice(0, 6).join(", ");
+      const more = cov.missingCount > 6 ? ` … +${fmtNum(cov.missingCount - 6)}` : "";
+      line(t("render.layers.missing", { list: shown, more }), "muted");
+    }
+  }
+}
+
+async function refreshLayersStatus() {
+  if (!$("g-layers-status")) return;
+  try {
+    const archive = kitArchive();
+    const st = await api(`/api/layers/status${archive ? `?archive=${encodeURIComponent(archive)}` : ""}`);
+    renderLayersStatus(st);
+  } catch (e) {
+    $("g-layers-status").textContent = e.message;
+  }
+}
+
+function setupLayersUpload() {
+  const file = $("g-layers-file");
+  const upload = $("g-layers-upload");
+  const picked = $("g-layers-picked");
+  if (!file || !upload) return;
+  const sync = () => {
+    const f = file.files?.[0];
+    upload.disabled = !f;
+    if (picked) picked.textContent = f ? t("render.layers.picked", { name: f.name, mb: mbText(f.size) }) : "";
+  };
+  $("g-layers-pick")?.addEventListener("click", () => file.click());
+  $("x-file")?.addEventListener("change", refreshLayersStatus);
+  file.addEventListener("change", sync);
+  upload.addEventListener("click", async () => {
+    const f = file.files?.[0];
+    const msg = $("g-compose-msg");
+    if (!f) {
+      if (msg) msg.textContent = t("render.layers.pickFirst");
+      return;
+    }
+    try {
+      setBusy(upload, true);
+      if (msg) msg.textContent = t("ui.working");
+      const archive = kitArchive();
+      const qs = new URLSearchParams();
+      if ($("g-layers-replace")?.checked) qs.set("clear", "1");
+      if (archive) qs.set("archive", archive);
+      const q = qs.toString();
+      const data = await api(`/api/layers/upload${q ? `?${q}` : ""}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/zip", "Accept-Language": getLocale() },
+        body: f,
+      });
+      const skipped = data.skipped?.length ? t("render.layers.skipped", { n: fmtNum(data.skipped.length) }) : "";
+      if (msg) msg.textContent = t("render.layers.uploaded", { files: fmtNum(data.files), mb: mbText(data.bytes), skipped });
+      renderLayersStatus(data.status);
+      file.value = "";
+      sync();
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    } finally {
+      setBusy(upload, false);
+      sync();
+    }
+  });
+  $("g-layers-clear")?.addEventListener("click", async () => {
+    const msg = $("g-compose-msg");
+    try {
+      const data = await api("/api/layers/clear", { method: "POST", body: "{}" });
+      if (msg) msg.textContent = t("render.layers.cleared", { n: fmtNum(data.removed) });
+      await refreshLayersStatus();
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
+}
+
 function setupRender() {
+  setupLayersUpload();
   $("g-compose")?.addEventListener("click", async () => {
     const msg = $("g-compose-msg");
     const btn = $("g-compose");
