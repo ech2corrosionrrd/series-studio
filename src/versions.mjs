@@ -2,14 +2,15 @@
  * Render version history: re-generation never overwrites a paid image.
  *
  *   out/<set>/<edition>.png                — CURRENT version (what gallery/export use)
- *   out/<set>/versions/<edition>/v<k>.png  — every other (older / non-selected) version
- *   out/<set>/versions/<edition>/meta.json — { current: k, versions: [{ v, at, engine, seed, ... }] }
+ *   out/<set>/versions/<edition>/v<k>.png  — every other version, including a frame
+ *                                            dropped out of the set (current: null)
+ *   out/<set>/versions/<edition>/meta.json — { current: k|null, versions: [{ v, at, engine, seed, ... }] }
  *
  * Each version's bytes live in exactly one place, so history costs no extra
  * disk for the current image. Pre-existing <edition>.png without meta becomes v1.
  * Adapted from gremlin-nft src/versions.mjs.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { atomicWriteFileSync, writeJsonAtomic } from "./fs-safe.mjs";
 import { creationVersion } from "./creation.mjs";
@@ -115,6 +116,71 @@ export function setCurrent(setDir, edition, v) {
   meta.current = v;
   writeMeta(setDir, edition, meta);
   return meta;
+}
+
+/**
+ * Take the current frame out of the set without deleting it.
+ * The bytes move to versions/<edition>/v<k>.png and `current` becomes null,
+ * so gallery and export no longer see the edition. setCurrent puts it back.
+ */
+export function shelveCurrent(setDir, edition) {
+  const meta = readMeta(setDir, edition);
+  const cur = currentPath(setDir, edition);
+  if (meta.current == null || !existsSync(cur)) throw new Error("no current image to drop");
+  mkdirSync(vdir(setDir, edition), { recursive: true });
+  const dest = storedPath(setDir, edition, meta.current);
+  if (existsSync(dest)) throw new Error("version file already exists");
+  renameSync(cur, dest);
+  const v = meta.current;
+  meta.current = null;
+  writeMeta(setDir, edition, meta);
+  return { edition: Number(edKey(edition)), v };
+}
+
+/** Editions whose file is only in versions/ (dropped from the set, not deleted). */
+export function listShelved(setDir, setName) {
+  const root = join(setDir, "versions");
+  if (!existsSync(root)) return [];
+  const out = [];
+  for (const ed of readdirSync(root)) {
+    if (!/^\d+$/.test(ed)) continue;
+    if (existsSync(currentPath(setDir, ed))) continue;
+    let meta;
+    try { meta = readMeta(setDir, ed); } catch { continue; }
+    const present = meta.versions.filter((x) => existsSync(versionPath(setDir, ed, x.v, meta)));
+    if (!present.length) continue;
+    const last = present.reduce((a, b) => (a.v > b.v ? a : b));
+    out.push({
+      edition: Number(ed),
+      v: last.v,
+      versions: meta.versions.length,
+      url: `/out/${setName}/versions/${ed}/v${last.v}.png`,
+    });
+  }
+  return out.sort((a, b) => a.edition - b.edition);
+}
+
+/**
+ * Every file that belongs to one generated frame: the current image,
+ * its version history, and the creation note. Used to move the frame to trash.
+ */
+export function editionAssetFiles(setDir, edition) {
+  const ed = edKey(edition);
+  const files = [];
+  for (const ext of [".png", ".jpg", ".jpeg", ".webp"]) {
+    const p = join(setDir, `${ed}${ext}`);
+    if (existsSync(p) && statSync(p).isFile()) files.push(p);
+  }
+  const dir = vdir(setDir, ed);
+  if (existsSync(dir)) {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isFile()) files.push(p);
+    }
+  }
+  const creation = join(setDir, "creation", `${ed}.json`);
+  if (existsSync(creation) && statSync(creation).isFile()) files.push(creation);
+  return files;
 }
 
 /**
