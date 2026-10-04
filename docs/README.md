@@ -13,7 +13,7 @@
 | **Новачок** | [GUIDE.md](./GUIDE.md) — посібник простими словами (те саме, що вкладка «❓ Довідка») |
 | **Користувач майстерні** | [STAGES.md](./STAGES.md) → [STUDIO-UI.md](./STUDIO-UI.md) → [EXPORT.md](./EXPORT.md) → [RELEASE.md](./RELEASE.md) |
 | **Розробник** | [API.md](./API.md) · [PRESET.md](./PRESET.md) · [TRAITS.md](./TRAITS.md) · [../CHANGELOG.md](../CHANGELOG.md) |
-| **Після ядра / хостинг** | [HOSTING.md](./HOSTING.md) — лише за командою власника · [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) · [STANDALONE.md](./STANDALONE.md) |
+| **Хостинг процесу** | [HOSTING.md](./HOSTING.md) — чекліст переносу майстерні (не лендінг) · [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) · [STANDALONE.md](./STANDALONE.md) |
 | **Оператор / економіка** | [ECONOMY.md](./ECONOMY.md) — пакети, COGS, накладні, RESOURCE_FX, Admin → Економіка |
 
 ## Усі документи
@@ -37,8 +37,8 @@
 | [VISION.md](./VISION.md) | Vision Assist |
 | [STANDALONE.md](./STANDALONE.md) | Series Lab як окремий самодостатній продукт |
 | [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) | VPS / staging / cutover |
-| [DEPLOY.md](./DEPLOY.md) | Сайт studio.w3ir.io (Cloudflare Pages): лендінг, посібник і сторінки для автора |
-| [HOSTING.md](./HOSTING.md) | **Після ядра:** що є і що робити за командою (не автодеплой) |
+| [DEPLOY.md](./DEPLOY.md) | Сайт studio.w3ir.io (Cloudflare Pages): статичний лендінг, посібник і сторінки для автора, без API майстерні |
+| [HOSTING.md](./HOSTING.md) | Перенос процесу майстерні на хост: що задати, що лишається на ПК, що сайт Pages не чіпати |
 | [ROADMAP.md](./ROADMAP.md) | Хвилі 1–25 ✅ · стабілізація ▶️ · рефакторинг/власний домен ⏸ |
 | [SYNTHESIS.md](./SYNTHESIS.md) · [FROM-PROMT.md](./FROM-PROMT.md) | Донори |
 | [BRAND.md](./BRAND.md) · [BOUNDARIES.md](./BOUNDARIES.md) | Бренд і межі |
@@ -58,7 +58,7 @@
 1. **Lab → Studio → Release.** Lab рахує рецепти детерміновано (seed); Studio малює й відбирає; Release готує ZIP і посилає на лаунчпад. Мінт — зовні.
 2. **Гроші — лише за явною дією.** Оцінка безкоштовна; денна межа; журнал; автостоп; DNA-блок перед пакетом.
 3. **Нічого оплаченого не губиться.** Версії рендерів; кошик.
-4. **Розміщення розробки — `127.0.0.1`.** Повний вхід/кредити/адмін і тут. Для зовнішніх тестувальників — тунель Cloudflare (`npm run lab:tunnel`); хостинг — [HOSTING.md](./HOSTING.md) за командою.
+4. **Розміщення розробки — `127.0.0.1`.** Повний вхід/кредити/адмін і тут. Для зовнішніх тестувальників — тунель Cloudflare (`npm run lab:tunnel`). Той самий процес на хості — [HOSTING.md](./HOSTING.md); https://studio.w3ir.io лишається статичним сайтом.
 5. **Термінологія:** «базова картинка(и) серії»; `primary` = головна базова.
 6. **Вхід** — лише гаманець. Email як логін не плануємо.
 
