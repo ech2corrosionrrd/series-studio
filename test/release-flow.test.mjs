@@ -15,6 +15,9 @@ import {
   guardUpdateConfig,
   sugarDate,
   decodeGuardAccount,
+  decodeCoreCandyMachine,
+  CORE_CANDY_MACHINE_PROGRAM,
+  CORE_CANDY_GUARD_PROGRAM,
   guardDiff,
   verifyRelease,
 } from "../src/index.mjs";
@@ -234,7 +237,7 @@ describe("candy verify", () => {
   it("guardDiff and refusal paths", async () => {
     const d = guardDiff({ solPayment: { value: 1, destination: "a" }, mintLimit: { id: 1, limit: 3 } }, { solPayment: { sol: 1, destination: "a" }, startDate: { date: "x" } });
     assert.deepEqual([d.added, d.removed, d.unchanged], [["mintLimit"], ["startDate"], ["solPayment"]]);
-    await assert.rejects(verifyRelease({ ...cfg(), standard: "core" }), /v3 only/);
+    await assert.rejects(verifyRelease({ ...cfg(), deployed: { candyMachine: "CM1" } }), /candyGuard is required/);
     await assert.rejects(verifyRelease({ ...cfg(), deployed: {} }), /required/);
   });
 });
@@ -263,5 +266,91 @@ describe("CLI release flow", () => {
     const root = makeBundle(2);
     const out = execFileSync(process.execPath, [resolve("bin/series.mjs"), "upload", root, "--dry-run"], { encoding: "utf8" });
     assert.match(out, /3 entries, 0 already uploaded, 3 to upload/);
+  });
+});
+
+describe("candy verify — Metaplex Core", () => {
+  const live = JSON.parse(readFileSync(new URL("./fixtures/core-candy-live.json", import.meta.url), "utf8"));
+  const CM = live.candyMachine;
+  const GUARD = live.candyGuard;
+  const dest = decodeGuardAccount(Buffer.from(GUARD.base64, "base64"), { standard: "core" }).guards.solPayment.destination;
+  const cm = decodeCoreCandyMachine(Buffer.from(CM.base64, "base64"));
+  const cfg = (over = {}) => ({
+    ...releaseFromArchive({ size: 100 }, { name: "Live", symbol: "LIVE" }, { creator: dest, price: 1 }),
+    standard: "core",
+    deployed: { candyMachine: CM.address, candyGuard: GUARD.address, collection: cm.collectionMint },
+    ...over,
+  });
+  const rpc = (accounts) => async (_url, init) => {
+    const a = accounts[JSON.parse(init.body).params[0]];
+    return { ok: true, json: async () => ({ result: { value: { owner: a.owner, data: [a.base64, "base64"] } } }) };
+  };
+  const accounts = () => ({ [CM.address]: { ...CM }, [GUARD.address]: { ...GUARD } });
+
+  it("decodes a real mainnet Core Candy Machine and its Candy Guard exactly", () => {
+    assert.equal(cm.itemsAvailable, 100);
+    assert.equal(cm.itemsRedeemed, 0);
+    assert.equal(cm.mintAuthority, GUARD.address);
+    assert.equal(cm.hiddenSettings, true);
+    const raw = Buffer.from(GUARD.base64, "base64");
+    const g = decodeGuardAccount(raw, { standard: "core" });
+    assert.equal(g.unknown, false);
+    assert.equal(g.groups, 0);
+    assert.equal(g.bytesRead, raw.length, "decoder must consume the whole account");
+    assert.equal(g.guards.solPayment.sol, 1);
+    assert.equal(g.guards.botTax.lamports, 0.0015);
+    assert.ok(g.guards.solFixedFee && g.guards.edition);
+  });
+
+  it("verifies against the live accounts and reports exactly what differs", async () => {
+    const r = await verifyRelease(cfg(), { rpcUrl: "http://rpc", fetchFn: rpc(accounts()) });
+    assert.equal(r.standard, "core");
+    assert.equal(r.total, 100);
+    assert.equal(r.minted, 0);
+    assert.deepEqual(r.diff.unchanged, ["solPayment"]);
+    assert.deepEqual(r.diff.removed.sort(), ["botTax", "edition", "solFixedFee"]);
+    assert.equal(r.problems.length, 2, r.problems.join(" | "));
+    assert.match(r.problems.join("|"), /hidden settings/);
+    assert.match(r.problems.join("|"), /extra on chain: .*solFixedFee/);
+  });
+
+  it("flags wrong program owners, wrong mint authority, collection and item count", async () => {
+    const wrongOwner = accounts();
+    wrongOwner[CM.address].owner = "11111111111111111111111111111111";
+    wrongOwner[GUARD.address].owner = "11111111111111111111111111111111";
+    const a = await verifyRelease(cfg(), { rpcUrl: "http://rpc", fetchFn: rpc(wrongOwner) });
+    assert.match(a.problems.join("|"), /not the Core Candy Machine program/);
+    assert.match(a.problems.join("|"), /not the Core Candy Guard program/);
+
+    const b = await verifyRelease(cfg({ deployed: { candyMachine: CM.address, candyGuard: GUARD.address, collection: "So11111111111111111111111111111111111111112" } }), { rpcUrl: "http://rpc", fetchFn: rpc(accounts()) });
+    assert.match(b.problems.join("|"), /collection on chain/);
+
+    const c = await verifyRelease(cfg({ reserve: { count: 10 } }), { rpcUrl: "http://rpc", fetchFn: rpc(accounts()) });
+    assert.match(c.problems.join("|"), /items on chain: 100, release.json expects 90/);
+
+    const other = accounts();
+    other[GUARD.address] = { ...GUARD };
+    const d = await verifyRelease(cfg({ deployed: { candyMachine: CM.address, candyGuard: CM.address } }), { rpcUrl: "http://rpc", fetchFn: rpc({ ...other, [CM.address]: other[CM.address] }) }).catch((e) => e);
+    assert.ok(d instanceof Error && /discriminator/.test(d.message), "a machine address passed as the guard is rejected");
+  });
+
+  it("rejects non-Core accounts and reads Core-only guard layouts", () => {
+    assert.throws(() => decodeCoreCandyMachine(Buffer.alloc(200)), /discriminator/);
+    // tokenGate: Core stores amount before mint (v3 stores mint first)
+    const buf = Buffer.alloc(81 + 40 + 4);
+    Buffer.from(GUARD.base64, "base64").copy(buf, 0, 0, 8); // real CandyGuard discriminator
+    buf.writeBigUInt64LE(1n << 5n, 73);
+    buf.writeBigUInt64LE(7n, 81);
+    const core = decodeGuardAccount(buf, { standard: "core" });
+    assert.equal(core.guards.tokenGate.amount, 7);
+    // programGate carries a variable-length list; vanityMint a string
+    const pg = Buffer.alloc(81 + 4 + 64 + 4);
+    Buffer.from(GUARD.base64, "base64").copy(pg, 0, 0, 8);
+    pg.writeBigUInt64LE(1n << 18n, 73);
+    pg.writeUInt32LE(2, 81);
+    const g2 = decodeGuardAccount(pg, { standard: "core" });
+    assert.equal(g2.guards.programGate.additional.length, 2);
+    assert.equal(g2.bytesRead, pg.length);
+    assert.throws(() => decodeGuardAccount(Buffer.alloc(120), { standard: "core" }), /discriminator/);
   });
 });
