@@ -132,7 +132,7 @@ export { licenseWarning, engineModelId, platformFluxModel } from "./license.mjs"
 export {
   buildImageUri,
   calculateDeterministicCid,
-  uploadToPinata,
+  uploadToIrys,
   checkStorageStatus,
 } from "./storage.mjs";
 export {

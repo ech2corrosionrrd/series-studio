@@ -44,7 +44,7 @@ test("buildSugarConfig generates valid Metaplex Sugar CLI JSON", () => {
   assert.equal(sugar.isMutable, true);
   assert.equal(sugar.creators[0].address, "8Creator111111111111111111111111111111111");
   assert.equal(sugar.creators[0].share, 100);
-  assert.equal(sugar.uploadMethod, "pinata");
+  assert.equal(sugar.uploadMethod, "bundlr");
 });
 
 test("buildThirdwebConfig generates valid EVM Drop contract deploy config", () => {

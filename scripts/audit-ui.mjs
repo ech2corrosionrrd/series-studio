@@ -50,7 +50,7 @@ for (const file of ["uk.js", "en.js", "tips.mjs"]) {
   const text = readFileSync(p, "utf8");
   const lines = text.split("\n");
   lines.forEach((l, i) => {
-    if (/\.env|FAL_KEY|SERIES_SPEND|PINATA_JWT|API key|потрібен ключ/i.test(l) && !/^\s*\/\//.test(l)) {
+    if (/\.env|FAL_KEY|SERIES_SPEND|API key|потрібен ключ/i.test(l) && !/^\s*\/\//.test(l)) {
       // skip admin/res/econ keys
       if (/"(res\.|admin\.|econ\.|help\.localgpu\.env|trash\.hint|nav\.res)/.test(l)) return;
       if (l.includes("admin.tab") || l.includes("res.")) return;

@@ -43,8 +43,7 @@ export function buildSugarConfig(archive = {}, preset = {}, opts = {}) {
   const price = Number(opts.price ?? 0.1);
   const isZeroIndex = Boolean(opts.zeroIndexed || opts.zeroIndex);
 
-  const uploadMethod = opts.uploadMethod ||
-    (opts.imageUriPrefix?.includes("ipfs") || opts.imagePrefix?.includes("ipfs") ? "pinata" : "bundlr");
+  const uploadMethod = opts.uploadMethod || "bundlr";
 
   return {
     price,

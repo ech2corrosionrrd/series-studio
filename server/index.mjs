@@ -60,7 +60,7 @@ import {
   triageImageOffline,
   triageImageVision,
   checkStorageStatus,
-  uploadToPinata,
+  uploadToIrys,
   generateMetadataPreview,
   calculateDeterministicCid,
   getLaunchpadProfiles,
@@ -190,7 +190,7 @@ const RESOURCE_KEYS = [
   { name: "STABILITY_API_KEY", env: "STABILITY_API_KEY", note: "Stability AI" },
   { name: "POLLINATIONS_API_KEY", env: "POLLINATIONS_API_KEY", note: "Pollinations / Pollen" },
   { name: "ANTHROPIC_API_KEY", env: "ANTHROPIC_API_KEY", note: "Claude critic (optional, Studio)" },
-  { name: "PINATA_JWT", env: "PINATA_JWT", note: "Pinata IPFS Storage Dispatcher" },
+  { name: "IRYS_PRIVATE_KEY", env: "IRYS_PRIVATE_KEY", note: "Irys Arweave Storage Dispatcher" },
   { name: "SERIES_TELEGRAM_BOT_TOKEN", env: "SERIES_TELEGRAM_BOT_TOKEN", note: "Series Lab Telegram bot" },
   { name: "SERIES_TELEGRAM_CHAT_ID", env: "SERIES_TELEGRAM_CHAT_ID", note: "Series Lab operator chat / channel" },
   { name: "TELEGRAM_BOT_TOKEN", env: "TELEGRAM_BOT_TOKEN", note: "Fallback Telegram bot (Lab .env)" },
@@ -2489,9 +2489,8 @@ async function handleApi(req, res, url) {
     const paid = chargeStage("archive", { ipfs: true, zip: false });
     let result;
     try {
-      result = await uploadToPinata({
+      result = await uploadToIrys({
         dir: setDir,
-        name,
       });
     } catch (e) {
       refundStage(paid);
