@@ -6,7 +6,7 @@ Effective 5 October 2026 · Data contact: w3ir@pm.me
 
 ## 1. Who we are
 
-The operator of the Service is the w3ir.io project team (a legal entity is being registered). Service: https://next.w3ir.io.
+The operator of the Service is the w3ir.io project team (a legal entity is being registered). Service: https://lab.w3ir.io.
 
 ## 2. Data we process
 

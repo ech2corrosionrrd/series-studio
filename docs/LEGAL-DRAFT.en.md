@@ -4,7 +4,7 @@
 >
 > The structure follows the `LEGAL.md` of the Промт project; everything that differs in Series Lab was changed (direct payments on Solana, Arweave, creator keys stay on the user's PC).
 
-Effective: `[date]` · Contact: `[email]` · Service: https://next.w3ir.io `[final address]`
+Effective: `[date]` · Contact: `[email]` · Service: https://lab.w3ir.io `[final address]`
 
 This document has three parts: **1. Terms of Service**, **2. Privacy Policy**, **3. Refund Policy**.
 
