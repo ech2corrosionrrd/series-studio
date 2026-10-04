@@ -349,7 +349,10 @@ Series Lab — майстерня на вашому комп'ютері для �
 | `node bin/series.mjs upload <тека-набору> --keypair deployer.json` | відновлюване завантаження набору деплою в Arweave (див. RELEASE.md) |
 | `node bin/series.mjs pin out/fal-s0.45 --dry-run` | швидка перевірка набору перед завантаженням в Arweave (без ключа) |
 | `node bin/series.mjs release-init out/demo-archive.json -o release.json` | скелет `release.json` (роялті, творці, ціна, правила мінту) |
-| `node bin/series.mjs guards release.json` | конфіг правил мінту: для Core — `guardConfig` для `mplx cm create` (лампорти), для v3 — Sugar-конфіг для `sugar guard update` |
+| `node bin/series.mjs guards release.json` | конфіг правил мінту: для Core — `guardConfig` для `mplx cm create` (лампорти), для v3 — Sugar-конфіг для `sugar guard update`. Allowlist у `release.json` або `--allowlist wallets.txt` додає групу `allowList` і `allowlist-proofs.json` |
+| `node bin/series.mjs hidden <тека-набору> --uri <посилання>` | SHA-256 прихованих метаданих Core Candy Machine у `hidden-settings.json` (після `series upload`) |
+| `node bin/series.mjs reveal <тека-набору>` | список оновлень name/uri після мінту (`reveal-updates.json`); Lab не підписує транзакцію |
+| `node bin/series.mjs compose out/demo-archive.json --layers layers --base input/primary.png` | складає PNG-шари у картинки видань. Промпти лишаються |
 | `node bin/series.mjs verify release.json` | звірка Core Candy Machine або Candy Machine v3 у блокчейні з `release.json` (лише читання) |
 | `node bin/series.mjs notify "Готово"` | тестове сповіщення в Telegram |
 | `node bin/series.mjs manifest out/demo-archive.json --profile opensea` | CSV-маніфест для лаунчпада |

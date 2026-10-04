@@ -85,6 +85,7 @@ import {
 } from "../src/index.mjs";
 import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
 import { buildDeployKit, deployChainChoice } from "../src/deploy-kit.mjs";
+import { composeArchive } from "../src/layers.mjs";
 import { buildLaunchAdvisor } from "../src/launch-advisor.mjs";
 import { buildMarketplaceKit } from "../src/marketplace-kit.mjs";
 import { writeFilesZip } from "../src/kit-zip.mjs";
@@ -2912,6 +2913,7 @@ async function handleApi(req, res, url) {
       price: body.price,
       includeHolderLicence: body.includeHolderLicence !== false,
       holderLicence: typeof body.holderLicence === "string" ? body.holderLicence : "",
+      allowlist: typeof body.allowlist === "string" ? body.allowlist : "",
     };
     const stamp = Date.now().toString(36);
     const file = `${kind === "deploy_kit" ? "deploy" : "market"}-${String(loaded.archive.presetId || "series").replace(/[^a-zA-Z0-9_-]/g, "")}-${stamp}.zip`;
@@ -2953,7 +2955,51 @@ async function handleApi(req, res, url) {
       });
     } catch (e) {
       refundStage(paid);
-      return send(res, 500, { error: String(e.message || e), code: kind });
+      const status = e.status || (e.code === "secrets" ? 400 : 500);
+      return send(res, status, { error: String(e.message || e), code: e.code || kind });
+    }
+  }
+
+  if (pathname === "/api/compose" && req.method === "POST") {
+    const body = await readBody(req);
+    if (rejectSecrets(res, body)) return;
+    let loaded;
+    try {
+      loaded = loadSeriesContext(body.archive || body.file);
+    } catch (e) {
+      return send(res, e.status || 400, { error: String(e.message || e) });
+    }
+    const items = loaded.preset?.traits?.items;
+    if (!Array.isArray(items) || !items.length) {
+      return send(res, 400, { error: "preset traits are required to compose layers" });
+    }
+    const root = resolve(P().root);
+    const layerDir = resolve(root, String(body.layers || "layers"));
+    if (layerDir !== root && !layerDir.startsWith(`${root}/`)) {
+      return send(res, 400, { error: "layers directory must stay inside the project" });
+    }
+    if (!existsSync(layerDir)) {
+      return send(res, 400, { error: `layers directory not found: ${layerDir}` });
+    }
+    const base = baseStatus();
+    const baseName = body.base ? basename(String(body.base)) : base.file;
+    const basePath = join(P().input, baseName);
+    if (!existsSync(basePath)) {
+      return send(res, 400, { error: `base image not found: input/${baseName}` });
+    }
+    const outDir = join(P().out, "layers");
+    try {
+      const report = composeArchive({
+        archive: loaded.archive,
+        items,
+        basePng: readFileSync(basePath),
+        layerDir,
+        outDir,
+        limit: body.limit,
+      });
+      return send(res, 200, { ok: true, count: report.count, dir: "out/layers", editions: report.editions });
+    } catch (e) {
+      return send(res, 400, { error: String(e.message || e), code: "compose" });
     }
   }
 
