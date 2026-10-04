@@ -66,7 +66,7 @@ Nothing in the Service is investment, legal or tax advice. NFTs are high-risk; w
 any value** of created assets.
 
 ### 1.10. Third-party services
-The Service relies on third parties (OpenAI, Anthropic, Stability, Replicate, Pinata/IPFS,
+The Service relies on third parties (OpenAI, Anthropic, Stability, Replicate, Arweave/Irys,
 Cloudflare, blockchain RPC nodes). Their operation is governed by their terms; we are not liable for
 their outages, price changes or availability.
 
@@ -107,7 +107,7 @@ To provide the Service, account for credits, prevent abuse/Sybil, and improve th
 
 ### 2.4. Who we share with
 - **AI providers** (OpenAI, Anthropic, Stability, Replicate) — your prompts/images for generation.
-- **Pinata/IPFS** — files if you publish to IPFS (content becomes **public and immutable**).
+- **Arweave/Irys** — files if you publish to Arweave (content becomes **public and immutable**).
 - **Cloudflare** — for delivery/protection. **Solana RPC nodes** — to verify payments on-chain.
 - Each party has its own policy. **We do not sell your data.**
 
