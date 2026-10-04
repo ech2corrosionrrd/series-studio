@@ -9,6 +9,8 @@
 
 ## [Unreleased]
 
+- `backup:pull`: після перевірки копії видаляє службові файли `-shm`/`-wal`, і прибирання старих копій чіпає їх теж (раніше вони накопичувались у `backups/offsite/`).
+
 ### Образ Docker: сторінки автора
 - `Dockerfile` не копіював `scripts/site-html.mjs` і `scripts/site-pages.mjs`, які `server/index.mjs` імпортує при старті, тож образ із `main` не стартував (`ERR_MODULE_NOT_FOUND`). Знайдено при оновленні staging. Додано `COPY` і тест `test/dockerfile.test.mjs`, що перевіряє, що кожен `scripts/*.mjs`, який імпортують `bin/`, `src/`, `server/`, є в `Dockerfile`.
 

@@ -51,7 +51,9 @@ function main() {
     rmSync(out, { force: true });
     throw new Error(`pulled copy ${slot} is not usable: ${r.problems.join("; ")}`);
   }
-  for (const f of pruneList(readdirSync(dest), keep)) rmSync(join(dest, f), { force: true });
+  // Opening a WAL-mode copy read-only leaves -shm/-wal sidecars: drop them with the copy.
+  for (const f of pruneList(readdirSync(dest), keep)) for (const ext of ["", "-shm", "-wal"]) rmSync(join(dest, f + ext), { force: true });
+  for (const ext of ["-shm", "-wal"]) rmSync(out + ext, { force: true });
   console.log(`pull ok slot=${slot} users=${r.info.users} payments=${r.info.payments} -> ${out}`);
 }
 
