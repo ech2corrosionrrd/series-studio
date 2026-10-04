@@ -31,6 +31,8 @@
 
 Посібник береться з `server/ui/locales/uk.js` і `en.js`, тож сайт, довідка в застосунку та [GUIDE.md](./GUIDE.md) не розходяться. Решта сторінок для автора збирається з `scripts/site-pages.mjs`: це скорочений переказ [STAGES.md](./STAGES.md), [STUDIO-UI.md](./STUDIO-UI.md), [BASE.md](./BASE.md), [TRAITS.md](./TRAITS.md), [EXPORT.md](./EXPORT.md) і короткий уривок [PRESET.md](./PRESET.md), тим самим шляхом, що й довідка: пресет, шари, список дозволених, завантаження, приховані метадані, guards, машина, verify, `series mint`, `series reveal`. [API.md](./API.md) і історія хвиль з [ROADMAP.md](./ROADMAP.md) на сайт не виводяться.
 
+Ті самі сторінки віддає локальна майстерня, без деплою цього сайту: `http://127.0.0.1:5344/studio/docs/` і `http://127.0.0.1:5344/studio/docs/en/`. Вкладка «❓ Довідка» веде на них (мова — як у майстерні). Щоб їх читати, Cloudflare не потрібен.
+
 ## Оновити сайт
 
 **Автоматично (основний спосіб).** Workflow `.github/workflows/deploy-site.yml` запускається при push у `main`, якщо змінились тексти (`server/ui/locales/**`), `scripts/build-site.mjs`, `scripts/site-pages.mjs`, `package.json` або сам workflow. Він збирає `dist/site`, перевіряє, що всі сторінки на місці, і викладає сайт у проєкт `series-lab` через `wrangler pages deploy`. Запустити вручну: GitHub → Actions → **Deploy site** → *Run workflow*.

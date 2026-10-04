@@ -1,5 +1,6 @@
 /**
- * Creator-facing pages for the public site (studio.w3ir.io).
+ * Creator-facing pages shared by the public site and the local studio
+ * (`/studio/docs/`). Rendered by scripts/site-html.mjs.
  *
  * These are trimmed from the repo docs a person running a drop actually needs.
  * The path is the same as in-app Help: preset, layers, allowlist, upload,
