@@ -41,7 +41,7 @@ Upload / wish→generate, Vision Assist; видалення → кошик.
 «Перевірити чекліст», «Зібрати ZIP», «Зібрати архів випуску». Профіль Magic Eden — лише Solana.
 
 ### Деплой
-«Зібрати набір деплою». Типовий пункт — «Solana (Core Candy Machine, спочатку devnet)». Порадник офлайн. Опис колекції — поле на цій вкладці. Поле allowlist (`#d-allowlist`) видно лише для Solana і Solana (Sugar); для EVM і Bitcoin воно ховається і в запит не йде. Набір містить `hidden.json`, `hidden.png` і чернетку `hidden-settings.json` (хеш порожній до `series hidden`).
+«Зібрати набір деплою». Типовий пункт — «Solana (Core Candy Machine, спочатку devnet)». Порадник офлайн. Опис колекції — поле на цій вкладці. Поле allowlist (`#d-allowlist`) видно лише для Solana і Solana (Sugar); для EVM і Bitcoin воно ховається і в запит не йде. Набір містить `hidden.json`, `hidden.png` і чернетку `hidden-settings.json` (хеш порожній до `series hidden`). Підписаний мінт і розкриття — команди `series mint` і `series reveal --keypair` у довідці; майстерня ключ не приймає.
 
 ### Маркет
 «Зібрати набір маркетплейсу». Solana: Magic Eden і Tensor. EVM: OpenSea. Bitcoin: Ordinals.

@@ -30,7 +30,7 @@
 | [STUDIO-UI.md](./STUDIO-UI.md) | Інтерфейс, підказки, довідка, локалізація, безпека |
 | [API.md](./API.md) | HTTP-маршрути `/api/*` |
 | [EXPORT.md](./EXPORT.md) | ZIP, маніфест, Arweave, Showcase, конфіги; поля Експорту залежать від профілю |
-| [RELEASE.md](./RELEASE.md) | Шлях випуску: `release.json` → `series upload` → `series hidden` → deploy → `series guards` (allowlist) → `series verify` → `series reveal`; шари — `series compose` |
+| [RELEASE.md](./RELEASE.md) | Шлях випуску: `release.json` → `series upload` → `series hidden` → deploy → `series guards` → `series verify` → `series mint` → `series reveal --keypair`; шари — `series compose` |
 | [BASE.md](./BASE.md) | Базові картинки, Vision Assist |
 | [TRAITS.md](./TRAITS.md) | Паки рис, редактор опцій |
 | [PRESET.md](./PRESET.md) | Формат пресету |
