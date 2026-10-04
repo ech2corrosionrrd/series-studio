@@ -4,9 +4,9 @@
  *
  *   node scripts/build-site.mjs  →  dist/site/
  *
- * Pages:  /  /guide/  (uk)   ·   /en/  /en/guide/  (en)
- * Texts come from server/ui/locales/*.js — the same strings as the in-app
- * Help tab — so the website, the Studio and docs/GUIDE.md never drift apart.
+ * Pages (uk and en): landing, the beginner guide (same strings as in-app Help),
+ * and creator pages from scripts/site-pages.mjs (stages, tabs, base, traits,
+ * export, a short preset note). HTTP API docs and the roadmap stay in the repo.
  * The site is purely static: no API, no keys, no generation.
  */
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -14,6 +14,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import uk from "../server/ui/locales/uk.js";
 import en from "../server/ui/locales/en.js";
+import { DOC_PAGES, publicPaths } from "./site-pages.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "dist", "site");
@@ -29,10 +30,17 @@ const UI = {
     desc: "Локальна майстерня для серій картинок з одним упізнаваним персонажем: рецепти, генерація, відбір і пакування для маркетплейсу. Безкоштовно з локальними рушіями.",
     tagline: "Серія картинок з одним упізнаваним персонажем — від пресету до ZIP для маркетплейсу. На вашому комп'ютері.",
     ctaGuide: "Читати посібник", ctaStart: "Як запустити",
-    navHome: "Головна", navGuide: "Посібник",
+    navHome: "Головна", navGuide: "Посібник", navDocs: "Документація",
     stagesTitle: "7 етапів — від ідеї до випуску",
+    docsSection: "Документація для автора",
+    docsSectionLead: "Стільки, скільки потрібно, щоб зібрати серію на своєму ПК і випустити її зі свого гаманця. Почніть із посібника.",
+    docsTitle: "Документація для автора",
+    docsDesc: "Сторінки Series Lab для людини, яка збирає дроп: етапи, вкладки, базова картинка, риси, експорт і короткий пресет.",
+    docsLead: "Майстерня працює локально на вашому комп'ютері. Тут — шлях автора: від пресету через Arweave (Irys) і Core Candy Machine до series mint і series reveal на цьому ПК. Продаж лишається на майданчику.",
+    docsRepo: "Як запустити — блок «Запуск» на головній (потрібен Node.js 22.13+). Повний перелік змінних середовища і команд лежить у README поруч із кодом. Цей сайт його не замінює.",
+    docsScope: "Опис HTTP-маршрутів і внутрішня історія розробки лишаються в репозиторії.",
     runTitle: "Запуск",
-    runText: "Потрібен Node.js 20+ . Майстерня працює лише на вашому ПК (127.0.0.1) — цей сайт лише описує її.",
+    runText: "Потрібен Node.js 22.13+. Майстерня працює лише на вашому ПК (127.0.0.1) — цей сайт лише описує її.",
     privateNote: "Series Lab поки поширюється приватно. Щоб отримати доступ — напишіть W3IR.",
     footer: "Series Lab від W3IR · MIT",
     guideTitle: "Посібник Series Lab",
@@ -45,10 +53,17 @@ const UI = {
     desc: "A local studio for image series with one recognisable character: recipes, generation, review and marketplace packaging. Free with local engines.",
     tagline: "A series of images with one recognisable character — from preset to a marketplace-ready ZIP. On your own computer.",
     ctaGuide: "Read the guide", ctaStart: "How to run",
-    navHome: "Home", navGuide: "Guide",
+    navHome: "Home", navGuide: "Guide", navDocs: "Docs",
     stagesTitle: "7 stages — from idea to release",
+    docsSection: "Docs for creators",
+    docsSectionLead: "As much as you need to build a series on your own PC and release it from your own wallet. Start with the guide.",
+    docsTitle: "Docs for creators",
+    docsDesc: "Series Lab pages for the person running a drop: stages, tabs, the base image, traits, export and a short preset note.",
+    docsLead: "The studio runs locally on your computer. These pages follow the creator's path: from the preset, through Arweave via Irys and a Core Candy Machine, to series mint and series reveal on this PC. The sale stays on the marketplace.",
+    docsRepo: "How to run it is in the Run section on the home page (Node.js 22.13+). The full list of environment variables and commands lives in the README next to the code. This site does not replace it.",
+    docsScope: "The HTTP route reference and the internal development history stay in the repository.",
     runTitle: "Run it",
-    runText: "Requires Node.js 20+. The studio runs only on your PC (127.0.0.1) — this website just describes it.",
+    runText: "Requires Node.js 22.13+. The studio runs only on your PC (127.0.0.1) — this website just describes it.",
     privateNote: "Series Lab is distributed privately for now. Contact W3IR for access.",
     footer: "Series Lab by W3IR · MIT",
     guideTitle: "Series Lab Guide",
@@ -67,6 +82,7 @@ const ul = (items, tag = "ul") => `<${tag}>${items.map((s) => `<li>${esc(s)}</li
 function layout(u, { title, desc, path, altPath, body }) {
   const home = u.base;
   const guide = `${u.base}guide/`;
+  const docs = `${u.base}docs/`;
   return `<!doctype html>
 <html lang="${u.lang}">
 <head>
@@ -91,6 +107,7 @@ function layout(u, { title, desc, path, altPath, body }) {
   <nav>
     <a href="${home}"${path === home ? ' aria-current="page"' : ""}>${esc(u.navHome)}</a>
     <a href="${guide}"${path === guide ? ' aria-current="page"' : ""}>${esc(u.navGuide)}</a>
+    <a href="${docs}"${path === docs ? ' aria-current="page"' : ""}>${esc(u.navDocs)}</a>
     <a class="lang" href="${altPath}" hreflang="${u.other}">${esc(u.otherLabel)}</a>
   </nav>
 </header>
@@ -119,6 +136,11 @@ function landing(T, u) {
 </section>
 <section><div class="cards">${cards}</div></section>
 <section><h2>${esc(u.stagesTitle)}</h2><ol class="stages">${stages}</ol></section>
+<section id="docs">
+  <h2>${esc(u.docsSection)}</h2>
+  <p class="lead">${esc(u.docsSectionLead)}</p>
+  <div class="cards">${docCards(u)}</div>
+</section>
 <section class="split">
   <div class="card"><h2>${esc(T["help.safety.title"])}</h2><p>${esc(T["help.safety.desc"])}</p>${ul(list(T, "help.safety.li"))}</div>
   <div class="card"><h2>${esc(T["help.zero.title"])}</h2><p>${esc(T["help.zero.desc"])}</p>${ul(list(T, "help.zero.li"))}</div>
@@ -140,9 +162,10 @@ function guidePage(T, u) {
 
   sec("whatis", `<p>${esc(T["help.whatis.p1"])}</p><p>${esc(T["help.whatis.p2"])}</p>`);
   sec("quick", `<p>${esc(T["help.quick.desc"])}</p>${ul(list(T, "help.quick.li"), "ol")}<p class="note">${esc(T["help.quick.tip"])}</p>`);
-  const steps = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
-    const p = `help.s${n}`;
-    return `<details class="step"${n === 1 ? " open" : ""}><summary>${esc(T[`${p}.title`])}</summary>
+  // Same order as the in-app Help tab: stages 1–7, Deploy, Market, then Admin.
+  const steps = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s9", "s10", "s8"].map((id) => {
+    const p = `help.${id}`;
+    return `<details class="step"${id === "s1" ? " open" : ""}><summary>${esc(T[`${p}.title`])}</summary>
       <p><b>${esc(T["help.label.why"])}:</b> ${esc(T[`${p}.why`])}</p>
       <h4>${esc(T["help.label.do"])}</h4>${ul(list(T, `${p}.do`), "ol")}
       <p class="get"><b>${esc(T["help.label.get"])}:</b> ${esc(T[`${p}.get`])}</p>
@@ -165,12 +188,112 @@ function guidePage(T, u) {
   const body = `
 <h1>${esc(u.guideTitle)}</h1>
 <p class="lead">${esc(u.guideDesc)}</p>
+${docNav(u, "guide")}
 <div class="guide">
   <nav class="toc" aria-label="${esc(u.toc)}"><b>${esc(u.toc)}</b>${toc}</nav>
   <div>${sections.map(([id, title, html]) => `<section id="${id}" class="card"><h2>${esc(title)}</h2>${html}</section>`).join("")}</div>
 </div>`;
   const path = `${u.base}guide/`;
   return layout(u, { title: u.guideTitle, desc: u.guideDesc, path, altPath: `${UI[u.other].base}guide/`, body });
+}
+
+function inline(s) {
+  return String(s).split(/(`[^`]+`)/g).map((part) => {
+    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) return `<code>${esc(part.slice(1, -1))}</code>`;
+    return esc(part);
+  }).join("");
+}
+const richList = (items, tag = "ul") => `<${tag}>${items.map((s) => `<li>${inline(s)}</li>`).join("")}</${tag}>`;
+
+function renderBlocks(blocks) {
+  return blocks.map((b) => {
+    if (b.h3) return `<h3>${inline(b.h3)}</h3>`;
+    if (b.p) return `<p>${inline(b.p)}</p>`;
+    if (b.note) return `<p class="note">${inline(b.note)}</p>`;
+    if (b.ul) return richList(b.ul);
+    if (b.ol) return richList(b.ol, "ol");
+    if (b.pre) return `<pre><code>${esc(b.pre)}</code></pre>`;
+    if (b.table) {
+      const head = b.table.head.map((c) => `<th>${inline(c)}</th>`).join("");
+      const rows = b.table.rows.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("");
+      return `<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+    return "";
+  }).join("");
+}
+
+function docNav(u, current) {
+  const links = [
+    { slug: "guide", href: `${u.base}guide/`, label: u.navGuide },
+    { slug: "docs", href: `${u.base}docs/`, label: u.navDocs },
+    ...DOC_PAGES.map((p) => ({ slug: p.slug, href: `${u.base}${p.slug}/`, label: p[u.lang].nav })),
+  ];
+  return `<nav class="docnav" aria-label="${esc(u.navDocs)}">${links.map((l) => `<a href="${l.href}"${l.slug === current ? ' aria-current="page"' : ""}>${esc(l.label)}</a>`).join("")}</nav>`;
+}
+
+function docCards(u) {
+  const guide = `<a class="card" href="${u.base}guide/"><b>${esc(u.navGuide)}</b><span>${esc(u.guideDesc)}</span></a>`;
+  const rest = DOC_PAGES.map((p) => {
+    const t = p[u.lang];
+    return `<a class="card" href="${u.base}${p.slug}/"><b>${esc(t.title)}</b><span>${esc(t.card)}</span></a>`;
+  }).join("");
+  return guide + rest;
+}
+
+function chunkByHeading(blocks) {
+  const sections = [];
+  let cur = null;
+  for (const b of blocks) {
+    if (b.h2) {
+      cur = { title: b.h2, blocks: [] };
+      sections.push(cur);
+    } else {
+      if (!cur) {
+        cur = { title: null, blocks: [] };
+        sections.push(cur);
+      }
+      cur.blocks.push(b);
+    }
+  }
+  return sections;
+}
+
+function docsHub(u) {
+  const body = `
+<h1>${esc(u.docsTitle)}</h1>
+<p class="lead">${esc(u.docsLead)}</p>
+${docNav(u, "docs")}
+<div class="cards">${docCards(u)}</div>
+<section class="card">
+  <p>${esc(u.docsRepo)}</p>
+  <p class="note">${esc(u.docsScope)}</p>
+</section>`;
+  return layout(u, {
+    title: u.docsTitle,
+    desc: u.docsDesc,
+    path: `${u.base}docs/`,
+    altPath: `${UI[u.other].base}docs/`,
+    body,
+  });
+}
+
+function creatorPage(page, u) {
+  const t = page[u.lang];
+  const sections = chunkByHeading(t.blocks).map((s) =>
+    `<section class="card">${s.title ? `<h2>${inline(s.title)}</h2>` : ""}${renderBlocks(s.blocks)}</section>`).join("");
+  const body = `
+<h1>${esc(t.title)}</h1>
+<p class="lead">${esc(t.desc)}</p>
+${docNav(u, page.slug)}
+${sections}`;
+  const path = `${u.base}${page.slug}/`;
+  return layout(u, {
+    title: t.title,
+    desc: t.desc,
+    path,
+    altPath: `${UI[u.other].base}${page.slug}/`,
+    body,
+  });
 }
 
 const CSS = `:root{--bg:#110b15;--panel:#1b1322;--panel2:#251a2e;--line:#2c2136;--text:#f1e9f7;--muted:#ab98bb;--accent2:#7ad7ff;--grad:linear-gradient(135deg,#9b4ddb,#c23d8a)}
@@ -184,11 +307,21 @@ a{color:var(--accent2)}
 .top nav a:hover,.top nav a[aria-current]{color:#fff;background:var(--panel2)}
 main{max-width:1100px;margin:0 auto;padding:32px 16px 64px}
 h1{font-size:clamp(30px,5vw,48px);line-height:1.1;margin:8px 0 14px;letter-spacing:-.02em}
-h2{font-size:22px;margin:0 0 10px}h4{margin:14px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent2)}
+h2{font-size:22px;margin:0 0 10px}h3{font-size:18px;margin:16px 0 6px}h4{margin:14px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent2)}
 .lead{font-size:19px;color:#e2d6ec;max-width:780px}
 section{margin:0 0 28px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 8px 24px #0006}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.cards p{margin:6px 0 0;color:var(--muted)}
+a.card{display:block;color:inherit;text-decoration:none}a.card:hover{border-color:#7ad7ff55}a.card span{display:block;color:var(--muted);margin-top:6px}
+.docnav{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px}
+.docnav a{color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:14px}
+.docnav a[aria-current],.docnav a:hover{color:#fff;background:var(--panel2)}
+.table-wrap{overflow-x:auto;margin:8px 0 4px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
+p code,li code,td code{background:#0b070e;padding:1px 5px;border-radius:5px}
 .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
 .cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .btn{display:inline-block;padding:10px 18px;border-radius:10px;border:1px solid #3a2c46;background:var(--panel2);color:var(--text);text-decoration:none;font-weight:600}
@@ -252,11 +385,13 @@ for (const [T, u] of [[uk.default ?? uk, UI.uk], [en.default ?? en, UI.en]]) {
   const prefix = u.base.slice(1);
   write(`${prefix}index.html`, landing(T, u));
   write(`${prefix}guide/index.html`, guidePage(T, u));
+  write(`${prefix}docs/index.html`, docsHub(u));
+  for (const page of DOC_PAGES) write(`${prefix}${page.slug}/index.html`, creatorPage(page, u));
 }
 write("404.html", NOT_FOUND(UI.uk));
 write("site.css", CSS);
 write("favicon.svg", FAVICON);
 write("_headers", HEADERS);
 write("robots.txt", `User-agent: *\nAllow: /\nSitemap: ${ORIGIN}/sitemap.xml\n`);
-write("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${["/", "/guide/", "/en/", "/en/guide/"].map((p) => `  <url><loc>${ORIGIN}${p}</loc></url>`).join("\n")}\n</urlset>\n`);
+write("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${publicPaths().map((p) => `  <url><loc>${ORIGIN}${p}</loc></url>`).join("\n")}\n</urlset>\n`);
 console.log(`Site built → ${OUT}`);

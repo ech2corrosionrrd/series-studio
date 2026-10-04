@@ -109,18 +109,44 @@ test("solana kit defaults to Core Candy Machine, keeps Sugar as labelled legacy,
   assert.ok(kit.files["DEPLOY.txt"].toLowerCase().indexOf("devnet") < kit.files["DEPLOY.txt"].toLowerCase().indexOf("mainnet"));
   assert.match(kit.files["DEPLOY.txt"], /allowList/);
   assert.match(kit.files["DEPLOY.txt"], /mintLimit/);
-  assert.match(kit.files["DEPLOY.txt"], /botTax/);
+  assert.match(kit.files["DEPLOY.txt"], /series release-init/);
+  assert.match(kit.files["DEPLOY.txt"], /series mint/);
+  assert.match(kit.files["DEPLOY.txt"], /series reveal/);
+  assert.equal(/botTax/.test(kit.files["DEPLOY.txt"]), false);
   assert.equal(/startDate/.test(kit.files["DEPLOY.txt"]), false);
   assert.match(kit.files["ROYALTIES.txt"], /ProgramAllowList/);
   assert.match(kit.files["sugar/LEGACY.txt"], /sugar/);
   assert.match(kit.files["sugar/LEGACY.txt"], /застаріл/i);
+  assert.match(kit.files["sugar/LEGACY.txt"], /sugar\/config\.json/);
+  assert.match(kit.files["sugar/LEGACY.txt"], /кореня набору/);
+  assert.doesNotMatch(kit.files["sugar/LEGACY.txt"], /Запускайте з теки sugar/);
+  assert.doesNotMatch(kit.files["sugar/LEGACY.txt"], /--config config\.json/);
+  const enKit = buildDeployKit({
+    archive: { presetId: "kit", size: 1 },
+    preset: { id: "kit", name: "Kit Series" },
+    items: [{ edition: 1, buffer: png, ext: "png", recipe: { edition: 1, traits: { bg: "a" } } }],
+    opts: { chain: "solana", symbol: "KIT" },
+    locale: "en",
+    env: {},
+  });
+  assert.match(enKit.files["sugar/LEGACY.txt"], /kit root/);
+  assert.match(enKit.files["sugar/LEGACY.txt"], /sugar\/config\.json/);
+  assert.match(enKit.files["sugar/LEGACY.txt"], /do not take --config/);
+  assert.doesNotMatch(enKit.files["sugar/LEGACY.txt"], /--config config\.json/);
   const hidden = JSON.parse(kit.files["hidden-settings.json"]);
   assert.equal(hidden.name, "Hidden #");
-  assert.equal(hidden.uri, "https://example.invalid/hidden.json");
+  assert.equal(hidden.uri, "");
   assert.equal(hidden.hash, null);
   assert.equal(hidden.password, undefined);
   assert.equal(hidden.secret, undefined);
+  const placeholder = JSON.parse(kit.files["hidden.json"]);
+  assert.equal(placeholder.name, "Hidden #");
+  assert.equal(placeholder.image, "hidden.png");
+  assert.equal(Buffer.isBuffer(kit.files["hidden.png"]), true);
+  assert.equal(kit.files["hidden.png"].subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   assert.match(kit.files["HIDDEN.txt"], /SHA-256/);
+  assert.match(kit.files["HIDDEN.txt"], /series hidden/);
+  assert.match(kit.files["HIDDEN.txt"], /series reveal/);
   assert.match(kit.guide, /приватний ключ|seed/i);
   assert.equal(kit.files.privateKey, undefined);
   const guideBlob = JSON.stringify(kit.files);

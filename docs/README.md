@@ -30,14 +30,14 @@
 | [STUDIO-UI.md](./STUDIO-UI.md) | Інтерфейс, підказки, довідка, локалізація, безпека |
 | [API.md](./API.md) | HTTP-маршрути `/api/*` |
 | [EXPORT.md](./EXPORT.md) | ZIP, маніфест, Arweave, Showcase, конфіги; поля Експорту залежать від профілю |
-| [RELEASE.md](./RELEASE.md) | Шлях випуску: `release.json` → `series upload` → deploy → `series guards` → `series verify` |
+| [RELEASE.md](./RELEASE.md) | Шлях випуску: `release.json` → `series upload` → `series hidden` → deploy → `series guards` → `series verify` → `series mint` → `series reveal --keypair`; шари — `series compose` |
 | [BASE.md](./BASE.md) | Базові картинки, Vision Assist |
 | [TRAITS.md](./TRAITS.md) | Паки рис, редактор опцій |
 | [PRESET.md](./PRESET.md) | Формат пресету |
 | [VISION.md](./VISION.md) | Vision Assist |
 | [STANDALONE.md](./STANDALONE.md) | Series Lab як окремий самодостатній продукт |
 | [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) | VPS / staging / cutover |
-| [DEPLOY.md](./DEPLOY.md) | Лендінг studio.w3ir.io (Cloudflare Pages) |
+| [DEPLOY.md](./DEPLOY.md) | Сайт studio.w3ir.io (Cloudflare Pages): лендінг, посібник і сторінки для автора |
 | [HOSTING.md](./HOSTING.md) | **Після ядра:** що є і що робити за командою (не автодеплой) |
 | [ROADMAP.md](./ROADMAP.md) | Хвилі 1–25 ✅ · стабілізація ▶️ · рефакторинг/власний домен ⏸ |
 | [SYNTHESIS.md](./SYNTHESIS.md) · [FROM-PROMT.md](./FROM-PROMT.md) | Донори |

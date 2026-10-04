@@ -51,7 +51,7 @@
 | **Безпека й страховка · хвиля 23** | ✅ | захист API (CSRF / DNS rebinding) · версії рендерів · кошик · журнал і денна межа витрат · автостоп batch · атомарний запис JSON |
 | **Довідка й дизайн · хвиля 24** | ✅ | підказки з локалей на кожній вкладці · довідка-путівник з пошуком (uk/en) · `docs/GUIDE.md` · mock у списках рушіїв · оновлений дизайн і мобільна верстка |
 | **Шлях випуску · хвиля 25** | ✅ | «Почати серію» / спін-оф / 12 пілотів / тексти без кредитів · DNA-блок · diff архівів · overrides · архів випуску → портал · підказки hover · `/login` Series Lab · вхід лише гаманцем |
-| **Шлях випуску · upload→guards→verify** | ✅ | `release.json`, `series upload` (відновлюване, з `cache.json`), `series guards`, `series verify` — [RELEASE.md](./RELEASE.md) |
+| **Шлях випуску · upload→guards→verify** | ✅ | `release.json`, `series upload` (відновлюване, з `cache.json`), `series guards` (allowlist — група `allowList`), `series hidden`, `series mint` (route + mintV1), `series reveal --keypair`, `series compose`, `series verify` — [RELEASE.md](./RELEASE.md) |
 | **Release Lab-side** | ✅ | ZIP + чекліст + Release Hub (посилання на лаунчпад). Ончейн-клейм — зовні, не в Lab |
 | **Реліз v1.7.0** | ✅ 04.10.2026 | Arweave (Irys), шлях випуску upload → guards → verify (Core і v3), підказки й мережа за вибором — [CHANGELOG.md](../CHANGELOG.md) |
 | **Стабілізація на живих даних** | ▶️ зараз | `series verify` на справжній Core-машині, пробне відновлення `series upload` на mainnet, проходження шляху користувачем; **без** великого рефакторингу (див. «Поточні рішення») |
@@ -131,10 +131,10 @@
 1. **AI Auto-Triage (`POST /api/qa/triage`, `series triage`)** — автоматичний аналіз якості та відповідності згенерованих картинок (евристичний + GPT-4o / Claude Vision).
 2. **Score & Badges** — виставлення оцінок (1–10), тегів виявлених дефектів (`distorted_face`, `bad_anatomy`, `missing_trait`, `blurry`), підказок та 1-клік авто-застосування `keep`/`redo`.
 
-## Хвиля 12 (IPFS / Arweave Storage Dispatcher)
+## Хвиля 12 (Storage Dispatcher: Arweave і префікси URI)
 
-1. **Storage URI Prefix (`imageUriPrefix`)** — підтримка префіксів децентралізованого зберігання (`ipfs://<CID>/`, `ar://<txId>/`, `https://...`) у всіх форматах метаданих (ERC-721, Metaplex, Ordinals) та ZIP-архівах.
-2. **Pinata IPFS Integration & Live Preview (`POST /api/storage/pin`, `series pin`)** — пряме 1-клік завантаження наборів у Pinata IPFS з автоматичною підстановкою CID та інтерактивним прев'ю `1.json`.
+1. **Storage URI Prefix (`imageUriPrefix`)** — підтримка префіксів, які людина вписує сама (`ipfs://<CID>/`, `ar://<id>/`, `https://...`) у всіх форматах метаданих (ERC-721, Metaplex, Ordinals) та ZIP-архівах. Типовий шлях Solana — `ar://`.
+2. **Завантаження в Arweave через Irys (`POST /api/storage/pin`, `series pin`)** — кнопка і CLI відправляють зображення набору в Arweave. Відповідь: `arweaveId` і префікс `ar://<id>/`, який підставляється в поле URI. Pinata прибрано; майстерня на IPFS нічого не вантажить. `series pin --dry-run` нічого не публікує і не видає ідентифікатор Arweave.
 
 ## Хвиля 13 (Launchpad Presets & Multi-Standard Export Profiles)
 

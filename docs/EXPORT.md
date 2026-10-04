@@ -2,7 +2,7 @@
 
 Етап **7 · Експорт** у Series Lab забезпечує підготовку всіх необхідних файлів для релізу колекції на блокчейн-платформах.
 
-Series Lab **не мінтить безпосередньо з сервера** (non-custodial): готовий пакет → ZIP → зовні портал лаунчпада / маркетплейс. У UI: **«Архів випуску»** (чекліст + ZIP лише з keep) і CTA **«Далі · портал запуску»**.
+Сервер ZIP не підписує і ключ не бере. ZIP — файли для майданчика і для набору деплою. Мінт Solana Core після набору — `series mint --keypair` на цьому ПК, не кнопка майданчика. У UI: **«Архів випуску»** (чекліст + ZIP лише з keep) і CTA **«Далі · портал запуску»**.
 
 ---
 
@@ -104,6 +104,10 @@ Series Lab підтримує автоматичне виявлення та п�
 `POST /api/preflight` і збірка ZIP (`gate`) проганяють `src/preflight.mjs`: унікальні DNA і байти картинок, кількість файлів = кількості метаданих, схема ERC-721 / Metaplex / Ordinals, роялті в межах 0–10000 bps, формат і розмір. Помилка блокує ZIP (HTTP 422) і звіт показується в UI. Попередження (порожній опис, локальні URI, заглушка адреси) не блокують. У архіві також `cover.*`, `royalties.json`, `rarity.json`, `rarity.txt`, `README.txt` під обрану мережу.
 
 Набір деплою і набір маркетплейсу — `POST /api/deploy-kit`, `POST /api/marketplace-kit`. Деталі й ціни: [PRODUCT.md](./PRODUCT.md).
+
+Solana-набір деплою також містить `hidden.json` + `hidden.png` (плейсхолдер до розкриття) і `hidden-settings.json` з порожнім хешем: його заповнює `series hidden` після `series upload`. Якщо в тілі є `allowlist`, у ZIP з’являється `allowlist.json` (merkle root і докази). Повний guard з оплатою — `series guards`. Доказ у транзакцію кладе `series mint`; окремо передавати його не треба. Створення машини лишається `mplx cm create`. Порядок на цьому ПК: `series release-init`, `series upload --keypair`, `series hidden --uri`, `series guards`, `mplx cm create`, `series verify`, `series mint --keypair`, `series reveal --keypair` (ключ оновлення колекції). Майстерня ключ не приймає. EVM delayed reveal лишається інструкцією Thirdweb, пароль не зберігається. `series mint` не збирає Sugar.
+
+Шари PNG (поруч із промптами, не замість них): `series compose` або `POST /api/compose`. Файли `layers/<ключ>/<значення>.png`, результат `out/layers/<видання>.png` і `dna.json`. Див. [TRAITS.md](./TRAITS.md) і [RELEASE.md](./RELEASE.md).
 
 ## 8. NFT Readiness Checklist
 

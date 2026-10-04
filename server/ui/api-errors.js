@@ -73,6 +73,8 @@ const EXACT = {
   "Cannot estimate the cost of this run — refused because a daily spend cap is set.": "api.spendEstimate",
   "onlyKeep is set but marks have no keep entries and no images found — mark keep in Review or generate images": "api.onlyKeepEmpty",
   "onlyKeep is set but no keep-marked editions match the archive — mark keep in Review": "api.onlyKeepMiss",
+  "preset traits are required to compose layers": "api.composeTraits",
+  "layers directory must stay inside the project": "api.composeLayersEscape",
 };
 
 const PATTERNS = [
@@ -83,6 +85,8 @@ const PATTERNS = [
   [/^Duplicate DNA with edition #(\S+)$/, "api.dupDnaEdition", (m) => ({ n: m[1] })],
   [/^Duplicate DNA before render: (.+)$/, "api.dupDnaRender", (m) => ({ list: m[1] })],
   [/^set directory not found: (.+)$/, "api.setDirMissing", (m) => ({ name: m[1] })],
+  [/^layers directory not found: (.+)$/, "api.composeLayersMissing", (m) => ({ path: m[1] })],
+  [/^base image not found: (.+)$/, "api.composeBaseMissing", (m) => ({ path: m[1] })],
   [/^set not found: (.+)$/, "api.setMissingNamed", (m) => ({ name: m[1] })],
   [/^no image files found in set: (.+)$/, "api.noImages", (m) => ({ name: m[1] })],
   [/^Unknown stage: (.+)$/, "api.unknownStage", (m) => ({ stage: m[1] })],

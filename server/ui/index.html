@@ -565,6 +565,14 @@
           <button type="button" id="g-estimate" class="btn" data-i18n="render.estimate">Estimate (free)</button>
           <button type="button" id="g-run" class="btn" disabled data-i18n="render.run">Generate…</button>
         </div>
+        <div class="card" id="g-layers" style="margin-top:12px">
+          <h3 data-i18n="render.layers.h">PNG layers</h3>
+          <p class="muted small" data-i18n="render.layers.help"></p>
+          <div class="actions">
+            <button type="button" id="g-compose" class="btn" data-i18n="render.layers.run">Compose layers</button>
+            <span id="g-compose-msg" class="small" role="status"></span>
+          </div>
+        </div>
       </div>
       <div class="card">
         <h3 data-i18n="render.plan">Plan and status</h3>
@@ -746,7 +754,7 @@
         <label class="small" id="x-uri-wrap" style="grid-column: 1 / -1"><span data-i18n="export.bundle.uriPrefix">Image URI Prefix (Storage)</span>
           <div style="display:flex; gap:8px">
             <input id="x-uri-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.png)" data-i18n-placeholder="export.bundle.uriPrefix.ph" data-i18n-tip="export.bundle.uriPrefix.tip" style="flex:1" />
-            <button type="button" id="x-pin-irys" class="btn small" data-i18n="export.bundle.pinArweave">📌 Upload to Arweave (Irys)</button>
+            <button type="button" id="x-pin-irys" class="btn small" data-i18n="export.bundle.pinArweave" data-i18n-tip="export.bundle.pinArweave.tip">📌 Upload to Arweave (Irys)</button>
           </div>
           <span id="x-pin-status" class="small muted" style="margin-top:2px; display:block"></span>
         </label>
@@ -828,6 +836,11 @@
         </label>
         <label class="small" style="grid-column: 1 / -1"><span data-i18n="export.bundle.description">Опис</span>
           <input id="d-desc" type="text">
+        </label>
+        <label class="small" id="d-allowlist-wrap" style="grid-column: 1 / -1">
+          <span data-i18n="deploy.allowlist">Allowlist</span>
+          <textarea id="d-allowlist" rows="4" data-i18n-placeholder="deploy.allowlist.ph"></textarea>
+          <span class="muted" data-i18n="deploy.allowlist.help"></span>
         </label>
       </div>
       <div id="d-advisor-card" class="advisor-card">

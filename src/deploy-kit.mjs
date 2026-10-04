@@ -8,6 +8,8 @@ import { buildSugarConfig, buildThirdwebConfig } from "./deploy.mjs";
 import { assertNoSecrets } from "./secrets.mjs";
 import { formatForLaunchpad, exportManifestCsv } from "./launchpads.mjs";
 import { buildLaunchAdvisor } from "./launch-advisor.mjs";
+import { normalizeAllowlist } from "./allowlist.mjs";
+import { placeholderMetadata, placeholderPng } from "./reveal.mjs";
 import { extname } from "node:path";
 
 export const DEPLOY_COST_DEFAULTS = {
@@ -274,7 +276,10 @@ export function buildDeployKit({
       },
     };
     files["assets/collection.json"] = `${JSON.stringify(collectionMeta, null, 2)}\n`;
-    files["hidden-settings.json"] = `${JSON.stringify(hiddenSettingsDraft(), null, 2)}\n`;
+    const hiddenName = "Hidden #";
+    files["hidden.json"] = `${JSON.stringify(placeholderMetadata({ name: hiddenName, symbol, description }), null, 2)}\n`;
+    files["hidden.png"] = placeholderPng();
+    files["hidden-settings.json"] = `${JSON.stringify(hiddenSettingsDraft(hiddenName), null, 2)}\n`;
     files["HIDDEN.txt"] = hiddenSettingsNote(uk);
     const sugar = buildSugarConfig(
       { ...archive, size: count, recipes: sorted.map((s) => s.recipe).filter(Boolean) },
@@ -307,9 +312,33 @@ export function buildDeployKit({
     files["manifest.csv"] = exportManifestCsv(recipes, traitItems, kitOpts);
   }
 
+  let allowlist = null;
+  if (chain === "solana" && String(opts.allowlist || "").trim()) {
+    try {
+      allowlist = normalizeAllowlist(opts.allowlist);
+    } catch (e) {
+      e.status = e.status || 400;
+      throw e;
+    }
+  }
+  if (allowlist) {
+    files["allowlist.json"] = `${JSON.stringify({
+      label: allowlist.label,
+      algorithm: allowlist.algorithm,
+      merkleRoot: allowlist.merkleRoot,
+      merkleRootBase58: allowlist.merkleRootBase58,
+      wallets: allowlist.proofs,
+    }, null, 2)}\n`;
+  }
+
   const estimate = estimateDeployCost({ chain, count, totalBytes, profile }, env);
   files["ESTIMATE.txt"] = `${formatCostEstimate(estimate, locale)}\n`;
-  const guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate, legacy: Boolean(opts.legacy) });
+  let guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate, legacy: Boolean(opts.legacy) });
+  if (allowlist) {
+    guide += uk
+      ? `\nAllowlist: група "${allowlist.label}", merkle root (hex, поле allowList.merkleRoot для mplx):\n${allowlist.merkleRoot}\nГаманці і докази: allowlist.json. Повний guard з оплатою: series guards release.json (ті самі гаманці в release.json → allowlist).\n`
+      : `\nAllowlist: group "${allowlist.label}", merkle root (hex, the mplx allowList.merkleRoot field):\n${allowlist.merkleRoot}\nWallets and proofs: allowlist.json. The full guard, including payment: series guards release.json (the same wallets in release.json → allowlist).\n`;
+  }
   files["DEPLOY.txt"] = guide;
   const advisor = buildLaunchAdvisor({ chain, locale });
   files["ADVISOR.txt"] = `${advisor.text}\n`;
@@ -320,10 +349,10 @@ export function buildDeployKit({
   return { chain, files, estimate, guide, count, advisor };
 }
 
-function hiddenSettingsDraft() {
+function hiddenSettingsDraft(name = "Hidden #") {
   return {
-    name: "Hidden #",
-    uri: "https://example.invalid/hidden.json",
+    name,
+    uri: "",
     hash: null,
   };
 }
@@ -331,25 +360,47 @@ function hiddenSettingsDraft() {
 function hiddenSettingsNote(uk) {
   return uk
     ? [
-      "Заготовка hidden settings для Core Candy Machine",
-      "==============================================",
-      "name і uri у hidden-settings.json — заглушки. Замініть їх своїми.",
-      "hash — це SHA-256 масиву даних розкриття (name + uri кожного предмета),",
-      "як у гайді Core Candy Machine hidden settings. Формат хешу не вигадуйте:",
-      "візьміть його з тієї сторінки, коли будете заповнювати майстер.",
+      "Приховане розкриття Core Candy Machine",
+      "======================================",
+      "hidden.json і hidden.png — метадані, які бачить покупець до розкриття.",
+      "hash у hidden-settings.json ще порожній: посилання на метадані з'являються після завантаження.",
+      "",
+      "1. series upload <ця тека> --keypair <ваш.json>",
+      "2. Завантажте hidden.json (і hidden.png) тим самим шляхом і візьміть посилання на JSON.",
+      "3. series hidden <ця тека> --uri <посилання на hidden.json>",
+      "   Команда читає cache.json і пише SHA-256 від JSON.stringify([{name,uri}, ...]) —",
+      "   той самий хеш, що в гайді Core Candy Machine hidden settings.",
+      "4. series mint release.json --keypair <гаманець-мінтера.json>",
+      "   Підписує мінт Core на цьому ПК. Для групи wl спочатку йде route з доказом allowlist, потім mintV1.",
+      "   Адреса асета і індекс (itemsRedeemed) пишуться в mints.json. Ключ на сервер не йде.",
+      "5. series reveal <ця тека> --keypair <ключ оновлення колекції.json>",
+      "   Підписує ім'я й URI кожного асета з mints.json (UpdateV1). Індекс — порядок мінту 0, 1, 2, …",
+      "   Без --keypair команда лише пише reveal-updates.json і не підписує.",
+      "",
+      "EVM: пароль delayed reveal вводите в кабінеті thirdweb. У цей файл його не кладуть.",
       "https://www.metaplex.com/docs/smart-contracts/core-candy-machine/guides/create-a-core-candy-machine-with-hidden-settings",
-      "Пароль розкриття сюди не вписуйте. Series Lab його не приймає і не зберігає.",
       "",
     ].join("\n")
     : [
-      "Core Candy Machine hidden-settings draft",
-      "=======================================",
-      "name and uri in hidden-settings.json are placeholders. Replace them with yours.",
-      "hash is the SHA-256 of the reveal-data array (name + uri of each item),",
-      "computed the way the Core Candy Machine hidden-settings guide describes.",
-      "Do not invent a hash layout: copy it from that page when you fill the wizard.",
+      "Core Candy Machine hidden reveal",
+      "================================",
+      "hidden.json and hidden.png are what a buyer sees before the reveal.",
+      "hash in hidden-settings.json is still empty: metadata links exist only after upload.",
+      "",
+      "1. series upload <this folder> --keypair <yours.json>",
+      "2. Upload hidden.json (and hidden.png) the same way and copy the JSON link.",
+      "3. series hidden <this folder> --uri <link of hidden.json>",
+      "   The command reads cache.json and writes the SHA-256 of JSON.stringify([{name,uri}, ...]) —",
+      "   the hash from the Core Candy Machine hidden-settings guide.",
+      "4. series mint release.json --keypair <minter.json>",
+      "   Signs the Core mint on this PC. An allowlist group sends route (the proof) and then mintV1.",
+      "   The asset address and index (itemsRedeemed) are written to mints.json. The key is not sent to a server.",
+      "5. series reveal <this folder> --keypair <collection-update-authority.json>",
+      "   Signs the name and URI of each asset in mints.json (UpdateV1). The index is the mint order 0, 1, 2, …",
+      "   Without --keypair the command only writes reveal-updates.json and does not sign.",
+      "",
+      "EVM: enter the delayed-reveal password in the thirdweb dashboard. It does not go in this file.",
       "https://www.metaplex.com/docs/smart-contracts/core-candy-machine/guides/create-a-core-candy-machine-with-hidden-settings",
-      "Do not put a reveal password in this file. Series Lab does not accept or store it.",
       "",
     ].join("\n");
 }
@@ -374,7 +425,7 @@ function coreLayoutReadme(uk) {
       "assets/0.png + assets/0.json … — предмети з нуля, у порядку видань.",
       "assets/collection.png + assets/collection.json — обкладинка колекції.",
       "cm-config.json — поля для майстра `mplx cm create --wizard` (назва, символ, роялті, творець).",
-      "Гварди (allowList, mintLimit, botTax) вписуєте в майстрі. Див. DEPLOY.txt.",
+      "Гварди: series guards пише allowList (група wl) разом з оплатою. Див. DEPLOY.txt.",
       "Роялті Core — у ROYALTIES.txt. Список програм заповнюєте ви.",
       "Не кладіть сюди ключ гаманця.",
       "",
@@ -385,7 +436,7 @@ function coreLayoutReadme(uk) {
       "assets/0.png + assets/0.json … — items from zero, in edition order.",
       "assets/collection.png + assets/collection.json — collection cover.",
       "cm-config.json — fields for the `mplx cm create --wizard` (name, symbol, royalty, creator).",
-      "Guards (allowList, mintLimit, botTax) are entered in the wizard. See DEPLOY.txt.",
+      "Guards: series guards writes allowList (group wl) next to the payment rule. See DEPLOY.txt.",
       "Core royalties are explained in ROYALTIES.txt. You fill the program list.",
       "Do not put a wallet key in this folder.",
       "",
@@ -423,21 +474,25 @@ function sugarLayoutReadme(uk, legacy) {
 function sugarLegacyNote(uk) {
   const commands = uk
     ? [
-      "Команди Sugar (лише якщо ви свідомо лишаєтесь на застарілому варіанті):",
+      "Команди Sugar (лише якщо ви свідомо лишаєтесь на застарілому варіанті).",
+      "Запускайте їх з кореня набору — теки, де лежить assets/, не з теки sugar/:",
       "   sugar validate",
-      "   sugar upload",
-      "   sugar deploy --config config.json",
+      "   sugar upload --config sugar/config.json",
+      "   sugar deploy --config sugar/config.json",
       "   sugar verify",
-      "Запускайте з теки sugar/, конфіг — sugar/config.json. Асети лишаються в assets/ у корені набору.",
+      "Конфіг — sugar/config.json. Асети лишаються в assets/ у корені набору.",
+      "sugar validate і sugar verify не приймають --config: вони читають assets/ і cache.json з поточної теки.",
       "Гаманець і ключ — у вас. Lab транзакцію не підписує.",
     ]
     : [
-      "Sugar commands (only if you deliberately stay on the legacy program):",
+      "Sugar commands (only if you deliberately stay on the legacy program).",
+      "Run them from the kit root — the folder that contains assets/, not from sugar/:",
       "   sugar validate",
-      "   sugar upload",
-      "   sugar deploy --config config.json",
+      "   sugar upload --config sugar/config.json",
+      "   sugar deploy --config sugar/config.json",
       "   sugar verify",
-      "Run them from the kit root with --config sugar/config.json, or copy the config. Assets stay in assets/ at the kit root.",
+      "The config is sugar/config.json. Assets stay in assets/ at the kit root.",
+      "sugar validate and sugar verify do not take --config: they read assets/ and cache.json from the current folder.",
       "The wallet and the key stay with you. Lab does not sign the transaction.",
     ];
   return [
@@ -497,11 +552,18 @@ function coreGuideSteps(uk) {
       "   mplx cm create --wizard",
       "   Відповідайте майстру з cm-config.json: назва, символ, sellerFeeBasisPoints, адреса творця.",
       "   Асети: assets/0.png, assets/0.json, … і assets/collection.json.",
-      "   Приховане розкриття: hidden-settings.json — заглушки name/uri. Хеш рахуєте ви, як у гайді Core. Пароль у файл не кладіть.",
-      "   Якщо майстер просить кроки окремо: mplx cm upload, потім mplx cm insert, потім mplx cm validate.",
-      "   Групи гвардів (імена зі сторінки гвардів Core; дату старту не вигадуємо):",
-      "   - спочатку allowlist: allowList (merkle root вписуєте ви), mintLimit, botTax",
-      "   - потім public: mintLimit, botTax",
+      "   Приховане розкриття: hidden.json + hidden.png. Хеш — series hidden після series upload. Розкриття — series reveal --keypair. EVM лишається в кабінеті Thirdweb. Пароль у файл не кладіть.",
+      "   Команди Lab на цьому ПК (ключ у файлі, не в майстерні):",
+      "   series release-init <архів.json> -o release.json",
+      "   series upload <ця тека> --keypair <файл>",
+      "   series hidden <ця тека> --uri <посилання hidden.json>",
+      "   series guards release.json",
+      "   mplx cm create --wizard",
+      "   series verify release.json",
+      "   series mint release.json --keypair <файл>",
+      "   series reveal <ця тека> --keypair <ключ оновлення колекції>",
+      "   Список дозволених: група wl, allowList (merkle root з series guards або allowlist.json) і mintLimit. Доказ у транзакцію кладе series mint.",
+      "   series mint збирає оплату, allowList і mintLimit. Інше правило зупиняє команду.",
       "   Перевірте колекцію на devnet-експлорері.",
       "",
       "2. Mainnet — лише якщо devnet виглядає правильно",
@@ -527,11 +589,18 @@ function coreGuideSteps(uk) {
       "   mplx cm create --wizard",
       "   Answer the wizard from cm-config.json: name, symbol, sellerFeeBasisPoints, creator address.",
       "   Assets: assets/0.png, assets/0.json, … and assets/collection.json.",
-      "   Hidden reveal: hidden-settings.json holds placeholder name/uri. You hash the reveal-data array the way the Core guide describes. Do not put a password in the file.",
-      "   If the wizard asks for separate steps: mplx cm upload, then mplx cm insert, then mplx cm validate.",
-      "   Guard groups (names from the Core guards page; do not invent a start date):",
-      "   - allowlist first: allowList (you fill the merkle root), mintLimit, botTax",
-      "   - then public: mintLimit, botTax",
+      "   Hidden reveal: hidden.json + hidden.png. The hash is series hidden after series upload. Reveal is series reveal --keypair. EVM stays in the Thirdweb dashboard. Do not put a password in the file.",
+      "   Lab commands on this PC (the key stays in a file, never in the studio):",
+      "   series release-init <archive.json> -o release.json",
+      "   series upload <this folder> --keypair <file>",
+      "   series hidden <this folder> --uri <hidden.json link>",
+      "   series guards release.json",
+      "   mplx cm create --wizard",
+      "   series verify release.json",
+      "   series mint release.json --keypair <file>",
+      "   series reveal <this folder> --keypair <collection update key>",
+      "   Allowlist: group wl, allowList (merkle root from series guards or allowlist.json) and mintLimit. series mint puts the proof in the transaction.",
+      "   series mint builds payment, allowList, and mintLimit. Any other rule stops the command.",
       "   Check the collection on a devnet explorer.",
       "",
       "2. Mainnet — only after devnet looks right",

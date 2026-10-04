@@ -5,7 +5,7 @@
  * candy_machine_data.rs, candy_guard.rs, guards/*.rs) and were checked against live mainnet accounts.
  */
 import { createHash } from "node:crypto";
-import { buildReleaseGuards, publicSize } from "./release-config.mjs";
+import { allowlistOf, buildReleaseGuards, publicSize } from "./release-config.mjs";
 
 export const CORE_CANDY_MACHINE_PROGRAM = "CMACYFENjoBMHzapRXyo1JZkVS6EtaDDzkjMrmQLvr4J";
 export const CORE_CANDY_GUARD_PROGRAM = "CMAGAKJ67e9hRZgfC5SFTbZH8MgEmtqazKXjmkaJjWTJ";
@@ -76,10 +76,35 @@ const CORE_GUARDS = [
 ];
 
 /**
+ * One guard set: 8-byte feature mask, then the enabled guards in bit order.
+ * @returns {{ features: bigint, guards: object, offset: number, unknown: boolean }}
+ */
+function decodeGuardSet(buf, offset, standard) {
+  const features = buf.readBigUInt64LE(offset);
+  let o = offset + 8;
+  const guards = {};
+  let unknown = false;
+  const table = standard === "core" ? [...GUARDS, ...CORE_GUARDS] : GUARDS;
+  for (let bit = 0; bit < 64; bit++) {
+    if (((features >> BigInt(bit)) & 1n) === 0n) continue;
+    if (bit >= table.length) {
+      unknown = true;
+      break;
+    }
+    const [name, parse] = table[bit];
+    const [value, size] = parse(buf, o, standard);
+    guards[name] = value;
+    o += size;
+  }
+  return { features, guards, offset: o, unknown };
+}
+
+/**
  * Decode a Candy Guard account (same header for v3 and Core; only tokenGate field order differs).
  * v3: guards past bit 9 are not decoded (`unknown` = true). Core: all 31 guards are decoded.
  * `bytesRead` is where the default guard set ends plus the 4-byte group count: for a guard with no groups it
  * equals the account size, which is how the decoder is cross-checked against live accounts.
+ * Core group bodies are decoded into `groupList` (label + that group's guards).
  * @param {Buffer} buf
  * @param {{ standard?: "v3" | "core" }} [opts]
  */
@@ -88,24 +113,23 @@ export function decodeGuardAccount(buf, { standard = "v3" } = {}) {
     throw new Error("not a Candy Guard account (discriminator mismatch)");
   }
   const authority = toBase58(buf.subarray(41, 73));
-  const features = buf.readBigUInt64LE(73);
-  const guards = {};
-  let offset = 81;
-  let unknown = false;
-  for (let bit = 0; bit < 64; bit++) {
-    if (((features >> BigInt(bit)) & 1n) === 0n) continue;
-    const table = standard === "core" ? [...GUARDS, ...CORE_GUARDS] : GUARDS;
-    if (bit >= table.length) {
-      unknown = true;
-      break;
-    }
-    const [name, parse] = table[bit];
-    const [value, size] = parse(buf, offset, standard);
-    guards[name] = value;
-    offset += size;
+  const set = decodeGuardSet(buf, 73, standard);
+  if (set.unknown) {
+    return { authority, features: set.features, guards: set.guards, groups: null, groupList: [], unknown: true, bytesRead: null };
   }
-  const groups = unknown ? null : buf.readUInt32LE(offset);
-  return { authority, features, guards, groups, unknown, bytesRead: unknown ? null : offset + 4 };
+  let o = set.offset;
+  const groups = buf.readUInt32LE(o);
+  o += 4;
+  const groupList = [];
+  if (standard === "core") {
+    for (let i = 0; i < groups; i++) {
+      const [label, next] = readString(buf, o);
+      const body = decodeGuardSet(buf, next, standard);
+      groupList.push({ label, guards: body.guards });
+      o = body.offset;
+    }
+  }
+  return { authority, features: set.features, guards: set.guards, groups, groupList, unknown: false, bytesRead: standard === "core" ? o : set.offset + 4 };
 }
 
 /** Anchor string: u32 length + utf8 bytes. */
@@ -134,6 +158,7 @@ export function decodeCoreCandyMachine(buf) {
     isMutable: buf[128] === 1,
     configLineSettings: null,
     hiddenSettings: false,
+    hidden: null,
   };
   let o = 129;
   if (buf[o++] === 1) {
@@ -145,6 +170,15 @@ export function decodeCoreCandyMachine(buf) {
     o = o2 + 5;
   }
   out.hiddenSettings = buf[o] === 1;
+  if (out.hiddenSettings && o + 1 < buf.length) {
+    try {
+      const [name, n1] = readString(buf, o + 1);
+      const [uri, n2] = readString(buf, n1);
+      if (n2 + 32 <= buf.length) out.hidden = { name, uri, hash: buf.subarray(n2, n2 + 32).toString("hex") };
+    } catch {
+      out.hidden = null;
+    }
+  }
   return out;
 }
 
@@ -153,6 +187,7 @@ const NORM = {
   solPayment: (g) => (g ? { sol: g.sol ?? g.value, destination: g.destination } : null),
   mintLimit: (g) => (g ? { id: g.id, limit: g.limit } : null),
   startDate: dateMs,
+  allowList: (g) => (g ? { merkleRoot: String(g.merkleRoot || "").toLowerCase().replace(/^0x/, "") } : null),
 };
 
 /** What `guard update` would change. */
@@ -212,7 +247,12 @@ export async function verifyRelease(cfg, { rpcUrl, fetchFn } = {}) {
     total = cm.itemsAvailable;
     if (cm.mintAuthority !== candyGuard) problems.push(`machine's mint authority is ${cm.mintAuthority}, not the candy guard: the guard rules are bypassed or belong to another machine`);
     if (collection && cm.collectionMint !== collection) problems.push(`collection on chain is ${cm.collectionMint}, release.json has ${collection}`);
-    if (cm.hiddenSettings) problems.push("machine uses hidden settings (reveal later): items are not individually listed");
+    const revealOn = Boolean(cfg.reveal && typeof cfg.reveal === "object" && cfg.reveal.enabled);
+    if (revealOn && !cm.hiddenSettings) problems.push("release.json sets reveal, but the machine has no hidden settings");
+    if (!revealOn && cm.hiddenSettings) problems.push("machine uses hidden settings (reveal later): items are not individually listed");
+    if (revealOn && cfg.reveal.hash && cm.hidden?.hash && cm.hidden.hash !== String(cfg.reveal.hash).toLowerCase()) {
+      problems.push(`hidden settings hash differs: chain ${cm.hidden.hash}, release.json ${String(cfg.reveal.hash).toLowerCase()}`);
+    }
   } else {
     minted = Number(cmInfo.data.readBigUInt64LE(112));
     total = Number(cmInfo.data.readBigUInt64LE(120));
@@ -220,6 +260,17 @@ export async function verifyRelease(cfg, { rpcUrl, fetchFn } = {}) {
   if (total !== publicSize(cfg)) problems.push(`items on chain: ${total}, release.json expects ${publicSize(cfg)} (size minus reserve)`);
 
   const diff = guardDiff(buildReleaseGuards(cfg), g.guards);
+  try {
+    const al = allowlistOf(cfg);
+    if (al) {
+      const group = (g.groupList || []).find((row) => row.label === al.label);
+      const onRoot = group?.guards?.allowList?.merkleRoot || "";
+      if (!group) problems.push(`allowList group "${al.label}" is missing on chain`);
+      else if (onRoot !== al.merkleRoot) problems.push(`allowList merkle root differs: chain ${onRoot}, release.json ${al.merkleRoot}`);
+    }
+  } catch (e) {
+    problems.push(e.message);
+  }
   if (!g.guards.solPayment) problems.push("no solPayment on chain: the mint is free");
   if (g.unknown) problems.push("chain has guards this tool does not decode: check manually");
   for (const [label, list] of [["missing on chain", diff.added], ["different on chain", diff.changed], ["extra on chain", diff.removed]]) {
