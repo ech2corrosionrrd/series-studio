@@ -30,8 +30,8 @@ export const STAGE_DEFAULTS = {
     label: "Archive export",
     costUsd: 0,
     marginUsd: 0.03,
-    ipfsCostUsd: 0.05,
-    ipfsMarginUsd: 0.01,
+    storageCostUsd: 0.05,
+    storageMarginUsd: 0.01,
   },
   deploy_kit: {
     label: "Deploy kit",
@@ -191,24 +191,27 @@ export function quoteStage(stage, opts = {}, env = process.env) {
   }
 
   if (id === "archive") {
-    const zipOn = opts.zip !== false && opts.ipfs !== "only";
-    const ipfsOn = Boolean(opts.ipfs);
+    // `storage` = upload to Arweave (Irys). `ipfs` is the legacy name of the same option.
+    const storage = opts.storage ?? opts.ipfs;
+    const zipOn = opts.zip !== false && storage !== "only";
+    const storageOn = Boolean(storage);
     const zip = pair("archive", env);
-    const ipfsCost = num(env, "STAGE_IPFS_COST_USD", jsonOverrides(env).archive?.ipfsCostUsd ?? STAGE_DEFAULTS.archive.ipfsCostUsd);
-    const ipfsMargin = num(env, "STAGE_IPFS_MARGIN_USD", jsonOverrides(env).archive?.ipfsMarginUsd ?? STAGE_DEFAULTS.archive.ipfsMarginUsd);
-    const costUsd = (zipOn ? zip.costUsd : 0) + (ipfsOn ? ipfsCost : 0);
-    const marginUsd = (zipOn ? zip.marginUsd : 0) + (ipfsOn ? ipfsMargin : 0);
+    const over = jsonOverrides(env).archive || {};
+    const storageCost = num(env, "STAGE_STORAGE_COST_USD", num(env, "STAGE_IPFS_COST_USD", over.storageCostUsd ?? over.ipfsCostUsd ?? STAGE_DEFAULTS.archive.storageCostUsd));
+    const storageMargin = num(env, "STAGE_STORAGE_MARGIN_USD", num(env, "STAGE_IPFS_MARGIN_USD", over.storageMarginUsd ?? over.ipfsMarginUsd ?? STAGE_DEFAULTS.archive.storageMarginUsd));
+    const costUsd = (zipOn ? zip.costUsd : 0) + (storageOn ? storageCost : 0);
+    const marginUsd = (zipOn ? zip.marginUsd : 0) + (storageOn ? storageMargin : 0);
     return quoteShape(id, {
       costUsd,
       marginUsd,
       credits: creditsForUsd(costUsd + marginUsd, env),
       count: 1,
-      note: ipfsOn && !zipOn
-        ? "IPFS pin only. Zip export is a separate fee."
-        : "Local zip marginal infra is treated as $0; the credit is the fixed margin. IPFS is added only when you pin.",
+      note: storageOn && !zipOn
+        ? "Arweave upload only. Zip export is a separate fee."
+        : "Local zip marginal infra is treated as $0; the credit is the fixed margin. The Arweave upload is added only when you upload.",
       assumptions: [
         `zip=${zipOn} cost ${zip.costUsd} + margin ${zip.marginUsd} (STAGE_ARCHIVE_COST_USD / STAGE_ARCHIVE_MARGIN_USD)`,
-        `ipfs=${ipfsOn} cost ${ipfsCost} + margin ${ipfsMargin} (STAGE_IPFS_COST_USD / STAGE_IPFS_MARGIN_USD)`,
+        `storage=${storageOn} cost ${storageCost} + margin ${storageMargin} (STAGE_STORAGE_COST_USD / STAGE_STORAGE_MARGIN_USD; legacy STAGE_IPFS_*)`,
         "Not a live Irys invoice — replace the storage numbers when your plan changes.",
       ],
     }, env);
@@ -293,9 +296,10 @@ export function stageLedgerReport(db, days = null, { apiUsd = () => 0, avgUsdPer
       bucket.cost_usd += ops * (note.includes("triage") && !note.includes("heuristic") ? ai : heuristic);
     } else if (stage === "archive") {
       const zip = pair("archive", env);
-      const ipfsCost = num(env, "STAGE_IPFS_COST_USD", STAGE_DEFAULTS.archive.ipfsCostUsd);
+      const storageCost = num(env, "STAGE_STORAGE_COST_USD", num(env, "STAGE_IPFS_COST_USD", STAGE_DEFAULTS.archive.storageCostUsd));
       const note = String(row.note || "").toLowerCase();
-      bucket.cost_usd += ops * (note.includes("ipfs") ? ipfsCost : zip.costUsd);
+      // older ledger rows say "ipfs pin"; new ones "arweave upload"
+      bucket.cost_usd += ops * (note.includes("ipfs") || note.includes("arweave") ? storageCost : zip.costUsd);
     } else {
       bucket.cost_usd += ops * pair(stage, env).costUsd;
     }

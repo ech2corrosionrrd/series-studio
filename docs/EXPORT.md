@@ -81,6 +81,7 @@ Series Lab підтримує автоматичне виявлення та п�
 Вкладка Експорт підтримує 1-клік завантаження набору зображень в Arweave через Irys (потрібен `IRYS_PRIVATE_KEY` окремого гаманця з малим балансом і пакети `@irys/upload`, `@irys/upload-solana`):
 - **API**: `POST /api/storage/pin` `{ dir: "set-dir", name: "my-series" }`
 - **CLI**: `node bin/series.mjs pin out/set-dir --name my-series`
+- Кнопка показується лише для профілів Solana й лише якщо на сервері є `IRYS_PRIVATE_KEY` (інакше ховається з поясненням).
 - Для випуску в мережу використовуйте `series upload` (ключ на ПК, відновлюване, `cache.json`): [RELEASE.md](./RELEASE.md).
 - Отриманий ID маніфесту автоматично підставляється в поле `Image URI Prefix` (`ar://<id>/`), оновлюючи попередній перегляд метаданих у реальному часі.
 
