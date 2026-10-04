@@ -3,6 +3,7 @@
   "id": "fine-art",
   "name": "Fine Art",
   "seed": "template-fine-art-v1",
+  "genesis": true,
   "size": 28,
   "base": {
     "path": "input/mother.png",

@@ -3,6 +3,7 @@
   "id": "brand-mascot",
   "name": "Brand Mascot",
   "seed": "template-brand-mascot-v1",
+  "genesis": true,
   "size": 36,
   "base": {
     "path": "input/mother.png",

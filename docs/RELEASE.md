@@ -9,7 +9,7 @@
 ## 1. `release.json` — одне джерело правди
 `series release-init out/archive.json -o release.json --creator <адреса> --price 0.2`
 
-Поля: `name`, `symbol`, `size`, `sellerFeeBasisPoints`, `creators` (частки = 100), `priceSol`, `standard` (`core` або `v3`), `reserve.count` (резерв команди, не йде в публічний продаж), `mint.startDate` (UTC), `mint.limitPerWallet`, `allowlist`, `reveal`, `deployed` (адреси після деплою). Адреса-заглушка не проходить перевірку.
+Поля: `name`, `symbol`, `size` (з пресетом `genesis: true` — кількість NFT + 1, бо база входить у колекцію як #0), `sellerFeeBasisPoints`, `creators` (частки = 100), `priceSol`, `standard` (`core` або `v3`), `reserve.count` (резерв команди, не йде в публічний продаж), `mint.startDate` (UTC), `mint.limitPerWallet`, `allowlist`, `reveal`, `deployed` (адреси після деплою). Адреса-заглушка не проходить перевірку.
 
 `allowlist` — список адрес Solana, або `{ "label": "wl", "wallets": ["…"], "priceSol": 0.05 }`. `label` — 1–6 символів (ім’я групи Candy Guard). `priceSol` міняє ціну лише цієї фази. Які адреси стоять у парі, входить у merkle root: порядок усередині пари хеш не змінює (пари сортуються), інше групування — змінює.
 

@@ -11,6 +11,7 @@ import { buildLaunchAdvisor } from "./launch-advisor.mjs";
 import { normalizeAllowlist } from "./allowlist.mjs";
 import { placeholderMetadata, placeholderPng } from "./reveal.mjs";
 import { extname } from "node:path";
+import { hasGenesis } from "./genesis.mjs";
 
 export const DEPLOY_COST_DEFAULTS = {
   solana: {
@@ -244,11 +245,14 @@ export function buildDeployKit({
 
   const files = {};
   const zeroBased = chain === "solana";
+  // Genesis series: edition numbers are final (base = 0, edition k = k), so the usual
+  // "edition-1" shift of 0-based exports must not be applied on top of the file index.
+  const genesis = hasGenesis(sorted);
   sorted.forEach((item, index) => {
     const display = zeroBased ? index : Number(item.edition);
     const ext = (item.ext || "png").replace(/^\./, "");
     const recipe = item.recipe || { edition: item.edition, traits: item.traits || {} };
-    const meta = formatForLaunchpad(recipe, profile, { ...kitOpts, zeroIndexed: zeroBased }, traitItems);
+    const meta = formatForLaunchpad(recipe, profile, { ...kitOpts, zeroIndexed: zeroBased, genesis }, traitItems);
     if (chain === "solana") {
       files[`assets/${display}.${ext}`] = item.buffer;
       files[`assets/${display}.json`] = `${JSON.stringify(meta, null, 2)}\n`;
@@ -309,7 +313,7 @@ export function buildDeployKit({
     files["thirdweb.json"] = `${JSON.stringify(tw, null, 2)}\n`;
   } else {
     const recipes = sorted.map((s) => s.recipe || { edition: s.edition, traits: {} });
-    files["manifest.csv"] = exportManifestCsv(recipes, traitItems, kitOpts);
+    files["manifest.csv"] = exportManifestCsv(recipes, traitItems, { ...kitOpts, genesis });
   }
 
   let allowlist = null;
