@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Публічний режим хоста
+- `deploy/series-lab/phase3.sh` і `upload.sh`: прапорці `OPEN_ACCESS=1` (будь-який гаманець, потрібен `ADMIN_WALLETS`), `ENABLE_PAYMENTS=1` (оплата USDC, потрібен `SOLANA_PAY_RECIPIENT`) і `ENABLE_TELEGRAM=1`. Без них поведінка та сама: закритий staging, без оплати й Telegram.
+
 - `backup:pull`: після перевірки копії видаляє службові файли `-shm`/`-wal`, і прибирання старих копій чіпає їх теж (раніше вони накопичувались у `backups/offsite/`).
 
 ### Образ Docker: сторінки автора
