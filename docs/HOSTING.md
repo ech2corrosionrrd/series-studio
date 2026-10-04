@@ -94,7 +94,7 @@ docker build -t series-lab:local .
 
 `deploy/series-lab/phase3.sh` збирає той самий образ на сервері, пише `.env.series-lab` (домен `next.w3ir.io`, оплата й Telegram вимкнені, стеля $5, вхід за списком) і додає блок Caddy з `Caddyfile.staging`. Ліміт пам'яті контейнера staging — 512 МБ; під генерацію варто глянути `docker stats` і підняти ліміт вручну, якщо процес упирається. Скрипт запускається лише з сервера і лише за рішенням власника (`upload.sh` з ПК). Тут він не запускався.
 
-Перед відкриттям: бекап `deploy/series-lab/backup.sh` (локально те саме — `npm run backup`). Offsite вмикає `deploy/series-lab/setup-offsite.sh` (S3-сховище, шифрування, перевірка копії назад): він сам записує `BACKUP_RCLONE_REMOTE` і `BACKUP_PASSPHRASE` у `backup.env`. Погодинні копії й перевірки відновлення описані в [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md#бекапи).
+Перед відкриттям: бекап `deploy/series-lab/backup.sh` (локально те саме — `npm run backup`). Offsite вмикає `deploy/series-lab/setup-offsite.sh` (S3-сховище, шифрування, перевірка копії назад): він сам записує `BACKUP_RCLONE_REMOTE` і `BACKUP_PASSPHRASE` у `backup.env`. Погодинні копії й перевірки відновлення описані в [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md#бекап).
 
 Кроки на VPS, включно з `chown` і відкатом — [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md). Продукт не читає чужий `.env`: [STANDALONE.md](./STANDALONE.md).
 
