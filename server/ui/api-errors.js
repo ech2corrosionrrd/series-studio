@@ -8,6 +8,7 @@ const EXACT = {
   "Series Lab does not accept private keys, seed phrases, or secrets. Sign from your own wallet.": "api.secrets",
   "Prompt blocked by brand/franchise lint": "api.lint",
   "bad path": "api.badPath",
+  "confirmation required": "api.confirmRequired",
   "not found": "api.notFound",
   "admin only": "api.adminOnly",
   "public mode only": "api.publicOnly",
