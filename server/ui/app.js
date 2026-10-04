@@ -93,7 +93,7 @@ async function api(path, opts = {}) {
       location.href = `/login${location.search}`;
       throw new Error(presentApiError(data.error ? data : { ...data, error: data.error || "Sign in required" }, t));
     }
-    if (data.code === "credits" || data.code === "rate" || data.code === "freemium") refreshAccount();
+    if (data.code === "credits" || data.code === "rate") refreshAccount();
     if (data.code === "credits") openTopup({ needed: data.needed, balance: data.balance });
     if (data.code === "lint" && Array.isArray(data.hits) && data.hits.length) {
       throw new Error(t("lint.blocked", { hits: data.hits.join(", ") }));

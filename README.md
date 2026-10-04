@@ -8,7 +8,7 @@
 
 > **Новачок?** Почніть з [посібника](docs/GUIDE.md) або вкладки **❓ Довідка**. З тієї ж вкладки відкриваються сторінки для автора на цьому ПК: http://127.0.0.1:5344/studio/docs/ (англійською `/studio/docs/en/`) — етапи, вкладки, основа, риси, експорт і короткий пресет. Окремий сайт для цього не потрібен. Вхід — лише гаманець (MetaMask / Coinbase / Phantom); сторінка `/login`.
 
-Сервер розробки стоїть на `127.0.0.1` — це лише адреса процесу. Вхід, кредити, дані по гаманцю й адмін — повний продукт (`SERIES_MODE=public` за замовчуванням). `SERIES_MODE=local` — теки репозиторію без акаунтів, лише loopback. Хостинг / власний домен — [docs/HOSTING.md](docs/HOSTING.md), лише за окремою командою власника.
+Сервер розробки стоїть на `127.0.0.1` — це адреса процесу на ПК, не окремий продукт. Вхід, кредити, дані по гаманцю й адмін — повний режим (`SERIES_MODE=public` за замовчуванням). `SERIES_MODE=local` — теки репозиторію без акаунтів, лише loopback. Той самий сервер на хості — [docs/HOSTING.md](docs/HOSTING.md): що задати, що лишається на ПК (keypair, `series mint`, `series reveal`), і що https://studio.w3ir.io лишається статичним сайтом. Живий виклад цим репозиторієм не робиться.
 
 ---
 
@@ -64,7 +64,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `STAGE_*`, `DEPLOY_*`, `MARKETPLACE_IMAGE_SIZES`, `PREFLIGHT_MAX_IMAGE_BYTES` | Ціна етапів, оцінка деплою, розміри майданчиків, стеля файлу — [docs/PRODUCT.md](docs/PRODUCT.md) |
 | `SERIES_DATA_DIR`, `AUTH_COOKIE_INSECURE` | Каталог даних; прапорець для входу по http (лише тест) |
 | `COMFYUI_ENABLED`, `A1111_ENABLED`, `MOCK_ENABLED` | Увімкнути локальні рушії й mock |
-| `WELCOME_CREDITS`, `EARLY_WELCOME_LIMIT` | Вітальні кредити та ліміт перших |
+| `WELCOME_CREDITS`, `EARLY_WELCOME_LIMIT`, `GENERATION_RATE_LIMIT_PER_MINUTE` | Разові вітальні кредити (типово 20) і ліміт перших. Денної безкоштовної стелі немає. Гаманець без оплати і без гранту — до 10 генерацій на хвилину; оплата або грант цю стелю знімає |
 | `CONTENT_SAFETY_ENABLED`, `MODERATION_API_ENABLED` | Фільтр вмісту й зовнішня модерація |
 | `SOLANA_PAY_USDC_MINT`, `SOLANA_PAY_COMMITMENT` | Mint USDC і рівень підтвердження (типово mainnet; міняти лише для тесту) |
 | `TUNNEL_HOST`, `TUNNEL_NAME`, `TUNNEL_PORT`, `TUNNEL_WELCOME_REQUIRE_BALANCE` | Зовнішнє тестування через тунель (`npm run lab:tunnel`, [docs/HOSTING.md](docs/HOSTING.md)) |
@@ -156,8 +156,8 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 - [docs/README.md](docs/README.md) — індекс
 - [docs/ECONOMY.md](docs/ECONOMY.md) — кредити, маржа, хостинг, обмін crypto→USD
 - [docs/ROADMAP.md](docs/ROADMAP.md) · [CHANGELOG.md](CHANGELOG.md)
-- [docs/HOSTING.md](docs/HOSTING.md) — після ядра; деплой лише за командою
-- [docs/DEPLOY.md](docs/DEPLOY.md) — https://studio.w3ir.io
+- [docs/HOSTING.md](docs/HOSTING.md) — перенос процесу майстерні на хост (чекліст; живий деплой не входить)
+- [docs/DEPLOY.md](docs/DEPLOY.md) — https://studio.w3ir.io (статичний сайт, без API майстерні)
 - [docs/STANDALONE.md](docs/STANDALONE.md) · [docs/DEPLOY-PLATFORM.md](docs/DEPLOY-PLATFORM.md) — окремий продукт і розгортання
 
 Термінологія: **базова картинка(и) серії**; `primary` = головна базова. Мінт Solana Core — `series mint` на цьому ПК. Продаж — на майданчику. Розкриття EVM — кабінет Thirdweb.
