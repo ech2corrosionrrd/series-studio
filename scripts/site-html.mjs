@@ -13,6 +13,8 @@ import { fileURLToPath } from "node:url";
 import uk from "../server/ui/locales/uk.js";
 import en from "../server/ui/locales/en.js";
 import { DOC_PAGES } from "./site-pages.mjs";
+import { LEGAL_PAGES } from "./legal-pages.mjs";
+import { richText } from "./inline-md.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const PUBLIC_ORIGIN = "https://studio.w3ir.io";
@@ -167,7 +169,7 @@ ${seo}<meta name="theme-color" content="#110b15">
 <main>
 ${body}
 </main>
-<footer>${esc(u.footer)} · <a href="${footerLang}" hreflang="${u.other}">${esc(u.otherLabel)}</a></footer>
+<footer>${esc(u.footer)}${legalLinks(u)} · <a href="${footerLang}" hreflang="${u.other}">${esc(u.otherLabel)}</a></footer>
 </body>
 </html>
 `;
@@ -253,7 +255,7 @@ ${docNav(u, "guide")}
 function inline(s) {
   return String(s).split(/(`[^`]+`)/g).map((part) => {
     if (part.startsWith("`") && part.endsWith("`") && part.length > 2) return `<code>${esc(part.slice(1, -1))}</code>`;
-    return esc(part);
+    return richText(part);
   }).join("");
 }
 const richList = (items, tag = "ul") => `<${tag}>${items.map((s) => `<li>${inline(s)}</li>`).join("")}</${tag}>`;
@@ -330,14 +332,20 @@ ${docNav(u, "docs")}
   });
 }
 
-function creatorPage(page, u) {
+/** Footer links to the published legal pages (public site only; none until texts are approved). */
+function legalLinks(u) {
+  if (!u.origin || !LEGAL_PAGES.length) return "";
+  return LEGAL_PAGES.map((p) => ` · <a href="${u.base}${p.slug}/">${esc(p[u.lang].nav)}</a>`).join("");
+}
+
+function creatorPage(page, u, { nav = true } = {}) {
   const t = page[u.lang];
   const sections = chunkByHeading(t.blocks).map((s) =>
     `<section class="card">${s.title ? `<h2>${inline(s.title)}</h2>` : ""}${renderBlocks(s.blocks)}</section>`).join("");
   const body = `
 <h1>${esc(t.title)}</h1>
 <p class="lead">${esc(t.desc)}</p>
-${docNav(u, page.slug)}
+${nav ? docNav(u, page.slug) : ""}
 ${sections}`;
   const path = `${u.base}${page.slug}/`;
   return layout(u, {
@@ -434,6 +442,8 @@ export function renderPublicPage(lang, kind) {
   if (kind === "guide") return guidePage(T, u);
   if (kind === "docs") return docsHub(u);
   if (kind === "404") return notFound(u);
+  const legal = LEGAL_PAGES.find((p) => p.slug === kind);
+  if (legal) return creatorPage(legal, u, { nav: false });
   const page = DOC_PAGES.find((p) => p.slug === kind);
   if (!page) throw new Error(`unknown site page: ${kind}`);
   return creatorPage(page, u);

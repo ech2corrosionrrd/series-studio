@@ -10,6 +10,8 @@
  * Block types: {h2}, {h3}, {p}, {note}, {ul}, {ol}, {pre}, {table:{head,rows}}.
  * Backticks in strings become <code> when the page is rendered.
  */
+import { LEGAL_PAGES } from "./legal-pages.mjs";
+
 export const DOC_PAGES = [
   {
     slug: "stages",
@@ -487,7 +489,7 @@ export const DOC_PAGES = [
 
 /** Absolute site paths for both languages, including home and the guide. */
 export function publicPaths() {
-  const tails = ["", "guide/", "docs/", ...DOC_PAGES.map((p) => `${p.slug}/`)];
+  const tails = ["", "guide/", "docs/", ...DOC_PAGES.map((p) => `${p.slug}/`), ...LEGAL_PAGES.map((p) => `${p.slug}/`)];
   const out = [];
   for (const base of ["/", "/en/"]) {
     for (const tail of tails) out.push(`${base}${tail}`);
