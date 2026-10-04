@@ -15,6 +15,8 @@
 ### Залежності, CI, сайт
 - Оновлено в `package-lock.json` `@solana/web3.js` (1.99.0), `@solana/spl-token` (0.4.15), `sharp` (0.35.5).
 - CI (`test.yml`): крок `npm audit --omit=dev --audit-level=high` лише попереджає, не блокує: решта знахідок транзитивні (Irys, Solana SDK).
+- Бекап за схемою Промта (`deploy/series-lab/`): погодинна копія леджера (48), `verify-backup.sh fresh` (свіжість, кожні 6 год) і `verify-backup.sh drill` (щотижневе відновлення з перевіркою цілісності й таблиць) з алертом у Telegram, `setup-offsite.sh` (S3-сховище, шифрування, перевірка копії назад), `scripts/verify-backup.mjs`.
+- `health.yml`: зовнішня перевірка також `/en/`, `/guide/`, 404 і заголовків безпеки лендінгу.
 - Публічний сайт і `start-lab.bat` казали «Node 20+», тоді як `engines` вимагає `>=22.13`; тепер скрізь 22.13+.
 
 ### Генерація не зависає на 0%
