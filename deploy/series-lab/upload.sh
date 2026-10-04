@@ -2,7 +2,7 @@
 # From the PC (repo root): upload the current commit + scripts to the server and run the
 # standalone staging deploy (phase3.sh).
 #
-#   [OPEN_ACCESS=1] [ENABLE_PAYMENTS=1] [ENABLE_TELEGRAM=1] [SERIES_ALLOWED_WALLETS=0x..,..] [SERIES_SPEND_CAP_USD=5] [LAB_ENV_FILE=./.env] [SKIP_CADDY=1] \
+#   [OPEN_ACCESS=1] [ENABLE_PAYMENTS=1] [ENABLE_TELEGRAM=1] [SERIES_ALLOWED_WALLETS=0x..,..] [SERIES_SPEND_CAP_USD=off|<usd>] [LAB_ENV_FILE=./.env] [SKIP_CADDY=1] \
 #     bash deploy/series-lab/upload.sh [root@2.28.7.128]
 #
 # LAB_ENV_FILE (optional) is sent over ssh once and installed as /opt/series-lab/lab.env (chmod 600).
