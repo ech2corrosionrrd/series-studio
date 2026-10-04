@@ -8,7 +8,7 @@
 
 > **Новачок?** Почніть з [посібника](docs/GUIDE.md) або вкладки **❓ Довідка**. Вхід — лише гаманець (MetaMask / Coinbase / Phantom); сторінка `/login`.
 
-Сервер розробки стоїть на `127.0.0.1` — це лише адреса процесу. Вхід, кредити, дані по гаманцю й адмін — повний продукт (`SERIES_MODE=public` за замовчуванням). `SERIES_MODE=local` — теки репозиторію без акаунтів, лише loopback. Хостинг / власний домен — [docs/HOSTING.md](docs/HOSTING.md), лише за окремою командою власника.
+Сервер розробки стоїть на `127.0.0.1` — це адреса процесу на ПК, не окремий продукт. Вхід, кредити, дані по гаманцю й адмін — повний режим (`SERIES_MODE=public` за замовчуванням). `SERIES_MODE=local` — теки репозиторію без акаунтів, лише loopback. Той самий сервер на хості — [docs/HOSTING.md](docs/HOSTING.md): що задати, що лишається на ПК (keypair, `series mint`, `series reveal`), і що https://studio.w3ir.io лишається статичним сайтом. Живий виклад цим репозиторієм не робиться.
 
 ---
 
@@ -156,8 +156,8 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 - [docs/README.md](docs/README.md) — індекс
 - [docs/ECONOMY.md](docs/ECONOMY.md) — кредити, маржа, хостинг, обмін crypto→USD
 - [docs/ROADMAP.md](docs/ROADMAP.md) · [CHANGELOG.md](CHANGELOG.md)
-- [docs/HOSTING.md](docs/HOSTING.md) — після ядра; деплой лише за командою
-- [docs/DEPLOY.md](docs/DEPLOY.md) — https://studio.w3ir.io
+- [docs/HOSTING.md](docs/HOSTING.md) — перенос процесу майстерні на хост (чекліст; живий деплой не входить)
+- [docs/DEPLOY.md](docs/DEPLOY.md) — https://studio.w3ir.io (статичний сайт, без API майстерні)
 - [docs/STANDALONE.md](docs/STANDALONE.md) · [docs/DEPLOY-PLATFORM.md](docs/DEPLOY-PLATFORM.md) — окремий продукт і розгортання
 
 Термінологія: **базова картинка(и) серії**; `primary` = головна базова. Мінт Solana Core — `series mint` на цьому ПК. Продаж — на майданчику. Розкриття EVM — кабінет Thirdweb.
