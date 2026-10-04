@@ -31,3 +31,6 @@ jobs:
 
       - run: npm ci
       - run: npm test
+      # Informational: most findings are transitive (Irys / Solana SDK) and need upstream fixes.
+      - run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
