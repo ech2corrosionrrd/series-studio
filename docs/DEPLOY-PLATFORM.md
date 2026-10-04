@@ -20,7 +20,7 @@
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | сповіщення оператору від імені Series Lab |
 | `GREMLIN_API_KEY`, `TMA_API_KEY`, `W3IR_B2B_KEYS` | ключі партнерів (Passport, Telegram), опційно |
 | `OPENAI_API_KEY`, `REPLICATE_API_TOKEN`, `STABILITY_API_KEY`, … | рушії студії |
-| `WELCOME_*`, `EARLY_WELCOME_*`, `GENERATION_RATE_LIMIT_PER_MINUTE`, `FREEMIUM_DAILY_LIMIT`, `REFERRAL_BONUS_CREDITS` | правила кредитів |
+| `WELCOME_*`, `EARLY_WELCOME_*`, `GENERATION_RATE_LIMIT_PER_MINUTE`, `REFERRAL_BONUS_CREDITS` | правила кредитів: вітальні — разове нарахування (другого безкоштовного гранту немає); `GENERATION_RATE_LIMIT_PER_MINUTE` (типово 10) діє лише для гаманців без оплати і без ручного гранту |
 | `ADMIN_WALLETS`, `TEAM_WALLETS`, `OPERATOR_WALLET`, `DOGFOOD_WALLETS` | адміни й внутрішні гаманці. `ADMIN_WALLETS` і `TEAM_WALLETS` не задані — типові адреси; заданий список замінює типові (порожній `ADMIN_WALLETS=` прибирає адмінів). `OPERATOR_WALLET` і `DOGFOOD_WALLETS` лише додають внутрішні |
 | `SOLANA_RPC_URL`/`ALCHEMY_API_KEY`, `GENESIS_*`, `VAULT_*` | холдери Genesis і NFT-сейф |
 
