@@ -3,7 +3,8 @@
 # per-wallet data and small JSON sidecars. Nothing from any other project.
 # Online backup (not cp) so the WAL is not torn.
 #
-# Local retention: 7 daily + 4 weekly under /opt/series-lab/backups/.
+# Local retention: 48 hourly (ledger only, BACKUP_MODE=hourly) + 7 daily + 4 weekly
+# under /opt/series-lab/backups/. Hourly exists because the ledger holds payments.
 # Offsite: set BACKUP_RCLONE_REMOTE and BACKUP_PASSPHRASE in backup.env.
 # Without those, snapshots stay on this server (same disk as the live db).
 set -euo pipefail
@@ -23,7 +24,7 @@ if [ -f "$ENV_FILE" ]; then
   set +a
 fi
 
-mkdir -p "$DEST/daily" "$DEST/weekly" "$BASE/logs"
+mkdir -p "$DEST/hourly" "$DEST/daily" "$DEST/weekly" "$BASE/logs"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
@@ -47,6 +48,27 @@ elif container_up series-lab; then lab=series-lab
 fi
 [ -n "$lab" ] || { note "Series Lab container is not running — nothing to back up"; exit 1; }
 
+prune() {
+  local parent=$1 keep=$2 listing
+  listing=$(ls -1dt "$parent"/*/ 2>/dev/null || true)
+  [ -n "$listing" ] || return 0
+  printf '%s\n' "$listing" | tail -n +"$((keep + 1))" | while read -r old; do
+    [ -n "$old" ] || continue
+    rm -rf "$old"
+    note "pruned $old"
+  done
+}
+
+if [ "${BACKUP_MODE:-full}" = hourly ]; then
+  hslot="$DEST/hourly/$STAMP"
+  mkdir -p "$hslot"
+  backup_node "$lab" /data/users.db "$hslot/users.db"
+  chmod 700 "$DEST/hourly" "$hslot"
+  note "hourly ledger snapshot $hslot"
+  prune "$DEST/hourly" 48
+  exit 0
+fi
+
 mkdir -p "$WORK/series-lab"
 note "snapshot Series Lab users.db ($lab)"
 backup_node "$lab" /data/users.db "$WORK/series-lab/users.db"
@@ -69,16 +91,6 @@ if [ "$DAY" = 7 ]; then
   note "weekly $wslot"
 fi
 
-prune() {
-  local parent=$1 keep=$2 listing
-  listing=$(ls -1dt "$parent"/*/ 2>/dev/null || true)
-  [ -n "$listing" ] || return 0
-  printf '%s\n' "$listing" | tail -n +"$((keep + 1))" | while read -r old; do
-    [ -n "$old" ] || continue
-    rm -rf "$old"
-    note "pruned $old"
-  done
-}
 prune "$DEST/daily" 7
 prune "$DEST/weekly" 4
 

@@ -55,6 +55,10 @@ npx wrangler pages deploy dist/site --project-name series-lab --branch main
 
 або в дашборді: Workers & Pages → `series-lab` → **Create deployment** → завантажити вміст `dist/site/`.
 
+## Моніторинг
+
+`.github/workflows/health.yml` кожні ~15 хв ззовні (з GitHub, не з VPS: якщо ляже хост, його cron і алерти лягають разом із ним) перевіряє `next.w3ir.io/health`, `gen.w3ir.io/health`, `studio.w3ir.io` (`/`, `/en/`, `/guide/` дають `200`, неіснуючий шлях `404`) і наявність заголовків CSP, `X-Frame-Options: DENY`, `nosniff`. Червоний запуск і лист від GitHub є сигналом. Розклад GitHub не точний (затримки до десятків хвилин) і вимикається після 60 днів без активності в репозиторії; для хвилинної каденції додайте зовнішній монітор (наприклад, UptimeRobot) на ті самі адреси.
+
 Кожен деплой зберігається в історії проєкту; попередню версію можна повернути кнопкою **Rollback** на вкладці Deployments.
 
 ## Перевірка після деплою
