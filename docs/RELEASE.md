@@ -26,7 +26,12 @@
 Набір деплою містить інструкцію: Core Candy Machine (`mplx cm …`) або Sugar (застарілий) з `cache.json`. Адреси запишіть у `release.json → deployed`.
 
 ## 4. Правила мінту
-`series guards release.json -o guard-config.json` → Sugar-конфіг для `sugar guard update`. ⚠ `guard update` **замінює весь набір правил**, тому оплата (`solPayment`) входить завжди, а без коректної ціни й творця файл не створюється.
+`series guards release.json -o guard-config.json` пише набір правил (оплата, дата старту, ліміт на гаманець) у форматі вашого стандарту:
+
+- **`standard: "core"`** (типово): `guardConfig` з конфіга `mplx cm create`. Ціна в **лампортах** (ціле число, без похибки float), `mintLimit` з `id` і `limit`, `startDate` у ISO 8601. У `mplx` **немає команди** оновити guard вже створеної Core-машини: або вкажіть конфіг при створенні, або застосуйте той самий набір через SDK (`updateCandyGuard`). Формат дати для JSON CLI офіційна документація не наводить (лише для SDK), тож після створення виконайте `mplx cm validate` і `series verify`.
+- **`standard: "v3"`**: Sugar-конфіг для `sugar guard update --config … --cache cache.json --keypair <deployer.json>`.
+
+⚠ Оновлення guard **замінює весь набір правил**, тому оплата (`solPayment`) входить завжди, а без коректної ціни й творця файл не створюється.
 
 ## 5. Перевірка з блокчейну
 `series verify release.json [--rpc <url>]` лише читає: скільки змінтовано, хто керує правилами, чи збігаються ціна, дата і ліміт з `release.json`. Код виходу 1 при розбіжності.

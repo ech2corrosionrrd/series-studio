@@ -13,6 +13,7 @@ import {
   validateRelease,
   buildReleaseGuards,
   guardUpdateConfig,
+  coreGuardConfig,
   sugarDate,
   decodeGuardAccount,
   decodeCoreCandyMachine,
@@ -83,6 +84,18 @@ describe("release config", () => {
     assert.match(e, /not a date/);
     assert.match(e, /limitPerWallet/);
     assert.match(validateRelease({ ...good(), reserve: { count: 100 } }).errors.join(), /reserve/);
+  });
+
+  it("builds the Core guardConfig in whole lamports with payment always present", () => {
+    const base = { ...good(), priceSol: 0.3 };
+    const c = coreGuardConfig(base).guardConfig;
+    assert.deepEqual(c.solPayment, { lamports: 300000000, destination: CREATOR });
+    assert.equal(c.startDate.date, "2026-10-15T18:00:00.000Z");
+    assert.deepEqual(c.mintLimit, { id: 1, limit: 5 });
+    assert.equal(coreGuardConfig({ ...base, priceSol: 0.1 + 0.2 }).guardConfig.solPayment.lamports, 300000000, "float noise must not leak into lamports");
+    const bare = coreGuardConfig({ ...base, mint: { startDate: null, limitPerWallet: null } }).guardConfig;
+    assert.deepEqual(Object.keys(bare), ["solPayment"]);
+    assert.throws(() => coreGuardConfig({ ...base, creators: [] }), /invalid/);
   });
 
   it("builds guards that always include payment and a Sugar date", () => {
@@ -255,8 +268,22 @@ describe("CLI release flow", () => {
     assert.equal(cfg.priceSol, 0.3);
     assert.throws(() => execFileSync(process.execPath, [cli, "release-init", archive, "-o", rel], { stdio: "pipe" }));
     const out = join(dir, "g.json");
-    execFileSync(process.execPath, [cli, "guards", rel, "-o", out]);
+    // default standard is Core: mplx guardConfig in lamports, no Sugar instructions
+    const coreOut = execFileSync(process.execPath, [cli, "guards", rel, "-o", out], { encoding: "utf8" });
+    const core = JSON.parse(readFileSync(out, "utf8"));
+    assert.equal(core.guardConfig.solPayment.lamports, 300000000);
+    assert.equal(core.guards, undefined);
+    assert.equal(/sugar guard update/.test(coreOut), false, "Core must not point at Sugar");
+    assert.match(coreOut, /mplx cm create|updateCandyGuard/);
+    // v3 keeps the Sugar format and command
+    const v3 = JSON.parse(readFileSync(rel, "utf8"));
+    v3.standard = "v3";
+    writeFileSync(rel, JSON.stringify(v3));
+    const v3Out = execFileSync(process.execPath, [cli, "guards", rel, "-o", out], { encoding: "utf8" });
     assert.equal(JSON.parse(readFileSync(out, "utf8")).guards.default.solPayment.value, 0.3);
+    assert.match(v3Out, /sugar guard update/);
+    v3.standard = "core";
+    writeFileSync(rel, JSON.stringify(v3));
     cfg.creators[0].address = "11111111111111111111111111111111";
     writeFileSync(rel, JSON.stringify(cfg));
     assert.throws(() => execFileSync(process.execPath, [cli, "guards", rel, "-o", out], { stdio: "pipe" }));

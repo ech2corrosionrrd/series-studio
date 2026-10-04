@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+### Зауваження після релізу 1.7.0
+- `series guards` для `standard: "core"` (типово) більше не пише Sugar і не радить `sugar guard update`: видає `guardConfig` для `mplx cm create` (ціна в лампортах, ціле), а для застосування до готової машини вказує на SDK `updateCandyGuard`, бо в `mplx` такої команди немає. Для `v3` лишився Sugar.
+- Кнопка Arweave в Експорті ховається, якщо на сервері немає `IRYS_PRIVATE_KEY`, з поясненням і підказкою про `series upload --keypair`.
+- Оплата архіву й документація говорять про Arweave, не IPFS: `STAGE_STORAGE_COST_USD` / `STAGE_STORAGE_MARGIN_USD` (старі `STAGE_IPFS_*` ще читаються), параметр `storage=1` у `GET /api/stages/quote` (старий `ipfs=1` теж), нотатка журналу «arweave upload»; `archive_ipfs` у `/api/stages/quotes` перейменовано в `archive_storage`.
+- Перевірка версії Node при запуску CLI й сервера (`>=22.13`): зрозуміле повідомлення замість дивної помилки на старому Node.
+- `docs/PRODUCT.md`: прибрано «IPFS додається, коли пінять» і «натискає пін» (тепер про завантаження в Arweave), дату оновлено; `docs/GUIDE.md`: «посилання на сховище (Arweave для Solana; IPFS або https для EVM)».
+- Roadmap узгоджено з релізом: реліз v1.7.0, стабілізація на живих даних, хостинг студії — окреме рішення, Vault лишається вимкненим.
+
 ## [1.7.0] — 2026-10-04
 
 Сховище Arweave (Irys) замість Pinata, шлях випуску `upload → guards → verify` з підтримкою Core Candy Machine, підказки й мережа за обраним варіантом, правила проєкту з автоперевіркою документації.
