@@ -160,7 +160,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 
 1. Натисніть «Перевірити чекліст» і виправте зауваження.
 2. Оберіть набір, формат і «Лише позначені «Лишити»» → «Зібрати ZIP».
-3. За бажанням: IPFS (Pinata), «Хеш походження (provenance)», «Вітрина і рідкість (HTML)», «Датасет для донавчання (LoRA)».
+3. За бажанням: Arweave (Irys), «Хеш походження (provenance)», «Вітрина і рідкість (HTML)», «Датасет для донавчання (LoRA)».
 
 **Що отримаєте:** ZIP з картинками й метаданими, готовий до завантаження на маркетплейс.
 
@@ -281,7 +281,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 | **Triage** | автоматична оцінка якості картинок з порадою ✓ чи ↻. |
 | **Upscale** | збільшення роздільної здатності картинки. |
 | **Метадані** | JSON-опис NFT: назва, картинка, риси. Маркетплейс читає саме його. |
-| **IPFS** | децентралізоване сховище файлів; Pinata — сервіс для завантаження туди. |
+| **Arweave** | децентралізоване сховище файлів; Irys — сервіс для завантаження туди. |
 | **Provenance Hash** | відбиток колекції, що доводить незмінність картинок. |
 | **LoRA** | невелике донавчання моделі ШІ на ваших картинках, щоб вона малювала вашого персонажа. |
 | **Мінт** | створення NFT у блокчейні. Майстерня його не робить — лише готує файли. |
@@ -346,7 +346,12 @@ Series Lab — майстерня на вашому комп'ютері для �
 | `node bin/series.mjs render presets/demo-series.json --engine mock --limit 5` | пакетна генерація без браузера (з версіями, журналом витрат і денною межею) |
 | `node bin/series.mjs triage out/mock-s0.45 --provider heuristic --apply` | автоматична оцінка якості набору |
 | `node bin/series.mjs upscale out/fal-s0.45` | збільшити картинки вдвічі |
-| `node bin/series.mjs pin out/fal-s0.45 --name my-series` | завантажити набір у IPFS (Pinata) |
+| `node bin/series.mjs upload <тека-набору> --keypair deployer.json` | відновлюване завантаження набору деплою в Arweave (див. RELEASE.md) |
+| `node bin/series.mjs pin out/fal-s0.45 --dry-run` | швидка перевірка набору перед завантаженням в Arweave (без ключа) |
+| `node bin/series.mjs release-init out/demo-archive.json -o release.json` | скелет `release.json` (роялті, творці, ціна, правила мінту) |
+| `node bin/series.mjs guards release.json` | конфіг правил мінту для `sugar guard update` |
+| `node bin/series.mjs verify release.json` | звірка Candy Machine v3 у блокчейні з `release.json` (лише читання) |
+| `node bin/series.mjs notify "Готово"` | тестове сповіщення в Telegram |
 | `node bin/series.mjs manifest out/demo-archive.json --profile opensea` | CSV-маніфест для лаунчпада |
 | `node bin/series.mjs showcase out/demo-archive.json -o out/showcase.html` | HTML-вітрина колекції з рідкістю |
 | `node bin/series.mjs provenance out/fal-s0.45 -o out/provenance.json` | відбиток колекції (SHA-256) і перевірка |

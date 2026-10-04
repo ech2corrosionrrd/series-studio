@@ -17,9 +17,9 @@
 |-----|-----|------|
 | Код майстерні + платформа | GitHub `series-studio` (`main`) | ✅ ядро 1.5.0 (хвилі 1–25) |
 | CI | `.github/workflows/test.yml`, `health.yml`, `deploy-site.yml` | ✅ тести на PR/push; health staging; лендінг Pages |
-| Лендінг | https://studio.w3ir.io (Cloudflare Pages) | ✅ статичний сайт |
+| Лендінг та основний домен | https://studio.w3ir.io (Cloudflare Pages) | ✅ статичний сайт |
 | Staging платформи | https://next.w3ir.io (Hetzner, контейнер `serieslab`) | 🟡 запущено за старою схемою (у `data-next` копія чужих даних); образ може **відставати** від `main`. Скинути: `reset-staging.sh` ([DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md)) |
-| Власний домен Lab | — | ⏸ рішення власника; Lab не перебирає чужі хости ([STANDALONE.md](./STANDALONE.md)) |
+| Окремий домен і хостинг | На випадок великого попиту | ⏸ За рішенням власника сервіс може мігрувати на повністю ізольований домен та хостинг для масштабування |
 | Offsite-бекап леджера | `BACKUP_RCLONE_REMOTE` + passphrase | ⏸ доки не задані в `backup.env` |
 | Зовнішнє тестування з ПК | https://lab-dev.w3ir.space (Cloudflare-тунель `w3ir-tunnel` → локальний сервер) | 🟡 `npm run lab:tunnel`; див. нижче |
 
@@ -73,6 +73,10 @@
 ### 5. Економіка на проді
 
 На проді задайте в `.env` Lab lean-накладні й комісії (`HOSTING_MONTHLY_USD`, `SAAS_MONTHLY_USD`, `PAYMENT_FEE_PCT`, `FX_FEE_PCT`, `RESOURCE_FX_PCT`) — див. [ECONOMY.md](./ECONOMY.md). Адмін → Економіка читає живий `users.db`.
+
+## Ключ Arweave на сервері
+
+`IRYS_PRIVATE_KEY` живе лише в `.env` сервера, це окремий гаманець з малим балансом (не гаманець виплат). Кнопка Arweave в Експорті платить з нього й списує кредити етапу «архів». Для власного випуску користувач завантажує локально: `series upload --keypair` ([RELEASE.md](./RELEASE.md)). Пакети `@irys/*` — `optionalDependencies`; образ без них працює, лише без цієї кнопки.
 
 ## Пов’язані файли
 

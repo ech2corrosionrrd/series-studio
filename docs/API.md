@@ -86,8 +86,8 @@
 | GET | `/api/checklist` | `?archive=&set=` — NFT readiness items |
 | GET | `/api/workspace` | прочитати `workspace/current.json` |
 | POST | `/api/workspace` | зберегти / `clear` workspace |
-| GET | `/api/storage/status` | статус ключів децентралізованого зберігання (Pinata) |
-| POST | `/api/storage/pin` | завантаження набору зображень у Pinata IPFS |
+| GET | `/api/storage/status` | статус ключа Arweave (Irys) |
+| POST | `/api/storage/pin` | завантаження папки набору в Arweave (Irys) серверним `IRYS_PRIVATE_KEY`; списує кредити етапу «архів»; віддає `arweaveUri` (`ar://<id>/`). Для випуску в мережу є CLI `series upload` (ключ на ПК) — [RELEASE.md](./RELEASE.md) |
 | GET | `/api/launchpads` | список профілів лаунчпадів (OpenSea, Magic Eden Drop (Solana), LaunchMyNFT, Ordinals) |
 | GET | `/api/export/manifest.csv` | експорт CSV маніфесту для гуртового імпорту (`?archive=&profile=&zeroIndexed=`) |
 | GET | `/api/export/showcase.html` | завантаження автономного HTML візуального пруфу та оцінки рідкості |
@@ -132,6 +132,30 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 | GET | `/api/admin/economy?days=` | `7` \| `30` \| `all` — маржа, накладні, сценарії (адмін) |
 | POST | `/api/notifications/test` | тест Telegram (адмін) |
 
+## Додаткові маршрути
+
+| Method | Path | Опис |
+|--------|------|------|
+| POST | `/api/credits/sol/prepare` | public: готує переказ USDC (`package`, `payer`); ліміт 20/хв |
+| POST | `/api/publish` | public: публікує набір як сторінку колекції (`dir`, `title`, `onlyKeep`) |
+| POST | `/api/simulate` | сухий прогін пресету (`file` або `preset`) без витрат |
+| POST | `/api/archive/diff` | різниця двох архівів (`a`, `b`) |
+| POST | `/api/preset/spinoff` | спін-оф пресету (`file`, `suffix`) |
+| GET | `/api/similarity?dir=` | схожість картинок набору з основною базовою |
+| GET | `/api/waves?file=` | хвилі тиражу пресету |
+| POST | `/api/waves/append` | додати хвилю в кінець (`file`, `size`, `seed`, `name`) |
+| POST | `/api/gallery/dupes` | пошук дублів у наборі (`dir`, `maxDistance`) |
+| GET | `/api/stages/quotes` | ціни етапів за раз (`count`, `engine`, `provider`) |
+| GET | `/api/stages/quote` | ціна одного етапу (`stage`, `engine`, `count`, `ipfs`, `zip`; `ipfs=1` — із завантаженням у сховище) |
+| GET | `/api/export/provenance?set=` | відбиток колекції (SHA-256) |
+| POST | `/api/export/dataset` | LoRA-датасет (`archive`, `set`) |
+| POST | `/api/matrix/preview` | промпт під рушій (`recipe`, `engine`, `preset`) |
+| GET | `/api/traits/matrix?archive=` | співвиникнення рис |
+| GET | `/api/engines/status` | стан підключень рушіїв |
+| POST | `/api/engines/test` | перевірка одного рушія (`engine`) |
+| GET | `/api/comfyui/workflow` | шаблон воркфлоу ComfyUI |
+| GET | `/api/doctor` | діагностика системи |
+
 ## Статика
 
 | Path | Опис |
@@ -152,6 +176,6 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 - `release-config <archive.json> [options]` — експорт конфіга деплою (`cm-config.json`; `--legacy` пише Sugar; EVM лишається `thirdweb.json`)
 - `render <preset.json> [options]` — автономний пакетний рендер
 - `triage <set-dir> [options]` — автоматичний аудит та оцінка якості зображень
-- `pin <set-dir> [options]` — завантаження зображень у IPFS / Pinata
+- `pin <set-dir> [options]` — завантаження зображень в Arweave (Irys)
 
 Див.: [STUDIO-UI.md](./STUDIO-UI.md) · [EXPORT.md](./EXPORT.md) · [STAGES.md](./STAGES.md) · [ECONOMY.md](./ECONOMY.md)

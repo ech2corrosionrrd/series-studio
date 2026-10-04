@@ -25,7 +25,7 @@
 | `concurrency_pool` | `src/pool.mjs` | Багатопотоковий рендер з контролем кількості потоків та SSE-стрімом |
 | `ordinals_inscriptions` | `src/launchpads.mjs` | Генерація Bitcoin Ordinals маніфестів та метаданих |
 | `headless_cli` | `bin/series.mjs` | Повний набір команд CLI для автоматизації (`render`, `triage`, `pin`, `showcase`) |
-| `ipfs_uploader` | `src/storage.mjs` | 1-клік завантаження в Pinata IPFS з детермінованим розрахунком CID |
+| `ipfs_uploader` | `src/storage.mjs` | 1-клік завантаження в Arweave (Irys); Pinata/IPFS прибрано |
 | `launchpad_profiles` | `src/launchpads.mjs` | Профілі OpenSea, Magic Eden, LaunchMyNFT, Ordinals + bulk CSV manifest |
 | `deploy_configs` | `src/deploy.mjs` | Автоматична генерація `sugar.json` (Solana) та `thirdweb.json` (EVM) |
 | `dynamic_media` | `src/export-bundle.mjs` | Підтримка відео, анімацій та 3D моделей з полем `animation_url` |
