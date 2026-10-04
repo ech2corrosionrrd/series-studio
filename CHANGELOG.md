@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Образ Docker: сторінки автора
+- `Dockerfile` не копіював `scripts/site-html.mjs` і `scripts/site-pages.mjs`, які `server/index.mjs` імпортує при старті, тож образ із `main` не стартував (`ERR_MODULE_NOT_FOUND`). Знайдено при оновленні staging. Додано `COPY` і тест `test/dockerfile.test.mjs`, що перевіряє, що кожен `scripts/*.mjs`, який імпортують `bin/`, `src/`, `server/`, є в `Dockerfile`.
+
 ### Копія леджера на ПК без ключів хмари
 - `npm run backup:pull` (`scripts/pull-backup.mjs`): забирає по SSH найновішу погодинну копію з VPS, перевіряє її й лишає 14 останніх у `backups/offsite/`. Схема взята з `pull_prod_backup.py` Промта; працює, поки не підключено S3-сховище.
 
