@@ -5,6 +5,7 @@
 
 import { traitsToAttributes } from "./checklist.mjs";
 import { buildImageUri } from "./storage.mjs";
+import { displayEdition } from "./genesis.mjs";
 
 export const LAUNCHPAD_PROFILES = {
   opensea: {
@@ -120,7 +121,7 @@ export function formatForLaunchpad(recipe, profileKey = "opensea", opts = {}, tr
   }
   const isZeroIndex = Boolean(opts.zeroIndexed || opts.zeroIndex);
   const edNum = Number(recipe.edition ?? 1);
-  const displayEd = isZeroIndex ? Math.max(0, edNum - 1) : edNum;
+  const displayEd = displayEdition(edNum, { zeroIndexed: isZeroIndex, genesis: Boolean(opts.genesis) });
 
   const image = buildImageUri(displayEd, opts.imageUriPrefix || opts.imagePrefix || "");
   const namePrefix = opts.namePrefix || profile.defaultNamePrefix;
@@ -269,7 +270,7 @@ export function exportManifestCsv(recipes = [], traitItems = [], opts = {}) {
 
   for (const r of recipes) {
     const edNum = Number(r.edition ?? 1);
-    const displayEd = isZeroIndex ? Math.max(0, edNum - 1) : edNum;
+    const displayEd = displayEdition(edNum, { zeroIndexed: isZeroIndex, genesis: Boolean(opts.genesis) });
     const name = `${namePrefix}${displayEd}`;
     const image = buildImageUri(displayEd, uriPrefix);
 

@@ -37,6 +37,7 @@ import {
   buildChainReadme,
 } from "./archive-package.mjs";
 import { chainForProfile } from "./deploy-kit.mjs";
+import { GENESIS_EDITION, displayEdition, hasGenesis, isGenesisRecipe, withoutGenesis } from "./genesis.mjs";
 
 export {
   calculateCollectionProvenance,
@@ -197,7 +198,16 @@ export function buildReadme(locale, collection) {
  * @returns {{ recipes: object[], fallback: string|null, error: string|null }}
  */
 export function selectBundleRecipes(archiveRecipes, marks, onlyKeep, imageEditionSet) {
-  const recipes = Array.isArray(archiveRecipes) ? archiveRecipes : [];
+  const all = Array.isArray(archiveRecipes) ? archiveRecipes : [];
+  // The genesis lot (base image, edition 0) is never subject to keep/redo marks: it is in
+  // whenever its image is in the set. Everything below sees only the generated recipes.
+  const genesis = all.find(isGenesisRecipe);
+  const core = selectGeneratedRecipes(withoutGenesis(all), marks, onlyKeep, imageEditionSet);
+  if (core.error || !genesis || !imageEditionSet.has(GENESIS_EDITION)) return core;
+  return { ...core, recipes: [genesis, ...core.recipes] };
+}
+
+function selectGeneratedRecipes(recipes, marks, onlyKeep, imageEditionSet) {
   const keepKeys = Object.entries(marks || {})
     .filter(([, v]) => v === "keep")
     .map(([k]) => Number(k))
@@ -389,6 +399,8 @@ export async function buildBundleZip(params) {
     throw err;
   }
 
+  const genesisInBundle = hasGenesis(sel.recipes);
+  if (genesisInBundle) opts.genesis = true;
   const missing = [];
   const includedEditions = [];
   const includedRecipes = [];
@@ -410,7 +422,7 @@ export async function buildBundleZip(params) {
       continue;
     }
 
-    const displayEd = isZeroIndex ? Math.max(0, ed - 1) : ed;
+    const displayEd = displayEdition(ed, { zeroIndexed: isZeroIndex, genesis: genesisInBundle });
 
     // Handle primary image
     if (media.imagePath) {
@@ -431,7 +443,7 @@ export async function buildBundleZip(params) {
     }
 
     // Handle dynamic animation / video / 3D file
-    let tokenOpts = { ...opts };
+    let tokenOpts = { ...opts, genesis: genesisInBundle };
     if (media.animationPath) {
       const animBuf = readFileSync(media.animationPath);
       const animExt = extname(media.animationPath).slice(1) || "mp4";
@@ -510,7 +522,7 @@ export async function buildBundleZip(params) {
     const coverExt = extname(cover.filename).replace(/^\./, "") || "png";
     zip.file(`cover.${coverExt}`, cover.buffer);
   }
-  const rarity = buildRarityReport(preset, includedRecipes);
+  const rarity = buildRarityReport(preset, withoutGenesis(includedRecipes));
   zip.file("rarity.json", JSON.stringify(rarity, null, 2) + "\n");
   zip.file("rarity.txt", formatRarityText(rarity, locale));
   zip.file("royalties.json", JSON.stringify(royalties, null, 2) + "\n");

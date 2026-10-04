@@ -949,6 +949,7 @@ function fillOverview(preset) {
   $("o-name").value = preset.name || "";
   $("o-seed").value = preset.seed || "";
   $("o-size").value = preset.size || 1;
+  if ($("o-genesis")) $("o-genesis").checked = preset.genesis === true || preset.genesis?.enabled === true;
   const eng = preset.engine?.default || "kontext";
   $("o-engine").value = eng;
   const str = Number(preset.engine?.strength ?? 0.45);
@@ -1061,6 +1062,7 @@ function readConstructor() {
     name: $("c-name").value.trim() || id,
     seed: $("c-seed").value.trim() || id,
     size,
+    genesis: Boolean($("o-genesis")?.checked),
     lines,
     promptTemplate: {
       ...(base.promptTemplate || {}),
@@ -2364,6 +2366,7 @@ function renderGallery() {
 
   let keep = 0, redo = 0, none = 0;
   for (const img of images) {
+    if (Number(img.edition) === 0) continue; // genesis lot (base image) has no keep/redo
     const m = marks[String(img.edition)] || "";
     if (m === "keep") keep++;
     else if (m === "redo") redo++;
@@ -2423,16 +2426,16 @@ function renderGallery() {
           <img src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${img.edition}" />
           ${thumb}
         </div>
-        <div class="meta">#${img.edition} ${ver}${qa}${triageBadge}${simBadge}</div>
-        ${frameActionButtons(true)}`;
+        <div class="meta">${Number(img.edition) === 0 ? `<b>${t("gallery.genesis.label")}</b>` : `#${img.edition}`} ${ver}${qa}${triageBadge}${simBadge}</div>
+        ${Number(img.edition) === 0 ? `<div class="btns"><span class="muted small">${t("gallery.genesis.note")}</span></div>` : frameActionButtons(true)}`;
       tile.querySelectorAll(".shot img").forEach((el) => {
         el.addEventListener("click", () => openLightbox(img.url));
       });
       tile.querySelector(".ver-badge")?.addEventListener("click", () => openVersions(img.edition));
     }
 
-    tile.querySelector(".b-keep").addEventListener("click", () => toggleMark(row.edition, "keep"));
-    tile.querySelector(".b-redo").addEventListener("click", () => toggleMark(row.edition, "redo"));
+    tile.querySelector(".b-keep")?.addEventListener("click", () => toggleMark(row.edition, "keep"));
+    tile.querySelector(".b-redo")?.addEventListener("click", () => toggleMark(row.edition, "redo"));
     tile.querySelector(".b-drop")?.addEventListener("click", () => dropFrame(row.edition));
     tile.querySelector(".b-delete")?.addEventListener("click", () => deleteFrame(row.edition));
     grid.appendChild(tile);

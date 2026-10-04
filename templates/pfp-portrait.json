@@ -3,6 +3,7 @@
   "id": "pfp-portrait",
   "name": "PFP Portrait",
   "seed": "template-pfp-portrait-v1",
+  "genesis": true,
   "size": 24,
   "base": {
     "path": "input/mother.png",

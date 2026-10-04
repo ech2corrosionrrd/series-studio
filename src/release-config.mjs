@@ -1,3 +1,4 @@
+import { supplyOf } from "./genesis.mjs";
 /**
  * Release config (`release.json`) — one file per series with everything the
  * release steps share: royalty, creators, price, mint rules, reserve, and the
@@ -32,7 +33,7 @@ export function mintLimitGuard(limit) {
 
 /** Skeleton release config from an archive + preset. Placeholders must be replaced before deploy. */
 export function releaseFromArchive(archive = {}, preset = {}, opts = {}) {
-  const size = Number(archive.size ?? archive.recipes?.length ?? 0);
+  const size = supplyOf(archive, preset);
   return {
     name: String(opts.name || preset.name || archive.presetId || "Series"),
     symbol: String(opts.symbol || preset.symbol || "LAB").trim(),
