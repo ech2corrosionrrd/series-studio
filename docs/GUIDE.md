@@ -350,7 +350,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 | `node bin/series.mjs pin out/fal-s0.45 --dry-run` | швидка перевірка набору перед завантаженням в Arweave (без ключа) |
 | `node bin/series.mjs release-init out/demo-archive.json -o release.json` | скелет `release.json` (роялті, творці, ціна, правила мінту) |
 | `node bin/series.mjs guards release.json` | конфіг правил мінту для `sugar guard update` |
-| `node bin/series.mjs verify release.json` | звірка Candy Machine v3 у блокчейні з `release.json` (лише читання) |
+| `node bin/series.mjs verify release.json` | звірка Core Candy Machine або Candy Machine v3 у блокчейні з `release.json` (лише читання) |
 | `node bin/series.mjs notify "Готово"` | тестове сповіщення в Telegram |
 | `node bin/series.mjs manifest out/demo-archive.json --profile opensea` | CSV-маніфест для лаунчпада |
 | `node bin/series.mjs showcase out/demo-archive.json -o out/showcase.html` | HTML-вітрина колекції з рідкістю |

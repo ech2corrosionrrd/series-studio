@@ -29,7 +29,12 @@
 `series guards release.json -o guard-config.json` → Sugar-конфіг для `sugar guard update`. ⚠ `guard update` **замінює весь набір правил**, тому оплата (`solPayment`) входить завжди, а без коректної ціни й творця файл не створюється.
 
 ## 5. Перевірка з блокчейну
-`series verify release.json [--rpc <url>]` лише читає: скільки змінтовано, хто керує правилами, чи збігаються ціна, дата і ліміт з `release.json`. Код виходу 1 при розбіжності. Розбирає **Candy Machine v3 / Sugar**; для Core — `mplx cm validate`.
+`series verify release.json [--rpc <url>]` лише читає: скільки змінтовано, хто керує правилами, чи збігаються ціна, дата і ліміт з `release.json`. Код виходу 1 при розбіжності.
+
+- **`standard: "core"`** (типово): Metaplex Core Candy Machine. Потрібні `deployed.candyMachine` і `deployed.candyGuard` (за потреби `deployed.collection`). Перевіряє: власники акаунтів (програми Core Candy Machine / Core Candy Guard), що mint authority машини — саме цей guard (інакше правила обходяться), колекцію, кількість предметів (розмір мінус резерв), приховані налаштування (hidden settings) і всі 31 правила guard.
+- **`standard: "v3"`**: Candy Machine v3 / Sugar, ті самі звірки правил і кількості.
+
+Розкладку акаунтів Core взято з `metaplex-foundation/mpl-core-candy-machine` і звірено з живими акаунтами mainnet: 600 випадкових машин і 586 їхніх guard розібрано без помилок, у 509 guard без груп декодер дочитав точно до кінця акаунта (решта — залишок старішого довшого набору правил після оновлення; реальні акаунти лежать у `test/fixtures/core-candy-live.json`). Правила, додані платформою (`botTax`, `solFixedFee`, `edition`), показуються як «extra on chain»: це не помилка, але їх варто знати.
 
 ## Серверна кнопка «Arweave» в Експорті
 `POST /api/storage/pin` платить серверним `IRYS_PRIVATE_KEY` і списує кредити етапу «архів». Це швидкий шлях для префікса `ar://<id>/` (маніфест папки). Для випуску в мережу використовуйте `series upload`: він пише посилання у метадані й веде `cache.json`. Тримайте `IRYS_PRIVATE_KEY` окремим гаманцем із малим балансом.
