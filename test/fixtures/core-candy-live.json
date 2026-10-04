@@ -1,0 +1,13 @@
+{
+  "note": "Public mainnet accounts (Metaplex Core Candy Machine + its Candy Guard), captured 04.10.2026. The machine is truncated to its first 300 bytes (header only).",
+  "candyMachine": {
+    "address": "HnyVmuiz4TKDRVRTDBpWpJS1YbWCry5ViNHhmKyrAfht",
+    "owner": "CMACYFENjoBMHzapRXyo1JZkVS6EtaDDzkjMrmQLvr4J",
+    "base64": "M62xcRnxbb0JbbG5hXmw+/1rkBruf9FcZ3oAnefwHYlGSwrnGNij9ay9DSTBOPs93iYzxvJktd4LTZMJj1z0EbIO+ORbWuZ6+Bmc74m+UKMfFNItEhYgvSYrPLMCnRwzvttanu3AC/8AAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAABAAEKAAAAU0YgU2t5bGluZT8AAABodHRwczovL2Fyd2VhdmUubmV0L1IzUjE0RDRIS0RYaU5IR2pzM3pxNzZKaFVmZVlZSUFqVzJjcjRUOFpJdWcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  },
+  "candyGuard": {
+    "address": "CdJKg9DApYCP5yrFicJzqLV2KqijRB4RDeM68L3xDesb",
+    "owner": "CMAGAKJ67e9hRZgfC5SFTbZH8MgEmtqazKXjmkaJjWTJ",
+    "base64": "LM/HuHBnIrX5ggHw/xDmxVEYscPG3olK/BwlN09RNm5wghe5QEIFk/8JbbG5hXmw+/1rkBruf9FcZ3oAnefwHYlGSwrnGNij9QMAoAAAAAAAYOMWAAAAAAAAAMqaOwAAAAByZwQ+ZilQhouvEL0ig1ICI0XVn4VjgFYVn/69D6nuqGDjFgAAAAAACW2xuYV5sPv9a5Aa7n/RXGd6AJ3n8B2JRksK5xjYo/UAAAAAAAAAAA=="
+  }
+}

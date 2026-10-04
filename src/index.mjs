@@ -202,4 +202,13 @@ export {
   sugarDate,
   mintLimitGuard,
 } from "./release-config.mjs";
-export { decodeGuardAccount, guardDiff, verifyRelease, fetchAccount } from "./candy-verify.mjs";
+export {
+  decodeGuardAccount,
+  decodeCoreCandyMachine,
+  guardDiff,
+  verifyRelease,
+  fetchAccount,
+  fetchAccountInfo,
+  CORE_CANDY_MACHINE_PROGRAM,
+  CORE_CANDY_GUARD_PROGRAM,
+} from "./candy-verify.mjs";

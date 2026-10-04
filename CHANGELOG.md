@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### `series verify` для Core Candy Machine
+- `verify` читає Metaplex Core Candy Machine і Candy Guard (типовий `standard: "core"`): власники програм, mint authority = guard, колекція, кількість предметів, hidden settings і всі 31 правила guard. Розкладка з `mpl-core-candy-machine`, звірена з 600 живими машинами mainnet (586 guard, 0 помилок). Для v3 додано звірку кількості предметів. Реальні акаунти — `test/fixtures/core-candy-live.json`.
+
 ### Юридичні тексти
 - Умови й політика (`server/site/LEGAL.md`, `UMOVY.md`) називають Arweave/Irys замість Pinata/IPFS. Еталон `test/fixtures/promt-parity.json` оновлено так само: це свідома розбіжність з Промт, де сховище інше. `docs:check` тепер перевіряє й `server/site` та файли `.md` на згадки видалених постачальників.
 
