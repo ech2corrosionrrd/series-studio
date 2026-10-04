@@ -3,6 +3,7 @@
  * Prompts/recipe content stay English for generators.
  */
 import { initI18n, setLocale, getLocale, t, applyI18n, applyTips, tipText, hasKey } from "./i18n.js";
+import { parseSseBuffer, settleGenerateStream } from "./render-stream.js";
 import { presentApiError } from "./api-errors.js";
 import { fmtNum, fmtDate, fmtUsd as fmtUsdLocale, fmtPct as fmtPctLocale } from "./format.js";
 
@@ -1921,6 +1922,83 @@ function paintLicenseWarning() {
 }
 
 /* ---------- Render / Generate ---------- */
+let renderAbort = null;
+
+function setRenderStop(on) {
+  const stop = $("g-stop");
+  if (!stop) return;
+  stop.hidden = !on;
+  stop.disabled = !on;
+}
+
+function paintGenerateEvent(ev, ui) {
+  const { progressBar, progressPct, progressText, thumbs } = ui;
+  if (ev.type === "start") {
+    if (progressText) progressText.textContent = `${fmtNum(0)} / ${fmtNum(ev.total)}`;
+  } else if (ev.type === "progress") {
+    const total = Number(ev.total) || 0;
+    const pct = total > 0 ? Math.round((ev.completed / total) * 100) : 0;
+    if (progressBar) progressBar.style.width = `${pct}%`;
+    if (progressPct) progressPct.textContent = `${pct}%`;
+    if (progressText) progressText.textContent = `${fmtNum(ev.completed)} / ${fmtNum(total)}`;
+    if (ev.result?.url && thumbs) {
+      const a = document.createElement("a");
+      a.href = ev.result.url;
+      a.target = "_blank";
+      a.innerHTML = `<img src="${ev.result.url}" alt="#${ev.result.edition}" />`;
+      thumbs.appendChild(a);
+    }
+  } else if (ev.type === "error" && progressText) {
+    progressText.textContent = String(ev.error || t("render.streamEnded"));
+  }
+}
+
+async function applyGenerateOutcome(settled, ui) {
+  const { progressBar, progressPct, progressText } = ui;
+  if (!settled || settled.state === "stopped") {
+    if (progressText) progressText.textContent = t("render.stoppedByUser");
+    return;
+  }
+  if (settled.state === "empty") {
+    if (progressText) progressText.textContent = t("render.nothing");
+    if (progressBar) progressBar.style.width = "100%";
+    if (progressPct) progressPct.textContent = "100%";
+    return;
+  }
+  if (settled.state === "error") {
+    const msg = settled.message || t(settled.messageKey || "render.streamEnded");
+    if (progressText) progressText.textContent = msg;
+    return;
+  }
+  if (settled.state !== "done" || !settled.payload) {
+    if (progressText) progressText.textContent = t("render.streamEnded");
+    return;
+  }
+  const lastDone = settled.payload;
+  if (Number(lastDone.count) > 0) playCompletionChime();
+  if ("Notification" in window && Notification.permission === "granted" && Number(lastDone.count) > 0) {
+    new Notification(t("render.notify.title"), {
+      body: t("render.notify.body", { count: fmtNum(lastDone.count), set: lastDone.set }),
+    });
+  }
+  if (lastDone.set) {
+    state.lastSet = lastDone.set;
+    scheduleWorkspaceSave({ lastSet: lastDone.set });
+    await loadGallerySets();
+  }
+  if (progressText) progressText.textContent = t("render.done", { n: lastDone.count, set: lastDone.set }) || `Done: ${lastDone.count}`;
+  refreshAccount();
+  if (progressText && lastDone.stopped) {
+    if (lastDone.stopped === "stopped") {
+      progressText.textContent = t("render.stoppedByUser");
+    } else {
+      progressText.textContent += ` · ⛔ ${t("render.stopped", { reason: lastDone.stopped, skipped: lastDone.skipped })}`;
+    }
+  }
+  if (progressBar) progressBar.style.width = "100%";
+  if (progressPct) progressPct.textContent = "100%";
+}
+
 function setupRender() {
   $("g-compose")?.addEventListener("click", async () => {
     const msg = $("g-compose-msg");
@@ -1999,23 +2077,31 @@ function setupRender() {
       lockGenerate(true);
     }
   });
+  $("g-stop")?.addEventListener("click", () => {
+    renderAbort?.abort();
+  });
   $("g-run")?.addEventListener("click", async () => {
     const progressWrap = $("g-progress-wrap");
     const progressBar = $("g-progress-bar");
     const progressText = $("g-progress-text");
     const progressPct = $("g-progress-pct");
     const thumbs = $("g-thumbs");
+    const ui = { progressBar, progressPct, progressText, thumbs };
 
     try {
       if (licenseApplies() && !state.licenseAck) {
         paintLicenseWarning();
         return;
       }
+      renderAbort?.abort();
+      renderAbort = new AbortController();
+      const signal = renderAbort.signal;
       $("g-run").disabled = true;
+      setRenderStop(true);
       if (progressWrap) progressWrap.hidden = false;
       if (progressBar) progressBar.style.width = "0%";
       if (progressPct) progressPct.textContent = "0%";
-      if (progressText) progressText.textContent = t("render.streaming");
+      if (progressText) progressText.textContent = t("render.working");
       if ($("g-result")) $("g-result").hidden = false;
       if (thumbs) thumbs.innerHTML = "";
 
@@ -2038,6 +2124,7 @@ function setupRender() {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify(payload),
+        signal,
       });
 
       if (!res.ok) {
@@ -2045,68 +2132,55 @@ function setupRender() {
         throw new Error(errJson.error || errJson.errors || `HTTP ${res.status}`);
       }
 
+      const ctype = res.headers.get("content-type") || "";
+      if (!ctype.includes("text/event-stream")) {
+        const bodyText = await res.text();
+        await applyGenerateOutcome(settleGenerateStream({ contentType: ctype, bodyText }), ui);
+        return;
+      }
+
+      if (progressText) progressText.textContent = t("render.streaming");
+      if (!res.body) {
+        await applyGenerateOutcome(settleGenerateStream({ contentType: ctype, events: [] }), ui);
+        return;
+      }
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
-      let lastDone = null;
+      const events = [];
+      let zeroTotal = false;
 
-      while (true) {
+      while (!zeroTotal) {
         const { value, done } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
-        for (const block of lines) {
-          const match = block.match(/^data:\s*(.+)$/m);
-          if (!match) continue;
-          try {
-            const ev = JSON.parse(match[1]);
-            if (ev.type === "start") {
-              if (progressText) progressText.textContent = `${fmtNum(0)} / ${fmtNum(ev.total)}`;
-            } else if (ev.type === "progress") {
-              const pct = Math.round((ev.completed / ev.total) * 100);
-              if (progressBar) progressBar.style.width = `${pct}%`;
-              if (progressPct) progressPct.textContent = `${pct}%`;
-              if (progressText) progressText.textContent = `${fmtNum(ev.completed)} / ${fmtNum(ev.total)}`;
-              if (ev.result?.url && thumbs) {
-                const a = document.createElement("a");
-                a.href = ev.result.url;
-                a.target = "_blank";
-                a.innerHTML = `<img src="${ev.result.url}" alt="#${ev.result.edition}" />`;
-                thumbs.appendChild(a);
-              }
-            } else if (ev.type === "done") {
-              lastDone = ev;
-            }
-          } catch {
-            /* ignore parse error on partial chunks */
+        const parsed = parseSseBuffer(buffer + decoder.decode(value, { stream: true }));
+        buffer = parsed.rest;
+        for (const ev of parsed.events) {
+          events.push(ev);
+          paintGenerateEvent(ev, ui);
+          if (ev.type === "start" && Number(ev.total) === 0) {
+            zeroTotal = true;
+            try { await reader.cancel(); } catch { /* already closed */ }
+            break;
           }
         }
       }
 
-      if (lastDone) {
-        playCompletionChime();
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification(t("render.notify.title"), {
-            body: t("render.notify.body", { count: fmtNum(lastDone.count), set: lastDone.set }),
-          });
-        }
-        if (lastDone.set) {
-          state.lastSet = lastDone.set;
-          scheduleWorkspaceSave({ lastSet: lastDone.set });
-          await loadGallerySets();
-        }
-        if (progressText) progressText.textContent = t("render.done", { n: lastDone.count, set: lastDone.set }) || `Done: ${lastDone.count}`;
-        refreshAccount();
-        if (progressText && lastDone.stopped) {
-          progressText.textContent += ` · ⛔ ${t("render.stopped", { reason: lastDone.stopped, skipped: lastDone.skipped })}`;
-        }
-        if (progressBar) progressBar.style.width = "100%";
-        if (progressPct) progressPct.textContent = "100%";
+      if (signal.aborted) {
+        if (progressText) progressText.textContent = t("render.stoppedByUser");
+        return;
       }
+      await applyGenerateOutcome(settleGenerateStream({ contentType: ctype, events }), ui);
     } catch (e) {
-      if (progressText) progressText.textContent = e.message;
+      if (e.name === "AbortError") {
+        if (progressText) progressText.textContent = t("render.stoppedByUser");
+      } else if (progressText) {
+        progressText.textContent = e.message;
+      }
     } finally {
+      setRenderStop(false);
+      renderAbort = null;
       // Plan may be stale after a run — require Estimate again.
       lockGenerate(true);
     }
