@@ -130,7 +130,9 @@ export async function uploadBundle({
     if (!fund) throw new Error(`Irys balance ${balance.toFixed(6)} SOL is below the estimate ${price.toFixed(6)} SOL`);
     const topUp = (price - balance) * FUND_BUFFER;
     log(`funding Irys with ${topUp.toFixed(6)} SOL`);
-    await irys.fund(irys.utils.toAtomic(topUp));
+    // Irys accepts whole atomic units only; round up so the top-up never falls short.
+    const atomic = irys.utils.toAtomic(topUp);
+    await irys.fund(typeof atomic.integerValue === "function" ? atomic.integerValue(2) : Math.ceil(atomic));
   }
 
   const save = () => writeJsonAtomic(result.cacheFile, cache);

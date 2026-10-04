@@ -49,7 +49,8 @@ function mockUploader({ balance = 1, price = 0.01, failAfter = Infinity } = {}) 
   const calls = { upload: [], fund: [] };
   let ids = 0;
   const irys = {
-    utils: { fromAtomic: (x) => Number(x), toAtomic: (x) => x },
+    // like BigNumber: a fractional atomic amount that must be rounded up before fund()
+    utils: { fromAtomic: (x) => Number(x), toAtomic: (x) => ({ integerValue: () => Math.ceil(x * 1e9) }) },
     getPrice: async () => price,
     getLoadedBalance: async () => balance,
     fund: async (x) => calls.fund.push(x),
@@ -140,7 +141,8 @@ describe("bundle upload", () => {
     const poor = mockUploader({ balance: 0.004, price: 0.01 });
     await uploadBundle({ bundleDir: root, key: new Uint8Array(64), createUploader: poor.create });
     assert.equal(poor.calls.fund.length, 1);
-    assert.ok(Math.abs(poor.calls.fund[0] - 0.006 * 1.05) < 1e-9);
+    assert.ok(Number.isInteger(poor.calls.fund[0]));
+    assert.equal(poor.calls.fund[0], Math.ceil(0.006 * 1.05 * 1e9));
 
     const root2 = makeBundle(2);
     const dear = mockUploader({ price: 5 });
