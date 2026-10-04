@@ -585,7 +585,9 @@ tbody tr:nth-child(even) { background: #ffffff04; }
 .cli-row { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
 .cli-row code { overflow-x: auto; white-space: nowrap; padding: 4px 8px; background: #0b070e; }
 .cli-row span { color: var(--muted); font-size: 14px; }
-.help-docs { list-style: none; padding-left: 0 !important; }
+.help-docs { list-style: none; padding-left: 0 !important; margin: 8px 0 0; }
+.help-docs li { margin: 8px 0; }
+.help-docs a { font-weight: 650; }
 
 /* Responsive */
 @media (max-width: 900px) {

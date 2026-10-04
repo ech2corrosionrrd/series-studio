@@ -2,6 +2,7 @@
 /**
  * Series Lab Studio.
  * Development placement: http://127.0.0.1:5344/studio/ (HOST).
+ * Creator docs (uk and en): http://127.0.0.1:5344/studio/docs/ — no public-site deploy.
  * The same process can listen for a host (HOST=0.0.0.0 plus SERIES_ALLOWED_HOSTS
  * and a matching AUTH_DOMAIN). studio.w3ir.io is the static site, not this process.
  * The product itself is always the full platform: wallet sign-in, per-wallet
@@ -108,6 +109,7 @@ import {
 } from "../src/engines.mjs";
 import { imagesDirName } from "../src/reference.mjs";
 import { licenseWarning, engineModelId, platformFluxModel } from "../src/license.mjs";
+import { studioDocsResponse } from "../scripts/site-html.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -1061,6 +1063,17 @@ function sendFile(res, filePath) {
   if (!existsSync(filePath) || !statSync(filePath).isFile()) return false;
   const ext = extname(filePath).toLowerCase();
   send(res, 200, readFileSync(filePath), MIME[ext] || "application/octet-stream");
+  return true;
+}
+
+function serveStudioDocs(res, urlPath) {
+  const hit = studioDocsResponse(urlPath);
+  if (!hit) return false;
+  if (hit.location) {
+    send(res, hit.status, "", "text/plain; charset=utf-8", { Location: hit.location });
+    return true;
+  }
+  send(res, hit.status, hit.body, hit.type);
   return true;
 }
 
@@ -3299,6 +3312,7 @@ async function handleRequest(req, res, url) {
     }
     if (serveInput(res, url.pathname)) return;
     if (serveOut(res, url.pathname)) return;
+    if (serveStudioDocs(res, url.pathname)) return;
     if (serveUi(res, url.pathname)) return;
     // legacy public redirect page
     if (url.pathname === "/old" || url.pathname.startsWith("/public/")) {

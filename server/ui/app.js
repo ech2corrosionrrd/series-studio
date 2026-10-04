@@ -2383,12 +2383,19 @@ const HELP_CLI = [
   ["reveal", "reveal <bundle-dir> --keypair creator.json"],
   ["compose", "compose out/demo-archive.json --layers layers --base input/primary.png"],
 ];
-const HELP_DOCS = [
-  ["docs/GUIDE.md", "guide"], ["docs/STAGES.md", "stages"], ["docs/STUDIO-UI.md", "studioUi"],
-  ["docs/API.md", "api"], ["docs/EXPORT.md", "export"], ["docs/BASE.md", "base"],
-  ["docs/TRAITS.md", "traits"], ["docs/PRESET.md", "preset"], ["docs/ROADMAP.md", "roadmap"],
-  ["README.md", "readme"],
+const HELP_DOC_PAGES = [
+  ["guide", "help.doc.guide.title", "help.doc.guide"],
+  ["stages", "help.doc.stages.title", "help.doc.stages"],
+  ["tabs", "help.doc.tabs.title", "help.doc.tabs"],
+  ["base", "help.doc.base.title", "help.doc.base"],
+  ["traits", "help.doc.traits.title", "help.doc.traits"],
+  ["export", "help.doc.export.title", "help.doc.export"],
+  ["preset", "help.doc.preset.title", "help.doc.preset"],
 ];
+
+function studioDocHref(slug) {
+  return `/studio/docs/${getLocale() === "en" ? "en/" : ""}${slug}/`;
+}
 
 /** Strings for `${prefix}1`, `${prefix}2`, … while the locale defines them. */
 function tList(prefix) {
@@ -2432,8 +2439,8 @@ function helpSections() {
   const cli = HELP_CLI.map(([k, cmd]) =>
     `<div class="help-item cli-row"><code>node bin/series.mjs ${escapeHtml(cmd)}</code><span>${esc(`help.cli.${k}`)}</span></div>`).join("");
 
-  const docs = HELP_DOCS.map(([file, k]) =>
-    `<li class="help-item"><code>${file}</code> — ${esc(`help.doc.${k}`)}</li>`).join("");
+  const docs = HELP_DOC_PAGES.map(([slug, titleKey, descKey]) =>
+    `<li><a href="${studioDocHref(slug)}" target="_blank" rel="noopener">${esc(titleKey)}</a> — ${esc(descKey)}</li>`).join("");
 
   const localGpuEnv = isAdmin
     ? `<h4>${esc("help.localgpu.envTitle")}</h4>${helpList("help.localgpu.env.li")}`
@@ -2455,10 +2462,10 @@ function helpSections() {
     ["glossary", `<p>${esc("help.glossary.desc")}</p><dl class="help-gl">${glossary}</dl>`],
     ["faq", `<p>${esc("help.faq.desc")}</p>${faq}`],
   ];
+  sections.push(["docs", `<div class="help-item"><p>${esc("help.docs.desc")}</p><ul class="help-docs">${docs}</ul></div>`]);
   if (isAdmin) {
     sections.push(
       ["cli", `<p>${esc("help.cli.desc")}</p><div class="help-cli">${cli}</div>`],
-      ["docs", `<ul class="help-docs">${docs}</ul>`],
       ["run", `<p>${esc("help.run.desc")}</p>`],
     );
   }
