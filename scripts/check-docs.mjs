@@ -63,7 +63,7 @@ for (const f of LIVE) {
 for (const dir of ["src", "server"]) {
   const walk = (d) => readdirSync(join(root, d), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]));
   for (const f of walk(dir)) {
-    if (!/\.(mjs|js|html)$/.test(f) || /^server[\\/]site[\\/]/.test(f)) continue;
+    if (!/\.(mjs|js|html|md)$/.test(f)) continue;
     if (/pinata(?!Config)/i.test(read(f))) fail(`${f.replaceAll("\\", "/")} still names Pinata`);
   }
 }
