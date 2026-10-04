@@ -724,6 +724,7 @@
             <option value="ordinalsbot" data-i18n="export.profile.ordinalsbot">Bitcoin Ordinals / Inscriptions</option>
           </select>
         </label>
+        <p id="x-profile-hint" class="muted small" style="grid-column: 1 / -1; margin:0" data-i18n="export.profileHint.opensea"></p>
         <label class="small"><span data-i18n="export.bundle.set">Image set</span>
           <select id="x-set"></select>
         </label>
@@ -742,14 +743,14 @@
         <label class="small" id="x-creator-wrap" style="grid-column: 1 / -1"><span data-i18n="export.creator.label">Creator Address</span>
           <input id="x-creator-address" type="text" placeholder="e.g. Solana / EVM wallet address" data-i18n-placeholder="export.creator.ph" />
         </label>
-        <label class="small" style="grid-column: 1 / -1"><span data-i18n="export.bundle.uriPrefix">Image URI Prefix (Storage)</span>
+        <label class="small" id="x-uri-wrap" style="grid-column: 1 / -1"><span data-i18n="export.bundle.uriPrefix">Image URI Prefix (Storage)</span>
           <div style="display:flex; gap:8px">
             <input id="x-uri-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.png)" data-i18n-placeholder="export.bundle.uriPrefix.ph" data-i18n-tip="export.bundle.uriPrefix.tip" style="flex:1" />
-            <button type="button" id="x-pin-pinata" class="btn small" data-i18n="export.bundle.pinPinata">📌 Upload to IPFS (Pinata)</button>
+            <button type="button" id="x-pin-irys" class="btn small" data-i18n="export.bundle.pinArweave">📌 Upload to Arweave (Irys)</button>
           </div>
           <span id="x-pin-status" class="small muted" style="margin-top:2px; display:block"></span>
         </label>
-        <label class="small" style="grid-column: 1 / -1"><span data-i18n="export.bundle.animPrefix">Animation / Video URI Prefix</span>
+        <label class="small" id="x-anim-wrap" style="grid-column: 1 / -1"><span data-i18n="export.bundle.animPrefix">Animation / Video URI Prefix</span>
           <input id="x-anim-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.mp4)" data-i18n-placeholder="export.bundle.animPrefix.ph" />
         </label>
       </div>
