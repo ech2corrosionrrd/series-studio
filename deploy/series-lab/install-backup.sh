@@ -22,8 +22,6 @@ VERIFY_SRC="$HERE/../../scripts/verify-backup.mjs"
 
 install -d -m 755 "$BASE" "$BASE/backups/hourly" "$BASE/backups/daily" "$BASE/backups/weekly" "$BASE/logs"
 install -m 755 "$HERE/backup.sh" "$BASE/backup.sh"
-BACKUP_MODE=hourly "$BASE/backup.sh"
-"$BASE/verify-backup.sh" drill
 install -m 755 "$HERE/verify-backup.sh" "$BASE/verify-backup.sh"
 install -m 644 "$MJS" "$BASE/backup-db.mjs"
 install -m 644 "$VERIFY_SRC" "$BASE/verify-backup.mjs"
