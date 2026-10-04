@@ -9,8 +9,27 @@ import { richText } from "../scripts/inline-md.mjs";
 
 const bt = "`";
 
-test("nothing is published from the drafts: the approved-texts folder is empty in the repo", () => {
-  assert.deepEqual(LEGAL_PAGES, []);
+test("the published beta texts are complete: terms and privacy, both languages, no placeholders", () => {
+  assert.deepEqual(LEGAL_PAGES.map((p) => p.slug), ["terms", "privacy"]);
+  for (const page of LEGAL_PAGES) {
+    for (const lang of ["uk", "en"]) {
+      assert.ok(page[lang].title.length > 5, `${page.slug}.${lang} has a title`);
+      assert.ok(page[lang].blocks.filter((b) => b.h2).length >= 8, `${page.slug}.${lang} has its sections`);
+    }
+  }
+  const joined = JSON.stringify(LEGAL_PAGES);
+  assert.doesNotMatch(joined, /Pinata|Helio|ai\.w3ir\.io/, "no leftovers from the Промт texts");
+  for (const lang of ["uk", "en"]) {
+    const note = LEGAL_PAGES[0][lang].blocks.find((b) => b.note)?.note || "";
+    assert.match(note, /\*\*/, "the beta notice opens the terms");
+  }
+});
+
+test("the beta status is stated in both documents and both languages", () => {
+  for (const page of LEGAL_PAGES) {
+    assert.match(page.uk.blocks.find((b) => b.note).note, /розробки й тестування/);
+    assert.match(page.en.blocks.find((b) => b.note).note, /development and testing/);
+  }
 });
 
 test("parseMarkdownBlocks: title, headings, paragraphs, lists, notes, tables, code", () => {
@@ -96,7 +115,7 @@ test("loadLegalPages: both languages and no placeholders, or the page is skipped
   }
 });
 
-test("a published page renders with its footer links on every page, without the docs nav", () => {
+test("a published page renders with its footer links on every page, without the docs nav (fixture folder)", () => {
   const dir = mkdtempSync(join(tmpdir(), "series-legal-"));
   try {
     writeFileSync(join(dir, "terms.uk.md"), "# Умови користування\n\n**Важливо:** текст [тут](https://example.com).\n\n## Розділ\n- пункт\n");
@@ -121,10 +140,23 @@ test("a published page renders with its footer links on every page, without the 
   }
 });
 
-test("without published texts the footer has no legal links", () => {
+test("without published texts the footer has no legal links (empty folder)", () => {
+  const empty = mkdtempSync(join(tmpdir(), "series-legal-empty-"));
+  try {
+    const r = spawnSync(process.execPath, ["--input-type=module", "-e",
+      'import { renderPublicPage } from "./scripts/site-html.mjs"; process.stdout.write(renderPublicPage("uk", "index"));',
+    ], { env: { ...process.env, SERIES_LEGAL_DIR: empty }, encoding: "utf8", cwd: join(import.meta.dirname, "..") });
+    assert.equal(r.status, 0, r.stderr);
+    assert.doesNotMatch(r.stdout, /\/terms\/|\/privacy\//);
+  } finally {
+    rmSync(empty, { recursive: true, force: true });
+  }
+});
+
+test("the real site footer links to both published pages", () => {
   const r = spawnSync(process.execPath, ["--input-type=module", "-e",
-    'import { renderPublicPage } from "./scripts/site-html.mjs"; process.stdout.write(renderPublicPage("uk", "index"));',
+    'import { renderPublicPage } from "./scripts/site-html.mjs"; process.stdout.write(renderPublicPage("en", "index"));',
   ], { encoding: "utf8", cwd: join(import.meta.dirname, "..") });
   assert.equal(r.status, 0, r.stderr);
-  assert.doesNotMatch(r.stdout, /\/terms\/|\/privacy\//);
+  assert.match(r.stdout, /<footer>[^]*href="\/en\/terms\/"[^]*href="\/en\/privacy\/"/);
 });
