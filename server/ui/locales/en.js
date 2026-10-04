@@ -762,7 +762,7 @@ export default {
   "help.whatis.card2.title": "Studio — the images",
   "help.whatis.card2.desc": "Generation, review, versions. Money is spent only here, and only when you click \"Generate\" with a paid engine.",
   "help.whatis.card3.title": "Release",
-  "help.whatis.card3.desc": "ZIP, metadata, storage links (Arweave / IPFS), checklist, deploy kit, and marketplace kit. You sell and mint yourself.",
+  "help.whatis.card3.desc": "ZIP, metadata, storage links (Arweave for Solana; IPFS or https for EVM), checklist, deploy kit and marketplace kit. You sell and mint yourself.",
   "help.quick.title": "Quick start in 10 minutes (mock · 0 cr)",
   "help.quick.desc": "Walk the whole path with the mock demo engine — no credit spend. You'll understand how it all works before using your balance.",
   "help.quick.li1": "Open Studio in the browser and sign in with your wallet.",

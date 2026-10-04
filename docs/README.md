@@ -37,7 +37,7 @@
 | [VISION.md](./VISION.md) | Vision Assist |
 | [STANDALONE.md](./STANDALONE.md) | Series Lab як окремий самодостатній продукт |
 | [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) | VPS / staging / cutover |
-| [DEPLOY.md](./DEPLOY.md) | Лендінг studio.w3ir.io (Cloudflare Pages) |
+| [DEPLOY.md](./DEPLOY.md) | Сайт studio.w3ir.io (Cloudflare Pages): лендінг, посібник і сторінки для автора |
 | [HOSTING.md](./HOSTING.md) | **Після ядра:** що є і що робити за командою (не автодеплой) |
 | [ROADMAP.md](./ROADMAP.md) | Хвилі 1–25 ✅ · стабілізація ▶️ · рефакторинг/власний домен ⏸ |
 | [SYNTHESIS.md](./SYNTHESIS.md) · [FROM-PROMT.md](./FROM-PROMT.md) | Донори |

@@ -14,17 +14,24 @@
 
 | Шлях | Зміст |
 |---|---|
-| `/` · `/en/` | Лендинг: що таке Series Lab, 7 етапів, страховка, безкоштовний режим, запуск |
-| `/guide/` · `/en/guide/` | Повний посібник (ті самі тексти, що й вкладка «❓ Довідка») |
+| `/` · `/en/` | Лендінг: що таке Series Lab, 7 етапів, посилання на сторінки для автора, страховка, безкоштовний режим, запуск (Node.js 22.13+) |
+| `/guide/` · `/en/guide/` | Посібник для початківців (ті самі тексти, що й вкладка «❓ Довідка», включно з Деплоєм і Маркетом) |
+| `/docs/` · `/en/docs/` | Зміст сторінок для автора. Звідси видно, що запуск — на головній, а README лишається в репозиторії |
+| `/stages/` · `/en/stages/` | Етапи дропу: що зробити на вкладках 1–7, далі деплой і маркет |
+| `/tabs/` · `/en/tabs/` | Короткий гід вкладками, без переліку кожної кнопки |
+| `/base/` · `/en/base/` | Базова картинка серії і Vision Assist |
+| `/traits/` · `/en/traits/` | Паки рис і редактор опцій |
+| `/export/` · `/en/export/` | ZIP, мережа, Arweave через Irys, деплой зі свого гаманця |
+| `/preset/` · `/en/preset/` | Короткий довідник файлу пресету, не повна схема |
 | `/404.html` | Сторінка «не знайдено» |
 | `/_headers` | Заголовки безпеки: CSP без скриптів, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` |
 | `/robots.txt`, `/sitemap.xml` | Індексація |
 
-Тексти беруться з `server/ui/locales/uk.js` і `en.js`, тож сайт, довідка в застосунку та [GUIDE.md](./GUIDE.md) не розходяться.
+Посібник береться з `server/ui/locales/uk.js` і `en.js`, тож сайт, довідка в застосунку та [GUIDE.md](./GUIDE.md) не розходяться. Решта сторінок для автора збирається з `scripts/site-pages.mjs`: це скорочений переказ [STAGES.md](./STAGES.md), [STUDIO-UI.md](./STUDIO-UI.md), [BASE.md](./BASE.md), [TRAITS.md](./TRAITS.md), [EXPORT.md](./EXPORT.md) і короткий уривок [PRESET.md](./PRESET.md). [API.md](./API.md) і історія хвиль з [ROADMAP.md](./ROADMAP.md) на сайт не виводяться.
 
 ## Оновити сайт
 
-**Автоматично (основний спосіб).** Workflow `.github/workflows/deploy-site.yml` запускається при push у `main`, якщо змінились тексти (`server/ui/locales/**`), `scripts/build-site.mjs`, `package.json` або сам workflow. Він збирає `dist/site`, перевіряє, що всі сторінки на місці, і викладає сайт у проєкт `series-lab` через `wrangler pages deploy`. Запустити вручну: GitHub → Actions → **Deploy site** → *Run workflow*.
+**Автоматично (основний спосіб).** Workflow `.github/workflows/deploy-site.yml` запускається при push у `main`, якщо змінились тексти (`server/ui/locales/**`), `scripts/build-site.mjs`, `scripts/site-pages.mjs`, `package.json` або сам workflow. Він збирає `dist/site`, перевіряє, що всі сторінки на місці, і викладає сайт у проєкт `series-lab` через `wrangler pages deploy`. Запустити вручну: GitHub → Actions → **Deploy site** → *Run workflow*.
 
 Налаштування репозиторію (GitHub → Settings → Secrets and variables → Actions):
 
@@ -52,9 +59,10 @@ npx wrangler pages deploy dist/site --project-name series-lab --branch main
 curl -sI https://studio.w3ir.io/ | grep -iE "content-security|x-frame"
 ```
 
-Має повернути `200`, заголовки CSP і `x-frame-options: DENY`; `/en/`, `/guide/`, `/en/guide/` — теж `200`, неіснуючий шлях — `404`.
+Має повернути `200`, заголовки CSP і `x-frame-options: DENY`. Те саме для `/en/`, `/guide/`, `/en/guide/`, `/docs/`, `/stages/`, `/tabs/`, `/base/`, `/traits/`, `/export/`, `/preset/` і їхніх `/en/…` двійників. Неіснуючий шлях — `404`.
 
 ## Чого тут свідомо немає
 
 - **Майстерні через інтернет.** Щоб відкрити Studio ззовні, потрібні вхід (Cloudflare Access або власна авторизація) і обов'язкова денна межа витрат — інакше будь-хто витрачатиме ваші ключі. Це окремий крок (див. [ROADMAP.md](./ROADMAP.md)).
+- **Довідника розробника.** `docs/API.md` і історія хвиль із `docs/ROADMAP.md` лишаються в репозиторії. На сайті — лише те, що потрібно автору дропу.
 - **Git-інтеграції Cloudflare Pages.** Проєкт створено як Direct Upload, тому деплой іде з GitHub Actions через `wrangler`, а не через вбудоване підключення репозиторію.
