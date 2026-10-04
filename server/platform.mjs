@@ -22,7 +22,7 @@ import { rateLimit } from "../src/platform/ratelimit.mjs";
 import { checkSolOrders, solPayEnabled } from "../src/platform/solpay.mjs";
 import { checkPromptSafety } from "../src/platform/safety.mjs";
 import { NonceStore, SESSION_COOKIE, clearSessionCookie, issueSessionToken, readCookie, sessionCookie, SESSION_TTL_SECONDS, verifySessionToken } from "../src/platform/session.mjs";
-import { collectionImagePath, mediaType, renderCollectionHtml, renderLanding, renderLegalHtml, siteFile } from "../src/platform/site.mjs";
+import { collectionImagePath, mediaType, renderCollectionHtml, renderLanding, siteFile } from "../src/platform/site.mjs";
 import { walletActivity } from "../src/platform/stats.mjs";
 import { loadCatalog, reconcileFulfillments, vaultConfigured, vaultRpcUrl, vaultTokenMints } from "../src/platform/vault.mjs";
 import { buildSiweMessage, buildSolanaMessage, isEvmWallet, isSolanaWallet, newNonce, normalizeAddr, verifyEvmSignature, verifySolanaSignature } from "../src/platform/wallet.mjs";
@@ -171,9 +171,10 @@ async function routes(req, res, url) {
       return true;
     }
     if (path === "/legal" || path === "/legal/en") {
-      const page = renderLegalHtml(path === "/legal/en" ? "en" : "uk");
-      if (!page) throw new HttpError(404, "legal docs not found");
-      send(res, 200, page, "text/html; charset=utf-8");
+      // The old /legal pages were Промт's texts. Series Lab's own Terms and Privacy live on the public site.
+      const base = (process.env.LEGAL_BASE_URL || "https://studio.w3ir.io").replace(/\/$/, "");
+      res.writeHead(302, { Location: `${base}${path === "/legal/en" ? "/en/terms/" : "/terms/"}`, "Cache-Control": "no-cache" });
+      res.end();
       return true;
     }
     let m = /^\/c\/([^/]+)$/.exec(path);

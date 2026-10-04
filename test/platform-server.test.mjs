@@ -200,6 +200,9 @@ describe("public mode end-to-end", () => {
     assert.equal(page.status, 200);
     assert.match(page.text, /E2E Gremlins/);
     assert.equal((await call("GET", "/c/e2e-gremlins/img/1.png", { raw: true })).status, 200);
-    assert.equal((await call("GET", "/legal/en")).status, 200);
+    const legal = await call("GET", "/legal/en");
+    assert.equal(legal.status, 302, "the old Промт legal page redirects to Series Lab's own terms");
+    assert.match(String(legal.headers.location), /\/en\/terms\/$/);
+    assert.equal((await call("GET", "/legal")).headers.location.endsWith("/terms/"), true);
   });
 });
