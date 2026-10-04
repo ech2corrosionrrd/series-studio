@@ -39,6 +39,8 @@
 
 Копія, яку ніхто не пробував відкрити, не є бекапом, тому перевірки не пропускайте. За збою `verify-backup.sh` завершується з кодом 1 і пише в `logs/verify.log`; якщо в `backup.env` задано `SERIES_TELEGRAM_BOT_TOKEN` і `SERIES_TELEGRAM_CHAT_ID`, надсилає алерт у Telegram. Локально те саме робить `npm run backup` ([GUIDE.md](./GUIDE.md#бекап)); окрему копію перевіряє `node scripts/verify-backup.mjs --path users.db`.
 
+**Копія на ПК оператора без ключів хмари.** `npm run backup:pull` на вашому ПК по SSH забирає найновішу погодинну копію з VPS у `backups/offsite/`, перевіряє її (`integrity_check`, таблиці) і лишає 14 останніх (`BACKUP_PULL_HOST`, `BACKUP_PULL_REMOTE`, `BACKUP_PULL_DEST`, `BACKUP_PULL_KEEP`). Потрібен вхід по SSH-ключу (`ssh -o BatchMode=yes root@HOST_IP true` має проходити). Так само працює `W3IR-Offsite-Pull` у Промті. Щоденний запуск у Планувальнику завдань Windows: `schtasks /Create /SC DAILY /ST 21:00 /TN "SeriesLab-Offsite-Pull" /TR "cmd /c cd /d C:\Gremlins\series-studio && npm run backup:pull >> backups\offsite.log 2>&1"`.
+
 Копії лежать на тому ж диску, що й жива база. Вивантаження назовні вмикає одноразовий скрипт (на сервері, від root):
 
 ```bash
