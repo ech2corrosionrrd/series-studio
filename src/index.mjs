@@ -224,6 +224,17 @@ export {
 } from "./reveal.mjs";
 export { composeEdition, composeArchive, compositeOver, layerFileFor } from "./layers.mjs";
 export {
+  planCoreMint,
+  planCoreReveal,
+  selectMintGroup,
+  buildUpdateV1,
+  readCollectionUpdateAuthority,
+  allowListProofPda,
+  candyMachineAuthorityPda,
+  mintLimitPda,
+  MPL_CORE_PROGRAM,
+} from "./core-flow.mjs";
+export {
   decodeGuardAccount,
   decodeCoreCandyMachine,
   guardDiff,

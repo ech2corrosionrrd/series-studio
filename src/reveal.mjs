@@ -7,7 +7,8 @@
  *
  * `series hidden` fills the hash from uploaded metadata URIs.
  * `series reveal` writes the index-ordered update list and checks that hash.
- * Lab does not sign the Core asset updates.
+ * With `--keypair` it signs mpl-core UpdateV1 (see src/core-flow.mjs).
+ * Without a key it only writes the list. EVM delayed reveal stays in Thirdweb.
  */
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";

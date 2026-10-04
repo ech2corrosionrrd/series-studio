@@ -3,7 +3,7 @@
 Алгоритм перенесено з `gremlin-nft` (рецепти → відбір → бандл → Arweave → deploy → guard → verify). Усі кроки нижче працюють **локально**: ключ гаманця лишається на вашому ПК, у Lab і на сервер не передається.
 
 ```
-архів → release-init → [Експорт: набір деплою] → upload → series hidden → deploy (mplx / Sugar) → guards → verify → series reveal
+архів → release-init → [Експорт: набір деплою] → upload → series hidden → deploy (mplx / Sugar) → guards → verify → series mint → series reveal --keypair
 ```
 
 ## 1. `release.json` — одне джерело правди
@@ -48,9 +48,11 @@
 2. Завантажте `hidden.json` (і `hidden.png`) і візьміть посилання на JSON.
 3. `series hidden <тека> --uri <посилання на hidden.json>` — читає `cache.json` (позиція `-1` це колекція і в хеш не входить) і пише `hidden-settings.json`: `{ name, uri, hash }`. Хеш — SHA-256 від `JSON.stringify([{name,uri}, ...])`, як у [гайді Core hidden settings](https://www.metaplex.com/docs/smart-contracts/core-candy-machine/guides/create-a-core-candy-machine-with-hidden-settings). Поруч — `reveal-data.json`. Якщо `cache.json` ще немає, `--uri-prefix <префікс>` збирає URI як `<префікс><індекс>.json` з `assets/N.json`.
 4. Поставте `hiddenSettings` на машину **без** config lines. Ім’я до 32 символів, URI до 200.
-5. Після мінту: `series reveal <тека>` пише `reveal-updates.json` (індекс, name, uri) і звіряє хеш. Приховані налаштування мінтять по порядку 0, 1, 2, … — індекс і є порядок мінту. `series reveal <тека> --check revealed.json` порівнює чужий список name/uri з цим хешем.
+5. Мінт: `series mint release.json --keypair <гаманець-мінтера.json>`. Команда читає `itemsRedeemed` і підписує Candy Guard `mintV1` на цьому ПК. Якщо цей гаманець є в `allowlist`, береться група `wl`: спочатку `route` записує доказ merkle в PDA, потім `mintV1` передає цей PDA разом з рахунком оплати й лічильником ліміту. `--public` мінтить публічним набором, без allowList. `--dry-run` показує план і нічого не надсилає (бере індекс з `--index`, інакше 0, і не читає мережу). Живий мінт пише `mints.json` поруч із `release.json` (або в `--bundle`, або в `-o`). Sugar (`standard: "v3"`) ця команда не збирає: шлях продукту — Core.
+6. Розкриття: `series reveal <тека> --keypair <ключ оновлення колекції.json>` підписує `UpdateV1` (ім'я й URI) для кожного асета з `mints.json`. Асет у колекції зберігає повноваження оновлення як колекцію, тож підпис — гаманець оновлення колекції, не PDA машини (той PDA лише делегат, щоб машина могла мінтити). Без `--keypair` команда пише `reveal-updates.json` і не підписує. `--check revealed.json` порівнює чужий список name/uri з хешем. Приховані налаштування мінтять по порядку 0, 1, 2, … — індекс у `mints.json` і є цей порядок.
+7. EVM delayed reveal лишається кроком кабінету Thirdweb. Майстерня приватний ключ не приймає: і мінт, і розкриття — лише CLI.
 
-Lab **не підписує** оновлення Core-асетів: у репозиторії немає клієнта підпису, ключ лишається на вашому ПК. Ви ставите name і uri кожному асету самі (SDK / `mplx`).
+Створення самої машини й guard лишається за `mplx cm create` (конфіг дає `series guards`): Lab не деплоїть програму. Якщо на guard увімкнено правило поза `solPayment`, `startDate`, `allowList` і `mintLimit` (наприклад `botTax`), `series mint` зупиняється і не збирає неповну транзакцію. Мінт, зроблений не через `series mint`, у `mints.json` сам не з’являється: адреса Core-асета — новий ключ, не PDA. Для такого асета достатньо рядка `{ "index", "asset" }` у `mints.json`; name/uri все одно беруться з `reveal-data.json`.
 
 ## 4b. Шари PNG поруч із промптами
 `series compose <archive.json> --layers <тека> --base <png> [-o out/layers]` складає готові PNG: базова картинка, потім шар на кожну рису. Файл за замовчуванням — `layers/<ключ риси>/<значення>.png`. Своє місце: поле `layer` в опції (відносний шлях у тій теці, без `..`). `None` нічого не малює. `skipDna` малює, але в DNA не входить. DNA збігається з рецептом. Промпти на рецептах не чіпаються і копіюються в `dna.json`.

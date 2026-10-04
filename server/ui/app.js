@@ -2379,7 +2379,8 @@ const HELP_CLI = [
   ["release", "release-config out/demo-archive.json --profile magiceden -o out/cm-config.json"],
   ["guards", "guards release.json --allowlist wallets.txt"],
   ["hidden", "hidden <bundle-dir> --uri <hidden.json-link>"],
-  ["reveal", "reveal <bundle-dir>"],
+  ["mint", "mint release.json --keypair minter.json"],
+  ["reveal", "reveal <bundle-dir> --keypair creator.json"],
   ["compose", "compose out/demo-archive.json --layers layers --base input/primary.png"],
 ];
 const HELP_DOCS = [

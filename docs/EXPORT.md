@@ -105,7 +105,7 @@ Series Lab підтримує автоматичне виявлення та п�
 
 Набір деплою і набір маркетплейсу — `POST /api/deploy-kit`, `POST /api/marketplace-kit`. Деталі й ціни: [PRODUCT.md](./PRODUCT.md).
 
-Solana-набір деплою також містить `hidden.json` + `hidden.png` (плейсхолдер до розкриття) і `hidden-settings.json` з порожнім хешем: його заповнює `series hidden` після `series upload`. Якщо в тілі є `allowlist`, у ZIP з’являється `allowlist.json` (merkle root і докази). Повний guard з оплатою — `series guards`. EVM delayed reveal лишається інструкцією Thirdweb, пароль не зберігається.
+Solana-набір деплою також містить `hidden.json` + `hidden.png` (плейсхолдер до розкриття) і `hidden-settings.json` з порожнім хешем: його заповнює `series hidden` після `series upload`. Якщо в тілі є `allowlist`, у ZIP з’являється `allowlist.json` (merkle root і докази). Повний guard з оплатою — `series guards`. Підписаний мінт і розкриття — `series mint` і `series reveal --keypair` (ключ лишається на ПК). EVM delayed reveal лишається інструкцією Thirdweb, пароль не зберігається.
 
 Шари PNG (поруч із промптами, не замість них): `series compose` або `POST /api/compose`. Файли `layers/<ключ>/<значення>.png`, результат `out/layers/<видання>.png` і `dna.json`. Див. [TRAITS.md](./TRAITS.md) і [RELEASE.md](./RELEASE.md).
 

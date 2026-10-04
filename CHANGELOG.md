@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### Мінт Core і підписане розкриття
+- **`series mint`.** З `release.json` і локального `--keypair` збирає транзакцію Candy Guard і підписує її на цьому ПК. Якщо гаманець у списку дозволених, команда бере групу `wl`: спочатку `route` (доказ merkle створює PDA), потім `mintV1` з рахунками оплати, ліміту й цього PDA. `--public` лишає публічний набір без allowList. Індекс — `itemsRedeemed` до мінту; адреса нового асета пишеться в `mints.json`. `--dry-run` нічого не надсилає. Sugar (`v3`) ця команда не збирає.
+- **`series reveal --keypair`.** Підписує `UpdateV1` програми Core: ім'я й URI з `reveal-data.json` для кожного асета в `mints.json`. Підпис — ключ оновлення колекції (асет, змінтований у колекцію, зберігає повноваження як колекцію; PDA машини лише делегат мінту). Без ключа команда як і раніше лише пише список і не підписує. EVM лишається кроком кабінету Thirdweb.
+
 ### Allowlist, приховане розкриття Solana і шари PNG
 - **Allowlist.** `release.json → allowlist` (список адрес або `{ label, wallets, priceSol }`) і `series guards --allowlist wallets.txt` рахують merkle root так, як Candy Guard: keccak256 від тексту адреси в base58, пари сортовані, непарний вузол піднімається. Для Core група `wl` містить `allowList.merkleRoot` (hex) і повторює оплату; публічний `guardConfig` лишається без allowList. Для v3 той самий корінь у групі — base58. Докази — `allowlist-proofs.json`. У наборі деплою (Solana) те саме поле дає `allowlist.json`. `series verify` звіряє корінь групи.
 - **Приховане розкриття.** Набір деплою кладе `hidden.json` і `hidden.png`. `series hidden <тека> --uri <посилання>` пише справжній SHA-256 від `JSON.stringify([{name,uri}])` у `hidden-settings.json` (з `cache.json` або `--uri-prefix`). `series reveal` пише `reveal-updates.json` і звіряє хеш; підпис оновлення Core-асетів лишається на ПК. EVM як і раніше — пароль у кабінеті Thirdweb, у файл не потрапляє.
