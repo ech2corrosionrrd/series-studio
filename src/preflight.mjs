@@ -373,8 +373,8 @@ export function runPreflight(input = {}, env = process.env) {
   });
   if (localImages.length) {
     push(checks, errors, warnings, "warning", "uri", L(
-      "Image URIs are local filenames. Set an IPFS or HTTPS prefix before you list the collection.",
-      "Посилання на зображення — локальні імена файлів. Перед лістингом задайте префікс IPFS або HTTPS.",
+      "Image URIs are local filenames. Set a prefix before you list: ar:// for Solana, or ipfs:// or https:// for EVM.",
+      "Посилання на зображення — локальні імена файлів. Перед лістингом задайте префікс: ar:// для Solana або ipfs:// чи https:// для EVM.",
     ));
   }
 

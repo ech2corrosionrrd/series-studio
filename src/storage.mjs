@@ -1,11 +1,13 @@
 /**
- * Storage Dispatcher & IPFS / Arweave / Local CID Mock integration for Series Lab.
- * Manages image URI prefix generation, Arweave (Irys) upload, and decentralized metadata pointers.
+ * URI prefixes and Arweave (Irys) upload for Series Lab.
+ * `calculateDeterministicCid` is a local CIDv0 stand-in for tests and dry-run;
+ * it is not an Arweave manifest id.
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, basename } from "node:path";
+import { cpSync, existsSync, mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /**
  * Base58 alphabet (Bitcoin standard).
@@ -170,17 +172,23 @@ export async function uploadToIrys({
   const irys = await createUploader(String(privateKey).trim(), rpcUrl);
   const bytes = files.reduce((s, f) => s + statSync(join(dir, f)).size, 0);
   await ensureIrysFunds(irys, bytes, { maxPriceSol });
-  const receipt = await irys.uploadFolder(dir, { keepDeleted: false });
-  const id = receipt?.id;
-  if (!id) {
-    throw new Error("Irys upload failed: no manifest ID returned");
+  // Set folders also hold marks.json and triage.json. Price and publish only the images.
+  const stage = mkdtempSync(join(tmpdir(), "series-irys-"));
+  try {
+    for (const file of files) cpSync(join(dir, file), join(stage, file));
+    const receipt = await irys.uploadFolder(stage, { keepDeleted: false });
+    const id = receipt?.id;
+    if (!id) {
+      throw new Error("Irys upload failed: no manifest ID returned");
+    }
+    return {
+      ok: true,
+      arweaveId: id,
+      arweaveUri: `ar://${id}/`,
+      gatewayUrl: `https://gateway.irys.xyz/${id}/`,
+      count: files.length,
+    };
+  } finally {
+    rmSync(stage, { recursive: true, force: true });
   }
-
-  return {
-    ok: true,
-    arweaveId: id,
-    arweaveUri: `ar://${id}/`,
-    gatewayUrl: `https://gateway.irys.xyz/${id}/`,
-    count: files.length,
-  };
 }

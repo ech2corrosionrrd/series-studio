@@ -131,10 +131,10 @@
 1. **AI Auto-Triage (`POST /api/qa/triage`, `series triage`)** — автоматичний аналіз якості та відповідності згенерованих картинок (евристичний + GPT-4o / Claude Vision).
 2. **Score & Badges** — виставлення оцінок (1–10), тегів виявлених дефектів (`distorted_face`, `bad_anatomy`, `missing_trait`, `blurry`), підказок та 1-клік авто-застосування `keep`/`redo`.
 
-## Хвиля 12 (IPFS / Arweave Storage Dispatcher)
+## Хвиля 12 (Storage Dispatcher: Arweave і префікси URI)
 
-1. **Storage URI Prefix (`imageUriPrefix`)** — підтримка префіксів децентралізованого зберігання (`ipfs://<CID>/`, `ar://<txId>/`, `https://...`) у всіх форматах метаданих (ERC-721, Metaplex, Ordinals) та ZIP-архівах.
-2. **Pinata IPFS Integration & Live Preview (`POST /api/storage/pin`, `series pin`)** — пряме 1-клік завантаження наборів у Pinata IPFS з автоматичною підстановкою CID та інтерактивним прев'ю `1.json`.
+1. **Storage URI Prefix (`imageUriPrefix`)** — підтримка префіксів, які людина вписує сама (`ipfs://<CID>/`, `ar://<id>/`, `https://...`) у всіх форматах метаданих (ERC-721, Metaplex, Ordinals) та ZIP-архівах. Типовий шлях Solana — `ar://`.
+2. **Завантаження в Arweave через Irys (`POST /api/storage/pin`, `series pin`)** — кнопка і CLI відправляють зображення набору в Arweave. Відповідь: `arweaveId` і префікс `ar://<id>/`, який підставляється в поле URI. Pinata прибрано; майстерня на IPFS нічого не вантажить. `series pin --dry-run` нічого не публікує і не видає ідентифікатор Arweave.
 
 ## Хвиля 13 (Launchpad Presets & Multi-Standard Export Profiles)
 

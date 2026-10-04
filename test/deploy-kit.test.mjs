@@ -114,6 +114,22 @@ test("solana kit defaults to Core Candy Machine, keeps Sugar as labelled legacy,
   assert.match(kit.files["ROYALTIES.txt"], /ProgramAllowList/);
   assert.match(kit.files["sugar/LEGACY.txt"], /sugar/);
   assert.match(kit.files["sugar/LEGACY.txt"], /застаріл/i);
+  assert.match(kit.files["sugar/LEGACY.txt"], /sugar\/config\.json/);
+  assert.match(kit.files["sugar/LEGACY.txt"], /кореня набору/);
+  assert.doesNotMatch(kit.files["sugar/LEGACY.txt"], /Запускайте з теки sugar/);
+  assert.doesNotMatch(kit.files["sugar/LEGACY.txt"], /--config config\.json/);
+  const enKit = buildDeployKit({
+    archive: { presetId: "kit", size: 1 },
+    preset: { id: "kit", name: "Kit Series" },
+    items: [{ edition: 1, buffer: png, ext: "png", recipe: { edition: 1, traits: { bg: "a" } } }],
+    opts: { chain: "solana", symbol: "KIT" },
+    locale: "en",
+    env: {},
+  });
+  assert.match(enKit.files["sugar/LEGACY.txt"], /kit root/);
+  assert.match(enKit.files["sugar/LEGACY.txt"], /sugar\/config\.json/);
+  assert.match(enKit.files["sugar/LEGACY.txt"], /do not take --config/);
+  assert.doesNotMatch(enKit.files["sugar/LEGACY.txt"], /--config config\.json/);
   const hidden = JSON.parse(kit.files["hidden-settings.json"]);
   assert.equal(hidden.name, "Hidden #");
   assert.equal(hidden.uri, "https://example.invalid/hidden.json");
