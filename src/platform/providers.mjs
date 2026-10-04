@@ -17,7 +17,7 @@ export const FLOAT_RECOMMENDED_USD = {
   Replicate: 10,
   "Fal.ai": 10,
   Runware: 10,
-  Pinata: 0,
+  Irys: 0,
 };
 
 /** Registry: name, env, dashboard url, purpose (uk/en resolved in UI via purpose key). */
@@ -28,7 +28,7 @@ export const PROVIDERS = [
   { id: "replicate", name: "Replicate", env: "REPLICATE_API_TOKEN", url: "https://replicate.com/account/billing", purpose: "prov.purpose.replicate" },
   { id: "fal", name: "Fal.ai", env: "FAL_KEY", url: "https://fal.ai/dashboard/usage", purpose: "prov.purpose.fal", envAlt: "FAL_API_KEY" },
   { id: "runware", name: "Runware", env: "RUNWARE_API_KEY", url: "https://my.runware.ai/", purpose: "prov.purpose.runware" },
-  { id: "pinata", name: "Pinata", env: "PINATA_JWT", url: "https://app.pinata.cloud", purpose: "prov.purpose.pinata" },
+  { id: "irys", name: "Irys", env: "IRYS_PRIVATE_KEY", url: "https://irys.xyz", purpose: "prov.purpose.irys" },
   { id: "base", name: "Base RPC", env: "BASE_RPC_URL", url: "https://www.base.org", purpose: "prov.purpose.base_rpc", defaultConfigured: true },
   { id: "solana", name: "Solana RPC", env: "SOLANA_RPC_URL", url: "https://solana.com", purpose: "prov.purpose.solana_rpc", defaultConfigured: true },
 ];
@@ -124,9 +124,9 @@ export async function providerFloatStatus(fetchImpl = fetch) {
         else status = "ok";
         note = "stability";
       }
-    } else if (name === "Pinata") {
+    } else if (name === "Irys") {
       status = "ok";
-      note = "free_tier";
+      note = "Irys funding required";
     }
     out.push({
       name,
@@ -146,7 +146,7 @@ export async function keyHealth(fetchImpl = fetch) {
   const openai = envVal("OPENAI_API_KEY");
   const anthropic = envVal("ANTHROPIC_API_KEY");
   const replicate = envVal("REPLICATE_API_TOKEN");
-  const pinata = envVal("PINATA_JWT");
+  const irys = envVal("IRYS_PRIVATE_KEY");
   const stability = envVal("STABILITY_API_KEY");
   const fal = envVal("FAL_KEY") || envVal("FAL_API_KEY");
   const runware = envVal("RUNWARE_API_KEY");
@@ -193,9 +193,9 @@ export async function keyHealth(fetchImpl = fetch) {
     } else if (p.id === "runware" && runware) {
       row.checked = true;
       row.valid = true; // no public balance ping
-    } else if (p.id === "pinata" && pinata) {
+    } else if (p.id === "irys" && irys) {
       row.checked = true;
-      row.valid = await httpOk("https://api.pinata.cloud/data/testAuthentication", { Authorization: `Bearer ${pinata}` }, fetchImpl);
+      row.valid = true; // assume valid if present for dashboard
     } else if (p.id === "base") {
       row.checked = true;
       row.valid = await rpcOk(baseRpc, "eth_chainId", fetchImpl);

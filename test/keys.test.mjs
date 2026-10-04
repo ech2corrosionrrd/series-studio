@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { parseEnv, loadKeys, keyPresence } from "../src/keys.mjs";
+import { parseEnv, loadKeys, loadKeysExtra, keyPresence } from "../src/keys.mjs";
 
 test("parseEnv skips comments and blank lines", () => {
   const out = parseEnv("# comment\n\nFOO=bar\n  # another\nBAZ=qux\n");
@@ -69,6 +69,29 @@ test("loadKeys is self-contained: ignores SERIES_PLATFORM_ENV", () => {
     assert.equal(env.PLATFORM_ONLY_VAR, undefined);
     assert.equal(env.OPENAI_API_KEY, undefined);
     assert.equal(env.TELEGRAM_BOT_TOKEN, undefined);
+  } finally {
+    process.chdir(prev);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("SERIES_SKIP_DOTENV skips the project .env but still reads SERIES_KEYS_FILE", () => {
+  const dir = mkdtempSync(join(tmpdir(), "series-keys-skip-"));
+  const cwdEnv = join(dir, ".env");
+  const keysFile = join(dir, "only-these.env");
+  writeFileSync(cwdEnv, "OPENAI_API_KEY=from-dotenv\nTELEGRAM_BOT_TOKEN=from-dotenv\n", "utf8");
+  writeFileSync(keysFile, "LAB_SMOKE_MARK=1\n", "utf8");
+  const prev = process.cwd();
+  try {
+    process.chdir(dir);
+    const env = { SERIES_SKIP_DOTENV: "1", SERIES_KEYS_FILE: keysFile };
+    const loaded = loadKeys(undefined, env);
+    assert.equal(loaded, keysFile);
+    assert.equal(env.LAB_SMOKE_MARK, "1");
+    assert.equal(env.OPENAI_API_KEY, undefined);
+    assert.equal(env.TELEGRAM_BOT_TOKEN, undefined);
+    assert.deepEqual(loadKeysExtra([cwdEnv], env), []);
+    assert.equal(env.OPENAI_API_KEY, undefined);
   } finally {
     process.chdir(prev);
     rmSync(dir, { recursive: true, force: true });

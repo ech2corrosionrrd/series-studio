@@ -3,6 +3,8 @@
  * Prompts/recipe content stay English for generators.
  */
 import { initI18n, setLocale, getLocale, t, applyI18n, applyTips, tipText, hasKey } from "./i18n.js";
+import { presentApiError } from "./api-errors.js";
+import { fmtNum, fmtDate, fmtUsd as fmtUsdLocale, fmtPct as fmtPctLocale } from "./format.js";
 
 function tipAttr(key) {
   const s = tipText(key);
@@ -72,7 +74,11 @@ function playCompletionChime() {
 
 async function api(path, opts = {}) {
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      "Accept-Language": getLocale(),
+      ...(opts.headers || {}),
+    },
     ...opts,
   });
   const text = await res.text();
@@ -85,7 +91,7 @@ async function api(path, opts = {}) {
   if (!res.ok) {
     if (res.status === 401 && data.code === "auth") {
       location.href = `/login${location.search}`;
-      throw new Error(data.error || "Sign in required");
+      throw new Error(presentApiError(data.error ? data : { ...data, error: data.error || "Sign in required" }, t));
     }
     if (data.code === "credits" || data.code === "rate" || data.code === "freemium") refreshAccount();
     if (data.code === "credits") openTopup({ needed: data.needed, balance: data.balance });
@@ -98,8 +104,11 @@ async function api(path, opts = {}) {
         .join("; ");
       throw new Error(t("recipes.conflict", { detail }));
     }
-    const err = data.error || data.errors || res.statusText;
-    throw new Error(typeof err === "string" ? err : JSON.stringify(err));
+    const fallback = data.error || data.detail || data.errors || res.statusText;
+    const payload = { ...data, error: typeof fallback === "string" ? fallback : JSON.stringify(fallback ?? "") };
+    const error = new Error(presentApiError(payload, t));
+    error.payload = data;
+    throw error;
   }
   return data;
 }
@@ -122,7 +131,14 @@ function showTab(name) {
   if (name === "export") {
     fillExportSets();
     fillArchiveSelect();
+    showStagePrice("archive", "x-price", { zip: true });
   }
+  if (name === "deploy" || name === "market") {
+    fillExportSets().then(() => fillKitSets()).catch(() => {});
+    showStagePrice(name === "deploy" ? "deploy_kit" : "marketplace_kit", name === "deploy" ? "d-price" : "m-price");
+  }
+  if (name === "gallery") showCurationPrice();
+  renderPath(name);
   try {
     history.replaceState(null, "", `#${name}`);
   } catch {
@@ -148,6 +164,25 @@ async function ensureGalleryLoaded() {
   await loadGallerySets();
   if (state.galleryDir) await loadGalleryDir(state.galleryDir);
   else renderGallery();
+}
+
+async function ensureRecipesLoaded() {
+  if (state.recipes?.length) {
+    renderRecipeTable();
+    return;
+  }
+  try {
+    if (!state.archives?.length) await loadArchives();
+  } catch {
+    return;
+  }
+  const file = state.archiveFile || state.archives[0]?.file;
+  if (!file) return;
+  try {
+    await loadRecipesArchive(file);
+  } catch {
+    /* the recipes tab still opens; build stays available */
+  }
 }
 
 function setupTabs() {
@@ -224,6 +259,7 @@ function setupLang() {
 }
 
 function refreshDynamicCopy() {
+  loadLaunchAdvisor();
   renderSteps();
   renderFacts();
   renderCtorSummary();
@@ -243,6 +279,18 @@ function refreshDynamicCopy() {
   if (stub && !stub.dataset.dirty) stub.textContent = t("render.stub");
   const allOpt = $("r-line")?.querySelector('option[value=""]');
   if (allOpt) allOpt.textContent = t("recipes.allLines");
+  const active = document.querySelector(".tab.on")?.id?.replace(/^tab-/, "") || "home";
+  renderPath(active);
+  if (active === "export") showStagePrice("archive", "x-price", { zip: true });
+  if (active === "deploy") showStagePrice("deploy_kit", "d-price");
+  if (active === "market") showStagePrice("marketplace_kit", "m-price");
+  if (active === "gallery") showCurationPrice();
+  if (active === "export") updateReleaseHub();
+  if ($("topup-overlay") && !$("topup-overlay").hidden && typeof renderTopup === "function") renderTopup();
+  if ($("admin-econ")?.classList.contains("on")) renderEconomy();
+  const me = $("me");
+  if (me?.dataset.mode === "port") me.textContent = t("ui.labPort", { port: me.dataset.port || "" });
+  else if (me?.dataset.mode === "offline") me.textContent = t("ui.offline");
   applyTips(document);
 }
 
@@ -353,7 +401,7 @@ function renderTemplates() {
     const title = tpl.titleUk && getLocale() === "uk" ? tpl.titleUk : tpl.name;
     card.innerHTML = `<b>${escapeHtml(title)}</b>
       <span class="tpl-blurb">${escapeHtml(tpl.blurb || tpl.id)}</span>
-      <span class="muted small">${escapeHtml(tpl.id)} · size ${tpl.size}</span>
+      <span class="muted small">${escapeHtml(tpl.id)} · ${escapeHtml(t("base.tpl.size", { n: fmtNum(tpl.size) }))}</span>
       <button type="button" class="btn small" data-id="${escapeHtml(tpl.id)}"${tipAttr("base.use")}>${t("base.use")}</button>`;
     card.querySelector("button").addEventListener("click", () => useTemplate(tpl.id));
     grid.appendChild(card);
@@ -570,6 +618,10 @@ function normalizeOptionClient(raw) {
   if (!Number.isFinite(weight)) weight = 1;
   const prompt = String(o.prompt ?? "");
   const out = { value, weight, prompt };
+  if (o.exact != null && o.exact !== "") {
+    const exact = Number(o.exact);
+    if (Number.isFinite(exact)) out.exact = exact;
+  }
   if (Array.isArray(o.lines) && o.lines.length) out.lines = o.lines.map((x) => String(x));
   if (typeof o.since === "number" && o.since >= 1) out.since = o.since;
   return out;
@@ -589,6 +641,9 @@ function validateOptionsClient(list) {
     if (!o.value) errors.push(t("ctor.options.err.value", { i: String(i + 1) }));
     if (!Number.isFinite(o.weight) || o.weight <= 0) {
       errors.push(t("ctor.options.err.weight", { i: String(i + 1) }));
+    }
+    if (raw.exact != null && raw.exact !== "" && (!Number.isInteger(Number(raw.exact)) || Number(raw.exact) < 0)) {
+      errors.push(t("ctor.options.err.exact", { i: String(i + 1) }));
     }
     if (!String(o.prompt ?? "").trim()) {
       warnings.push(t("ctor.options.warn.prompt", { i: String(i + 1) }));
@@ -662,6 +717,8 @@ function renderOptionsEditor() {
     return;
   }
   wrap.hidden = false;
+  const skip = $("opt-skip-dna");
+  if (skip) skip.checked = trait.skipDna === true;
   if (!Array.isArray(trait.options)) trait.options = [];
   const n = trait.options.length;
   if (countEl) countEl.textContent = t("ctor.options.count", { n: String(n), key: state.selectedTraitKey });
@@ -675,7 +732,11 @@ function renderOptionsEditor() {
     const promptWarn = !String(o.prompt || "").trim();
     tr.innerHTML = `
       <td><input type="text" data-field="value" data-idx="${idx}" value="${escapeHtml(o.value)}" autocomplete="off"></td>
-      <td><input class="opt-weight" type="number" min="0.01" step="any" data-field="weight" data-idx="${idx}" value="${escapeHtml(String(o.weight))}"></td>
+      <td class="opt-weight-cell">
+        <input class="opt-weight" type="number" min="0.01" step="any" data-field="weight" data-idx="${idx}" value="${escapeHtml(String(o.weight))}">
+        <span class="opt-pct" data-idx="${idx}">${escapeHtml(t("ctor.options.pct", { pct: optionPct(o.weight, trait.options) }))}</span>
+      </td>
+      <td><input class="opt-exact" type="number" min="0" step="1" data-field="exact" data-idx="${idx}" value="${o.exact == null ? "" : escapeHtml(String(o.exact))}"></td>
       <td>
         <textarea data-field="prompt" data-idx="${idx}" rows="2">${escapeHtml(o.prompt)}</textarea>
         ${promptWarn ? `<span class="muted small opt-warn">${escapeHtml(t("ctor.options.warn.promptShort"))}</span>` : ""}
@@ -710,6 +771,9 @@ function updateOptionField(idx, field, value) {
   if (field === "weight") {
     const n = Number(value);
     cur.weight = Number.isFinite(n) ? n : 0;
+  } else if (field === "exact") {
+    if (value === "" || value == null) delete cur.exact;
+    else cur.exact = Number(value);
   } else if (field === "value") {
     cur.value = String(value ?? "").trim();
   } else if (field === "prompt") {
@@ -728,7 +792,7 @@ function addOptionRow() {
   if (!trait) return;
   if (!Array.isArray(trait.options)) trait.options = [];
   const taken = new Set(trait.options.map((o) => String(o?.value || "")));
-  let value = "New option";
+  let value = t("ctor.opt.new");
   let n = 2;
   while (taken.has(value)) {
     value = `New option ${n}`;
@@ -771,6 +835,22 @@ function duplicateOptionRow(idx) {
   renderOptionsEditor();
 }
 
+function optionPct(weight, options) {
+  const sum = (options || []).reduce((s, o) => s + (Number(o?.weight) || 0), 0);
+  const w = Number(weight) || 0;
+  if (!(sum > 0)) return "0.0";
+  return ((w / sum) * 100).toFixed(1);
+}
+
+function refreshWeightPcts() {
+  const trait = findTrait(state.selectedTraitKey);
+  if (!trait) return;
+  document.querySelectorAll("#opt-tbody .opt-pct").forEach((el) => {
+    const idx = Number(el.dataset.idx);
+    el.textContent = t("ctor.options.pct", { pct: optionPct(trait.options?.[idx]?.weight, trait.options) });
+  });
+}
+
 function setupOptionsEditor() {
   const sel = $("opt-trait-key");
   if (!sel) return;
@@ -781,12 +861,30 @@ function setupOptionsEditor() {
   $("opt-tbody")?.addEventListener("change", (ev) => {
     const el = ev.target;
     if (!el || !el.dataset || el.dataset.idx == null) return;
-    if (!["value", "weight", "prompt"].includes(el.dataset.field)) return;
+    if (!["value", "weight", "prompt", "exact"].includes(el.dataset.field)) return;
     updateOptionField(Number(el.dataset.idx), el.dataset.field, el.value);
+  });
+  $("opt-skip-dna")?.addEventListener("change", () => {
+    ensureDraftTraits();
+    const trait = findTrait(state.selectedTraitKey);
+    if (!trait) return;
+    trait.skipDna = Boolean($("opt-skip-dna")?.checked);
+    if (state.draftFull) state.draftFull.traits = state.draftTraits;
   });
   $("opt-tbody")?.addEventListener("input", (ev) => {
     const el = ev.target;
-    if (!el || el.dataset?.field !== "prompt") return;
+    if (!el || el.dataset?.field !== "prompt" && el.dataset?.field !== "weight") return;
+    if (el.dataset.field === "weight") {
+      ensureDraftTraits();
+      const trait = findTrait(state.selectedTraitKey);
+      const idx = Number(el.dataset.idx);
+      if (!trait?.options?.[idx]) return;
+      const n = Number(el.value);
+      trait.options[idx] = { ...normalizeOptionClient(trait.options[idx]), weight: Number.isFinite(n) ? n : 0 };
+      if (state.draftFull) state.draftFull.traits = state.draftTraits;
+      refreshWeightPcts();
+      return;
+    }
     // live-update draft without full re-render (keep caret)
     ensureDraftTraits();
     const trait = findTrait(state.selectedTraitKey);
@@ -824,7 +922,7 @@ function setupMatrixPreview() {
         traits: { outfit: "Neon Armor", hairstyle: "Buzz Cut", mood: "Determined" },
       };
       try {
-        preview.textContent = "Formatting for " + engine + "...";
+        preview.textContent = t("ctor.matrix.formatting", { engine });
         const res = await api("/api/matrix/preview", {
           method: "POST",
           body: JSON.stringify({ recipe: sampleRecipe, engine, preset }),
@@ -833,7 +931,7 @@ function setupMatrixPreview() {
           preview.textContent = res.prompt;
         }
       } catch (err) {
-        preview.textContent = "Error: " + err.message;
+        preview.textContent = t("ui.error", { msg: err.message });
       }
     });
   });
@@ -872,6 +970,14 @@ function syncCtorFromOverview() {
   $("c-engine").value = $("o-engine").value;
   $("c-strength").value = $("o-strength").value;
   $("c-strength-v").textContent = String($("o-strength").value);
+}
+
+function renderBaseLines(preset) {
+  const el = $("base-lines");
+  if (!el) return;
+  if (state.baseFiles?.some((f) => f.role === "line")) return;
+  const lines = preset?.lines && typeof preset.lines === "object" ? Object.keys(preset.lines) : [];
+  el.textContent = lines.length ? `${t("base.lines")}: ${lines.join(", ")}` : "";
 }
 
 function fillConstructor(preset) {
@@ -1044,6 +1150,8 @@ function setupOverview() {
       renderSteps();
     });
   }
+  $("o-engine")?.addEventListener("change", () => paintStrengthNote("o-strength-note", $("o-engine").value));
+  paintStrengthNote("o-strength-note", $("o-engine")?.value);
   async function saveOverviewPreset() {
     syncCtorFromOverview();
     const name = $("o-name").value.trim();
@@ -1273,6 +1381,7 @@ async function refreshBaseStatus() {
       };
     }
     renderSteps();
+    syncWishControls();
   } catch {
     /* ignore */
   }
@@ -1349,8 +1458,19 @@ function setupBase() {
   $("base-wish-str")?.addEventListener("input", () => {
     if ($("base-wish-str-v")) $("base-wish-str-v").textContent = $("base-wish-str").value;
   });
+  $("base-wish-ref")?.addEventListener("change", () => relabelEngineSelects());
+  $("base-wish-engine")?.addEventListener("change", () => syncWishControls());
+  $("base-wish")?.addEventListener("input", () => paintWishPrompt());
+  syncWishControls();
   $("base-wish-gen")?.addEventListener("click", async () => {
+    const useRef = Boolean($("base-wish-ref")?.checked);
+    const hasPrimary = (state.baseFiles || []).some((f) => f.primary);
+    if (useRef && !hasPrimary) {
+      syncWishControls();
+      return;
+    }
     try {
+      $("base-wish-gen").dataset.busy = "1";
       $("base-wish-gen").disabled = true;
       const data = await api("/api/base/generate", {
         method: "POST",
@@ -1373,7 +1493,8 @@ function setupBase() {
       $("base-msg").textContent = e.message;
       $("base-msg").className = "small err-msg";
     } finally {
-      $("base-wish-gen").disabled = false;
+      if ($("base-wish-gen")) delete $("base-wish-gen").dataset.busy;
+      syncWishControls();
     }
   });
 
@@ -1459,7 +1580,7 @@ function renderRecipeTable() {
   if (q) rows = rows.filter((r) => JSON.stringify(r).toLowerCase().includes(q));
   if ($("r-count")) $("r-count").textContent = String(rows.length);
   const showWave = rows.some((r) => r.wave != null);
-  table.innerHTML = `<thead><tr><th>#</th>${showWave ? `<th>${t("waves.col")}</th>` : ""}<th>line</th><th>dna</th><th></th></tr></thead><tbody>` +
+  table.innerHTML = `<thead><tr><th scope="col">#</th>${showWave ? `<th scope="col">${t("waves.col")}</th>` : ""}<th scope="col">${t("recipes.col.line")}</th><th scope="col">${t("recipes.col.dna")}</th><th scope="col"></th></tr></thead><tbody>` +
     rows.map((r) => `<tr data-i="${r.index}">
       <td>${r.edition}</td>${showWave ? `<td>${r.wave ?? ""}</td>` : ""}<td>${escapeHtml(r.line)}</td>
       <td class="mono small">${escapeHtml(r.dna || "")}</td>
@@ -1629,6 +1750,21 @@ function setupRecipes() {
       alert(e.message);
     }
   });
+  $("r-simulate")?.addEventListener("click", async () => {
+    const msg = $("r-simulate-msg");
+    try {
+      if (msg) msg.textContent = t("recipes.simulate.running");
+      const file = $("r-preset")?.value;
+      const data = await api("/api/simulate", { method: "POST", body: JSON.stringify({ file }) });
+      if (data.rarity) renderRarity(data.rarity);
+      const bits = [t("recipes.simulate.done", { size: data.size, rejected: data.rejectedConflicts ?? 0 })];
+      const pairs = (data.conflictExamples || []).map((h) => `${h.a} / ${h.b}`);
+      if (pairs.length) bits.push(t("recipes.simulate.conflicts", { list: pairs.join("; ") }));
+      if (msg) msg.textContent = bits.join(" ");
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
   $("r-archive-diff")?.addEventListener("click", async () => {
     const msg = $("r-archive-diff-msg");
     const list = $("r-archive-diff-list");
@@ -1764,6 +1900,21 @@ function setupRecipes() {
   });
 }
 
+function licenseApplies() {
+  const engine = $("g-engine")?.value || "";
+  if (engine === "fal") return true;
+  if ((engine === "comfyui" || engine === "a1111") && $("g-flux-dev")?.checked) return true;
+  return false;
+}
+
+function paintLicenseWarning() {
+  const box = $("g-license");
+  const wrap = $("g-flux-dev-wrap");
+  const engine = $("g-engine")?.value || "";
+  if (wrap) wrap.hidden = engine !== "comfyui" && engine !== "a1111";
+  if (box) box.hidden = !licenseApplies();
+}
+
 /* ---------- Render / Generate ---------- */
 function setupRender() {
   const reLockPlan = () => lockGenerate(true);
@@ -1771,7 +1922,22 @@ function setupRender() {
     if ($("g-strength-v")) $("g-strength-v").textContent = $("g-strength").value;
     reLockPlan();
   });
-  $("g-engine")?.addEventListener("change", reLockPlan);
+  $("g-engine")?.addEventListener("change", () => {
+    reLockPlan();
+    state.licenseAck = false;
+    paintStrengthNote("g-strength-note", $("g-engine")?.value);
+    paintLicenseWarning();
+  });
+  $("g-flux-dev")?.addEventListener("change", () => {
+    state.licenseAck = false;
+    paintLicenseWarning();
+  });
+  $("g-license-proceed")?.addEventListener("click", () => {
+    state.licenseAck = true;
+    $("g-run")?.click();
+  });
+  paintStrengthNote("g-strength-note", $("g-engine")?.value);
+  paintLicenseWarning();
   $("g-pilot")?.addEventListener("input", reLockPlan);
   $("g-first")?.addEventListener("input", reLockPlan);
   $("g-only")?.addEventListener("input", reLockPlan);
@@ -1817,6 +1983,10 @@ function setupRender() {
     const thumbs = $("g-thumbs");
 
     try {
+      if (licenseApplies() && !state.licenseAck) {
+        paintLicenseWarning();
+        return;
+      }
       $("g-run").disabled = true;
       if (progressWrap) progressWrap.hidden = false;
       if (progressBar) progressBar.style.width = "0%";
@@ -1836,6 +2006,8 @@ function setupRender() {
         force: Boolean($("g-force")?.checked),
         concurrency: Number($("g-concurrency")?.value || 2),
         stream: true,
+        ackLicense: Boolean(state.licenseAck),
+        fluxDevWeights: Boolean($("g-flux-dev")?.checked),
       };
 
       const res = await fetch("/api/generate", {
@@ -1866,12 +2038,12 @@ function setupRender() {
           try {
             const ev = JSON.parse(match[1]);
             if (ev.type === "start") {
-              if (progressText) progressText.textContent = `0 / ${ev.total}`;
+              if (progressText) progressText.textContent = `${fmtNum(0)} / ${fmtNum(ev.total)}`;
             } else if (ev.type === "progress") {
               const pct = Math.round((ev.completed / ev.total) * 100);
               if (progressBar) progressBar.style.width = `${pct}%`;
               if (progressPct) progressPct.textContent = `${pct}%`;
-              if (progressText) progressText.textContent = `${ev.completed} / ${ev.total}`;
+              if (progressText) progressText.textContent = `${fmtNum(ev.completed)} / ${fmtNum(ev.total)}`;
               if (ev.result?.url && thumbs) {
                 const a = document.createElement("a");
                 a.href = ev.result.url;
@@ -1891,7 +2063,9 @@ function setupRender() {
       if (lastDone) {
         playCompletionChime();
         if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("Series Lab", { body: `Batch render completed: ${lastDone.count} images in set ${lastDone.set}` });
+          new Notification(t("render.notify.title"), {
+            body: t("render.notify.body", { count: fmtNum(lastDone.count), set: lastDone.set }),
+          });
         }
         if (lastDone.set) {
           state.lastSet = lastDone.set;
@@ -2051,7 +2225,7 @@ function sideHtml(img, dirLabel) {
   const qa = img.qa?.ok === false
     ? `<span class="qa-badge" title="${escapeHtml((img.qa.issues || []).join(", "))}">${t("gallery.qa.badge")}</span>`
     : "";
-  return `<div class="side"><img src="${escapeHtml(img.url)}" alt="" data-url="${escapeHtml(img.url)}" /><span class="side-lab">${escapeHtml(dirLabel || "")}${qa}</span></div>`;
+  return `<div class="side"><img src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))}" data-url="${escapeHtml(img.url)}" /><span class="side-lab">${escapeHtml(dirLabel || "")}${qa}</span></div>`;
 }
 
 function renderGallery() {
@@ -2110,7 +2284,7 @@ function renderGallery() {
     let triageBadge = "";
     if (triage) {
       const bg = triage.verdict === "keep" ? "#10b981" : triage.verdict === "redo" ? "#ef4444" : "#f59e0b";
-      const tooltip = escapeHtml(`${triage.reason}\nIssues: ${(triage.issues || []).join(", ")}`);
+      const tooltip = escapeHtml(`${triage.reason}\n${t("gallery.triage.issues", { list: (triage.issues || []).join(", ") })}`);
       triageBadge = `<span class="triage-badge" title="${tooltip}" style="cursor:help; margin-left:6px; font-size:10px; padding:2px 6px; border-radius:8px; font-weight:bold; background:${bg}; color:#fff">${triage.score}/10 ${triage.verdict.toUpperCase()}</span>`;
     }
 
@@ -2133,14 +2307,26 @@ function renderGallery() {
       const ver = img.versions > 1
         ? `<button type="button" class="ver-badge" title="${escapeHtml(t("ver.badge.title", { n: img.versions }))}" data-tip="${escapeHtml(t("ver.badge.title", { n: img.versions }))}">v·${img.versions}</button>`
         : "";
+      const sim = state.gallerySimilarity?.[key];
+      const simBadge = $("v-similarity")?.checked && sim && sim.similarity != null
+        ? `<span class="sim-badge${sim.warn ? " warn" : ""}" title="${sim.warn ? escapeHtml(t("gallery.similarity.warn")) : ""}">${escapeHtml(t("gallery.similarity.value", { n: sim.similarity }))}</span>`
+        : "";
+      const thumb = $("v-thumb64")?.checked
+        ? `<img class="thumb64" width="64" height="64" src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.thumb64.alt"))}">`
+        : "";
       tile.innerHTML = `
-        <img src="${escapeHtml(img.url)}" alt="#${img.edition}" />
-        <div class="meta">#${img.edition} ${ver}${qa}${triageBadge}</div>
+        <div class="shot">
+          <img src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${img.edition}" />
+          ${thumb}
+        </div>
+        <div class="meta">#${img.edition} ${ver}${qa}${triageBadge}${simBadge}</div>
         <div class="btns">
           <button type="button" class="btn small b-keep"${tipAttr("gallery.keep")}>${t("gallery.keep")}</button>
           <button type="button" class="btn small b-redo"${tipAttr("gallery.redo")}>${t("gallery.redo")}</button>
         </div>`;
-      tile.querySelector("img").addEventListener("click", () => openLightbox(img.url));
+      tile.querySelectorAll(".shot img").forEach((el) => {
+        el.addEventListener("click", () => openLightbox(img.url));
+      });
       tile.querySelector(".ver-badge")?.addEventListener("click", () => openVersions(img.edition));
     }
 
@@ -2155,7 +2341,8 @@ function renderGallery() {
 /* ---------- Help (built from locale keys, works offline) ---------- */
 const HELP_STEPS = [
   ["s1", "home"], ["s2", "base"], ["s3", "ctor"], ["s4", "recipes"],
-  ["s5", "render"], ["s6", "gallery"], ["s7", "export"], ["s8", "admin"],
+  ["s5", "render"], ["s6", "gallery"], ["s7", "export"],
+  ["s9", "deploy"], ["s10", "market"], ["s8", "admin"],
 ];
 const HELP_CLI = [
   ["doctor", "doctor"],
@@ -2170,7 +2357,7 @@ const HELP_CLI = [
   ["showcase", "showcase out/demo-archive.json -o out/showcase.html"],
   ["provenance", "provenance out/fal-s0.45 -o out/provenance.json"],
   ["dataset", "dataset out/demo-archive.json --images out/fal-s0.45 --trigger my_hero -o out/dataset.zip"],
-  ["release", "release-config out/demo-archive.json --profile magiceden -o out/sugar.json"],
+  ["release", "release-config out/demo-archive.json --profile magiceden -o out/cm-config.json"],
 ];
 const HELP_DOCS = [
   ["docs/GUIDE.md", "guide"], ["docs/STAGES.md", "stages"], ["docs/STUDIO-UI.md", "studioUi"],
@@ -2311,14 +2498,48 @@ function packageTitle(label) {
   return String(label || "").replace(/^[\p{Extended_Pictographic}\s🟢🟡🔵]+\s*/u, "").trim() || label;
 }
 
-function engineBaseLabel(id) {
+function engineBaseLabel(id, mode) {
+  if (mode) {
+    const specific = `engine.${id}.${mode}`;
+    if (hasKey(specific)) return t(specific);
+  }
   const key = `engine.${id}`;
   return hasKey(key) ? t(key) : String(id || "");
 }
 
+function selectEngineMode(sel) {
+  if (!sel) return null;
+  if (sel.id === "base-wish-engine") return $("base-wish-ref")?.checked ? "edit" : "txt";
+  if (sel.id === "o-engine" || sel.id === "g-engine" || sel.id === "c-engine") return "edit";
+  return null;
+}
+
+const STRENGTH_KIND = {
+  kontext: "words",
+  openai: "words",
+  pollinations: "words",
+  stability: "denoise",
+  comfyui: "denoise",
+  a1111: "denoise",
+  runware: "runware",
+  fal: "fal",
+  mock: "ignored",
+  schnell: "ignored",
+};
+
+function strengthNote(engineId) {
+  const kind = STRENGTH_KIND[engineId] || "ignored";
+  return t(`strength.note.${kind}`);
+}
+
+function paintStrengthNote(noteId, engineId) {
+  const el = $(noteId);
+  if (el) el.textContent = strengthNote(engineId);
+}
+
 /** User-facing price: credits in public mode; plain name otherwise (no fake $). */
-function engineOptionLabel(id) {
-  const base = engineBaseLabel(id);
+function engineOptionLabel(id, mode) {
+  const base = engineBaseLabel(id, mode);
   const me = state.account;
   const gpu = me?.localGpu;
   const localOn = !!gpu?.enabled;
@@ -2345,6 +2566,7 @@ function relabelEngineSelects() {
   document.body.classList.toggle("local-gpu-on", localOn);
   for (const sel of document.querySelectorAll("select")) {
     let any = false;
+    const mode = selectEngineMode(sel);
     for (const opt of sel.options) {
       const isLocalGpu = opt.hasAttribute("data-local-gpu") || opt.value === "comfyui" || opt.value === "a1111";
       if (isLocalGpu) {
@@ -2357,13 +2579,68 @@ function relabelEngineSelects() {
           if (fallback) sel.value = fallback.value;
         }
       }
-      if (!hasKey(`engine.${opt.value}`)) continue;
+      if (!hasKey(`engine.${opt.value}`) && !(mode && hasKey(`engine.${opt.value}.${mode}`))) continue;
       any = true;
-      opt.textContent = engineOptionLabel(opt.value);
+      opt.textContent = engineOptionLabel(opt.value, mode);
     }
     if (!any) continue;
   }
   renderLocalGpuPanel();
+  syncWishControls();
+  paintStrengthNote("o-strength-note", $("o-engine")?.value);
+  paintStrengthNote("g-strength-note", $("g-engine")?.value);
+}
+
+function paintWishPrompt() {
+  const el = $("base-wish-prompt");
+  if (!el) return;
+  const wish = ($("base-wish")?.value || "").trim();
+  const useRef = Boolean($("base-wish-ref")?.checked);
+  el.textContent = useRef
+    ? `${t("base.wish.promptEdit")}\n${wish}`
+    : `${t("base.wish.promptTxt")}\n${t("base.wish.wrapPrefix")}${wish}`;
+}
+
+function syncWishControls() {
+  const sel = $("base-wish-engine");
+  const useRef = Boolean($("base-wish-ref")?.checked);
+  const hasPrimary = (state.baseFiles || []).some((f) => f.primary);
+  const mode = useRef ? "edit" : "txt";
+  const ready = useRef ? state.health?.engines?.readyEdit : state.health?.engines?.readyTxt2img;
+  const gpuOn = !!state.account?.localGpu?.enabled;
+  if (sel) {
+    for (const opt of sel.options) {
+      const where = opt.dataset.mode || "both";
+      const inMode = where === "both" || where === mode;
+      const gpuOff = (opt.value === "comfyui" || opt.value === "a1111") && !gpuOn;
+      const listed = !Array.isArray(ready) || ready.includes(opt.value);
+      const show = inMode && !gpuOff;
+      opt.hidden = !show;
+      opt.disabled = !show || !listed;
+      if (show) opt.textContent = engineOptionLabel(opt.value, mode);
+    }
+    const current = sel.selectedOptions[0];
+    if (!current || current.disabled || current.hidden) {
+      const next = [...sel.options].find((o) => !o.disabled && !o.hidden);
+      if (next) sel.value = next.value;
+    }
+  }
+  const active = useRef && hasPrimary;
+  const slider = $("base-wish-str");
+  if (slider) slider.disabled = !active;
+  const strengthLabel = $("base-wish-str-label");
+  if (strengthLabel) strengthLabel.classList.toggle("strength-off", !active);
+  const scale = $("base-wish-scale");
+  if (scale) scale.hidden = !active;
+  const note = $("base-wish-str-note");
+  if (note) {
+    if (!useRef) note.textContent = t("strength.note.needRef");
+    else if (!hasPrimary) note.textContent = t("strength.note.needPrimary");
+    else note.textContent = strengthNote(sel?.value);
+  }
+  const gen = $("base-wish-gen");
+  if (gen && gen.dataset.busy !== "1") gen.disabled = useRef && !hasPrimary;
+  paintWishPrompt();
 }
 
 function localGpuDotClass(online) {
@@ -2473,7 +2750,7 @@ async function probeLocalGpu() {
 function perCreditUsd(usd, credits) {
   const c = Number(credits) || 0;
   if (!c) return "";
-  return `≈ $${(Number(usd) / c).toFixed(3)}/${t("acct.creditsShort")}`;
+  return `≈ ${fmtUsdLocale(Number(usd) / c, 3)}/${t("acct.creditsShort")}`;
 }
 
 async function refreshAccount() {
@@ -2498,8 +2775,8 @@ async function refreshAccount() {
     w.textContent = shortWallet(me.wallet);
     w.title = me.wallet;
   }
-  if ($("acct-balance")) $("acct-balance").textContent = String(me.balance);
-  if ($("topup-balance")) $("topup-balance").textContent = String(me.balance);
+  if ($("acct-balance")) $("acct-balance").textContent = fmtNum(me.balance);
+  if ($("topup-balance")) $("topup-balance").textContent = fmtNum(me.balance);
   $("acct-topup")?.classList.toggle("low", Number(me.balance) < LOW_BALANCE);
   const topupBtn = $("acct-topup");
   if (topupBtn) topupBtn.setAttribute("aria-label", `${t("acct.topup")} · ${me.balance} ${t("acct.credits")}`);
@@ -2508,7 +2785,7 @@ async function refreshAccount() {
 function renderTopup() {
   const me = state.account;
   if (!me) return;
-  if ($("topup-balance")) $("topup-balance").textContent = String(me.balance);
+  if ($("topup-balance")) $("topup-balance").textContent = fmtNum(me.balance);
   const grid = $("topup-packages");
   if (grid) {
     grid.innerHTML = (me.packages || []).map((p) => {
@@ -2518,9 +2795,9 @@ function renderTopup() {
       <article class="topup-card topup-card--${escapeHtml(p.id)}${p.recommended ? " rec" : ""}">
         ${p.recommended ? `<span class="topup-card-badge">${escapeHtml(t("topup.recommended"))}</span>` : ""}
         <div class="topup-card-name">${escapeHtml(title)}</div>
-        <div class="topup-credits"><b>${p.credits}</b> <span class="muted small">${escapeHtml(t("acct.credits"))}</span></div>
+        <div class="topup-credits"><b>${fmtNum(p.credits)}</b> <span class="muted small">${escapeHtml(t("acct.credits"))}</span></div>
         <div class="topup-price">
-          <span class="topup-usd">$${Number(p.usd).toFixed(2)}</span>
+          <span class="topup-usd">${escapeHtml(fmtUsdLocale(p.usd, 2))}</span>
           ${unit ? `<span class="topup-unit">${escapeHtml(unit)}</span>` : ""}
         </div>
         <p class="topup-note">${escapeHtml(p.note || "")}</p>
@@ -2542,7 +2819,7 @@ function renderTopup() {
     const rows = d.transactions || [];
     box.innerHTML = rows.length
       ? rows.map((tx) =>
-        `<div class="hist-row"><span>${escapeHtml(tx.created_at.replace("T", " "))}</span><span title="${escapeHtml(tx.note || tx.kind)}">${escapeHtml(tx.note || tx.kind)}</span><b class="${tx.credits < 0 ? "bad" : "ok"}">${tx.credits > 0 ? "+" : ""}${tx.credits}</b></div>`)
+        `<div class="hist-row"><span>${escapeHtml(fmtDate(tx.created_at))}</span><span title="${escapeHtml(tx.note || tx.kind)}">${escapeHtml(tx.note || tx.kind)}</span><b class="${tx.credits < 0 ? "bad" : "ok"}">${tx.credits > 0 ? "+" : ""}${fmtNum(tx.credits)}</b></div>`)
         .join("")
       : `<p class="muted hist-empty">${escapeHtml(t("history.empty"))}</p>`;
   }).catch(() => {});
@@ -2626,7 +2903,7 @@ function renderSolSection() {
   if (!section) return;
   const box = $("sol-packs");
   if (box) box.innerHTML = sp?.testPack
-    ? `<button type="button" class="btn small sol-pack" data-pack="${escapeHtml(sp.testPack.id)}">${escapeHtml(packageTitle(sp.testPack.label))} · $${Number(sp.testPack.usd).toFixed(2)} → ${sp.testPack.credits} ${escapeHtml(t("acct.credits"))}</button>`
+    ? `<button type="button" class="btn small sol-pack" data-pack="${escapeHtml(sp.testPack.id)}">${escapeHtml(packageTitle(sp.testPack.label))} · ${escapeHtml(fmtUsdLocale(sp.testPack.usd, 2))} → ${fmtNum(sp.testPack.credits)} ${escapeHtml(t("acct.credits"))}</button>`
     : "";
   section.hidden = !(sp?.enabled && (sp.testPack || solShownId));
 }
@@ -2780,7 +3057,13 @@ function setupAccount() {
   $("topup-close")?.addEventListener("click", () => { overlay.hidden = true; refreshAccount(); });
   overlay?.addEventListener("click", (e) => { if (e.target === overlay) { overlay.hidden = true; refreshAccount(); } });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && overlay && !overlay.hidden) {
+    if (e.key !== "Escape") return;
+    const light = $("v-lightbox");
+    if (light && !light.hidden) {
+      light.hidden = true;
+      return;
+    }
+    if (overlay && !overlay.hidden) {
       overlay.hidden = true;
       refreshAccount();
     }
@@ -2855,7 +3138,7 @@ function renderVersions(data) {
   for (const v of [...data.versions].reverse()) {
     const item = document.createElement("div");
     item.className = `ver-item${v.current ? " current" : ""}`;
-    const when = v.at ? new Date(v.at).toLocaleString() : "—";
+    const when = v.at ? fmtDate(v.at) : "—";
     item.innerHTML = `
       <img src="${escapeHtml(v.url)}" alt="v${v.v}" />
       <div class="small"><b>v${v.v}</b> ${v.current ? `· ${escapeHtml(t("ver.current"))}` : ""}<br>
@@ -2921,6 +3204,7 @@ function openLightbox(url) {
   const img = $("v-lightbox-img");
   if (!box || !img) return;
   img.src = url;
+  img.alt = t("gallery.zoom.alt");
   box.hidden = false;
 }
 
@@ -2929,8 +3213,29 @@ function editionFromFile(name) {
   return m ? m[1] : "";
 }
 
+async function loadSimilarity() {
+  const dir = state.galleryDir || $("v-dir")?.value;
+  if (!dir || !$("v-similarity")?.checked) {
+    state.gallerySimilarity = {};
+    renderGallery();
+    return;
+  }
+  const data = await api(`/api/similarity?dir=${encodeURIComponent(dir)}`);
+  const map = {};
+  for (const row of data.editions || []) map[String(row.edition)] = row;
+  state.gallerySimilarity = map;
+  renderGallery();
+}
+
 function setupGallery() {
   $("v-filter")?.addEventListener("change", renderGallery);
+  $("v-thumb64")?.addEventListener("change", renderGallery);
+  $("v-similarity")?.addEventListener("change", () => {
+    loadSimilarity().catch((e) => {
+      const status = $("v-triage-status");
+      if (status) status.textContent = e.message;
+    });
+  });
   $("v-dupes")?.addEventListener("click", async () => {
     const status = $("v-dupes-status");
     const box = $("v-dupes-list");
@@ -3118,6 +3423,217 @@ function setupGallery() {
 }
 
 /* ---------- Export + workspace + checklist ---------- */
+
+const PATH_PHASES = [
+  { id: "lab", tabs: ["home", "base", "ctor", "recipes"], entry: "home" },
+  { id: "studio", tabs: ["render", "gallery"], entry: "render" },
+  { id: "release", tabs: ["export"], entry: "export" },
+  { id: "deploy", tabs: ["deploy"], entry: "deploy" },
+  { id: "market", tabs: ["market"], entry: "market" },
+];
+const PATH_ORDER = ["home", "base", "ctor", "recipes", "render", "gallery", "export", "deploy", "market"];
+
+function phaseForTab(name) {
+  return PATH_PHASES.find((p) => p.tabs.includes(name)) || PATH_PHASES[0];
+}
+
+function beginnerOn() {
+  return Boolean($("path-beginner")?.checked);
+}
+
+function renderPath(activeTab) {
+  const box = $("path-steps");
+  if (!box) return;
+  const phase = phaseForTab(activeTab);
+  box.innerHTML = "";
+  PATH_PHASES.forEach((p, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    if (p.id === phase.id) btn.classList.add("on");
+    btn.innerHTML = `<span class="path-n">${i + 1}</span>${escapeHtml(t(`path.${p.id}`))}`;
+    btn.addEventListener("click", () => showTab(p.entry));
+    box.appendChild(btn);
+  });
+  const nextWrap = $("path-next");
+  const idx = PATH_ORDER.indexOf(activeTab);
+  const next = idx >= 0 ? PATH_ORDER[idx + 1] : null;
+  if (!nextWrap) return;
+  if (!beginnerOn() || activeTab === "admin" || activeTab === "help") {
+    nextWrap.hidden = true;
+    return;
+  }
+  nextWrap.hidden = false;
+  const where = $("path-where");
+  const go = $("path-go");
+  if (where) where.textContent = t("path.youAre", { step: t(`path.${phase.id}`) });
+  if (!go) return;
+  if (!next) {
+    go.hidden = true;
+    if (where) where.textContent = t("path.done");
+    return;
+  }
+  go.hidden = false;
+  go.textContent = t("path.next", { step: t(`nav.${next}`) });
+  go.onclick = () => showTab(next);
+}
+
+function fmtUsdLoose(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "—";
+  return fmtUsdLocale(v, v < 0.1 ? 4 : 2);
+}
+
+function stageLabel(stage, fallback) {
+  const key = `stage.${stage}`;
+  return hasKey(key) ? t(key) : (fallback || stage || "");
+}
+
+function formatQuote(q) {
+  if (!q) return { text: "", tip: "" };
+  const text = t("price.line", {
+    label: stageLabel(q.stage, q.label),
+    credits: q.credits ?? 0,
+    price: fmtUsdLoose(q.priceUsd),
+  });
+  const tip = state.account?.admin
+    ? t("price.formulaTip", {
+      formula: q.formula || "",
+      cost: fmtUsdLoose(q.costUsd),
+      margin: fmtUsdLoose(q.marginUsd),
+    })
+    : "";
+  return { text, tip };
+}
+
+function paintQuote(el, q) {
+  const view = formatQuote(q);
+  el.textContent = view.text;
+  if (view.tip) {
+    el.title = view.tip;
+    el.dataset.tip = view.tip;
+  } else {
+    el.removeAttribute("title");
+    delete el.dataset.tip;
+  }
+}
+
+async function showStagePrice(stage, elementId, extra = {}) {
+  const el = $(elementId);
+  if (!el) return;
+  const q = new URLSearchParams({ stage, ...Object.fromEntries(Object.entries(extra).map(([k, v]) => [k, String(v)])) });
+  if (stage === "archive" && extra.ipfs) q.set("ipfs", "1");
+  if (stage === "archive" && extra.zip === false) q.set("zip", "0");
+  try {
+    const data = await api(`/api/stages/quote?${q}`);
+    paintQuote(el, data.quote);
+  } catch (e) {
+    el.textContent = e.message;
+  }
+}
+
+async function showCurationPrice() {
+  const el = $("v-triage-price");
+  if (!el) return;
+  const provider = $("v-triage-provider")?.value || "heuristic";
+  try {
+    const data = await api(`/api/stages/quote?stage=curation&provider=${encodeURIComponent(provider)}&count=1`);
+    paintQuote(el, data.quote);
+  } catch {
+    el.textContent = "";
+  }
+}
+
+function fillKitSets() {
+  const source = $("x-set");
+  for (const id of ["d-set", "m-set"]) {
+    const sel = $(id);
+    if (!sel || !source) continue;
+    const cur = sel.value;
+    sel.innerHTML = source.innerHTML;
+    if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+    else if (source.value) sel.value = source.value;
+  }
+  const name = $("m-name");
+  if (name && !name.value) name.value = $("o-name")?.value || "";
+  const desc = $("m-desc");
+  if (desc && !desc.value) desc.value = $("x-desc")?.value || "";
+  const deployDesc = $("d-desc");
+  if (deployDesc && !deployDesc.value) deployDesc.value = $("x-desc")?.value || "";
+}
+
+function showPreflightReport(preflight) {
+  const box = $("x-preflight-report");
+  const groups = $("x-preflight-groups");
+  const badge = $("x-preflight-badge");
+  if (!box) return;
+  if (!preflight?.report && !preflight?.checks) {
+    box.hidden = true;
+    if (groups) groups.replaceChildren();
+    box.dataset.report = "";
+    return;
+  }
+  box.hidden = false;
+  box.dataset.report = preflight.report || "";
+  if (badge) {
+    const ready = Boolean(preflight.ready);
+    badge.textContent = ready ? t("preflight.status.ready") : t("preflight.status.blocked");
+    badge.className = `preflight-badge ${ready ? "ready" : "blocked"}`;
+  }
+  if (!groups) return;
+  groups.replaceChildren();
+  const checks = Array.isArray(preflight.checks) ? preflight.checks : [];
+  const order = ["error", "warning", "ok"];
+  for (const level of order) {
+    const rows = checks.filter((c) => c.level === level);
+    if (!rows.length) continue;
+    const section = document.createElement("section");
+    const title = document.createElement("h3");
+    title.textContent = t(`preflight.group.${level === "error" ? "errors" : level === "warning" ? "warnings" : "ok"}`);
+    section.appendChild(title);
+    const list = document.createElement("ul");
+    list.className = "preflight-list";
+    for (const row of rows) {
+      const li = document.createElement("li");
+      li.className = `preflight-item ${level}`;
+      const icon = document.createElement("span");
+      icon.className = "preflight-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = level === "error" ? "✕" : level === "warning" ? "!" : "✓";
+      const sr = document.createElement("span");
+      sr.className = "visually-hidden";
+      sr.textContent = t(`preflight.level.${level}`);
+      const text = document.createElement("span");
+      text.textContent = row.message || "";
+      li.append(icon, sr, text);
+      if (level === "warning") {
+        const hint = document.createElement("span");
+        hint.className = "preflight-hint";
+        const key = `preflight.hint.${row.code || "generic"}`;
+        hint.textContent = hasKey(key) ? t(key) : t("preflight.hint.generic");
+        li.appendChild(hint);
+      }
+      list.appendChild(li);
+    }
+    section.appendChild(list);
+    groups.appendChild(section);
+  }
+}
+
+function setupPath() {
+  const box = $("path-beginner");
+  if (!box) return;
+  try {
+    const saved = localStorage.getItem("series-lab-beginner");
+    if (saved === "0") box.checked = false;
+  } catch { /* ignore */ }
+  box.addEventListener("change", () => {
+    try { localStorage.setItem("series-lab-beginner", box.checked ? "1" : "0"); } catch { /* ignore */ }
+    const active = document.querySelector(".tab.on")?.id?.replace(/^tab-/, "") || "home";
+    renderPath(active);
+  });
+  renderPath(document.querySelector(".tab.on")?.id?.replace(/^tab-/, "") || "home");
+}
+
 async function fillExportSets() {
   const sel = $("x-set");
   if (!sel) return;
@@ -3211,7 +3727,7 @@ async function renderChecklist() {
     return;
   }
   try {
-    if (msg) msg.textContent = "…";
+    if (msg) msg.textContent = t("ui.working");
     const q = new URLSearchParams({ archive });
     if (set) q.set("set", set);
     const data = await api(`/api/checklist?${q}`);
@@ -3260,6 +3776,128 @@ async function updateMetadataPreview() {
   }
 }
 
+function bundleBody(extra = {}) {
+  return {
+    archive: $("x-file")?.value,
+    set: extra.set || $("x-set")?.value,
+    profile: extra.profile || $("x-profile")?.value || "opensea",
+    onlyKeep: extra.onlyKeep ?? Boolean($("x-onlyKeep")?.checked),
+    namePrefix: $("x-namePrefix")?.value || "Series #",
+    symbol: $("x-symbol")?.value || "LAB",
+    sellerFeeBasisPoints: Number($("x-fee")?.value ?? 500),
+    description: $("x-desc")?.value || "",
+    creatorAddress: $("x-creator-address")?.value || "",
+    locale: getLocale(),
+    ...extra,
+  };
+}
+
+/** What each launchpad profile needs: only that profile's hints and fields are shown. */
+const PROFILE_UI = {
+  opensea: { chain: "evm", storage: true, pin: false },
+  magiceden: { chain: "solana", storage: true, pin: true },
+  launchmynft: { chain: "solana", storage: true, pin: true },
+  ordinalsbot: { chain: "bitcoin", storage: false, pin: false },
+};
+
+/**
+ * One network for Export, Deploy kit and Marketplace kit. Whichever selector the user
+ * changes is the source; the other two follow without firing their own change events.
+ *   profile: opensea → evm · magiceden / launchmynft → solana · ordinalsbot → bitcoin
+ *   deploy:  solana / solana-legacy / evm / bitcoin (Sugar stays Sugar while the network is Solana)
+ */
+let builtNetworkKey = null;
+
+/** A built ZIP, its guide and status belong to the network it was built for: drop them when the network changes. */
+function clearBuiltKits() {
+  for (const [dl, ...texts] of [["x-download", "x-bundle-msg"], ["d-download", "d-msg", "d-guide"], ["m-download", "m-msg", "m-note"]]) {
+    const a = $(dl);
+    if (a) {
+      a.hidden = true;
+      a.removeAttribute("href");
+    }
+    for (const id of texts) {
+      const el = $(id);
+      if (!el) continue;
+      el.textContent = "";
+      if (id === "d-guide" || id === "m-note") el.hidden = true;
+    }
+  }
+}
+
+function syncNetwork(source) {
+  const x = $("x-profile");
+  const d = $("d-chain");
+  const m = $("m-chain");
+  const chain = source === "profile"
+    ? (PROFILE_UI[x?.value] || PROFILE_UI.opensea).chain
+    : source === "deploy"
+      ? (d?.value === "solana-legacy" ? "solana" : d?.value || "solana")
+      : m?.value || "solana";
+  if (source !== "profile" && x && (PROFILE_UI[x.value] || PROFILE_UI.opensea).chain !== chain) {
+    x.value = chain === "evm" ? "opensea" : chain === "bitcoin" ? "ordinalsbot" : "magiceden";
+    applyProfileUi();
+    updateMetadataPreview();
+    updateReleaseHub();
+  }
+  if (source !== "deploy" && d) {
+    const cur = d.value === "solana-legacy" ? "solana" : d.value;
+    if (cur !== chain) {
+      d.value = chain;
+      loadLaunchAdvisor();
+    }
+  }
+  if (source !== "market" && m && m.value !== chain) m.value = chain;
+  const key = `${x?.value}|${d?.value}|${m?.value}`;
+  if (builtNetworkKey !== null && builtNetworkKey !== key) clearBuiltKits();
+  builtNetworkKey = key;
+}
+
+function applyProfileUi() {
+  const prof = $("x-profile")?.value || "opensea";
+  const cfg = PROFILE_UI[prof] || PROFILE_UI.opensea;
+  const fee = $("x-fee");
+  if (fee) {
+    // Ordinals has no royalty: remember the value and bring it back when the profile changes again.
+    if (prof === "ordinalsbot") {
+      if (fee.dataset.prevFee === undefined) fee.dataset.prevFee = fee.value;
+      fee.value = "0";
+    } else if (fee.dataset.prevFee !== undefined) {
+      fee.value = fee.dataset.prevFee;
+      delete fee.dataset.prevFee;
+    }
+  }
+  const hint = $("x-profile-hint");
+  if (hint) {
+    hint.setAttribute("data-i18n", `export.profileHint.${prof}`);
+    hint.textContent = t(`export.profileHint.${prof}`);
+  }
+  const creator = $("x-creator-address");
+  if (creator) {
+    const key = `export.creator.ph.${cfg.chain}`;
+    creator.setAttribute("data-i18n-placeholder", key);
+    creator.placeholder = t(key);
+  }
+  const uri = $("x-uri-prefix");
+  if (uri && cfg.storage) {
+    const key = `export.bundle.uriPrefix.ph.${cfg.chain === "solana" ? "solana" : "evm"}`;
+    uri.setAttribute("data-i18n-placeholder", key);
+    uri.placeholder = t(key);
+  }
+  for (const id of ["x-uri-wrap", "x-anim-wrap"]) {
+    const wrap = $(id);
+    if (wrap) wrap.hidden = !cfg.storage;
+  }
+  if (!cfg.storage) {
+    // A stale prefix from another profile must not leak into Ordinals metadata.
+    if ($("x-uri-prefix")) $("x-uri-prefix").value = "";
+    if ($("x-anim-prefix")) $("x-anim-prefix").value = "";
+  }
+  const pin = $("x-pin-irys");
+  if (pin) pin.hidden = !cfg.pin;
+  if (!cfg.pin && $("x-pin-status")) $("x-pin-status").textContent = "";
+}
+
 function setupExport() {
   $("x-file")?.addEventListener("change", () => {
     updateJsonLink();
@@ -3267,10 +3905,8 @@ function setupExport() {
     scheduleWorkspaceSave();
   });
   $("x-profile")?.addEventListener("change", () => {
-    const prof = $("x-profile")?.value;
-    if (prof === "ordinalsbot" && $("x-fee")) {
-      $("x-fee").value = "0";
-    }
+    applyProfileUi();
+    syncNetwork("profile");
     updateMetadataPreview();
   });
   $("x-creator-address")?.addEventListener("input", updateMetadataPreview);
@@ -3282,8 +3918,8 @@ function setupExport() {
   $("x-fee")?.addEventListener("input", updateMetadataPreview);
   $("x-desc")?.addEventListener("input", updateMetadataPreview);
 
-  $("x-pin-pinata")?.addEventListener("click", async () => {
-    const btn = $("x-pin-pinata");
+  $("x-pin-irys")?.addEventListener("click", async () => {
+    const btn = $("x-pin-irys");
     const status = $("x-pin-status");
     const set = $("x-set")?.value;
     if (!set) {
@@ -3298,11 +3934,11 @@ function setupExport() {
         method: "POST",
         body: JSON.stringify({ dir: set, name }),
       });
-      if (data.ipfsUri && $("x-uri-prefix")) {
-        $("x-uri-prefix").value = data.ipfsUri;
+      if (data.arweaveUri && $("x-uri-prefix")) {
+        $("x-uri-prefix").value = data.arweaveUri;
       }
       if (status) {
-        status.textContent = t("export.bundle.pinned", { cid: data.ipfsHash });
+        status.textContent = t("export.bundle.pinned", { cid: data.arweaveId });
       }
       updateMetadataPreview();
     } catch (e) {
@@ -3372,7 +4008,7 @@ function setupExport() {
       const archive = $("x-file")?.value;
       const set = $("x-set")?.value;
       if (!archive) throw new Error(t("export.none"));
-      if (msg) msg.textContent = "…";
+      if (msg) msg.textContent = t("ui.working");
       if (dl) dl.hidden = true;
       const next = $("x-release-next");
       if (next) next.hidden = true;
@@ -3404,7 +4040,8 @@ function setupExport() {
           locale: getLocale(),
         }),
       });
-      if (msg) msg.textContent = t("export.bundle.ok", { n: data.count, missing: (data.missing || []).length });
+      if (msg) msg.textContent = `${t("export.bundle.ok", { n: fmtNum(data.count), missing: fmtNum((data.missing || []).length) })} · ${t("econ.creditsDebited", { n: fmtNum(data.chargedCredits || 0) })}`;
+      showPreflightReport(data.preflight);
       if (dl && data.downloadUrl) {
         dl.href = data.downloadUrl;
         dl.download = data.file || "release.zip";
@@ -3419,6 +4056,38 @@ function setupExport() {
       }
     } catch (e) {
       if (msg) msg.textContent = e.message;
+      showPreflightReport(e.payload?.preflight);
+    }
+  });
+  $("x-preflight-copy")?.addEventListener("click", async () => {
+    const text = $("x-preflight-report")?.dataset.report || "";
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const area = document.createElement("textarea");
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      area.remove();
+    }
+    const msg = $("x-release-msg");
+    if (msg) msg.textContent = t("preflight.copied");
+  });
+  $("x-preflight")?.addEventListener("click", async () => {
+    const msg = $("x-release-msg");
+    try {
+      if (msg) msg.textContent = t("ui.working");
+      const data = await api("/api/preflight", {
+        method: "POST",
+        body: JSON.stringify(bundleBody({ onlyKeep: true, profile: $("x-profile")?.value || "opensea" })),
+      });
+      showPreflightReport(data.preflight);
+      if (msg) msg.textContent = data.ready ? t("preflight.ready") : t("preflight.blocked");
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+      showPreflightReport(e.payload?.preflight);
     }
   });
   $("x-bundle")?.addEventListener("click", async () => {
@@ -3429,7 +4098,7 @@ function setupExport() {
       const set = $("x-set")?.value;
       if (!archive) throw new Error(t("export.none"));
       if (!set) throw new Error(t("export.bundle.noSets"));
-      if (msg) msg.textContent = "…";
+      if (msg) msg.textContent = t("ui.working");
       if (dl) dl.hidden = true;
       const data = await api("/api/export/bundle", {
         method: "POST",
@@ -3451,12 +4120,13 @@ function setupExport() {
         }),
       });
       if (msg) {
-        msg.textContent = t("export.bundle.ok", {
-          n: data.count,
-          missing: (data.missing || []).length,
-        });
+        msg.textContent = `${t("export.bundle.ok", {
+          n: fmtNum(data.count),
+          missing: fmtNum((data.missing || []).length),
+        })} · ${t("econ.creditsDebited", { n: fmtNum(data.chargedCredits || 0) })}`;
         msg.className = "small ok-msg";
       }
+      showPreflightReport(data.preflight);
       if (dl && data.downloadUrl) {
         dl.href = data.downloadUrl;
         dl.download = data.file || "bundle.zip";
@@ -3476,6 +4146,7 @@ function setupExport() {
         msg.textContent = e.message;
         msg.className = "small err-msg";
       }
+      showPreflightReport(e.payload?.preflight);
     }
   });
 
@@ -3595,6 +4266,7 @@ function setupExport() {
     updateReleaseHub();
   });
 
+  applyProfileUi();
   setTimeout(() => {
     updateMetadataPreview();
     updateReleaseHub();
@@ -3616,17 +4288,222 @@ async function updateReleaseHub() {
     const portal = data.portal;
     if (portal) {
       portalBtn.href = portal.portalUrl;
-      portalBtn.textContent = `🌐 ${portal.name}`;
+      portalBtn.textContent = t("release.hub.portalNamed", { name: portal.name });
       if (testnetBtn) {
         testnetBtn.href = portal.testnetPortalUrl;
       }
       if (tipsList) {
-        tipsList.innerHTML = (portal.tips || []).map((t) => `<li>${escapeHtml(t)}</li>`).join("");
+        const local = [];
+        for (let i = 1; i < 10; i++) {
+          const key = `release.portal.${portal.id}.tip${i}`;
+          if (!hasKey(key)) break;
+          local.push(t(key));
+        }
+        const lines = local.length ? local : (portal.tips || []);
+        tipsList.innerHTML = lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
       }
     }
   } catch {
     /* ignore */
   }
+}
+
+function kitArchive() {
+  return $("x-file")?.value || state.archiveFile || state.archives?.[0]?.file || "";
+}
+
+function setBusy(btn, on) {
+  if (!btn) return;
+  btn.disabled = Boolean(on);
+  btn.classList.toggle("is-loading", Boolean(on));
+  btn.setAttribute("aria-busy", on ? "true" : "false");
+}
+
+const advisorChecked = new Set();
+
+function advisorLink(href, label) {
+  if (!/^https:\/\//.test(href || "")) return null;
+  const a = document.createElement("a");
+  a.href = href;
+  a.textContent = label || href;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  return a;
+}
+
+function renderAdvisorSection(section) {
+  const det = document.createElement("details");
+  det.className = "advisor-section";
+  det.open = true;
+  const sum = document.createElement("summary");
+  sum.textContent = section.title || "";
+  det.appendChild(sum);
+  const body = document.createElement("div");
+  body.className = "advisor-body";
+  if (section.lead) {
+    const lead = document.createElement("p");
+    lead.className = "advisor-lead";
+    lead.textContent = section.lead;
+    body.appendChild(lead);
+  }
+  for (const para of section.paragraphs || []) {
+    const p = document.createElement("p");
+    p.textContent = para;
+    body.appendChild(p);
+  }
+  if (!section.paragraphs?.length && section.body) {
+    const p = document.createElement("p");
+    p.textContent = section.body;
+    body.appendChild(p);
+  }
+  if (section.checks?.length) {
+    const ul = document.createElement("ul");
+    ul.className = "advisor-checks";
+    for (const item of section.checks) {
+      const li = document.createElement("li");
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = advisorChecked.has(item.id);
+      input.addEventListener("change", () => {
+        if (input.checked) advisorChecked.add(item.id);
+        else advisorChecked.delete(item.id);
+      });
+      const span = document.createElement("span");
+      span.textContent = item.text || "";
+      label.append(input, span);
+      li.appendChild(label);
+      ul.appendChild(li);
+    }
+    body.appendChild(ul);
+  }
+  if (section.links?.length) {
+    const sources = document.createElement("p");
+    sources.className = "advisor-sources";
+    for (const item of section.links) {
+      const a = advisorLink(item.href, item.label);
+      if (a) sources.appendChild(a);
+    }
+    if (sources.childNodes.length) body.appendChild(sources);
+  }
+  det.appendChild(body);
+  return det;
+}
+
+async function loadLaunchAdvisor() {
+  const root = $("d-advisor");
+  if (!root) return;
+  const rawChain = $("d-chain")?.value || "solana";
+  const chain = rawChain === "solana-legacy" ? "solana" : rawChain;
+  try {
+    const data = await api(`/api/launch-advisor?chain=${encodeURIComponent(chain)}&locale=${encodeURIComponent(getLocale())}`);
+    root.replaceChildren();
+    for (const section of data.sections || []) root.appendChild(renderAdvisorSection(section));
+    const area = $("d-holder");
+    if (area && area.dataset.dirty !== "1" && data.holderTemplate) area.value = data.holderTemplate;
+  } catch (e) {
+    root.textContent = e.message;
+  }
+}
+
+function setupKits() {
+  $("d-chain")?.addEventListener("change", () => {
+    syncNetwork("deploy");
+    loadLaunchAdvisor();
+  });
+  $("m-chain")?.addEventListener("change", () => syncNetwork("market"));
+  // Solana is the default network (Core Candy Machine): align Export and Market with the Deploy default.
+  syncNetwork("deploy");
+  $("d-holder")?.addEventListener("input", () => {
+    if ($("d-holder")) $("d-holder").dataset.dirty = "1";
+  });
+  loadLaunchAdvisor();
+  $("d-build")?.addEventListener("click", async () => {
+    const msg = $("d-msg");
+    const dl = $("d-download");
+    const guide = $("d-guide");
+    const btn = $("d-build");
+    try {
+      const archive = kitArchive();
+      const set = $("d-set")?.value;
+      if (!archive) throw new Error(t("export.none"));
+      if (!set) throw new Error(t("export.bundle.noSets"));
+      setBusy(btn, true);
+      if (msg) msg.textContent = t("ui.working");
+      if (dl) dl.hidden = true;
+      const data = await api("/api/deploy-kit", {
+        method: "POST",
+        body: JSON.stringify({
+          archive,
+          set,
+          chain: $("d-chain")?.value || "solana",
+          legacy: $("d-chain")?.value === "solana-legacy",
+          creatorAddress: $("d-creator")?.value || "",
+          symbol: $("d-symbol")?.value || "LAB",
+          description: $("d-desc")?.value || "",
+          locale: getLocale(),
+          includeHolderLicence: Boolean($("d-holder-on")?.checked),
+          holderLicence: $("d-holder")?.value || "",
+        }),
+      });
+      if (msg) msg.textContent = t("deploy.ok", { chain: data.chain, credits: data.chargedCredits || 0 });
+      if (dl && data.downloadUrl) {
+        dl.href = data.downloadUrl;
+        dl.download = data.file || "deploy-kit.zip";
+        dl.hidden = false;
+      }
+      if (guide) {
+        guide.hidden = false;
+        guide.textContent = data.guide || "";
+      }
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    } finally {
+      setBusy(btn, false);
+    }
+  });
+  $("m-build")?.addEventListener("click", async () => {
+    const msg = $("m-msg");
+    const dl = $("m-download");
+    const note = $("m-note");
+    const btn = $("m-build");
+    try {
+      const archive = kitArchive();
+      const set = $("m-set")?.value;
+      if (!archive) throw new Error(t("export.none"));
+      if (!set) throw new Error(t("export.bundle.noSets"));
+      setBusy(btn, true);
+      if (msg) msg.textContent = t("ui.working");
+      if (dl) dl.hidden = true;
+      const data = await api("/api/marketplace-kit", {
+        method: "POST",
+        body: JSON.stringify({
+          archive,
+          set,
+          chain: $("m-chain")?.value || "solana",
+          name: $("m-name")?.value || "",
+          description: $("m-desc")?.value || "",
+          locale: getLocale(),
+        }),
+      });
+      if (msg) msg.textContent = t("market.ok", { chain: data.chain, credits: data.chargedCredits || 0 });
+      if (dl && data.downloadUrl) {
+        dl.href = data.downloadUrl;
+        dl.download = data.file || "marketplace-kit.zip";
+        dl.hidden = false;
+      }
+      if (note) {
+        note.hidden = false;
+        const warns = (data.warnings || []).join("\n");
+        note.textContent = warns || t("preflight.ready");
+      }
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    } finally {
+      setBusy(btn, false);
+    }
+  });
+  $("v-triage-provider")?.addEventListener("change", () => showCurationPrice());
 }
 
 
@@ -3782,7 +4659,7 @@ async function renderSpend() {
   if (!out) return;
   try {
     const d = await api("/api/spend");
-    const by = Object.entries(d.byEngine || {}).map(([k, v]) => `${escapeHtml(k)}: $${v}`).join(" · ");
+    const by = Object.entries(d.byEngine || {}).map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(fmtUsdLocale(v, Number(v) < 0.1 ? 4 : 2))}`).join(" · ");
     const engines = Object.entries(d.engines || {}).map(([k, row]) => {
       const pct = Math.round((row.failRate || 0) * 100);
       return escapeHtml(t("spend.engine", { engine: k, ok: row.ok, fail: row.fail, pct }));
@@ -3796,7 +4673,8 @@ async function renderSpend() {
       errBox.innerHTML = rows.length
         ? rows.map((r) => {
           const where = [r.set, r.edition != null ? `#${r.edition}` : ""].filter(Boolean).join(" ");
-          return `<div class="err-row"><b>${escapeHtml(r.engine)}</b> <span class="muted">${escapeHtml(r.at || "")}${where ? ` · ${escapeHtml(where)}` : ""}</span><div>${escapeHtml(r.error || t("admin.errors.unknown"))}</div></div>`;
+          const when = r.at ? fmtDate(r.at) : "";
+          return `<div class="err-row"><b>${escapeHtml(r.engine)}</b> <span class="muted">${escapeHtml(when)}${where ? ` · ${escapeHtml(where)}` : ""}</span><div>${escapeHtml(presentApiError({ error: r.error }, t) || t("admin.errors.unknown"))}</div></div>`;
         }).join("")
         : `<p class="muted">${escapeHtml(t("admin.errors.none"))}</p>`;
     }
@@ -3812,19 +4690,17 @@ function econKpi(label, value, { sub = "", cls = "" } = {}) {
 }
 
 function fmtUsd(n, digits = 2) {
-  if (n == null || Number.isNaN(Number(n))) return "—";
-  return `$${Number(n).toFixed(digits)}`;
+  return fmtUsdLocale(n, digits);
 }
 
 function fmtPct(n) {
-  if (n == null || Number.isNaN(Number(n))) return "—";
-  return `${n}%`;
+  return fmtPctLocale(n);
 }
 
 async function renderEconomy() {
   const out = $("econ-out");
   if (!out) return;
-  out.innerHTML = `<p class="muted">…</p>`;
+  out.innerHTML = `<p class="muted">${escapeHtml(t("ui.working"))}</p>`;
   try {
     const q = state.econDays === "all" ? "all" : state.econDays;
     const d = await api(`/api/admin/economy?days=${encodeURIComponent(q)}`);
@@ -3873,11 +4749,11 @@ async function renderEconomy() {
     const ohItems = (oh.items || []).map((it) => `
       <div class="econ-pack">
         <b>${escapeHtml(it.label)}</b>
-        <div class="price">${fmtUsd(it.usd)}/міс</div>
+        <div class="price">${escapeHtml(t("econ.perMonth", { usd: fmtUsd(it.usd) }))}</div>
       </div>`).join("");
     const scenRows = (m.scenarios || []).map((r) => `
       <tr>
-        <td class="num">${r.pro_packs}× Pro</td>
+        <td class="num">${escapeHtml(t("econ.proPacks", { n: fmtNum(r.pro_packs) }))}</td>
         <td class="num">${fmtUsd(r.revenue_usd)}</td>
         <td class="num">${fmtUsd(r.api_usd)}</td>
         <td class="num">${fmtUsd(r.fees_usd)}</td>
@@ -3900,16 +4776,16 @@ async function renderEconomy() {
         <div class="econ-kpis">
           ${econKpi(t("econ.kpi.users"), ov.users_total ?? "—", { sub: `${t("econ.kpi.verified")}: ${ov.users_verified ?? "—"}` })}
           ${econKpi(t("econ.kpi.revenue"), fmtUsd(ov.revenue_usd), { sub: t("econ.ext", { ext: fmtUsd(ov.revenue_usd_external), int: fmtUsd(ov.revenue_usd_internal) }) })}
-          ${econKpi(t("econ.kpi.outstanding"), ov.credits_outstanding ?? "—", { sub: `${ov.credits_sold ?? 0} sold` })}
-          ${econKpi(t("econ.kpi.arpu"), arpu, { sub: `${g.payments_count ?? 0} pay` })}
+          ${econKpi(t("econ.kpi.outstanding"), ov.credits_outstanding == null ? "—" : fmtNum(ov.credits_outstanding), { sub: t("econ.sold", { n: fmtNum(ov.credits_sold ?? 0) }) })}
+          ${econKpi(t("econ.kpi.arpu"), arpu, { sub: t("econ.pay", { n: fmtNum(g.payments_count ?? 0) }) })}
         </div>
       </section>
       <section class="econ-section">
         <h4>${escapeHtml(t("econ.live"))} · ${escapeHtml(g.period || q)}</h4>
         <div class="econ-kpis">
-          ${econKpi(t("econ.kpi.margin"), fmtPct(g.gross_margin_pct), { cls: marginCls, sub: `${fmtUsd(g.estimated_revenue_on_debited_usd)} on debit` })}
-          ${econKpi(t("econ.kpi.api"), fmtUsd(g.estimated_api_usd, 4), { sub: `${g.credits_debited ?? 0} cr` })}
-          ${econKpi(t("econ.kpi.util"), fmtPct(g.credits_utilization_pct), { sub: `avg ${fmtUsd(g.avg_usd_per_credit, 4)}/cr` })}
+          ${econKpi(t("econ.kpi.margin"), fmtPct(g.gross_margin_pct), { cls: marginCls, sub: t("econ.onDebit", { usd: fmtUsd(g.estimated_revenue_on_debited_usd) }) })}
+          ${econKpi(t("econ.kpi.api"), fmtUsd(g.estimated_api_usd, 4), { sub: t("econ.creditsDebited", { n: fmtNum(g.credits_debited ?? 0) }) })}
+          ${econKpi(t("econ.kpi.util"), fmtPct(g.credits_utilization_pct), { sub: t("econ.avgPerCr", { usd: fmtUsd(g.avg_usd_per_credit, 4) }) })}
           ${econKpi(t("econ.kpi.net"), fmtUsd(n.net_profit_usd), { cls: n.net_profit_usd >= 0 ? "ok" : "warn", sub: fmtPct(n.net_margin_pct) })}
         </div>
         <p class="econ-note">${escapeHtml(t("econ.arpuLine", { arpu, n: g.payments_count ?? 0, avg: g.avg_usd_per_credit ?? 0, welcome: g.welcome_credits_net ?? 0 }))}</p>
@@ -3931,6 +4807,30 @@ async function renderEconomy() {
           <table class="econ-table">
             <thead><tr><th>${escapeHtml(t("econ.col.engine"))}</th><th class="num">${escapeHtml(t("econ.col.ops"))}</th><th class="num">${escapeHtml(t("econ.col.spent"))}</th><th class="num">${escapeHtml(t("econ.col.api"))}</th></tr></thead>
             <tbody>${costRows}</tbody>
+          </table>
+        </div>
+        <h4 style="margin-top:14px">${escapeHtml(t("econ.stages"))}</h4>
+        <p class="econ-note">${escapeHtml(t("econ.stageHint"))} · ${escapeHtml(d.stages?.usd_per_credit_basis || "")} ${escapeHtml(t("econ.perCr", { usd: fmtUsd(d.stages?.usd_per_credit, 4) }))}</p>
+        <div class="table-wrap">
+          <table class="econ-table">
+            <thead><tr>
+              <th>${escapeHtml(t("econ.col.engine"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.ops"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.spent"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.cogs"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.rev"))}</th>
+              <th class="num">${escapeHtml(t("econ.col.net"))}</th>
+            </tr></thead>
+            <tbody>${(d.stages?.stages || []).map((s) => `
+              <tr>
+                <td>${escapeHtml(stageLabel(s.stage, s.label))}</td>
+                <td class="num">${s.ops}</td>
+                <td class="num">${s.credits_spent}</td>
+                <td class="num">${fmtUsd(s.cost_usd, 4)}</td>
+                <td class="num">${fmtUsd(s.revenue_usd, 4)}</td>
+                <td class="num">${fmtUsd(s.margin_usd, 4)}</td>
+              </tr>`).join("") || `<tr><td colspan="6" class="muted">${escapeHtml(t("econ.empty"))}</td></tr>`}
+            </tbody>
           </table>
         </div>
       </section>
@@ -3955,7 +4855,7 @@ async function renderEconomy() {
             <thead><tr>
               <th>${escapeHtml(t("econ.col.volume"))}</th>
               <th class="num">${escapeHtml(t("econ.col.rev"))}</th>
-              <th class="num">API</th>
+              <th class="num">${escapeHtml(t("econ.col.api"))}</th>
               <th class="num">${escapeHtml(t("econ.col.fees"))}</th>
               <th class="num">${escapeHtml(t("econ.col.rfx"))}</th>
               <th class="num">${escapeHtml(t("econ.col.fixed"))}</th>
@@ -3996,7 +4896,7 @@ async function renderEconomy() {
               <th>${escapeHtml(t("econ.col.engine"))}</th>
               <th class="num">${escapeHtml(t("econ.col.cogs"))}</th>
               <th class="num">${escapeHtml(t("econ.col.credits"))}</th>
-              <th class="num">Rev $</th>
+              <th class="num">${escapeHtml(t("econ.col.rev"))}</th>
               <th class="num">${escapeHtml(t("econ.col.mgn"))}</th>
             </tr></thead>
             <tbody>${engRows}</tbody>
@@ -4006,10 +4906,10 @@ async function renderEconomy() {
       <section class="econ-section">
         <h4>${escapeHtml(t("econ.funnel"))}</h4>
         <div class="econ-kpis">
-          ${econKpi("New", f.new_users ?? "—")}
-          ${econKpi("Verified", f.new_verified ?? "—")}
-          ${econKpi("Paying", f.paying_wallets ?? "—", { sub: fmtPct(f.conversion_verified_to_paying_pct) })}
-          ${econKpi("Export", f.exported_wallets ?? "—", { sub: fmtPct(f.conversion_generate_to_export_pct) })}
+          ${econKpi(t("econ.funnel.new"), f.new_users ?? "—")}
+          ${econKpi(t("econ.funnel.verified"), f.new_verified ?? "—")}
+          ${econKpi(t("econ.funnel.paying"), f.paying_wallets ?? "—", { sub: fmtPct(f.conversion_verified_to_paying_pct) })}
+          ${econKpi(t("econ.funnel.export"), f.exported_wallets ?? "—", { sub: fmtPct(f.conversion_generate_to_export_pct) })}
         </div>
       </section>`;
   } catch (e) {
@@ -4048,8 +4948,8 @@ async function renderTrash() {
     const files = it.files.map((f) => f.from).join(", ");
     const kb = Math.max(1, Math.round((it.bytes || 0) / 1024));
     row.innerHTML = `
-      <div><b>${escapeHtml(new Date(it.at).toLocaleString())}</b> · ${escapeHtml(it.reason || "")}
-        <div class="muted">${escapeHtml(files)} · ${kb} KB</div></div>
+      <div><b>${escapeHtml(fmtDate(it.at))}</b> · ${escapeHtml(it.reason || "")}
+        <div class="muted">${escapeHtml(files)} · ${fmtNum(kb)} KB</div></div>
       <div class="btns">
         <button type="button" class="btn small b-restore"${tipAttr("trash.restore")}>${escapeHtml(t("trash.restore"))}</button>
         <button type="button" class="btn small b-purge"${tipAttr("trash.purge")}>${escapeHtml(t("trash.purge"))}</button>
@@ -4132,6 +5032,8 @@ async function boot() {
   setupEngineDiagnostics();
   setupVersions();
   setupExport();
+  setupKits();
+  setupPath();
   setupHelp();
   setupAccount();
   setupEconomy();
@@ -4140,9 +5042,18 @@ async function boot() {
 
   try {
     state.health = await api("/api/health");
-    $("me").textContent = `lab · :${state.health.port || 5344}`;
+    const me = $("me");
+    if (me) {
+      me.dataset.mode = "port";
+      me.dataset.port = String(state.health.port || 5344);
+      me.textContent = t("ui.labPort", { port: me.dataset.port });
+    }
   } catch {
-    $("me").textContent = "offline";
+    const me = $("me");
+    if (me) {
+      me.dataset.mode = "offline";
+      me.textContent = t("ui.offline");
+    }
   }
 
   // one failing loader must not leave the rest of the UI uninitialised

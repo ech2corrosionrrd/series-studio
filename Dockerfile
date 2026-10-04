@@ -24,9 +24,12 @@ ENV SERIES_MODE=public \
     HOST=0.0.0.0 \
     PORT=5344
 
+# Official node image user (uid/gid 1000). Bind-mounted /data on the host must be
+# writable by this uid — see docs/DEPLOY-PLATFORM.md (one-time chown on old volumes).
+RUN mkdir -p /data && chown node:node /data
 VOLUME ["/data"]
 EXPOSE 5344
-# Runs as root like Промт's containers: the bind-mounted data dir on the host is root-owned.
+USER node
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD wget -qO- http://127.0.0.1:5344/health || exit 1

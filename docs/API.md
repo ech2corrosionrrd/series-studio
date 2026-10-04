@@ -86,13 +86,17 @@
 | GET | `/api/checklist` | `?archive=&set=` — NFT readiness items |
 | GET | `/api/workspace` | прочитати `workspace/current.json` |
 | POST | `/api/workspace` | зберегти / `clear` workspace |
-| GET | `/api/storage/status` | статус ключів децентралізованого зберігання (Pinata) |
-| POST | `/api/storage/pin` | завантаження набору зображень у Pinata IPFS |
-| GET | `/api/launchpads` | список підтримуваних профілів лаунчпадів (OpenSea, Magic Eden, LaunchMyNFT, Ordinals) |
+| GET | `/api/storage/status` | статус ключа Arweave (Irys) |
+| POST | `/api/storage/pin` | завантаження папки набору в Arweave (Irys) серверним `IRYS_PRIVATE_KEY`; списує кредити етапу «архів»; перед оплатою рахує ціну (ліміт `IRYS_MAX_PRICE_SOL`, типово 0.05 SOL) і поповнює Irys за потреби; віддає `arweaveUri` (`ar://<id>/`). Для випуску в мережу є CLI `series upload` (ключ на ПК) — [RELEASE.md](./RELEASE.md) |
+| GET | `/api/launchpads` | список профілів лаунчпадів (OpenSea, Magic Eden Drop (Solana), LaunchMyNFT, Ordinals) |
 | GET | `/api/export/manifest.csv` | експорт CSV маніфесту для гуртового імпорту (`?archive=&profile=&zeroIndexed=`) |
 | GET | `/api/export/showcase.html` | завантаження автономного HTML візуального пруфу та оцінки рідкості |
 | GET | `/api/release/portals` | отримання посилань на лаунчпади та покрокових порад (`?profile=&archive=`) |
-| GET | `/api/release/config` | завантаження конфігів деплою (`sugar.json` / `thirdweb.json`) |
+| GET | `/api/release/config` | конфіг деплою: типово `cm-config.json` (Core Candy Machine); `sugar.json` лише якщо `?legacy=1`; для EVM — `thirdweb.json` |
+| POST | `/api/preflight` | перевірка архіву перед ZIP: помилки блокують, попередження ні |
+| POST | `/api/deploy-kit` | ZIP набору деплою. `chain` типово `solana` (Core). `solana-legacy` або `legacy: true` — застарілий Sugar. Тіло з приватним ключем — 400 `secrets` |
+| GET | `/api/launch-advisor?chain=&locale=` | офлайн-порадник. Creator Hub лише для `solana`. Біржових цін немає |
+| POST | `/api/marketplace-kit` | ZIP набору маркетплейсу. Solana: Magic Eden і Tensor. EVM: OpenSea. Bitcoin: Ordinals, без Magic Eden |
 
 ## Versions / trash / spend (захист оплачених рендерів)
 
@@ -104,11 +108,11 @@
 | GET | `/api/trash` | записи кошика `out/trash/<id>/` (новіші першими) |
 | POST | `/api/trash/restore` | `{ id }` — повернути файли на місце (відмова, якщо ціль уже існує) |
 | POST | `/api/trash/purge` | `{ id }` — видалити запис назавжди |
-| GET | `/api/spend` | `{ capUsd, spentTodayUsd, byEngine }` з `out/render-log.jsonl` |
+| GET | `/api/spend` | `{ capUsd, spentTodayUsd, byEngine }` з `out/render-log.jsonl` (local) або `data/render-log.jsonl` (public) |
 
 Перегенерація (`force`) і `series render` більше не перезаписують `<N>.png`: попередня картинка переходить у `versions/`.
 Видалення базових картинок, паків трейтів, перезапис пілотів і primary — через кошик.
-Платні виклики пишуться в `out/render-log.jsonl`; `SERIES_SPEND_CAP_USD` блокує запуск понад денну межу (400, `code: "spend_cap"`).
+Платні виклики пишуться в `out/render-log.jsonl` (local) або `data/render-log.jsonl` (public); `SERIES_SPEND_CAP_USD` блокує запуск понад денну межу (400, `code: "spend_cap"`).
 Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) помилок поспіль (`stopped` у відповіді).
 
 ## Credits / Local GPU / Admin economy (`SERIES_MODE=public`)
@@ -128,6 +132,30 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 | GET | `/api/admin/economy?days=` | `7` \| `30` \| `all` — маржа, накладні, сценарії (адмін) |
 | POST | `/api/notifications/test` | тест Telegram (адмін) |
 
+## Додаткові маршрути
+
+| Method | Path | Опис |
+|--------|------|------|
+| POST | `/api/credits/sol/prepare` | public: готує переказ USDC (`package`, `payer`); ліміт 20/хв |
+| POST | `/api/publish` | public: публікує набір як сторінку колекції (`dir`, `title`, `onlyKeep`) |
+| POST | `/api/simulate` | сухий прогін пресету (`file` або `preset`) без витрат |
+| POST | `/api/archive/diff` | різниця двох архівів (`a`, `b`) |
+| POST | `/api/preset/spinoff` | спін-оф пресету (`file`, `suffix`) |
+| GET | `/api/similarity?dir=` | схожість картинок набору з основною базовою |
+| GET | `/api/waves?file=` | хвилі тиражу пресету |
+| POST | `/api/waves/append` | додати хвилю в кінець (`file`, `size`, `seed`, `name`) |
+| POST | `/api/gallery/dupes` | пошук дублів у наборі (`dir`, `maxDistance`) |
+| GET | `/api/stages/quotes` | ціни етапів за раз (`count`, `engine`, `provider`) |
+| GET | `/api/stages/quote` | ціна одного етапу (`stage`, `engine`, `count`, `ipfs`, `zip`; `ipfs=1` — із завантаженням у сховище) |
+| GET | `/api/export/provenance?set=` | відбиток колекції (SHA-256) |
+| POST | `/api/export/dataset` | LoRA-датасет (`archive`, `set`) |
+| POST | `/api/matrix/preview` | промпт під рушій (`recipe`, `engine`, `preset`) |
+| GET | `/api/traits/matrix?archive=` | співвиникнення рис |
+| GET | `/api/engines/status` | стан підключень рушіїв |
+| POST | `/api/engines/test` | перевірка одного рушія (`engine`) |
+| GET | `/api/comfyui/workflow` | шаблон воркфлоу ComfyUI |
+| GET | `/api/doctor` | діагностика системи |
+
 ## Статика
 
 | Path | Опис |
@@ -145,9 +173,9 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 - `diff-seed <preset.json>`
 - `showcase <archive.json> [options]` — генерація автономного HTML Showcase & Rarity Scorecard
 - `manifest <archive.json> [options]` — генерація стандартизованого CSV маніфесту
-- `release-config <archive.json> [options]` — експорт конфігурацій деплою (`sugar.json`, `thirdweb.json`)
+- `release-config <archive.json> [options]` — експорт конфіга деплою (`cm-config.json`; `--legacy` пише Sugar; EVM лишається `thirdweb.json`)
 - `render <preset.json> [options]` — автономний пакетний рендер
 - `triage <set-dir> [options]` — автоматичний аудит та оцінка якості зображень
-- `pin <set-dir> [options]` — завантаження зображень у IPFS / Pinata
+- `pin <set-dir> [options]` — завантаження зображень в Arweave (Irys)
 
 Див.: [STUDIO-UI.md](./STUDIO-UI.md) · [EXPORT.md](./EXPORT.md) · [STAGES.md](./STAGES.md) · [ECONOMY.md](./ECONOMY.md)

@@ -9,8 +9,9 @@
  * Resolution order for loadKeys:
  *   1) explicit path argument (if provided)
  *   2) process.env.SERIES_KEYS_FILE (before reading project .env)
- *   3) .env in process.cwd()
+ *   3) .env in process.cwd() — skipped when SERIES_SKIP_DOTENV=1
  *   4) SERIES_DEFAULT_KEYS_FILE / SERIES_KEYS_FILE discovered from files already loaded
+ *      (also skipped when SERIES_SKIP_DOTENV=1)
  *
  * Series Lab is self-contained: all keys, payment settings, Telegram, AUTH_* live
  * in this project's .env. SERIES_PLATFORM_ENV is ignored (deprecated).
@@ -35,6 +36,12 @@ export function parseEnv(text) {
   return out;
 }
 
+/** SERIES_SKIP_DOTENV=1: do not read the project .env (smoke / isolated child). */
+export function skipProjectEnv(env = process.env) {
+  const v = String(env.SERIES_SKIP_DOTENV ?? "").trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
 function mergeFile(cand, env, loaded) {
   if (!cand || !existsSync(cand) || loaded.includes(cand)) return false;
   for (const [k, v] of Object.entries(parseEnv(readFileSync(cand, "utf8")))) {
@@ -47,22 +54,28 @@ function mergeFile(cand, env, loaded) {
 /** Merge keys into env without overriding existing values. Returns first loaded path or null. */
 export function loadKeys(path, env = process.env) {
   const loaded = [];
+  const skip = skipProjectEnv(env);
   const firstPass = [];
   if (path) firstPass.push(path);
   if (env.SERIES_KEYS_FILE) firstPass.push(env.SERIES_KEYS_FILE);
-  firstPass.push(resolve(process.cwd(), ".env"));
-  if (env.SERIES_DEFAULT_KEYS_FILE) firstPass.push(env.SERIES_DEFAULT_KEYS_FILE);
+  if (!skip) {
+    firstPass.push(resolve(process.cwd(), ".env"));
+    if (env.SERIES_DEFAULT_KEYS_FILE) firstPass.push(env.SERIES_DEFAULT_KEYS_FILE);
+  }
 
   for (const cand of [...new Set(firstPass.filter(Boolean))]) {
     mergeFile(cand, env, loaded);
   }
 
   // Optional extra Lab key files only (never SERIES_PLATFORM_ENV / foreign projects).
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const key of ["SERIES_KEYS_FILE", "SERIES_DEFAULT_KEYS_FILE"]) {
-      if (mergeFile(env[key], env, loaded)) grew = true;
+  // With SERIES_SKIP_DOTENV, only an explicit path / SERIES_KEYS_FILE above is read.
+  if (!skip) {
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const key of ["SERIES_KEYS_FILE", "SERIES_DEFAULT_KEYS_FILE"]) {
+        if (mergeFile(env[key], env, loaded)) grew = true;
+      }
     }
   }
 
@@ -77,6 +90,7 @@ export function loadKeys(path, env = process.env) {
 
 /** Load additional env files (e.g. package-local .env) without overriding existing keys. */
 export function loadKeysExtra(paths, env = process.env) {
+  if (skipProjectEnv(env)) return [];
   const loaded = [];
   for (const cand of paths || []) {
     mergeFile(cand, env, loaded);

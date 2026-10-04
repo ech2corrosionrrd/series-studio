@@ -211,6 +211,11 @@ test("Wave 22: ENGINES and TXT2IMG registries include fast connectors and resolv
   const envBoth = { FAL_KEY: "fal-123", REPLICATE_API_TOKEN: "rep-123" };
   const pickedAuto = pickAvailableEngine(null, envBoth, ENGINES);
   assert.equal(pickedAuto, "fal");
+
+  assert.notEqual(pickAvailableEngine("schnell", envBoth, ENGINES), "schnell");
+  assert.equal(pickAvailableEngine("schnell", envBoth, ENGINES, { exact: true }), null);
+  assert.equal(pickAvailableEngine("openai", {}, ENGINES, { exact: true }), null);
+  assert.equal(pickAvailableEngine("fal", envWithFal, ENGINES, { exact: true }), "fal");
 });
 
 test("Wave 22: CLI series engines outputs all supported engines and pricing", () => {

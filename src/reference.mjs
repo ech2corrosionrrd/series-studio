@@ -6,12 +6,16 @@
  * волі трейтам. У провайдерів шкали ЗВОРОТНІ й різні, тож переклад — окремо
  * для кожного двигуна (прокинути число «як є» дало б протилежний результат).
  *
- * | Двигун    | Параметр                  | Як перекладаємо                         |
- * |-----------|---------------------------|-----------------------------------------|
- * | stability | `strength` (денойз)       | зворотно в смугу 0.62–0.85 (як у W3IR)  |
- * | openai    | немає (gpt-image-2 не приймає input_fidelity) | словами в промпті (kontextGuidance) |
- * | kontext   | числового параметра немає | словами в промпті (kontextGuidance)     |
- * | pollinations | те саме (model=kontext)    | той самий kontextGuidance                     |
+ * | Двигун      | Параметр                  | Як перекладаємо                                      |
+ * |-------------|---------------------------|------------------------------------------------------|
+ * | stability   | `strength` (денойз)       | зворотно в смугу 0.62–0.85 (як у W3IR)               |
+ * | comfyui     | KSampler `denoise`        | та сама зворотна смуга, без ділення на 100           |
+ * | a1111       | `denoising_strength`      | та сама зворотна смуга, без ділення на 100           |
+ * | runware     | `strength` 0–1            | нижче = більше оригіналу; зворотно в 0.05–0.95       |
+ * | fal         | `strength` 0.01–1         | тлумачимо як денойз (див. strengthForFal); 0.35–0.95 |
+ * | openai      | немає (gpt-image-2 не приймає input_fidelity) | словами (kontextGuidance)     |
+ * | kontext     | числового параметра немає | словами в промпті (kontextGuidance)                  |
+ * | pollinations | те саме (model=kontext)  | той самий kontextGuidance                            |
  */
 
 export const DEFAULT_STRENGTH = 0.45;
@@ -36,6 +40,29 @@ export function strengthForStability(strength) {
   return mapToRange(strength, STABILITY_DENOISE_RANGE);
 }
 
+/**
+ * fal-ai/flux/dev/image-to-image: діапазон strength 0.01–1, типове 0.95.
+ * Сторінка каже «strength of the initial image» і «higher strength values are better» —
+ * формулювання двозначне. Живий прогін не робився.
+ * Тлумачення (не вимір): це денойз у стилі diffusers, вище = більша зміна кадру.
+ * Студія 0.95 (копія) → ~0.35; студія 0.10 (вільніше) → 0.95. Нижче 0.01 не виходимо.
+ */
+export const FAL_STRENGTH_RANGE = [0.35, 0.95];
+
+export function strengthForFal(strength) {
+  return mapToRange(strength, FAL_STRENGTH_RANGE);
+}
+
+/**
+ * Runware FLUX.1 dev: strength 0–1, типове 0.8, менше = більший вплив оригіналу.
+ * Вищий повзунок студії (ближче до бази) → менше число Runware.
+ */
+export const RUNWARE_STRENGTH_RANGE = [0.05, 0.95];
+
+export function strengthForRunware(strength) {
+  return mapToRange(strength, RUNWARE_STRENGTH_RANGE);
+}
+
 /** Kontext і gpt-image-2 не мають повзунка сили — кажемо словами, наскільки триматися оригіналу. */
 export function kontextGuidance(strength) {
   const s = clampStrength(strength);
@@ -47,7 +74,8 @@ export function kontextGuidance(strength) {
 
 /** Тека результатів: окремо на кожен двигун і силу, щоб можна було порівнювати. */
 export function imagesDirName(engine, strength) {
-  return `${engine}-s${clampStrength(strength).toFixed(2)}`;
+  const id = String(engine || "kontext").replace(/[^a-z0-9_-]/gi, "") || "kontext";
+  return `${id}-s${clampStrength(strength).toFixed(2)}`;
 }
 
 /**

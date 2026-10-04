@@ -21,10 +21,22 @@ import {
 } from "./launchpads.mjs";
 import {
   buildSugarConfig,
+  buildCoreCandyConfig,
   buildThirdwebConfig,
   buildReleaseGuide,
 } from "./deploy.mjs";
 import { calculateCollectionProvenance } from "./provenance.mjs";
+import { readMeta } from "./versions.mjs";
+import { creationVersion, promptHash } from "./creation.mjs";
+import { runPreflight, formatPreflightReport } from "./preflight.mjs";
+import { countMissingTraitFrames } from "./critic.mjs";
+import {
+  buildRoyalties,
+  buildRarityReport,
+  formatRarityText,
+  buildChainReadme,
+} from "./archive-package.mjs";
+import { chainForProfile } from "./deploy-kit.mjs";
 
 export {
   calculateCollectionProvenance,
@@ -34,11 +46,23 @@ export {
   formatForLaunchpad,
   exportManifestCsv,
   buildSugarConfig,
+  buildCoreCandyConfig,
   buildThirdwebConfig,
   buildReleaseGuide,
   getMimeType,
   getMediaCategory,
 };
+
+function readTriageCount(setDir) {
+  const file = join(setDir, "triage.json");
+  if (!setDir || !existsSync(file)) return { frames: 0, editions: [] };
+  try {
+    const doc = JSON.parse(readFileSync(file, "utf8"));
+    return countMissingTraitFrames(doc?.results || doc);
+  } catch {
+    return { frames: 0, editions: [] };
+  }
+}
 
 /** OpenSea / ERC-721 metadata. */
 export function buildErc721Meta(recipe, opts = {}, traitItems = []) {
@@ -272,9 +296,59 @@ export function listImageEditions(setDir) {
 }
 
 /**
+ * Editions that would go into a bundle, with image bytes. Shared by the deploy kit.
+ * @returns {{ items: object[], error: string|null }}
+ */
+export function readBundleItems({ archive, setDir, marks = {}, onlyKeep = false } = {}) {
+  const imageEditionSet = listImageEditions(setDir);
+  const sel = selectBundleRecipes(archive?.recipes || [], marks, onlyKeep, imageEditionSet);
+  if (sel.error) return { items: [], error: sel.error };
+  const items = [];
+  for (const recipe of sel.recipes) {
+    const media = findEditionMedia(setDir, recipe.edition);
+    if (!media.imagePath) continue;
+    const buffer = readFileSync(media.imagePath);
+    items.push({
+      edition: recipe.edition,
+      buffer,
+      ext: extname(media.imagePath).slice(1) || "png",
+      filename: media.imagePath,
+      recipe,
+    });
+  }
+  return { items, error: items.length ? null : "no images for the selected editions" };
+}
+
+/**
  * Build ZIP at out/bundles/<id>-<format>.zip
  * opts: format, profile, creatorAddress, zeroIndexed, onlyKeep, namePrefix, symbol, sellerFeeBasisPoints, description, locale, upscale, animationUriPrefix
  */
+function creationDocForEdition(setDir, recipe, marks) {
+  const edition = Number(recipe?.edition);
+  let versions = [];
+  try {
+    const meta = readMeta(setDir, edition);
+    versions = (meta.versions || [])
+      .filter((row) => row && row.v != null)
+      .map((row) => creationVersion(row));
+  } catch {
+    versions = [];
+  }
+  if (!versions.length) {
+    versions = [creationVersion({
+      versionId: null,
+      engine: null,
+      seed: recipe?.seed ?? null,
+      promptHash: recipe?.prompt ? promptHash(recipe.prompt) : null,
+    })];
+  }
+  const mark = marks?.[String(edition)] ?? marks?.[edition];
+  if (mark && !versions[versions.length - 1].verdict) {
+    versions[versions.length - 1] = { ...versions[versions.length - 1], verdict: mark };
+  }
+  return { edition, versions };
+}
+
 export async function buildBundleZip(params) {
   const {
     archive,
@@ -326,6 +400,7 @@ export async function buildBundleZip(params) {
   const metaFolder = zip.folder("metadata");
 
   const imageRecords = [];
+  const packed = [];
 
   for (const recipe of sel.recipes) {
     const ed = recipe.edition;
@@ -376,6 +451,15 @@ export async function buildBundleZip(params) {
     metaFolder.file(`${displayEd}.json`, JSON.stringify(meta, null, 2) + "\n");
     includedEditions.push(ed);
     includedRecipes.push(recipe);
+    const primary = media.imagePath ? imageRecords[imageRecords.length - 1] : null;
+    if (primary?.buffer) {
+      packed.push({
+        edition: ed,
+        filename: primary.file,
+        buffer: primary.buffer,
+        meta,
+      });
+    }
   }
 
   if (!includedEditions.length) {
@@ -392,7 +476,8 @@ export async function buildBundleZip(params) {
   // Calculate Collection Provenance Hash
   let provenance = null;
   if (imageRecords.length > 0) {
-    provenance = calculateCollectionProvenance(imageRecords);
+    const presetSeed = preset?.seed || archive?.seed || null;
+    provenance = calculateCollectionProvenance(imageRecords, { presetSeed });
     zip.file("provenance.json", JSON.stringify(provenance, null, 2) + "\n");
     opts.provenanceHash = provenance.provenanceHash;
   }
@@ -403,8 +488,13 @@ export async function buildBundleZip(params) {
 
   // Generate Launchpad deployment configuration files
   if (profileKey === "magiceden" || profileKey === "launchmynft" || format === "metaplex") {
+    const coreConfig = buildCoreCandyConfig(archive, preset, opts);
+    zip.file("cm-config.json", JSON.stringify(coreConfig, null, 2) + "\n");
     const sugarConfig = buildSugarConfig(archive, preset, opts);
-    zip.file("sugar.json", JSON.stringify(sugarConfig, null, 2) + "\n");
+    zip.file("sugar/config.json", JSON.stringify(sugarConfig, null, 2) + "\n");
+    zip.file("sugar/LEGACY.txt", String(locale).toLowerCase().startsWith("uk")
+      ? "ЗАСТАРІЛИЙ: legacy Candy Machine, не для нової колекції.\n"
+      : "LEGACY: legacy Candy Machine, not for a new collection.\n");
   } else if (profileKey === "opensea" || format === "erc721") {
     const twConfig = buildThirdwebConfig(archive, preset, opts);
     zip.file("thirdweb.json", JSON.stringify(twConfig, null, 2) + "\n");
@@ -412,6 +502,56 @@ export async function buildBundleZip(params) {
 
   // Generate localized step-by-step Release Guide
   zip.file("release-guide.txt", buildReleaseGuide(locale, archive, opts));
+
+  const chain = chainForProfile(profileKey, format);
+  const royalties = buildRoyalties(opts);
+  const cover = packed[0];
+  if (cover?.buffer) {
+    const coverExt = extname(cover.filename).replace(/^\./, "") || "png";
+    zip.file(`cover.${coverExt}`, cover.buffer);
+  }
+  const rarity = buildRarityReport(preset, includedRecipes);
+  zip.file("rarity.json", JSON.stringify(rarity, null, 2) + "\n");
+  zip.file("rarity.txt", formatRarityText(rarity, locale));
+  zip.file("royalties.json", JSON.stringify(royalties, null, 2) + "\n");
+
+  const triageCount = readTriageCount(setDir);
+  const preflight = runPreflight({
+    locale,
+    standard: format === "metaplex" ? "metaplex" : format === "ordinals" ? "ordinals" : "erc721",
+    recipes: includedRecipes,
+    images: packed.map((p) => ({ edition: p.edition, filename: p.filename, buffer: p.buffer })),
+    metadata: packed.map((p) => ({ edition: p.edition, meta: p.meta })),
+    royalties,
+    description: opts.description || "",
+    coverPresent: Boolean(cover?.buffer),
+  }, opts.env || process.env);
+  if (triageCount.frames > 0) {
+    const uk = String(locale).toLowerCase().startsWith("uk");
+    const message = uk
+      ? `${triageCount.frames} кадрів мають missing_trait після triage (${triageCount.editions.slice(0, 12).join(", ")}). ZIP не блокується — вирішує людина.`
+      : `${triageCount.frames} frames have missing_trait after triage (${triageCount.editions.slice(0, 12).join(", ")}). The ZIP is not blocked — a person decides.`;
+    preflight.warnings.push(message);
+    preflight.checks.push({ level: "warning", code: "missing_trait", message });
+    preflight.report = formatPreflightReport(preflight, locale);
+  }
+  zip.file("preflight.json", JSON.stringify({
+    ready: preflight.ready,
+    status: preflight.status,
+    errors: preflight.errors,
+    warnings: preflight.warnings,
+    checks: preflight.checks,
+  }, null, 2) + "\n");
+  zip.file("preflight.txt", `${preflight.report}\n`);
+
+  if (opts.gate && !preflight.ready) {
+    const err = new Error(preflight.report);
+    err.code = "preflight_blocked";
+    err.status = 422;
+    err.preflight = preflight;
+    err.report = preflight.report;
+    throw err;
+  }
 
   const collection = buildCollectionJson({
     format,
@@ -427,9 +567,39 @@ export async function buildBundleZip(params) {
   if (provenance) collection.provenanceHash = provenance.provenanceHash;
   if (sel.fallback) collection.selectionFallback = sel.fallback;
   if (upscaleSkippedReason) collection.upscaleSkipped = upscaleSkippedReason;
+  collection.chain = chain;
+  collection.description = opts.description || "";
+  collection.sellerFeeBasisPoints = royalties.sellerFeeBasisPoints;
+  collection.ready = preflight.ready;
+  collection.missingTraitFrames = triageCount.frames;
+  collection.preflight = {
+    ready: preflight.ready,
+    errors: preflight.errors.length,
+    warnings: preflight.warnings.length,
+  };
 
   zip.file("collection.json", JSON.stringify(collection, null, 2) + "\n");
-  zip.file("README.txt", buildReadme(locale, collection));
+  for (const recipe of includedRecipes) {
+    const doc = creationDocForEdition(setDir, recipe, marks);
+    zip.file(`creation/${recipe.edition}.json`, JSON.stringify(doc, null, 2) + "\n");
+  }
+  zip.file("README.txt", buildChainReadme(locale, collection));
+
+  if (opts.dryRun) {
+    return {
+      ok: preflight.ready,
+      ready: preflight.ready,
+      dryRun: true,
+      count: includedEditions.length,
+      missing,
+      format,
+      profile: profileKey,
+      chain,
+      preflight,
+      provenanceHash: provenance?.provenanceHash || null,
+      fallback: sel.fallback,
+    };
+  }
 
   mkdirSync(bundlesDir, { recursive: true });
   const id =
@@ -456,5 +626,8 @@ export async function buildBundleZip(params) {
     fallback: sel.fallback,
     upscaled: anyUpscaled,
     upscaleSkipped: upscaleSkippedReason,
+    ready: preflight.ready,
+    preflight,
+    chain,
   };
 }

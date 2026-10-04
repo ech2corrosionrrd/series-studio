@@ -82,6 +82,8 @@ describe("Wave 11: AI Auto-Triage & Smart Critic", () => {
     });
     assert.equal(lintRes.verdict, "review");
     assert.ok(lintRes.issues.includes("prompt_lint_warning"));
+    assert.deepEqual(lintRes.missingTraits, []);
+    assert.equal(lintRes.issues.includes("missing_trait"), false);
   });
 
   it("triageImageVision performs multimodal evaluation and handles mock responses", async () => {

@@ -11,6 +11,8 @@ import { openDb } from "../src/platform/db.mjs";
 import { completeWalletSignIn, getBalance, normalizeWallet, recordReferral, resolveReferrer, welcomeOffer } from "../src/platform/billing.mjs";
 import { syncGenesisMints, walletGenesisCount } from "../src/platform/holders.mjs";
 import { engineStatus, generateImage, ENGINE_FLUX } from "../src/platform/imagegen.mjs";
+import { licenseWarning, platformFluxModel } from "../src/license.mjs";
+import { DEFAULT_STRENGTH } from "../src/reference.mjs";
 import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
 import {
   STYLE_PRESETS, TMA_ENGINE_ALIASES, TraitError, buildGremlinPrompt, decodeReferenceImage, enhanceTmaPrompt,
@@ -239,7 +241,7 @@ async function routes(req, res, url) {
     if (entry.address !== normalizeAddr(address)) throw new HttpError(401, "Адреса не збігається з nonce");
     const ok = evm ? verifyEvmSignature(address, entry.message, String(body.signature || "")) : verifySolanaSignature(address, entry.message, String(body.signature || ""));
     if (!ok) throw new HttpError(401, "Підпис не пройшов перевірку");
-    // Staging / invite-only: only listed wallets (and admins) may sign in.
+    // Staging / invite-only: only listed wallets (and admins) may sign in; empty list = public.
     const invited = String(process.env.SERIES_ALLOWED_WALLETS || "").split(",").map((w) => normalizeAddr(w)).filter(Boolean);
     if (invited.length && !invited.includes(normalizeAddr(address)) && !isAdmin(address)) {
       throw new HttpError(403, "Access by invitation only on this server");
@@ -395,9 +397,11 @@ async function routes(req, res, url) {
     if (engineStatus()[engine]) throw new HttpError(503, `Engine ${engine} is currently unavailable`);
     let reference = null;
     if (body.reference_image) {
-      try { reference = decodeReferenceImage(body.reference_image, body.strength ?? 0.85); } catch (e) { throw new HttpError(400, e.message); }
+      try { reference = decodeReferenceImage(body.reference_image, body.strength ?? DEFAULT_STRENGTH); } catch (e) { throw new HttpError(400, e.message); }
     }
     const prompt = enhanceTmaPrompt(body.prompt, style);
+    const fluxModel = engine === ENGINE_FLUX ? platformFluxModel({ reference: Boolean(reference) }) : null;
+    const licenseNotice = licenseWarning(engine, fluxModel, { fluxDevWeights: Boolean(body.fluxDevWeights) });
     const frames = await Promise.allSettled(Array.from({ length: body.count }, async (_, i) => {
       let last;
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -416,7 +420,15 @@ async function routes(req, res, url) {
       console.error(`TMA generation error (${failed.length}/${body.count} frames)`);
       throw new HttpError(500, `Generation failed on AI engine (${failed.length}/${body.count} frames)`);
     }
-    send(res, 200, { ok: true, images: frames.map((f) => f.value), count: frames.length, style: body.style, engine, prompt: body.prompt });
+    send(res, 200, {
+      ok: true,
+      images: frames.map((f) => f.value),
+      count: frames.length,
+      style: body.style,
+      engine,
+      prompt: body.prompt,
+      ...(licenseNotice ? { licenseWarning: licenseNotice } : {}),
+    });
     return true;
   }
 

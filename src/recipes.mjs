@@ -11,6 +11,8 @@ import {
   loadTraitsFromPreset,
 } from "./traits.mjs";
 import { lineIdsOf, quotasOf, supplyWaves } from "./waves.mjs";
+import { collectConflicts, checkConflicts } from "./rules.mjs";
+import { computeRarity } from "./rarity.mjs";
 
 const MAX_ATTEMPTS = 100_000;
 
@@ -22,6 +24,11 @@ const MAX_ATTEMPTS = 100_000;
  */
 export function dna(line, traits, traitKeys) {
   return [line, ...traitKeys.map((k) => traits[k] ?? NONE)].join("|");
+}
+
+/** Trait keys that enter DNA. skipDna is the bypass flag, default off. */
+export function dnaKeysFromItems(items) {
+  return (items || []).filter((t) => t && t.skipDna !== true).map((t) => t.key);
 }
 
 function keepText(keep, who) {
@@ -135,8 +142,8 @@ function recipeSeed(presetSeed, index) {
   return hashSeed(`${presetSeed}:${index}`);
 }
 
-function rollChunk(rng, items, lineIds, quotas, seen) {
-  const traitKeys = items.map((t) => t.key);
+function rollChunk(rng, items, lineIds, quotas, seen, conflictState = null, exactState = null) {
+  const traitKeys = dnaKeysFromItems(items);
   const regular = [];
   for (const line of lineIds) {
     const need = quotas[line] || 0;
@@ -144,19 +151,95 @@ function rollChunk(rng, items, lineIds, quotas, seen) {
     let attempts = 0;
     while (made < need) {
       if (++attempts > MAX_ATTEMPTS) {
+        if (exactState) {
+          throw new Error(`exact count cannot be met with unique DNA: ${exactState.names}`);
+        }
+        const extra = conflictState?.count
+          ? `; rejected ${conflictState.count} conflict attempts`
+          : "";
         throw new Error(
-          `not enough unique combinations for line "${line}" (need ${need}, made ${made})`,
+          `not enough unique combinations for line "${line}" (need ${need}, made ${made})${extra}`,
         );
       }
-      const traits = rollTraits(rng, items, line);
+      let traits = rollTraits(rng, items, line);
+      if (exactState) {
+        traits = { ...traits };
+        for (const [key, bag] of Object.entries(exactState.decks)) {
+          traits[key] = bag[exactState.cursor];
+        }
+      }
+      if (conflictState?.rules?.length) {
+        const hit = checkConflicts(traits, conflictState.rules);
+        if (!hit.ok) {
+          conflictState.count += 1;
+          if (conflictState.examples.length < 6 && hit.hits[0]) {
+            conflictState.examples.push(hit.hits[0]);
+          }
+          continue;
+        }
+      }
       const key = dna(line, traits, traitKeys);
       if (seen.has(key)) continue;
       seen.add(key);
+      if (exactState) exactState.cursor += 1;
       regular.push({ line, traits });
       made++;
     }
   }
   return rng.shuffle(regular);
+}
+
+function exactPlans(items) {
+  const plans = [];
+  for (const t of items) {
+    const opts = Array.isArray(t.options) ? t.options : [];
+    const exacts = [];
+    for (const o of opts) {
+      if (o.exact == null || o.exact === "") continue;
+      const n = Number(o.exact);
+      if (!Number.isInteger(n) || n < 0) {
+        throw new Error(`exact count for ${t.key}=${o.value} must be a non-negative integer`);
+      }
+      exacts.push({ value: String(o.value), n });
+    }
+    if (!exacts.length) continue;
+    plans.push({
+      key: t.key,
+      exacts,
+      sum: exacts.reduce((s, e) => s + e.n, 0),
+      names: exacts.map((e) => `${t.key}=${e.value}`).join(", "),
+      flex: opts
+        .filter((o) => o.exact == null || o.exact === "")
+        .map((o) => ({ value: String(o.value), weight: Number(o.weight) || 0 }))
+        .filter((o) => o.value && o.weight > 0),
+    });
+  }
+  return plans;
+}
+
+/** Deck of exact-N values for the whole supply. Null when no option has exact. */
+function buildExactDecks(items, size, seed) {
+  const plans = exactPlans(items);
+  if (!plans.length) return null;
+  const rng = makeRng(`${seed}:exact`);
+  const decks = {};
+  const names = [];
+  for (const plan of plans) {
+    if (plan.sum > size) {
+      throw new Error(`exact counts exceed supply for trait "${plan.key}" (${plan.sum} > ${size}): ${plan.names}`);
+    }
+    if (plan.sum < size && !plan.flex.length) {
+      throw new Error(`exact counts for trait "${plan.key}" leave empty slots: ${plan.names}`);
+    }
+    const bag = [];
+    for (const entry of plan.exacts) {
+      for (let i = 0; i < entry.n; i++) bag.push(entry.value);
+    }
+    while (bag.length < size) bag.push(String(rng.weighted(plan.flex).value));
+    decks[plan.key] = rng.shuffle(bag);
+    names.push(plan.names);
+  }
+  return { decks, cursor: 0, names: names.join(", ") };
 }
 
 /**
@@ -166,23 +249,27 @@ function rollChunk(rng, items, lineIds, quotas, seen) {
  * @param {object} preset
  * @param {object} [overrides] — { items?: { [index]: { traits?, note? } } }
  */
-export function buildRecipes(preset, overrides = {}) {
+function assembleRecipes(preset, overrides = {}, { rejectConflicts = false, pack = null } = {}) {
   const items = loadTraitsFromPreset(preset);
   if (!items.length) throw new Error("preset.traits.items is empty");
-  const traitKeys = items.map((t) => t.key);
+  const traitKeys = dnaKeysFromItems(items);
   const lineIds = resolveLines(preset);
   const supply = supplyWaves(preset);
   const seen = new Set();
+  const conflictState = rejectConflicts
+    ? { rules: collectConflicts(preset, pack), count: 0, examples: [] }
+    : null;
+  const exactState = buildExactDecks(items, preset.size, preset.seed);
   const chunks = supply
     ? supply.map((wave) => ({
         seed: wave.seed,
         wave: wave.n,
-        items: rollChunk(makeRng(wave.seed), items, lineIds, wave.lines, seen),
+        items: rollChunk(makeRng(wave.seed), items, lineIds, wave.lines, seen, conflictState, exactState),
       }))
     : [{
         seed: preset.seed,
         wave: null,
-        items: rollChunk(makeRng(preset.seed), items, lineIds, lineQuotas(preset, lineIds), seen),
+        items: rollChunk(makeRng(preset.seed), items, lineIds, lineQuotas(preset, lineIds), seen, conflictState, exactState),
       }];
 
   const out = [];
@@ -211,7 +298,37 @@ export function buildRecipes(preset, overrides = {}) {
   if (out.length !== preset.size) {
     throw new Error(`built ${out.length} recipes, size is ${preset.size}`);
   }
-  return out;
+  return {
+    recipes: out,
+    rejectedConflicts: conflictState?.count || 0,
+    conflictExamples: conflictState?.examples || [],
+  };
+}
+
+/**
+ * Build unique recipes for the whole series.
+ * With preset.waves, each wave is rolled from its own seed and numbered
+ * after the previous waves. Without waves, one roll from preset.seed.
+ * @param {object} preset
+ * @param {object} [overrides] — { items?: { [index]: { traits?, note? } } }
+ */
+export function buildRecipes(preset, overrides = {}) {
+  return assembleRecipes(preset, overrides, { rejectConflicts: false }).recipes;
+}
+
+/**
+ * Dry rarity run. Same builder and computeRarity. Conflict pairs are rejected
+ * attempts, not a post-build error. Does not call an image engine.
+ */
+export function drySimulate(preset, pack = null) {
+  const assembled = assembleRecipes(preset, {}, { rejectConflicts: true, pack });
+  return {
+    size: assembled.recipes.length,
+    rejectedConflicts: assembled.rejectedConflicts,
+    conflictExamples: assembled.conflictExamples,
+    rarity: computeRarity(preset, assembled.recipes),
+    engine: null,
+  };
 }
 
 /**

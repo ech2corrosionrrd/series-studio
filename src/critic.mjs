@@ -27,8 +27,11 @@ Output MUST be a single valid JSON object with EXACTLY this structure:
   "score": <number from 1 to 10>,
   "verdict": "keep" | "redo" | "review",
   "issues": ["<tag1>", "<tag2>"],
+  "missingTraits": ["<trait key that is not visible>"],
   "reason": "1-2 concise sentences explaining the verdict and key observations."
 }
+
+missingTraits lists recipe trait keys you cannot see in the image, key for key with the Traits object. Use [] when every listed trait is visible or when you cannot tell. Do not invent keys.
 
 Allowed issue tags: "none", "distorted_face", "bad_anatomy", "missing_trait", "blurry", "bad_crop", "glitch", "style_mismatch", "prompt_violation".
 Do not include any other markdown or commentary outside the JSON object.`;
@@ -38,7 +41,7 @@ Do not include any other markdown or commentary outside the JSON object.`;
  * @param {object} data
  * @returns {{ score: number, verdict: 'keep'|'redo'|'review', issues: string[], reason: string }}
  */
-export function sanitizeCriticOutput(data) {
+export function sanitizeCriticOutput(data, traitKeys = null) {
   let rawScore = Number(data?.score);
   if (!Number.isFinite(rawScore)) rawScore = 6;
   const score = Math.max(1, Math.min(10, Math.round(rawScore)));
@@ -63,7 +66,17 @@ export function sanitizeCriticOutput(data) {
   const reason = String(data?.reason || "").trim() ||
     (verdict === "keep" ? "High quality output matching prompt and style." : "Requires review or regeneration.");
 
-  return { score, verdict, issues, reason };
+  const allow = Array.isArray(traitKeys) ? new Set(traitKeys.map((k) => String(k))) : null;
+  const missingTraits = [...new Set(
+    (Array.isArray(data?.missingTraits) ? data.missingTraits : [])
+      .filter((s) => s != null)
+      .map((s) => String(s).trim())
+      .filter(Boolean)
+      .filter((k) => !allow || allow.has(k)),
+  )];
+  if (missingTraits.length && !issues.includes("missing_trait")) issues.push("missing_trait");
+
+  return { score, verdict, issues, missingTraits, reason };
 }
 
 /**
@@ -71,7 +84,7 @@ export function sanitizeCriticOutput(data) {
  * @param {string} text
  * @returns {object|null}
  */
-export function parseCriticJson(text) {
+export function parseCriticJson(text, traitKeys = null) {
   if (!text) return null;
   const raw = String(text).trim();
   const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -79,7 +92,7 @@ export function parseCriticJson(text) {
   try {
     const parsed = JSON.parse(target);
     if (parsed && typeof parsed === "object") {
-      return sanitizeCriticOutput(parsed);
+      return sanitizeCriticOutput(parsed, traitKeys);
     }
     return null;
   } catch {
@@ -101,6 +114,7 @@ export function triageImageOffline({ imagePath, recipe, preset }) {
       score: 1,
       verdict: "redo",
       issues: ["missing_file"],
+      missingTraits: [],
       reason: "Image file is missing from disk.",
       mode: "heuristic",
     };
@@ -112,6 +126,7 @@ export function triageImageOffline({ imagePath, recipe, preset }) {
       score: 2,
       verdict: "redo",
       issues: qa.issues.map((i) => `file_${i}`),
+      missingTraits: [],
       reason: `Image file integrity check failed (${qa.issues.join(", ")}).`,
       mode: "heuristic",
     };
@@ -125,23 +140,35 @@ export function triageImageOffline({ imagePath, recipe, preset }) {
         score: 5,
         verdict: "review",
         issues: ["prompt_lint_warning"],
-        reason: `Prompt triggered brand/franchise lint warning (${lint.hits.join(", ")}).`,
+        missingTraits: [],
+        reason: `Prompt triggered brand/franchise lint warning (${lint.hits.join(", ")}). Offline mode does not decide whether a trait is visible.`,
         mode: "heuristic",
       };
     }
   }
 
-  // Trait check
-  const traits = recipe?.traits || {};
-  const traitCount = Object.keys(traits).length;
-
   return {
     score: 8,
     verdict: "keep",
     issues: ["none"],
-    reason: `Image passed file QA (${qa.format}, ${Math.round(qa.bytes / 1024)} KB). ${traitCount ? `${traitCount} traits verified.` : "Ready."}`,
+    missingTraits: [],
+    reason: `Image passed file QA (${qa.format}, ${Math.round(qa.bytes / 1024)} KB). Offline mode does not check whether traits are visible.`,
     mode: "heuristic",
   };
+}
+
+/** How many triage rows name a missing trait. Does not block a ZIP. */
+export function countMissingTraitFrames(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const editions = [];
+  for (const row of list) {
+    const missing = Array.isArray(row?.missingTraits) ? row.missingTraits : [];
+    const issues = Array.isArray(row?.issues) ? row.issues : [];
+    if (missing.length || issues.includes("missing_trait")) {
+      if (row?.edition != null) editions.push(row.edition);
+    }
+  }
+  return { frames: editions.length, editions };
 }
 
 /**
@@ -221,7 +248,7 @@ export async function triageImageVision({
 
       const json = await res.json();
       const content = json.content?.[0]?.text;
-      const parsed = parseCriticJson(content);
+      const parsed = parseCriticJson(content, Object.keys(recipe?.traits || {}));
       if (parsed) return { ...parsed, mode: "vision", provider: "anthropic" };
     } else {
       // Default: OpenAI
@@ -255,7 +282,7 @@ export async function triageImageVision({
 
       const json = await res.json();
       const content = json.choices?.[0]?.message?.content;
-      const parsed = parseCriticJson(content);
+      const parsed = parseCriticJson(content, Object.keys(recipe?.traits || {}));
       if (parsed) return { ...parsed, mode: "vision", provider: "openai" };
     }
   } catch (err) {

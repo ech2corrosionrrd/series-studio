@@ -6,7 +6,7 @@
  */
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { backup, DatabaseSync } from "node:sqlite";
+import { backupDatabase, DatabaseSync } from "../src/platform/sqlite-backup.mjs";
 
 function arg(name) {
   const i = process.argv.indexOf(name);
@@ -27,7 +27,7 @@ mkdirSync(dirname(destAbs), { recursive: true });
 const src = new DatabaseSync(srcAbs, { readOnly: true, timeout: 30_000 });
 let pages = 0;
 try {
-  pages = await backup(src, destAbs);
+  pages = await backupDatabase(src, destAbs);
 } finally {
   src.close();
 }

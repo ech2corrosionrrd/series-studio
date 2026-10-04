@@ -2,7 +2,63 @@
  * Rarity report: actual trait option frequency vs weight-expected %.
  */
 
-import { loadTraitsFromPreset } from "./traits.mjs";
+import { loadTraitsFromPreset, NONE } from "./traits.mjs";
+
+const NULL_TRAIT = new Set(["", NONE, "__NONE__", "None", "null"]);
+
+function traitValueOrNull(traits, key) {
+  const v = traits?.[key];
+  if (v == null || NULL_TRAIT.has(String(v))) return "null";
+  return String(v);
+}
+
+/**
+ * OpenRarity information content: sum of −log2(P) per layer.
+ * A layer that exists in the preset but is missing on the edition counts as "null".
+ * Does not replace the frequency report.
+ */
+export function openRarityByEdition(preset, recipes) {
+  const list = Array.isArray(recipes) ? recipes : [];
+  const n = list.length;
+  let keys = [];
+  if (Array.isArray(preset?.traits?.items)) {
+    try {
+      keys = loadTraitsFromPreset(preset).map((t) => t.key);
+    } catch {
+      keys = [];
+    }
+  }
+  if (!keys.length) {
+    keys = [...new Set(list.flatMap((r) => Object.keys(r?.traits || {})))];
+  }
+  const counts = {};
+  for (const key of keys) counts[key] = {};
+  for (const recipe of list) {
+    for (const key of keys) {
+      const value = traitValueOrNull(recipe?.traits, key);
+      counts[key][value] = (counts[key][value] || 0) + 1;
+    }
+  }
+  const editions = list.map((recipe) => {
+    let openRarity = 0;
+    const traits = [];
+    for (const key of keys) {
+      const value = traitValueOrNull(recipe?.traits, key);
+      const count = counts[key][value] || 0;
+      const p = n > 0 ? count / n : 0;
+      const information = p > 0 ? -Math.log2(p) : 0;
+      openRarity += information;
+      traits.push({ trait: key, value, count, p, information });
+    }
+    return { edition: recipe?.edition ?? null, openRarity, traits };
+  });
+  return {
+    method: "openrarity",
+    formula: "sum(-log2(P))",
+    nullValue: "null",
+    editions,
+  };
+}
 
 function roundPct(n) {
   return Math.round(n * 1000) / 10; // 1 decimal place

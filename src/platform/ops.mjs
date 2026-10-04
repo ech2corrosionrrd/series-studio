@@ -29,11 +29,16 @@ export async function notifyOperator(text, { parseMode } = {}) {
   return true;
 }
 
-/** Operator wallet for the admin panel. Public address; extra admins may be added via ADMIN_WALLETS. */
+/**
+ * Default operator wallet. Used only when `ADMIN_WALLETS` is unset.
+ * A set `ADMIN_WALLETS` (even empty) replaces this list entirely.
+ */
 export const ADMIN_WALLET = "63u6SDZckvzcJhC4V5yJn6bZ15qx1iM8c6iB3Z9xD1tn";
 
-// Team wallets that are never "external demand" (same list as Промт wallet_class).
-const TEAM_WALLETS = [
+export const DEFAULT_ADMIN_WALLETS = [ADMIN_WALLET];
+
+/** Team wallets that are never "external demand" (same list as Промт wallet_class). */
+export const DEFAULT_TEAM_WALLETS = [
   ADMIN_WALLET,
   "DE1gBEaqA11uYdySmF5LRmN8QsvXvnYJYHDVXeAY15Vh",
   "7XTEnenjjLi2Pr8ShUPYo1DXKm3WZRLoD2rQpiq7E6qw",
@@ -41,21 +46,37 @@ const TEAM_WALLETS = [
   "0x25267d871267bf1c2478d47d167aa6237fab1d1c",
 ];
 
-export function internalWallets() {
-  const out = new Set(TEAM_WALLETS.map(normalizeAddr));
-  for (const key of ["ADMIN_WALLETS", "OPERATOR_WALLET", "DOGFOOD_WALLETS"]) {
-    for (const w of String(process.env[key] || "").split(",")) if (w.trim()) out.add(normalizeAddr(w));
+function splitWallets(value) {
+  return String(value || "")
+    .split(",")
+    .map((w) => w.trim())
+    .filter(Boolean);
+}
+
+/** `null` when the variable is unset (use defaults). An empty string is an override. */
+function envWalletList(env, key) {
+  if (env[key] == null) return null;
+  return splitWallets(env[key]);
+}
+
+export function adminWallets(env = process.env) {
+  const override = envWalletList(env, "ADMIN_WALLETS");
+  const list = override == null ? DEFAULT_ADMIN_WALLETS : override;
+  return new Set(list.map(normalizeAddr));
+}
+
+export function internalWallets(env = process.env) {
+  const teamOverride = envWalletList(env, "TEAM_WALLETS");
+  const team = teamOverride == null ? DEFAULT_TEAM_WALLETS : teamOverride;
+  const out = new Set(team.map(normalizeAddr));
+  for (const w of adminWallets(env)) out.add(w);
+  for (const key of ["OPERATOR_WALLET", "DOGFOOD_WALLETS"]) {
+    for (const w of splitWallets(env[key])) out.add(normalizeAddr(w));
   }
   return out;
 }
 
 export const isInternal = (wallet) => !!wallet && internalWallets().has(normalizeAddr(wallet));
-
-export function adminWallets() {
-  const out = new Set([normalizeAddr(ADMIN_WALLET)]);
-  for (const w of String(process.env.ADMIN_WALLETS || "").split(",")) if (w.trim()) out.add(normalizeAddr(w));
-  return out;
-}
 
 export const isAdmin = (wallet) => !!wallet && adminWallets().has(normalizeAddr(wallet));
 

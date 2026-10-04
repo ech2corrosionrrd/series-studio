@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<a class="skip-link" href="#content" data-i18n="a11y.skip">Перейти до вмісту</a>
 <header class="top">
   <div class="brand">
     <span class="logo">S</span>
@@ -16,7 +17,7 @@
       <small id="p-sub" data-i18n="brand.sub">майстерня серії · by W3IR</small>
     </div>
   </div>
-  <nav id="tabs">
+  <nav id="tabs" data-i18n-aria="a11y.mainNav" aria-label="Розділи майстерні">
     <button data-tab="home" class="on" data-i18n="nav.home" data-i18n-title="nav.home.title">1 · Огляд</button>
     <button data-tab="base" data-i18n="nav.base" data-i18n-title="nav.base.title">2 · Основа</button>
     <button data-tab="ctor" data-i18n="nav.ctor" data-i18n-title="nav.ctor.title">3 · Конструктор</button>
@@ -24,6 +25,8 @@
     <button data-tab="render" data-i18n="nav.render" data-i18n-title="nav.render.title">5 · Генерація</button>
     <button data-tab="gallery" data-i18n="nav.gallery" data-i18n-title="nav.gallery.title">6 · Відбір</button>
     <button data-tab="export" data-i18n="nav.export" data-i18n-title="nav.export.title">7 · Експорт</button>
+    <button data-tab="deploy" data-i18n="nav.deploy" data-i18n-title="nav.deploy.title">Деплой</button>
+    <button data-tab="market" data-i18n="nav.market" data-i18n-title="nav.market.title">Маркет</button>
     <button data-tab="admin" id="nav-admin" hidden data-i18n="nav.admin" data-i18n-title="nav.admin.title">Адмін</button>
     <button data-tab="help" data-i18n="nav.help" data-i18n-title="nav.help.title">❓ Довідка</button>
   </nav>
@@ -38,18 +41,26 @@
     <button type="button" id="acct-buy" class="btn small primary acct-buy" data-i18n="acct.buy" data-i18n-tip="acct.buy.tip">＋ Купити</button>
     <button type="button" id="acct-logout" class="btn small ghost" data-i18n="acct.logout" data-i18n-tip="acct.logout.tip">Вийти</button>
   </div>
-  <div class="lang-switch" role="group" aria-label="Language">
+  <div class="lang-switch" role="group" data-i18n-aria="a11y.language" aria-label="Мова">
     <span class="muted small" data-i18n="lang.label">Мова</span>
-    <button type="button" class="lang-btn" data-locale="uk" title="Українська">UK</button>
-    <button type="button" class="lang-btn" data-locale="en" title="English">EN</button>
+    <button type="button" class="lang-btn" data-locale="uk" data-i18n-title="lang.name.uk" data-i18n-aria="lang.name.uk" title="Українська" aria-label="Українська">UK</button>
+    <button type="button" class="lang-btn" data-locale="en" data-i18n-title="lang.name.en" data-i18n-aria="lang.name.en" title="English" aria-label="English">EN</button>
   </div>
-  <label class="hints-toggle" data-i18n-title="hints.toggle.title" title="Hints">
+  <label class="hints-toggle" data-i18n-title="hints.toggle.title" title="Показати або сховати фіолетові блоки з поясненнями">
     <input type="checkbox" id="hints-on" checked>
     <span data-i18n="hints.toggle">Підказки</span>
   </label>
 </header>
 
-<main>
+<div id="path" class="path">
+  <div id="path-steps" class="path-steps" role="navigation" data-i18n-aria="a11y.pathNav" aria-label="Шлях новачка"></div>
+  <label class="path-mode">
+    <input type="checkbox" id="path-beginner" checked>
+    <span data-i18n="path.beginner">Шлях новачка</span>
+  </label>
+</div>
+
+<main id="content">
   <!-- 1. OVERVIEW -->
   <section id="tab-home" class="tab on">
     <h1 data-i18n="home.h1">Огляд колекції</h1>
@@ -96,13 +107,14 @@
         <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="o-strength-v">0.45</b>
           <input type="range" id="o-strength" min="0.1" max="0.95" step="0.05" value="0.45">
         </label>
+        <p id="o-strength-note" class="muted small" role="status"></p>
       </div>
       <div class="actions">
         <button type="button" id="o-start" class="btn primary" data-i18n="home.start">Почати серію · основа →</button>
         <button type="button" id="o-save" class="btn" data-i18n="home.save">Зберегти пресет</button>
         <button type="button" id="o-spin" class="btn" data-i18n="home.spin">Спін-оф</button>
         <button type="button" id="o-next" class="btn" data-i18n="home.next">Далі · Основа →</button>
-        <span id="o-msg" class="small"></span>
+        <span id="o-msg" class="small" role="status"></span>
       </div>
     </div>
     <div class="card" id="stages-guide">
@@ -116,7 +128,10 @@
         <li data-i18n="stages.5"></li>
         <li data-i18n="stages.6"></li>
         <li data-i18n="stages.7"></li>
+        <li data-i18n="stages.8"></li>
+        <li data-i18n="stages.9"></li>
       </ol>
+      <p class="muted small" data-i18n="stages.path"></p>
     </div>
     <ol id="steps" class="steps"></ol>
     <div class="grid2">
@@ -168,7 +183,7 @@
           <button type="button" id="base-upload" class="btn primary" disabled data-i18n="base.save">Завантажити</button>
         </div>
         <p id="base-pick-list" class="muted small"></p>
-        <span id="base-msg" class="small"></span>
+        <span id="base-msg" class="small" role="status"></span>
         <h3 style="margin-top:16px" data-i18n="base.gallery">Галерея input/</h3>
         <div id="base-gallery" class="base-gallery"></div>
         <div id="base-lines" class="muted small" style="margin-top:10px"></div>
@@ -196,7 +211,7 @@
           <select id="base-wish-engine">
             <option value="openai" data-i18n="engine.openai">openai</option>
             <option value="fal" data-i18n="engine.fal">fal.ai</option>
-            <option value="schnell" data-i18n="engine.schnell">replicate schnell</option>
+            <option value="schnell" data-i18n="engine.schnell" data-mode="txt">replicate schnell</option>
             <option value="comfyui" data-i18n="engine.comfyui" data-local-gpu="1">comfyui</option>
             <option value="a1111" data-i18n="engine.a1111" data-local-gpu="1">automatic1111</option>
             <option value="kontext" data-i18n="engine.kontext">kontext / flux</option>
@@ -206,9 +221,16 @@
             <option value="mock" data-i18n="engine.mock">mock (демо)</option>
           </select>
         </label>
-        <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="base-wish-str-v">0.45</b>
-          <input type="range" id="base-wish-str" min="0.1" max="0.95" step="0.05" value="0.45">
+        <label id="base-wish-str-label" class="strength-off"><span data-i18n="home.field.strength">Сила референсу</span>: <b id="base-wish-str-v">0.45</b>
+          <input type="range" id="base-wish-str" min="0.1" max="0.95" step="0.05" value="0.45" disabled>
         </label>
+        <p id="base-wish-str-note" class="muted small" role="status"></p>
+        <div class="scale small" id="base-wish-scale" hidden>
+          <span data-i18n="scale.free"></span>
+          <span data-i18n="scale.balance"></span>
+          <span data-i18n="scale.copy"></span>
+        </div>
+        <p id="base-wish-prompt" class="muted small"></p>
         <label class="row"><input type="checkbox" id="base-wish-ref"> <span data-i18n="base.wish.useRef">Редагувати від primary (img2img), інакше txt2img</span></label>
         <label class="row"><input type="checkbox" id="base-wish-primary" checked> <span data-i18n="base.wish.makePrimary">Зберегти як головну базову картинку серії</span></label>
         <div class="actions">
@@ -278,7 +300,7 @@
       <button type="button" id="ctor-validate" class="btn" data-i18n="ctor.validate">Validate</button>
       <button type="button" id="ctor-save" class="btn primary" data-i18n="ctor.save">Зберегти промпт+трейти</button>
       <button type="button" id="ctor-next" class="btn" data-i18n="ctor.next">Далі · Рецепти →</button>
-      <span id="ctor-msg" class="small"></span>
+      <span id="ctor-msg" class="small" role="status"></span>
     </div>
 
 
@@ -310,12 +332,18 @@
         <span id="opt-count" class="muted small"></span>
       </div>
       <div id="opt-editor-wrap" class="opt-editor-wrap" hidden>
+        <label class="small row">
+          <input type="checkbox" id="opt-skip-dna">
+          <span data-i18n="ctor.options.skipDna">Цей шар не входить в DNA</span>
+        </label>
+        <p class="muted small" data-i18n="ctor.options.skipDnaHelp"></p>
         <div class="opt-table-wrap">
           <table class="opt-table" id="opt-table">
             <thead>
               <tr>
                 <th data-i18n="ctor.options.colValue">value</th>
                 <th data-i18n="ctor.options.colWeight">weight</th>
+                <th data-i18n="ctor.options.colExact">рівно N</th>
                 <th data-i18n="ctor.options.colPrompt">prompt</th>
                 <th data-i18n="ctor.options.colActions"></th>
               </tr>
@@ -383,7 +411,7 @@
         <button type="button" class="btn small matrix-btn" data-engine="kontext" data-i18n-tip="ctor.matrix.kontext.tip">Kontext Reference</button>
         <button type="button" class="btn small matrix-btn" data-engine="openai" data-i18n-tip="ctor.matrix.openai.tip">OpenAI Prose</button>
       </div>
-      <pre id="ctor-matrix-preview" class="log small" style="margin-top:8px; white-space:pre-wrap; max-height:160px; overflow:auto">Select an engine above to preview formatted prompt</pre>
+      <pre id="ctor-matrix-preview" class="log small" data-i18n="ctor.matrix.empty" style="margin-top:8px; white-space:pre-wrap; max-height:160px; overflow:auto">Оберіть рушій вище, щоб побачити відформатований промпт</pre>
     </div>
   </section>
 
@@ -401,6 +429,8 @@
     <div class="toolbar">
       <select id="r-preset" data-i18n-tip="ctrl.r-preset.tip"></select>
       <button type="button" id="r-build" class="btn primary" data-i18n="recipes.build">Зібрати тексти</button>
+      <button type="button" id="r-simulate" class="btn" data-i18n="recipes.simulate">Суха симуляція рідкості</button>
+      <span id="r-simulate-msg" class="small" role="status"></span>
       <span class="muted small" data-i18n="recipes.textsOnly">Без рендеру і без кредитів.</span>
       <button type="button" id="r-diff" class="btn" data-i18n="recipes.diff">Diff-seed</button>
       <input id="r-search" data-i18n-placeholder="recipes.search" data-i18n-tip="recipes.search.tip" placeholder="Search">
@@ -492,6 +522,16 @@
         <label><span data-i18n="render.strength">Сила референсу</span>: <b id="g-strength-v">0.45</b>
           <input type="range" id="g-strength" min="0.1" max="0.95" step="0.05" value="0.45">
         </label>
+        <p id="g-strength-note" class="muted small" role="status"></p>
+        <div id="g-license" class="license-warn" hidden role="status">
+          <b data-i18n="license.warnTitle">Ліцензія FLUX.1 [dev]</b>
+          <p data-i18n="license.body"></p>
+          <button type="button" id="g-license-proceed" class="btn small" data-i18n="license.proceed">Зрозуміло, генерувати</button>
+        </div>
+        <label id="g-flux-dev-wrap" class="small row" hidden>
+          <input type="checkbox" id="g-flux-dev">
+          <span data-i18n="license.fluxDevMark">Я використовую ваги FLUX.1 dev</span>
+        </label>
         <div class="scale small">
           <span data-i18n="scale.free"></span>
           <span data-i18n="scale.balance"></span>
@@ -531,11 +571,11 @@
         <pre id="g-plan-out" class="log small" data-i18n="render.stub">Press Estimate first.</pre>
         <div id="g-progress-wrap" style="margin-top:12px" hidden>
           <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px">
-            <span id="g-progress-text" class="muted">Генерація...</span>
+            <span id="g-progress-text" class="muted" data-i18n="render.working">Генерація…</span>
             <b id="g-progress-pct">0%</b>
           </div>
           <div style="width:100%; background:var(--border); border-radius:4px; height:8px; overflow:hidden">
-            <div id="g-progress-bar" style="width:0%; height:100%; background:var(--primary, #6366f1); transition:width 0.2s"></div>
+            <div id="g-progress-bar" style="width:0%; height:100%; background:var(--accent); transition:width 0.2s"></div>
           </div>
         </div>
         <div id="g-result" hidden>
@@ -573,6 +613,14 @@
         <option value="redo" data-i18n="gallery.filter.redo">↻ Переробити</option>
       </select>
       <span id="v-stats" class="muted"></span>
+      <label class="small row">
+        <input type="checkbox" id="v-thumb64">
+        <span data-i18n="gallery.thumb64">Мініатюра 64px поруч</span>
+      </label>
+      <label class="small row">
+        <input type="checkbox" id="v-similarity">
+        <span data-i18n="gallery.similarity.toggle">Схожість до бази</span>
+      </label>
       <button type="button" id="v-redo" class="btn" data-i18n="gallery.redoMarked">Redo marked…</button>
       <button type="button" id="v-quick-redo" class="btn primary" data-i18n="gallery.redo.btn">↻ Перегенерувати відхилені</button>
       <span id="v-redo-status" class="small muted"></span>
@@ -601,6 +649,7 @@
       <button type="button" id="v-dupes" class="btn small" data-i18n="gallery.dupes.btn">Знайти схожі</button>
       <span id="v-dupes-status" class="small muted"></span>
       <button type="button" id="v-triage-run" class="btn small" data-i18n="gallery.triage.btn">🤖 Запустити Triage</button>
+      <span id="v-triage-price" class="small muted"></span>
       <button type="button" id="v-triage-apply" class="btn small" style="display:none" data-i18n="gallery.triage.applyBtn">✓ Застосувати рекомендації</button>
       <span id="v-triage-status" class="small muted"></span>
     </div>
@@ -609,7 +658,7 @@
     <div id="v-grid" class="gallery"></div>
     <div id="v-lightbox" class="lightbox" hidden>
       <img id="v-lightbox-img" alt="">
-      <button type="button" id="v-lightbox-close" class="btn" data-i18n-tip="ctrl.v-lightbox-close.tip">✕</button>
+      <button type="button" id="v-lightbox-close" class="btn" data-i18n-aria="a11y.close" aria-label="Закрити" data-i18n-tip="ctrl.v-lightbox-close.tip">✕</button>
     </div>
     <div id="ver-overlay" class="overlay" hidden>
       <div class="card ver-card">
@@ -632,40 +681,50 @@
     <div class="card">
       <h2 data-i18n="export.release.h2">Архів випуску</h2>
       <p class="muted small" data-i18n="export.release.hint">Один пакет: лише позначені keep, метадані OpenSea, чекліст попереду. Інші формати нижче.</p>
+      <p id="x-price" class="small muted"></p>
       <div class="actions">
+        <button type="button" id="x-preflight" class="btn" data-i18n="preflight.run">Перевірити архів</button>
         <button type="button" id="x-release" class="btn primary" data-i18n="export.release.run">Зібрати архів випуску</button>
         <span id="x-release-msg" class="small"></span>
         <a id="x-release-dl" class="btn" href="#" download hidden data-i18n="export.bundle.download">Завантажити ZIP</a>
         <a id="x-release-next" class="btn primary" href="#" target="_blank" rel="noopener noreferrer" hidden data-i18n="export.release.next" data-i18n-tip="export.release.next.tip">Далі · портал запуску →</a>
       </div>
       <ul id="x-release-list" class="checklist"></ul>
+      <div id="x-preflight-report" class="preflight-report" hidden>
+        <div class="preflight-head">
+          <span id="x-preflight-badge" class="preflight-badge" role="status"></span>
+          <button type="button" id="x-preflight-copy" class="btn small" data-i18n="preflight.copy">Копіювати як текст</button>
+        </div>
+        <div id="x-preflight-groups"></div>
+      </div>
     </div>
     <div class="card">
       <label class="small"><span data-i18n="export.archive">Архів</span>
         <select id="x-file"></select>
       </label>
       <div class="actions" style="margin-top:12px; gap:8px; flex-wrap:wrap">
-        <a id="x-json" class="btn" href="#" download data-i18n="export.json">⬇ Archive JSON</a>
-        <button type="button" id="x-csv" class="btn" data-i18n="export.csv">⬇ Prompts CSV</button>
-        <button type="button" id="x-txt" class="btn" data-i18n="export.txt">⬇ Prompts TXT</button>
-        <button type="button" id="x-manifest-csv" class="btn primary" data-i18n="export.manifest.csv">⬇ Manifest CSV</button>
+        <a id="x-json" class="btn" href="#" download data-i18n="export.json">⬇ Архів JSON</a>
+        <button type="button" id="x-csv" class="btn" data-i18n="export.csv">⬇ Промпти CSV</button>
+        <button type="button" id="x-txt" class="btn" data-i18n="export.txt">⬇ Промпти TXT</button>
+        <button type="button" id="x-manifest-csv" class="btn primary" data-i18n="export.manifest.csv">Маніфест CSV</button>
         <span id="x-msg" class="small"></span>
       </div>
       <p class="muted small" style="margin-top:12px" data-i18n="export.note"></p>
     </div>
 
     <div class="card" style="margin-top:16px">
-      <h2 data-i18n="export.bundle.title">Mint-ready ZIP</h2>
+      <h2 data-i18n="export.bundle.title">ZIP до мінту</h2>
       <p class="muted small" data-i18n="export.bundle.help"></p>
       <div class="grid-2">
         <label class="small"><span data-i18n="export.profile.label">Launchpad Profile</span>
           <select id="x-profile">
             <option value="opensea" data-i18n="export.profile.opensea">OpenSea Studio (ERC-721 + CSV)</option>
-            <option value="magiceden" data-i18n="export.profile.magiceden">Magic Eden Drop (Solana / EVM)</option>
+            <option value="magiceden" data-i18n="export.profile.magiceden">Magic Eden Drop (Solana)</option>
             <option value="launchmynft" data-i18n="export.profile.launchmynft">LaunchMyNFT (Metaplex / 0-index)</option>
             <option value="ordinalsbot" data-i18n="export.profile.ordinalsbot">Bitcoin Ordinals / Inscriptions</option>
           </select>
         </label>
+        <p id="x-profile-hint" class="muted small" style="grid-column: 1 / -1; margin:0" data-i18n="export.profileHint.opensea"></p>
         <label class="small"><span data-i18n="export.bundle.set">Image set</span>
           <select id="x-set"></select>
         </label>
@@ -684,14 +743,14 @@
         <label class="small" id="x-creator-wrap" style="grid-column: 1 / -1"><span data-i18n="export.creator.label">Creator Address</span>
           <input id="x-creator-address" type="text" placeholder="e.g. Solana / EVM wallet address" data-i18n-placeholder="export.creator.ph" />
         </label>
-        <label class="small" style="grid-column: 1 / -1"><span data-i18n="export.bundle.uriPrefix">Image URI Prefix (Storage)</span>
+        <label class="small" id="x-uri-wrap" style="grid-column: 1 / -1"><span data-i18n="export.bundle.uriPrefix">Image URI Prefix (Storage)</span>
           <div style="display:flex; gap:8px">
             <input id="x-uri-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.png)" data-i18n-placeholder="export.bundle.uriPrefix.ph" data-i18n-tip="export.bundle.uriPrefix.tip" style="flex:1" />
-            <button type="button" id="x-pin-pinata" class="btn small" data-i18n="export.bundle.pinPinata">📌 Upload to IPFS (Pinata)</button>
+            <button type="button" id="x-pin-irys" class="btn small" data-i18n="export.bundle.pinArweave">📌 Upload to Arweave (Irys)</button>
           </div>
           <span id="x-pin-status" class="small muted" style="margin-top:2px; display:block"></span>
         </label>
-        <label class="small" style="grid-column: 1 / -1"><span data-i18n="export.bundle.animPrefix">Animation / Video URI Prefix</span>
+        <label class="small" id="x-anim-wrap" style="grid-column: 1 / -1"><span data-i18n="export.bundle.animPrefix">Animation / Video URI Prefix</span>
           <input id="x-anim-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.mp4)" data-i18n-placeholder="export.bundle.animPrefix.ph" />
         </label>
       </div>
@@ -700,23 +759,23 @@
         <pre id="x-meta-preview" class="log small" style="margin-top:8px; max-height:220px; overflow:auto">{}</pre>
       </details>
       <div class="actions" style="margin-top:12px; gap:12px; flex-wrap:wrap">
-        <label class="small"><input type="checkbox" id="x-onlyKeep" checked /> <span data-i18n="export.bundle.onlyKeep">Only keep-marked</span></label>
-        <label class="small"><input type="checkbox" id="x-zero-index" /> <span data-i18n="export.zeroIndex.label">0-based indexing</span></label>
-        <label class="small"><input type="checkbox" id="x-upscale" /> <span data-i18n="export.bundle.upscale">Upscale 2×</span></label>
-        <button type="button" id="x-bundle" class="btn primary" data-i18n="export.bundle.build">Build ZIP</button>
-        <button type="button" id="x-provenance" class="btn" data-i18n="export.provenance.btn">🔐 Provenance Hash</button>
-        <button type="button" id="x-dataset" class="btn" data-i18n="export.dataset.btn">📦 LoRA Training Dataset</button>
-        <button type="button" id="x-showcase" class="btn" data-i18n="export.showcase.btn">⬇ Showcase &amp; Rarity Scorecard</button>
+        <label class="small"><input type="checkbox" id="x-onlyKeep" checked /> <span data-i18n="export.bundle.onlyKeep">Лише позначені «Лишити»</span></label>
+        <label class="small"><input type="checkbox" id="x-zero-index" /> <span data-i18n="export.zeroIndex.label">Нумерація з нуля (0.png, 0.json)</span></label>
+        <label class="small"><input type="checkbox" id="x-upscale" /> <span data-i18n="export.bundle.upscale">Збільшити 2×</span></label>
+        <button type="button" id="x-bundle" class="btn primary" data-i18n="export.bundle.build">Зібрати ZIP</button>
+        <button type="button" id="x-provenance" class="btn" data-i18n="export.provenance.btn">Хеш походження (provenance)</button>
+        <button type="button" id="x-dataset" class="btn" data-i18n="export.dataset.btn">Датасет для донавчання (LoRA)</button>
+        <button type="button" id="x-showcase" class="btn" data-i18n="export.showcase.btn">Вітрина і рідкість (HTML)</button>
         <a id="x-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">⬇ Download ZIP</a>
-        <span id="x-bundle-msg" class="small"></span>
+        <span id="x-bundle-msg" class="small" role="status"></span>
       </div>
       <div id="x-prov-result" class="card small" style="margin-top:10px; display:none; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2)">
-        <span style="font-weight:600">Provenance Hash (SHA-256): </span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
+        <span style="font-weight:600" data-i18n="export.provenance.hashLabel">Хеш походження (SHA-256)</span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
       </div>
     </div>
 
     <div class="card" style="margin-top:16px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.03);">
-      <h2 style="color: #10b981" data-i18n="release.hub.title">🚀 Release &amp; Deployment Hub</h2>
+      <h2 class="release-hub-title" data-i18n="release.hub.title">Центр випуску</h2>
       <p class="muted small" data-i18n="release.hub.help"></p>
       <div class="actions" style="margin-top:12px; gap:8px; flex-wrap:wrap">
         <a id="rel-portal-btn" class="btn primary" href="https://opensea.io/studio/create" target="_blank" rel="noopener noreferrer" data-i18n="release.hub.portalBtn">🌐 Open Launch Portal</a>
@@ -730,11 +789,11 @@
     </div>
 
     <div class="card" style="margin-top:16px">
-      <h2 data-i18n="export.checklist.title">NFT checklist</h2>
+      <h2 data-i18n="export.checklist.title">Чекліст NFT</h2>
       <p class="muted small" data-i18n="export.checklist.help"></p>
       <div class="actions">
-        <button type="button" id="x-checklist" class="btn" data-i18n="export.checklist.run">Run checklist</button>
-        <span id="x-checklist-msg" class="small"></span>
+        <button type="button" id="x-checklist" class="btn" data-i18n="export.checklist.run">Перевірити чекліст</button>
+        <span id="x-checklist-msg" class="small" role="status"></span>
       </div>
       <ul id="x-checklist-list" class="checklist" style="margin-top:12px"></ul>
     </div>
@@ -742,11 +801,96 @@
 
   </section>
 
+  <!-- DEPLOY KIT -->
+  <section id="tab-deploy" class="tab">
+    <h1 data-i18n="deploy.h1">Набір деплою</h1>
+    <div class="hint"><p data-i18n="deploy.hint"></p></div>
+    <div class="card">
+      <p class="muted small" data-i18n="deploy.help"></p>
+      <p id="d-price" class="small muted"></p>
+      <div class="grid2">
+        <label class="small"><span data-i18n="deploy.chain">Мережа</span>
+          <select id="d-chain">
+            <option value="solana" selected data-i18n="deploy.chain.solana">Solana (Core Candy Machine, спочатку devnet)</option>
+            <option value="solana-legacy" data-i18n="deploy.chain.solanaLegacy">Solana (Sugar, застарілий)</option>
+            <option value="evm" data-i18n="deploy.chain.evm">EVM (Thirdweb, спочатку тестнет)</option>
+            <option value="bitcoin" data-i18n="deploy.chain.bitcoin">Bitcoin Ordinals</option>
+          </select>
+        </label>
+        <label class="small"><span data-i18n="export.bundle.set">Набір зображень</span>
+          <select id="d-set"></select>
+        </label>
+        <label class="small"><span data-i18n="export.creator.label">Публічна адреса творця</span>
+          <input id="d-creator" type="text" data-i18n-placeholder="export.creator.ph" placeholder="публічна адреса, не ключ">
+        </label>
+        <label class="small"><span data-i18n="export.bundle.symbol">Символ</span>
+          <input id="d-symbol" type="text" value="LAB">
+        </label>
+        <label class="small" style="grid-column: 1 / -1"><span data-i18n="export.bundle.description">Опис</span>
+          <input id="d-desc" type="text">
+        </label>
+      </div>
+      <div id="d-advisor-card" class="advisor-card">
+        <h2 data-i18n="advisor.h2">Порадник запуску</h2>
+        <p class="advisor-note" data-i18n="advisor.offline"></p>
+        <div id="d-advisor" class="advisor" aria-live="polite"></div>
+        <label class="small row">
+          <input type="checkbox" id="d-holder-on" checked>
+          <span data-i18n="advisor.holder.include">Додати заяву для власників у набір</span>
+        </label>
+        <label class="small"><span data-i18n="advisor.holder.label">Заява для власників (заповніть пропуски)</span>
+          <textarea id="d-holder" rows="8"></textarea>
+        </label>
+        <p class="muted small" data-i18n="advisor.holder.help"></p>
+      </div>
+      <div class="actions">
+        <button type="button" id="d-build" class="btn primary" data-i18n="deploy.build">Зібрати набір деплою</button>
+        <a id="d-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">Завантажити ZIP</a>
+        <span id="d-msg" class="small" role="status"></span>
+      </div>
+      <pre id="d-guide" class="log small preflight" hidden></pre>
+    </div>
+  </section>
+
+  <!-- MARKETPLACE KIT -->
+  <section id="tab-market" class="tab">
+    <h1 data-i18n="market.h1">Набір маркетплейсу</h1>
+    <div class="hint"><p data-i18n="market.hint"></p></div>
+    <div class="card">
+      <p class="muted small" data-i18n="market.help"></p>
+      <p id="m-price" class="small muted"></p>
+      <div class="grid2">
+        <label class="small"><span data-i18n="deploy.chain">Мережа</span>
+          <select id="m-chain">
+            <option value="solana" data-i18n="market.chain.solana">Solana · Magic Eden, Tensor</option>
+            <option value="evm" data-i18n="market.chain.evm">EVM · OpenSea</option>
+            <option value="bitcoin" data-i18n="market.chain.bitcoin">Bitcoin · Ordinals</option>
+          </select>
+        </label>
+        <label class="small"><span data-i18n="export.bundle.set">Набір зображень</span>
+          <select id="m-set"></select>
+        </label>
+        <label class="small"><span data-i18n="market.name">Назва на майданчику</span>
+          <input id="m-name" type="text">
+        </label>
+        <label class="small"><span data-i18n="export.bundle.description">Опис</span>
+          <input id="m-desc" type="text">
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" id="m-build" class="btn primary" data-i18n="market.build">Зібрати набір маркетплейсу</button>
+        <a id="m-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">Завантажити ZIP</a>
+        <span id="m-msg" class="small" role="status"></span>
+      </div>
+      <pre id="m-note" class="log small preflight" hidden></pre>
+    </div>
+  </section>
+
   <!-- ADMIN: resources, stats, errors -->
   <section id="tab-admin" class="tab">
     <h1 data-i18n="admin.h1">Адмін-панель</h1>
     <div class="hint"><p data-i18n="admin.hint"></p></div>
-    <div class="admin-nav" role="tablist">
+    <div class="admin-nav" role="navigation" data-i18n-aria="a11y.adminNav" aria-label="Розділи адміна">
       <button type="button" data-admin="res" class="on" data-i18n="admin.tab.res">Ресурси</button>
       <button type="button" data-admin="econ" data-i18n="admin.tab.econ">Економіка</button>
       <button type="button" data-admin="stats" data-i18n="admin.tab.stats">Статистика</button>
@@ -782,10 +926,10 @@
       <div class="card econ-card">
         <div class="econ-toolbar">
           <h3 data-i18n="econ.h3">Економіка (як у Промт)</h3>
-          <div class="econ-period" role="group" aria-label="Period">
-            <button type="button" class="btn small" data-econ-days="7">7д</button>
-            <button type="button" class="btn small" data-econ-days="30">30д</button>
-            <button type="button" class="btn small on" data-econ-days="all">Усе</button>
+          <div class="econ-period" role="group" data-i18n-aria="a11y.period" aria-label="Період">
+            <button type="button" class="btn small" data-econ-days="7" data-i18n="econ.days.7">7 дн.</button>
+            <button type="button" class="btn small" data-econ-days="30" data-i18n="econ.days.30">30 дн.</button>
+            <button type="button" class="btn small on" data-econ-days="all" data-i18n="econ.days.all">Усе</button>
           </div>
         </div>
         <p class="muted small" data-i18n="econ.hint"></p>
@@ -822,6 +966,7 @@
     <h1 data-i18n="help.h1">Довідка</h1>
     <div class="hint">
       <p data-i18n="help.hint"></p>
+      <p data-i18n="help.aiMark"></p>
     </div>
     <div class="help-tools card">
       <input type="search" id="help-search" data-i18n-placeholder="help.search.ph" data-i18n-tip="ctrl.help-search.tip" autocomplete="off">
@@ -830,6 +975,10 @@
     <nav id="help-toc" class="help-toc" data-i18n-aria="help.toc.title"></nav>
     <div id="help-body" class="help-body"></div>
   </section>
+  <div id="path-next" class="path-next" hidden>
+    <span id="path-where" class="small muted"></span>
+    <button type="button" id="path-go" class="btn small primary"></button>
+  </div>
 </main>
 
 <!-- Top-up window: must live outside the tab sections, otherwise it is hidden with an inactive tab -->
@@ -845,7 +994,7 @@
         <b id="topup-balance">0</b>
         <span class="muted small" data-i18n="acct.credits">кредитів</span>
       </div>
-      <button type="button" id="topup-close" class="btn small topup-close" aria-label="Close" data-i18n-tip="ctrl.topup-close.tip">✕</button>
+      <button type="button" id="topup-close" class="btn small topup-close" data-i18n-aria="a11y.close" aria-label="Закрити" data-i18n-tip="ctrl.topup-close.tip">✕</button>
     </header>
 
     <p id="topup-reason" class="topup-reason" role="status" hidden></p>

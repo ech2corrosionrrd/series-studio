@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -12,11 +12,12 @@ import {
   traitsToAttributes,
   upscale2x,
 } from "../src/index.mjs";
+import { buildDemoArchive, loadDemoPreset } from "./helpers/demo-archive.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const preset = JSON.parse(readFileSync(join(ROOT, "presets", "demo-series.json"), "utf8"));
-const archiveFull = JSON.parse(readFileSync(join(ROOT, "out", "demo-series.json"), "utf8"));
+const preset = loadDemoPreset();
+const archiveFull = buildDemoArchive(preset);
 
 function tinyPng() {
   // 1x1 PNG

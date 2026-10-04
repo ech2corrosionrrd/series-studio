@@ -9,14 +9,17 @@ export {
   normalizeOption,
   normalizeOptions,
   validateOptions,
+  weightPercent,
   duplicateOption,
   validateTraitPack,
   exportPresetAsTraitPack,
 } from "./traits.mjs";
 export {
   dna,
+  dnaKeysFromItems,
   buildPrompt,
   buildRecipes,
+  drySimulate,
   duplicates,
   duplicateGroups,
   diffArchives,
@@ -33,6 +36,8 @@ export {
   hamming,
   aHashPng,
   aHashFromGray,
+  similarityToBase,
+  SIMILARITY_WARN_BELOW,
 } from "./dupes.mjs";
 export {
   validatePreset,
@@ -53,6 +58,8 @@ export {
   MAX_STRENGTH,
   clampStrength,
   strengthForStability,
+  strengthForFal,
+  strengthForRunware,
   kontextGuidance,
   imagesDirName,
   resolveBaseImageForRecipe,
@@ -79,11 +86,13 @@ export {
   findEditionMedia,
   listImageEditions,
   buildBundleZip,
+  readBundleItems,
   generateMetadataPreview,
   LAUNCHPAD_PROFILES,
   formatForLaunchpad,
   exportManifestCsv,
   buildSugarConfig,
+  buildCoreCandyConfig,
   buildThirdwebConfig,
   buildReleaseGuide,
   getMimeType,
@@ -91,6 +100,24 @@ export {
 } from "./export-bundle.mjs";
 export { getLaunchpadProfiles } from "./launchpads.mjs";
 export { getLaunchpadPortalUrls } from "./deploy.mjs";
+export { runPreflight, formatPreflightReport, assessRoyalties, metadataSchemaIssues } from "./preflight.mjs";
+export {
+  buildDeployKit,
+  estimateDeployCost,
+  formatCostEstimate,
+  chainForProfile,
+  normalizeChain,
+  deployChainChoice,
+  DEPLOY_COST_DEFAULTS,
+} from "./deploy-kit.mjs";
+export { buildLaunchAdvisor } from "./launch-advisor.mjs";
+export {
+  buildMarketplaceKit,
+  marketplaceSizes,
+  buildListingCopy,
+  DEFAULT_MARKETPLACE_SIZES,
+  marketplacesForChain,
+} from "./marketplace-kit.mjs";
 export { mergeEditions } from "./gallery.mjs";
 export { mapConcurrent } from "./pool.mjs";
 export {
@@ -99,11 +126,13 @@ export {
   triageBatch,
   parseCriticJson,
   sanitizeCriticOutput,
+  countMissingTraitFrames,
 } from "./critic.mjs";
+export { licenseWarning, engineModelId, platformFluxModel } from "./license.mjs";
 export {
   buildImageUri,
   calculateDeterministicCid,
-  uploadToPinata,
+  uploadToIrys,
   checkStorageStatus,
 } from "./storage.mjs";
 export {
@@ -154,9 +183,23 @@ export {
   getEngine,
   getTxt2Img,
   pickAvailableEngine,
+  listSelectableEngines,
+  planPrimaryGenerate,
+  primaryGenerateArgs,
   buildWishPrompt,
 } from "./engines.mjs";
 
 
 
 
+export { uploadBundle, planUpload, scanBundle, loadKeypairFile } from "./arweave-upload.mjs";
+export {
+  releaseFromArchive,
+  validateRelease,
+  buildReleaseGuards,
+  guardUpdateConfig,
+  publicSize,
+  sugarDate,
+  mintLimitGuard,
+} from "./release-config.mjs";
+export { decodeGuardAccount, guardDiff, verifyRelease, fetchAccount } from "./candy-verify.mjs";

@@ -1,6 +1,6 @@
 /**
  * Storage Dispatcher & IPFS / Arweave / Local CID Mock integration for Series Lab.
- * Manages image URI prefix generation, Pinata pinning, and decentralized metadata pointers.
+ * Manages image URI prefix generation, Arweave (Irys) upload, and decentralized metadata pointers.
  */
 
 import { createHash } from "node:crypto";
@@ -80,125 +80,107 @@ export function buildImageUri(edition, prefix = "", ext = ".png") {
 }
 
 /**
- * Check Pinata / IPFS credentials availability.
+ * Check Arweave / Irys credentials availability.
  * @param {object} [env=process.env]
- * @returns {{ pinata: { present: boolean, type: 'jwt'|'keys'|null } }}
+ * @returns {{ irys: { present: boolean } }}
  */
 export function checkStorageStatus(env = process.env) {
-  if (env.PINATA_JWT && String(env.PINATA_JWT).trim()) {
-    return { pinata: { present: true, type: "jwt" } };
-  }
-  if (
-    (env.PINATA_API_KEY || env.PINATA_KEY) &&
-    (env.PINATA_SECRET_API_KEY || env.PINATA_SECRET)
-  ) {
-    return { pinata: { present: true, type: "keys" } };
-  }
-  return { pinata: { present: false, type: null } };
+  return { irys: { present: Boolean(env.IRYS_PRIVATE_KEY && String(env.IRYS_PRIVATE_KEY).trim()) } };
 }
 
-/**
- * Upload a local image set directory to Pinata IPFS.
- * @param {object} params
- * @param {string} params.dir - Absolute path to folder containing image files
- * @param {string} [params.name] - Collection name for Pinata pin metadata
- * @param {string} [params.pinataJwt]
- * @param {string} [params.pinataApiKey]
- * @param {string} [params.pinataSecretKey]
- * @param {typeof fetch} [params.fetchFn]
- * @returns {Promise<{ ok: boolean, ipfsHash: string, ipfsUri: string, gatewayUrl: string, count: number }>}
- */
-export async function uploadToPinata({
-  dir,
-  name = "series-lab-set",
-  pinataJwt,
-  pinataApiKey,
-  pinataSecretKey,
-  fetchFn = globalThis.fetch,
-}) {
-  if (!dir || !existsSync(dir)) {
-    throw new Error(`Directory not found: ${dir}`);
-  }
-
-  const files = readdirSync(dir)
+/** Image files of a set directory in numeric edition order. */
+export function listSetImages(dir) {
+  return readdirSync(dir)
     .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
     .sort((a, b) => {
       const na = Number(a.match(/^(\d+)/)?.[1] || 0);
       const nb = Number(b.match(/^(\d+)/)?.[1] || 0);
       return na - nb || a.localeCompare(b);
     });
+}
 
+export async function createIrysUploader(privateKey, rpcUrl) {
+  let Uploader;
+  let Solana;
+  try {
+    ({ Uploader } = await import("@irys/upload"));
+    ({ Solana } = await import("@irys/upload-solana"));
+  } catch {
+    throw new Error("Arweave upload needs optional packages: npm i @irys/upload @irys/upload-solana");
+  }
+  return Uploader(Solana).withWallet(privateKey).withRpc(rpcUrl).mainnet();
+}
+
+/**
+ * Price the upload, enforce the limit, and top the Irys balance up when short.
+ * Shared by `uploadToIrys` (server button) and `uploadBundle` (CLI).
+ * @returns {Promise<number>} estimated price in SOL
+ */
+export async function ensureIrysFunds(irys, bytes, { fund = true, maxPriceSol, log = () => {} } = {}) {
+  await irys.ready?.();
+  const price = Number(irys.utils.fromAtomic(await irys.getPrice(bytes)));
+  log(`estimated cost: ${price.toFixed(6)} SOL`);
+  if (maxPriceSol !== undefined && Number.isFinite(maxPriceSol) && price > maxPriceSol) {
+    throw new Error(`estimated cost ${price.toFixed(6)} SOL is above the limit ${maxPriceSol} SOL; nothing was uploaded`);
+  }
+  const balance = Number(irys.utils.fromAtomic(await irys.getLoadedBalance()));
+  if (balance < price) {
+    if (!fund) throw new Error(`Irys balance ${balance.toFixed(6)} SOL is below the estimate ${price.toFixed(6)} SOL`);
+    const topUp = (price - balance) * 1.05;
+    log(`funding Irys with ${topUp.toFixed(6)} SOL`);
+    // Irys accepts whole atomic units only; round up so the top-up never falls short.
+    const atomic = irys.utils.toAtomic(topUp);
+    await irys.fund(typeof atomic.integerValue === "function" ? atomic.integerValue(2) : Math.ceil(atomic));
+  }
+  return price;
+}
+
+/**
+ * Upload a local image set directory to Arweave using Irys.
+ * Result is a folder manifest: `ar://<id>/<file>`.
+ * @param {object} params
+ * @param {string} params.dir - Absolute path to folder containing image files
+ * @param {string} [params.irysPrivateKey]
+ * @param {string} [params.rpcUrl]
+ * @param {Function} [params.createUploader] - injectable `(key, rpcUrl) => Promise<uploader>` (tests)
+ * @param {number} [params.maxPriceSol] - refuse above this estimate (default env IRYS_MAX_PRICE_SOL, 0.05)
+ * @returns {Promise<{ ok: boolean, arweaveId: string, arweaveUri: string, gatewayUrl: string, count: number }>}
+ */
+export async function uploadToIrys({
+  dir,
+  irysPrivateKey,
+  rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com",
+  createUploader = createIrysUploader,
+  maxPriceSol = Number(process.env.IRYS_MAX_PRICE_SOL || 0.05),
+}) {
+  if (!dir || !existsSync(dir)) {
+    throw new Error(`Directory not found: ${dir}`);
+  }
+
+  const files = listSetImages(dir);
   if (!files.length) {
-    throw new Error(`No image files found to pin in: ${dir}`);
+    throw new Error(`No image files found to upload in: ${dir}`);
   }
 
-  // Check auth
-  const jwt = pinataJwt || process.env.PINATA_JWT;
-  const apiKey = pinataApiKey || process.env.PINATA_API_KEY || process.env.PINATA_KEY;
-  const secretKey = pinataSecretKey || process.env.PINATA_SECRET_API_KEY || process.env.PINATA_SECRET;
-
-  if (!jwt && (!apiKey || !secretKey)) {
-    throw new Error("Pinata credentials missing (PINATA_JWT or PINATA_API_KEY/PINATA_SECRET_API_KEY required in .env)");
+  const privateKey = irysPrivateKey || process.env.IRYS_PRIVATE_KEY;
+  if (!privateKey || !String(privateKey).trim()) {
+    throw new Error("Irys credentials missing (IRYS_PRIVATE_KEY required in .env)");
   }
 
-  const formData = new FormData();
-
-  // In Pinata directory uploads, files are added with path `${folderName}/${filename}`
-  const folderName = name.replace(/[^a-zA-Z0-9_-]/g, "-") || "series-collection";
-  for (const f of files) {
-    const filePath = join(dir, f);
-    const buf = readFileSync(filePath);
-    const mime = f.endsWith(".png") ? "image/png" : f.endsWith(".webp") ? "image/webp" : "image/jpeg";
-    const blob = new Blob([buf], { type: mime });
-    formData.append("file", blob, `${folderName}/${f}`);
-  }
-
-  const pinataMetadata = JSON.stringify({
-    name: folderName,
-    keyvalues: {
-      source: "series-lab",
-      count: String(files.length),
-      createdAt: new Date().toISOString(),
-    },
-  });
-  formData.append("pinataMetadata", pinataMetadata);
-
-  const pinataOptions = JSON.stringify({
-    cidVersion: 0,
-    wrapWithDirectory: false,
-  });
-  formData.append("pinataOptions", pinataOptions);
-
-  const headers = {};
-  if (jwt) {
-    headers.Authorization = `Bearer ${jwt}`;
-  } else {
-    headers.pinata_api_key = apiKey;
-    headers.pinata_secret_api_key = secretKey;
-  }
-
-  const res = await fetchFn("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-    method: "POST",
-    headers,
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`Pinata upload failed (HTTP ${res.status}): ${errText.slice(0, 300)}`);
-  }
-
-  const data = await res.json();
-  const ipfsHash = data.IpfsHash;
-  if (!ipfsHash) {
-    throw new Error("Pinata response missing IpfsHash");
+  const irys = await createUploader(String(privateKey).trim(), rpcUrl);
+  const bytes = files.reduce((s, f) => s + statSync(join(dir, f)).size, 0);
+  await ensureIrysFunds(irys, bytes, { maxPriceSol });
+  const receipt = await irys.uploadFolder(dir, { keepDeleted: false });
+  const id = receipt?.id;
+  if (!id) {
+    throw new Error("Irys upload failed: no manifest ID returned");
   }
 
   return {
     ok: true,
-    ipfsHash,
-    ipfsUri: `ipfs://${ipfsHash}/`,
-    gatewayUrl: `https://gateway.pinata.cloud/ipfs/${ipfsHash}/`,
+    arweaveId: id,
+    arweaveUri: `ar://${id}/`,
+    gatewayUrl: `https://gateway.irys.xyz/${id}/`,
     count: files.length,
   };
 }

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Series Lab — вхід</title>
-  <meta name="description" content="Увійдіть у Series Lab гаманцем: пресет → рецепти → генерація → архів випуску. Підпис без gas і без доступу до коштів." />
+  <title data-i18n="docTitle">Series Lab — вхід</title>
+  <meta name="description" data-i18n-content="meta.description" content="Увійдіть у Series Lab гаманцем: пресет → рецепти → генерація → архів випуску і набір деплою зі свого гаманця. Підпис без gas і без доступу до коштів." />
   <meta name="robots" content="noindex, nofollow" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239b4dff'/%3E%3Cstop offset='1' stop-color='%23e04d8a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Ctext x='16' y='22' font-family='Sora,system-ui,sans-serif' font-size='15' font-weight='800' fill='%23f6eef8' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -22,7 +22,7 @@
       --accent2: #8fd4ff;
       --ok: #7be38a;
       --bad: #ff6b7d;
-      --lo: #7a668a;
+      --lo: #cbb8d8;
       --brand-a: #9b4dff;
       --brand-b: #e04d8a;
       --font: "Sora", system-ui, sans-serif;
@@ -178,8 +178,14 @@
       font-size: 12px;
       font-weight: 600;
       padding: 5px 11px;
+      min-height: 24px;
+      min-width: 28px;
       border-radius: 7px;
       cursor: pointer;
+    }
+    button:focus-visible, a:focus-visible {
+      outline: 2px solid var(--accent, #7ad7ff);
+      outline-offset: 2px;
     }
     .lang button.on { background: var(--panel2); color: var(--text); }
     .mobile-brand {
@@ -390,10 +396,12 @@
     .modal-card header button {
       border: 0;
       background: transparent;
-      color: var(--lo);
+      color: var(--text);
       font-size: 18px;
       cursor: pointer;
       line-height: 1;
+      min-width: 24px;
+      min-height: 24px;
       padding: 4px;
     }
     .wallet-row {
@@ -439,7 +447,7 @@
         </div>
       </div>
 
-      <ol class="stages" aria-label="Stages">
+      <ol class="stages" data-i18n-aria="a11y.stages" aria-label="Етапи">
         <li><span>1–2</span><div><b data-i18n="st12t">Огляд і основа</b><em data-i18n="st12d">Паспорт серії та базова картинка</em></div></li>
         <li><span>3–4</span><div><b data-i18n="st34t">Конструктор і рецепти</b><em data-i18n="st34d">Промпт, риси, тексти без рендеру</em></div></li>
         <li><span>5–6</span><div><b data-i18n="st56t">Генерація і відбір</b><em data-i18n="st56d">Пілоти, keep / redo, версії</em></div></li>
@@ -461,9 +469,9 @@
       <div class="auth-wrap">
         <div class="top-row">
           <a class="back" href="/" data-i18n="back">← На старт</a>
-          <div class="lang" role="group" aria-label="Language">
-            <button type="button" data-locale="uk" class="on">UK</button>
-            <button type="button" data-locale="en">EN</button>
+          <div class="lang" role="group" data-i18n-aria="a11y.language" aria-label="Мова">
+            <button type="button" data-locale="uk" class="on" data-i18n-aria="a11y.lang.uk" data-i18n-title="a11y.lang.uk" aria-label="Українська" title="Українська">UK</button>
+            <button type="button" data-locale="en" data-i18n-aria="a11y.lang.en" data-i18n-title="a11y.lang.en" aria-label="English" title="English">EN</button>
           </div>
         </div>
 
@@ -528,7 +536,7 @@
     <div class="modal-card">
       <header>
         <h3 id="modal-title" data-i18n="modal">Оберіть гаманець</h3>
-        <button type="button" id="modal-close" aria-label="Close">✕</button>
+        <button type="button" id="modal-close" data-i18n-aria="a11y.close" aria-label="Закрити">✕</button>
       </header>
       <div id="wallet-list"></div>
       <p class="modal-note" data-i18n="modal.note">EVM · MetaMask / Coinbase · Solana · Phantom</p>
@@ -603,6 +611,24 @@
         "mw.coinbase": "Відкрити у Coinbase Wallet",
         chainEvm: "EVM",
         chainSol: "Solana",
+        docTitle: "Series Lab — вхід",
+        "meta.description": "Увійдіть у Series Lab гаманцем: пресет → рецепти → генерація → архів випуску і набір деплою зі свого гаманця. Підпис без gas і без доступу до коштів.",
+        "a11y.stages": "Етапи",
+        "a11y.language": "Мова",
+        "a11y.lang.uk": "Українська",
+        "a11y.lang.en": "English",
+        "a11y.close": "Закрити",
+        "err.needAddr": "Потрібна EVM-адреса 0x… або адреса Solana.",
+        "err.badAddr": "Невалідна адреса (EVM 0x… або Solana).",
+        "err.nonceStale": "Nonce недійсний або протух — оновіть сторінку.",
+        "err.addrMismatch": "Адреса не збігається з nonce.",
+        "err.badSig": "Підпис не пройшов перевірку.",
+        "err.internal": "Внутрішня помилка сервера.",
+        "err.nonce": "Не вдалося отримати nonce.",
+        "err.verify": "Не вдалося перевірити підпис.",
+        "err.auth": "Спочатку увійдіть гаманцем.",
+        "err.generic": "Запит не вдався.",
+        "err.invite": "На цьому сервері доступ лише за запрошенням.",
       },
       en: {
         sub: "series workshop · by W3IR",
@@ -648,8 +674,41 @@
         "mw.coinbase": "Open in Coinbase Wallet",
         chainEvm: "EVM",
         chainSol: "Solana",
+        docTitle: "Series Lab — sign in",
+        "meta.description": "Sign in to Series Lab with a wallet: preset → recipes → generation → release archive and a deploy kit you run from your wallet. A signature with no gas and no access to funds.",
+        "a11y.stages": "Stages",
+        "a11y.language": "Language",
+        "a11y.lang.uk": "Українська",
+        "a11y.lang.en": "English",
+        "a11y.close": "Close",
+        "err.needAddr": "An EVM address 0x… or a Solana address is required.",
+        "err.badAddr": "Invalid address (EVM 0x… or Solana).",
+        "err.nonceStale": "The nonce is invalid or expired — refresh the page.",
+        "err.addrMismatch": "The address does not match the nonce.",
+        "err.badSig": "The signature did not verify.",
+        "err.internal": "Internal server error.",
+        "err.nonce": "Could not get a nonce.",
+        "err.verify": "Could not verify the signature.",
+        "err.auth": "Sign in with your wallet first.",
+        "err.generic": "The request failed.",
+        "err.invite": "Access by invitation only on this server.",
       },
     };
+
+    const API_ERR = {
+      "Очікується EVM-адреса 0x… або Solana-адреса": "err.needAddr",
+      "Невалідна адреса (EVM 0x… або Solana)": "err.badAddr",
+      "Nonce недійсний або протух — оновіть сторінку": "err.nonceStale",
+      "Адреса не збігається з nonce": "err.addrMismatch",
+      "Підпис не пройшов перевірку": "err.badSig",
+      "Internal Server Error": "err.internal",
+      "nonce error": "err.nonce",
+      "verify failed": "err.verify",
+      "not signed in": "err.auth",
+      "Sign in required": "err.auth",
+      "Access by invitation only on this server": "err.invite",
+    };
+    const presentErr = (msg) => (API_ERR[msg] ? t(API_ERR[msg]) : (msg || t("err.generic")));
 
     let locale = localStorage.getItem("series-lab-locale") === "en" ? "en" : "uk";
     let welcomeOffer = null;
@@ -668,15 +727,26 @@
 
     function applyLocale() {
       document.documentElement.lang = locale === "uk" ? "uk" : "en";
-      document.title = locale === "uk" ? "Series Lab — вхід" : "Series Lab — sign in";
+      document.title = t("docTitle");
       document.querySelectorAll("[data-i18n]").forEach((el) => {
         const key = el.getAttribute("data-i18n");
         const val = t(key);
         if (val.includes("<br>")) el.innerHTML = val;
         else el.textContent = val;
       });
+      document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
+        el.setAttribute("aria-label", t(el.getAttribute("data-i18n-aria")));
+      });
+      document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+        el.setAttribute("title", t(el.getAttribute("data-i18n-title")));
+      });
+      document.querySelectorAll("[data-i18n-content]").forEach((el) => {
+        el.setAttribute("content", t(el.getAttribute("data-i18n-content")));
+      });
       document.querySelectorAll(".lang button").forEach((b) => {
-        b.classList.toggle("on", b.dataset.locale === locale);
+        const on = b.dataset.locale === locale;
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
       });
       if (!$("connect").disabled) $("connect-label").textContent = t("connect");
       fillWelcome();
@@ -775,7 +845,7 @@
       let url = `${API_BASE}/auth/nonce?address=${address}`;
       if (Number.isInteger(chainId) && chainId > 0) url += `&chain_id=${chainId}`;
       const nr = await fetch(url);
-      if (!nr.ok) throw new Error((await nr.json()).detail || "nonce error");
+      if (!nr.ok) throw new Error(presentErr((await nr.json()).detail || "nonce error"));
       return nr.json();
     }
     async function postVerify(address, nonce, signature) {
@@ -791,7 +861,7 @@
           ref: new URLSearchParams(location.search).get("ref") || undefined,
         }),
       });
-      if (!vr.ok) throw new Error((await vr.json()).detail || "verify failed");
+      if (!vr.ok) throw new Error(presentErr((await vr.json()).detail || "verify failed"));
       await vr.json();
       setStatus(t("stOk"), "ok");
       window.location.href = APP_URL;
@@ -811,7 +881,7 @@
         setStatus(t("stSign"));
         const signature = await provider.request({ method: "personal_sign", params: [message, address] });
         await postVerify(address, nonce, signature);
-      } catch (e) { setStatus(e.message || String(e), "err"); }
+      } catch (e) { setStatus(presentErr(e.message || String(e)), "err"); }
       finally { busy(false); }
     }
 
@@ -826,7 +896,7 @@
         const signed = await provider.signMessage(new TextEncoder().encode(message), "utf8");
         const signature = [...signed.signature].map((b) => b.toString(16).padStart(2, "0")).join("");
         await postVerify(address, nonce, signature);
-      } catch (e) { setStatus(e.message || String(e), "err"); }
+      } catch (e) { setStatus(presentErr(e.message || String(e)), "err"); }
       finally { busy(false); }
     }
 
@@ -855,6 +925,9 @@
     };
     $("modal-close").onclick = closeModal;
     $("modal").onclick = (e) => { if (e.target === $("modal")) closeModal(); };
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && $("modal").classList.contains("on")) closeModal();
+    });
 
     fillStaticIcons();
     applyLocale();

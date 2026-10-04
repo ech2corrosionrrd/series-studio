@@ -150,7 +150,10 @@ test("Wave 15 — findEditionMedia and buildBundleZip with dynamic media", async
     assert.ok(loaded.file("metadata/1.json"));
     assert.ok(loaded.file("metadata/2.json"));
     assert.ok(loaded.file("manifest.csv"));
-    assert.ok(loaded.file("sugar.json"));
+    assert.equal(loaded.file("sugar.json"), null);
+    assert.ok(loaded.file("cm-config.json"));
+    assert.ok(loaded.file("sugar/config.json"));
+    assert.match(await loaded.file("sugar/LEGACY.txt").async("string"), /legacy|застаріл/i);
 
     const meta1 = JSON.parse(await loaded.file("metadata/1.json").async("text"));
     assert.equal(meta1.image, "ipfs://QmImages/1.png");
