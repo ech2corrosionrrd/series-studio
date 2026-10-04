@@ -6,7 +6,17 @@
  */
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { backupDatabase, DatabaseSync } from "../src/platform/sqlite-backup.mjs";
+import * as sqlite from "node:sqlite";
+
+// Self-contained on purpose: deploy/series-lab/backup.sh pipes this file into the container's
+// node via stdin, where relative project imports do not resolve. Same logic as
+// src/platform/sqlite-backup.mjs (node:sqlite backup from 22.16, VACUUM INTO before).
+const { DatabaseSync } = sqlite;
+async function backupDatabase(src, destPath) {
+  if (typeof sqlite.backup === "function") return sqlite.backup(src, destPath);
+  src.exec(`VACUUM INTO '${String(destPath).replaceAll("'", "''")}'`);
+  return 0;
+}
 
 function arg(name) {
   const i = process.argv.indexOf(name);

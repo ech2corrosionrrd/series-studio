@@ -40,8 +40,13 @@ esac
 
 snap=$(ls -1dt "$DEST/$sub"/*/ 2>/dev/null | head -1)
 snap=${snap%/}
-if [ -z "$snap" ] || [ ! -f "$snap/users.db" ]; then
-  alert "$MODE: no $sub snapshot in $DEST/$sub"
+# hourly slots hold users.db directly; daily/weekly slots keep it under series-lab/
+db=""
+for cand in "$snap/users.db" "$snap/series-lab/users.db"; do
+  [ -n "$snap" ] && [ -f "$cand" ] && { db=$cand; break; }
+done
+if [ -z "$db" ]; then
+  alert "$MODE: no $sub snapshot with users.db in $DEST/$sub"
   exit 1
 fi
 
@@ -53,7 +58,7 @@ done
 
 # The container's node has node:sqlite; the host may not have node at all.
 tmp=/tmp/series-lab-verify.db
-docker cp "$snap/users.db" "$lab:$tmp"
+docker cp "$db" "$lab:$tmp"
 out=$(docker exec -i -e VERIFY_DB="$tmp" -e VERIFY_MAX_AGE_HOURS="$max" "$lab" node --input-type=module - < "$MJS" 2>&1)
 rc=$?
 docker exec "$lab" rm -f "$tmp" >/dev/null 2>&1 || true
