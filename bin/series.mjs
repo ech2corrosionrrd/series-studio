@@ -527,7 +527,7 @@ Done: ${res.uploadedNow} uploaded now, ${res.alreadyUploaded} were already in ca
 async function cmdVerify(releasePath, opts = {}) {
   const cfg = loadJson(releasePath);
   const r = await verifyRelease(cfg, { rpcUrl: opts.rpc });
-  console.log(`Candy Machine: ${r.minted} of ${r.total} minted`);
+  console.log(`Candy Machine (${r.standard}): ${r.minted} of ${r.total} minted`);
   console.log(`Guard authority: ${r.authority}`);
   console.log(`Guards on chain: ${Object.keys(r.guards).join(", ") || "(none)"}`);
   if (r.ok) console.log("Matches release.json ✓");
