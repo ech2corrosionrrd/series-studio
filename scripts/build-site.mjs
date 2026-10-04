@@ -15,6 +15,7 @@ import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DOC_PAGES, publicPaths } from "./site-pages.mjs";
+import { LEGAL_PAGES } from "./legal-pages.mjs";
 import {
   PUBLIC_ORIGIN,
   SITE_CSS,
@@ -42,6 +43,7 @@ for (const lang of ["uk", "en"]) {
   write(`${prefix}guide/index.html`, renderPublicPage(lang, "guide"));
   write(`${prefix}docs/index.html`, renderPublicPage(lang, "docs"));
   for (const page of DOC_PAGES) write(`${prefix}${page.slug}/index.html`, renderPublicPage(lang, page.slug));
+  for (const page of LEGAL_PAGES) write(`${prefix}${page.slug}/index.html`, renderPublicPage(lang, page.slug));
 }
 write("404.html", renderPublicPage("uk", "404"));
 write("site.css", SITE_CSS);
