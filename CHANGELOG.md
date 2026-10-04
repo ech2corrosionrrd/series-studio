@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Виправлення · перевірка на mainnet
+- `series upload`: поповнення Irys округлюється вгору до цілих атомарних одиниць (раніше `fund` падав з «must use an integer for funding amount»). Знайдено першим запуском на mainnet: один файл завантажено через `@irys/upload`, картинка й метадані відкрилися на `gateway.irys.xyz`.
+
 ### Підказки за вибором · документація
 - Вкладка «Експорт»: підказка, плейсхолдери адреси творця й префікса, кнопка Arweave та поля префіксів залежать від профілю (Magic Eden / LaunchMyNFT — Solana й `ar://`; OpenSea — EVM і `ipfs://`/https; Ordinals — без сховища). Порадник запуску показує розділ «Сховище» лише для обраної мережі (Solana — Arweave, EVM — IPFS/https, Bitcoin — інскрипція).
 - Правила проєкту в `CLAUDE.md`: **документація оновлюється до коміту**. Перевірка `npm run docs:check` (CLI, маршрути API, змінні `.env.example`, індекс документів, версія, видалені постачальники), тест `test/docs.test.mjs` і хук `.githooks/pre-commit` (`git config core.hooksPath .githooks`). Задокументовано 19 раніше пропущених маршрутів, команди CLI та змінні середовища.
