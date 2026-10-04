@@ -25,7 +25,11 @@ export const REPLICATE_MAX_WAIT_MS = 5 * 60_000;
 export const REQUEST_TIMEOUT_MS = 4 * 60_000;
 
 export function withTimeout(fetchFn, ms = REQUEST_TIMEOUT_MS) {
-  return (url, init = {}) => fetchFn(url, { ...init, signal: init.signal ?? AbortSignal.timeout(ms) });
+  return (url, init = {}) => {
+    const timeout = AbortSignal.timeout(ms);
+    const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+    return fetchFn(url, { ...init, signal });
+  };
 }
 
 async function failText(res) {
@@ -246,7 +250,31 @@ export const ENGINES = {
     key: "MOCK_ENABLED",
     costUsd: 0.0,
     mode: "edit",
-    async generate({ prompt, seed }) {
+    async generate({ prompt, seed }, ctx) {
+      const hold = Number(ctx?.env?.SERIES_MOCK_HOLD_MS || 0);
+      const signal = ctx?.signal;
+      if (hold > 0) {
+        await new Promise((resolve, reject) => {
+          let timer;
+          const fail = () => {
+            clearTimeout(timer);
+            signal?.removeEventListener("abort", fail);
+            const err = new Error("stopped");
+            err.name = "AbortError";
+            reject(err);
+          };
+          timer = setTimeout(() => {
+            signal?.removeEventListener("abort", fail);
+            resolve();
+          }, hold);
+          if (signal) signal.addEventListener("abort", fail, { once: true });
+          if (signal?.aborted) fail();
+        });
+      } else if (signal?.aborted) {
+        const err = new Error("stopped");
+        err.name = "AbortError";
+        throw err;
+      }
       return createMockPng({ seed: seed ?? 42, title: prompt || "Mock Edit" });
     },
   },

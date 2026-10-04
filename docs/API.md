@@ -60,7 +60,7 @@
 | Method | Path | Опис |
 |--------|------|------|
 | POST | `/api/estimate` | безкоштовна оцінка: mode, editions, cost, lint |
-| POST | `/api/generate` | live generate: batch з архіву або single prompt; SSE стрім + паралелізм (`concurrency`), `mode: "redo"` |
+| POST | `/api/generate` | live generate: batch з архіву або single prompt; SSE стрім + паралелізм (`concurrency`), `mode: "redo"`. Якщо відбір порожній, відповідь — JSON `count: 0` і SSE не відкривається. Закриття з’єднання (кнопка «Зупинити») скасовує решту кадрів; уже записані файли лишаються. |
 
 Режими відбору (`mode` / `selection`): `pilot` · `only` · `first` · `missing` · `redo`.  
 `force: true` — перезаписати наявні файли в сеті. Потрібна головна базова. Lint блокує 400.

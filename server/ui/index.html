@@ -578,9 +578,12 @@
         <h3 data-i18n="render.plan">Plan and status</h3>
         <pre id="g-plan-out" class="log small" data-i18n="render.stub">Press Estimate first.</pre>
         <div id="g-progress-wrap" style="margin-top:12px" hidden>
-          <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; margin-bottom:4px">
             <span id="g-progress-text" class="muted" data-i18n="render.working">Генерація…</span>
-            <b id="g-progress-pct">0%</b>
+            <span style="display:flex; align-items:center; gap:8px">
+              <button type="button" id="g-stop" class="btn danger small" hidden data-i18n="render.stop" data-i18n-tip="render.stop.tip">Зупинити</button>
+              <b id="g-progress-pct">0%</b>
+            </span>
           </div>
           <div style="width:100%; background:var(--border); border-radius:4px; height:8px; overflow:hidden">
             <div id="g-progress-bar" style="width:0%; height:100%; background:var(--accent); transition:width 0.2s"></div>
