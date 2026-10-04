@@ -33,7 +33,7 @@ jobs:
             if [ "$code" = "$expect" ]; then echo "OK   $code  $name ($url)"
             else echo "FAIL $code (expected $expect)  $name ($url)"; fail=1; fi
           }
-          probe "next.w3ir.io ledger host"      https://next.w3ir.io/health          200
+          probe "lab.w3ir.io Series Lab"        https://lab.w3ir.io/health           200
           probe "gen.w3ir.io production API"    https://gen.w3ir.io/health           200
           probe "studio.w3ir.io landing"        https://studio.w3ir.io/              200
           probe "studio.w3ir.io en landing"     https://studio.w3ir.io/en/           200

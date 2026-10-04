@@ -1,4 +1,4 @@
-# Розгортання Series Lab (staging `next.w3ir.io`)
+# Розгортання Series Lab (staging `lab.w3ir.io`)
 
 > **Команда власника.** Кроки нижче **не** запускати автоматично: вони виконуються на сервері й потребують вашого рішення ([HOSTING.md](./HOSTING.md)). Series Lab — окремий продукт ([STANDALONE.md](./STANDALONE.md)): розгортання не читає й не копіює дані чи `.env` жодного іншого проєкту.
 
@@ -24,7 +24,7 @@
 | `ADMIN_WALLETS`, `TEAM_WALLETS`, `OPERATOR_WALLET`, `DOGFOOD_WALLETS` | адміни й внутрішні гаманці. `ADMIN_WALLETS` і `TEAM_WALLETS` не задані — типові адреси; заданий список замінює типові (порожній `ADMIN_WALLETS=` прибирає адмінів). `OPERATOR_WALLET` і `DOGFOOD_WALLETS` лише додають внутрішні |
 | `SOLANA_RPC_URL`/`ALCHEMY_API_KEY`, `GENESIS_*`, `VAULT_*` | холдери Genesis і NFT-сейф |
 
-Додатково: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (необов'язкова; на хості типово `off`), `SERIES_ALLOWED_HOSTS` і такий самий `AUTH_DOMAIN` (обов'язково: образ слухає `0.0.0.0` і без імені не стартує), `AUTH_URI`, `LANDING_HOSTS` (на процесі майстерні порожньо), `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби). `IRYS_PRIVATE_KEY` — необов'язковий гаманець кнопки Arweave з малим балансом, не ключ творця. Staging пише `SERIES_ALLOWED_HOSTS=next.w3ir.io` і `AUTH_DOMAIN=next.w3ir.io`. Повний перелік — [HOSTING.md](./HOSTING.md).
+Додатково: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (необов'язкова; на хості типово `off`), `SERIES_ALLOWED_HOSTS` і такий самий `AUTH_DOMAIN` (обов'язково: образ слухає `0.0.0.0` і без імені не стартує), `AUTH_URI`, `LANDING_HOSTS` (на процесі майстерні порожньо), `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби). `IRYS_PRIVATE_KEY` — необов'язковий гаманець кнопки Arweave з малим балансом, не ключ творця. Staging пише `SERIES_ALLOWED_HOSTS=lab.w3ir.io` і `AUTH_DOMAIN=lab.w3ir.io`. Повний перелік — [HOSTING.md](./HOSTING.md).
 
 ## Бекап
 
@@ -52,7 +52,7 @@ ENDPOINT=fsn1.your-objectstorage.com PROVIDER=Hetzner bash /opt/series-lab/src/d
 
 Відновлення: `openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_PASSPHRASE -in users-YYYYMMDD-HHMM.tar.gz.enc | tar -xz`, потім знайдіть `users.db` у розпакованому й перевірте `PRAGMA integrity_check` (або `verify-backup.mjs`).
 
-## Staging на `next.w3ir.io`
+## Staging на `lab.w3ir.io`
 
 Усе робить один скрипт — з ПК, з кореня репозиторію:
 
@@ -67,9 +67,9 @@ LAB_ENV_FILE=./.env SERIES_ALLOWED_WALLETS=0x…,So1… bash deploy/series-lab/u
 1. розпаковує код у **`/opt/series-lab`**;
 2. збирає образ `series-lab:<коміт>`;
 3. створює **власну порожню** теку даних `data-next` (леджер Lab створює сам при першому запуску; жодного копіювання чужих даних);
-4. будує `.env.series-lab` із **власного** `lab.env` + перевизначення для staging: без прийому оплат (`SOLANA_PAY_RECIPIENT` порожній), без Telegram, без сейфу, SIWE-домен `next.w3ir.io`, **вхід лише для `ADMIN_WALLETS`** (або `SERIES_ALLOWED_WALLETS=…`), межа витрат $5/день. Якщо `lab.env` немає, скрипт створює його з `.env.example` і зупиняється, щоб ви заповнили секрети;
+4. будує `.env.series-lab` із **власного** `lab.env` + перевизначення для staging: без прийому оплат (`SOLANA_PAY_RECIPIENT` порожній), без Telegram, без сейфу, SIWE-домен `lab.w3ir.io`, **вхід лише для `ADMIN_WALLETS`** (або `SERIES_ALLOWED_WALLETS=…`), межа витрат $5/день. Якщо `lab.env` немає, скрипт створює його з `.env.example` і зупиняється, щоб ви заповнили секрети;
 5. запускає контейнер `serieslab` (ліміт пам'яті 512 МБ; перевірка здоров'я — `node`, не `wget`);
-6. додає блок `next.w3ir.io` у reverse-proxy (`Caddyfile.staging`), перевіряє конфіг і перезавантажує Caddy; якщо перевірка не пройшла — повертає попередній Caddyfile. `SKIP_CADDY=1` лише друкує блок;
+6. додає блок `lab.w3ir.io` у reverse-proxy (`Caddyfile.staging`), перевіряє конфіг і перезавантажує Caddy; якщо перевірка не пройшла — повертає попередній Caddyfile. `SKIP_CADDY=1` лише друкує блок;
 7. ставить власний бекап (cron);
 8. перевіряє `next` через proxy (і, за бажанням, `SMOKE_OTHER=host/path` для іншого сайту за тим самим proxy).
 
@@ -77,7 +77,7 @@ LAB_ENV_FILE=./.env SERIES_ALLOWED_WALLETS=0x…,So1… bash deploy/series-lab/u
 
 Після скрипту — DNS: запис `next` → IP сервера (proxied) у зоні `w3ir.io`.
 
-Перевірка: 2–3 запрошені користувачі (їхні гаманці в `SERIES_ALLOWED_WALLETS`) проходять звичний сценарій на `next.w3ir.io/login`. Оплати на staging вимкнені, кредити там тестові.
+Перевірка: 2–3 запрошені користувачі (їхні гаманці в `SERIES_ALLOWED_WALLETS`) проходять звичний сценарій на `lab.w3ir.io/login`. Оплати на staging вимкнені, кредити там тестові.
 
 ## Власний домен
 

@@ -1,13 +1,22 @@
-# Series Lab staging — reverse-proxy block for https://next.w3ir.io.
-# phase3.sh adds it to the shared Caddyfile (or prints it with SKIP_CADDY=1). Nothing else
-# in that file changes. Needs a DNS record `next` → this server (proxied through
+# Series Lab — reverse-proxy blocks for https://lab.w3ir.io (SERVICE_HOST in phase3.sh).
+# phase3.sh adds them to the shared Caddyfile (or prints them with SKIP_CADDY=1) and turns the old
+# name next.w3ir.io into a redirect. Needs a DNS record `lab` → this server (proxied through
 # Cloudflare, same origin certificate). Rollback: phase3-rollback.sh.
 
-http://next.w3ir.io {
+http://lab.w3ir.io {
 	reverse_proxy serieslab:5344
 }
-https://next.w3ir.io {
+https://lab.w3ir.io {
 	import origin_tls
 	import access_log
 	reverse_proxy serieslab:5344
+}
+
+# the old name sends people to the new one
+http://next.w3ir.io {
+	redir https://lab.w3ir.io{uri} 302
+}
+https://next.w3ir.io {
+	import origin_tls
+	redir https://lab.w3ir.io{uri} 302
 }

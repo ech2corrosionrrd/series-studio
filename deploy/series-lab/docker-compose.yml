@@ -26,9 +26,9 @@ services:
     environment:
       # HOST in the image is 0.0.0.0. These three must name the studio process,
       # not the Pages site studio.w3ir.io. They override the same keys in env_file.
-      SERIES_ALLOWED_HOSTS: ${SERIES_ALLOWED_HOSTS:-next.w3ir.io}
-      AUTH_DOMAIN: ${AUTH_DOMAIN:-next.w3ir.io}
-      AUTH_URI: ${AUTH_URI:-https://next.w3ir.io}
+      SERIES_ALLOWED_HOSTS: ${SERIES_ALLOWED_HOSTS:-lab.w3ir.io}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:-lab.w3ir.io}
+      AUTH_URI: ${AUTH_URI:-https://lab.w3ir.io}
     expose:
       - "5344"
     restart: unless-stopped

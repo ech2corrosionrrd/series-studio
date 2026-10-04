@@ -4,7 +4,7 @@
  * Series Lab (staging) and compares status codes and JSON shapes. Nothing is
  * written, generated or paid for. Optional tool: compares two deployments of the same API (see docs/STANDALONE.md).
  *
- *   node scripts/contract-check.mjs --old https://gen.w3ir.io --new https://next.w3ir.io \
+ *   node scripts/contract-check.mjs --old https://gen.w3ir.io --new https://lab.w3ir.io \
  *     [--gremlin-key $GREMLIN_API_KEY] [--tma-key $TMA_API_KEY] [--wallet <addr>]
  */
 const args = Object.fromEntries(
