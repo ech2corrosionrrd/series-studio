@@ -2,10 +2,11 @@
 
 > **Команда власника.** Кроки нижче **не** запускати автоматично: вони виконуються на сервері й потребують вашого рішення ([HOSTING.md](./HOSTING.md)). Series Lab — окремий продукт ([STANDALONE.md](./STANDALONE.md)): розгортання не читає й не копіює дані чи `.env` жодного іншого проєкту.
 
-## Що вже перевірено локально
+## Що перевіряти перед викладом
 
-- `npm test` — 217 тестів (на 25.09.2026): вхід гаманцем, кредити, оплата USDC у Solana (перевірка переказів на підробленому RPC), наскрізний сценарій сервера в публічному режимі, бекап, формат сесій/реферальних кодів/промптів (знімок у `test/fixtures/`).
-- Оплата перевірена на живому Solana RPC (лише читання): USDC-рахунок гаманця-отримувача знайдено, реальні перекази на нього читаються.
+- `npm test` на поточному `main`. Датований лічильник «217 тестів на 25.09.2026» більше не є станом репозиторію.
+- Процес на `HOST=0.0.0.0` без `SERIES_ALLOWED_HOSTS` завершується сам. `AUTH_DOMAIN` має бути в цьому списку. Запасне `ai.w3ir.io` підставляється лише коли домен не задано і для хоста не годиться.
+- Оплата на живому Solana RPC цим файлом не підтверджується. Код звіряє переказ USDC на публічну адресу `SOLANA_PAY_RECIPIENT` (ключ не потрібен). На staging `phase3.sh` адресу очищає.
 
 ## Змінні середовища
 
@@ -19,11 +20,11 @@
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | сповіщення оператору від імені Series Lab |
 | `GREMLIN_API_KEY`, `TMA_API_KEY`, `W3IR_B2B_KEYS` | ключі партнерів (Passport, Telegram), опційно |
 | `OPENAI_API_KEY`, `REPLICATE_API_TOKEN`, `STABILITY_API_KEY`, … | рушії студії |
-| `WELCOME_*`, `EARLY_WELCOME_*`, `GENERATION_RATE_LIMIT_PER_MINUTE`, `FREEMIUM_DAILY_LIMIT`, `REFERRAL_BONUS_CREDITS` | правила кредитів |
+| `WELCOME_*`, `EARLY_WELCOME_*`, `GENERATION_RATE_LIMIT_PER_MINUTE`, `REFERRAL_BONUS_CREDITS` | правила кредитів: вітальні — разове нарахування (другого безкоштовного гранту немає); `GENERATION_RATE_LIMIT_PER_MINUTE` (типово 10) діє лише для гаманців без оплати і без ручного гранту |
 | `ADMIN_WALLETS`, `TEAM_WALLETS`, `OPERATOR_WALLET`, `DOGFOOD_WALLETS` | адміни й внутрішні гаманці. `ADMIN_WALLETS` і `TEAM_WALLETS` не задані — типові адреси; заданий список замінює типові (порожній `ADMIN_WALLETS=` прибирає адмінів). `OPERATOR_WALLET` і `DOGFOOD_WALLETS` лише додають внутрішні |
 | `SOLANA_RPC_URL`/`ALCHEMY_API_KEY`, `GENESIS_*`, `VAULT_*` | холдери Genesis і NFT-сейф |
 
-Додатково: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (запобіжник на весь сервер), `SERIES_ALLOWED_HOSTS` (обов'язково, бо образ слухає `0.0.0.0` і без списку не перевіряє `Host`), `LANDING_HOSTS`, `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби). Staging пише `SERIES_ALLOWED_HOSTS=next.w3ir.io`.
+Додатково: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (запобіжник на весь сервер), `SERIES_ALLOWED_HOSTS` і такий самий `AUTH_DOMAIN` (обов'язково: образ слухає `0.0.0.0` і без імені не стартує), `AUTH_URI`, `LANDING_HOSTS` (на процесі майстерні порожньо), `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби). `IRYS_PRIVATE_KEY` — необов'язковий гаманець кнопки Arweave з малим балансом, не ключ творця. Staging пише `SERIES_ALLOWED_HOSTS=next.w3ir.io` і `AUTH_DOMAIN=next.w3ir.io`. Повний перелік — [HOSTING.md](./HOSTING.md).
 
 ## Бекап
 
@@ -54,7 +55,7 @@ LAB_ENV_FILE=./.env SERIES_ALLOWED_WALLETS=0x…,So1… bash deploy/series-lab/u
 2. збирає образ `series-lab:<коміт>`;
 3. створює **власну порожню** теку даних `data-next` (леджер Lab створює сам при першому запуску; жодного копіювання чужих даних);
 4. будує `.env.series-lab` із **власного** `lab.env` + перевизначення для staging: без прийому оплат (`SOLANA_PAY_RECIPIENT` порожній), без Telegram, без сейфу, SIWE-домен `next.w3ir.io`, **вхід лише для `ADMIN_WALLETS`** (або `SERIES_ALLOWED_WALLETS=…`), межа витрат $5/день. Якщо `lab.env` немає, скрипт створює його з `.env.example` і зупиняється, щоб ви заповнили секрети;
-5. запускає контейнер `serieslab` (ліміт пам'яті 512 МБ);
+5. запускає контейнер `serieslab` (ліміт пам'яті 512 МБ; перевірка здоров'я — `node`, не `wget`);
 6. додає блок `next.w3ir.io` у reverse-proxy (`Caddyfile.staging`), перевіряє конфіг і перезавантажує Caddy; якщо перевірка не пройшла — повертає попередній Caddyfile. `SKIP_CADDY=1` лише друкує блок;
 7. ставить власний бекап (cron);
 8. перевіряє `next` через proxy (і, за бажанням, `SMOKE_OTHER=host/path` для іншого сайту за тим самим proxy).
@@ -71,7 +72,7 @@ Series Lab не перебирає чужі хости: для власного 
 
 ## Користувач контейнера
 
-Образ працює не від root, а як користувач `node` (**uid/gid 1000**). Леджер, `users/` і `render-log.jsonl` пишуться в том `/data` (на хості — `data-next` або `SERIES_LAB_DATA`).
+Образ працює не від root, а як користувач `node` (**uid/gid 1000**). Леджер, `users/` і `render-log.jsonl` пишуться в том `/data` (на хості — `data-next` або `SERIES_LAB_DATA`). Зразок `docker-compose.yml` не монтує Sugar: сейф вимкнений, а відсутній `/opt/sugar` не має заважати старту.
 
 Порожній каталог, який створює Docker, наслідує власника з образу. Каталог, який раніше наповнював root, процес у контейнері не зможе оновити.
 

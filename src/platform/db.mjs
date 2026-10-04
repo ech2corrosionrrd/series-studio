@@ -52,6 +52,9 @@ const SCHEMA = [
      code TEXT PRIMARY KEY,
      wallet_address TEXT NOT NULL,
      created_at TEXT NOT NULL)`,
+  // Unused. The daily freemium cap was removed because the welcome grant is
+  // one-time; the product no longer reads or writes this table. Kept so an
+  // existing ledger still opens.
   `CREATE TABLE IF NOT EXISTS freemium_usage (
      wallet_address TEXT NOT NULL,
      day TEXT NOT NULL,
