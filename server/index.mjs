@@ -19,6 +19,7 @@ import {
   readFileSync,
   readdirSync,
   writeFileSync,
+  rmSync,
   statSync,
   unlinkSync,
 } from "node:fs";
@@ -181,12 +182,13 @@ import { publishCollection } from "../src/platform/site.mjs";
 import { economyReport } from "../src/platform/margin.mjs";
 import { funnel } from "../src/platform/stats.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
+import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
 import { containsSecretField } from "../src/secrets.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
-import { appendRenderLog, capError, engineStatsToday, recentEngineErrors, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
+import { anonymizeRenderLog, appendRenderLog, capError, engineStatsToday, recentEngineErrors, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
 import { failureBreaker } from "../src/pool.mjs";
 
 const RESOURCE_KEYS = [
@@ -1365,6 +1367,28 @@ async function handleApi(req, res, url) {
     return send(res, 403, { error: "admin only" });
   }
 
+  // ---- "Delete my data" (privacy right). Files + behavioural rows go; the financial trail stays. ----
+  if (pathname === "/api/account/delete-data" && req.method === "POST") {
+    if (!PUBLIC_MODE) return send(res, 400, { error: "public mode only" });
+    const wallet = currentWallet();
+    if (!wallet) return send(res, 401, { error: "Sign in with your wallet first", code: "auth" });
+    const body = await readBody(req);
+    if (String(body.confirm || "") !== "DELETE") {
+      return send(res, 400, { error: "confirmation required", code: "confirm" });
+    }
+    const usersRoot = join(DATA_DIR, "users");
+    const walletRoot = userPaths(wallet).root;
+    let filesRemoved = false;
+    if (isInsideDir(usersRoot, walletRoot) && walletRoot !== resolve(usersRoot)) {
+      rmSync(walletRoot, { recursive: true, force: true });
+      filesRemoved = true;
+    }
+    const rows = eraseWalletRecords(wallet);
+    const logLines = anonymizeRenderLog(renderLog(), wallet);
+    console.warn(`[erase] data erased for ${String(wallet).slice(0, 6)}… (files ${filesRemoved ? "yes" : "no"}, rows ${Object.values(rows).reduce((a, b) => a + b, 0)}, log ${logLines})`);
+    return send(res, 200, { ok: true, filesRemoved, rows, logLines });
+  }
+
   if (pathname === "/api/me" && req.method === "GET") {
     const gpu = localGpuPolicy();
     if (!PUBLIC_MODE) {
@@ -2368,13 +2392,17 @@ async function handleApi(req, res, url) {
       thumbs: results.filter((r) => r.ok).map((r) => ({ edition: r.edition, url: r.url, path: r.path })),
     };
 
-    dispatchBatchNotification({
-      presetId: archive.presetId,
-      total: sel.recipes.length,
-      success: okN,
-      failed: results.length - okN,
-      outputDir: `out/${set}`,
-    }).catch(() => {});
+    // Operator batch summary names the series and its folder. On a public host that would send every
+    // user's work to the operator's chat, so it stays a local-studio feature (payments still notify).
+    if (!PUBLIC_MODE) {
+      dispatchBatchNotification({
+        presetId: archive.presetId,
+        total: sel.recipes.length,
+        success: okN,
+        failed: results.length - okN,
+        outputDir: `out/${set}`,
+      }).catch(() => {});
+    }
 
     if (isStream) {
       writeSse(res, { type: "done", ...finalPayload });

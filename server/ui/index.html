@@ -39,6 +39,7 @@
       <span class="acct-balance-unit" data-i18n="acct.creditsShort">кр.</span>
     </button>
     <button type="button" id="acct-buy" class="btn small primary acct-buy" data-i18n="acct.buy" data-i18n-tip="acct.buy.tip">＋ Купити</button>
+    <button type="button" id="acct-data" class="btn small ghost" data-i18n="acct.data" data-i18n-tip="acct.data.tip">Мої дані</button>
     <button type="button" id="acct-logout" class="btn small ghost" data-i18n="acct.logout" data-i18n-tip="acct.logout.tip">Вийти</button>
   </div>
   <div class="lang-switch" role="group" data-i18n-aria="a11y.language" aria-label="Мова">
@@ -1020,6 +1021,33 @@
     <button type="button" id="path-go" class="btn small primary"></button>
   </div>
 </main>
+
+<!-- "My data" window (delete my data): outside the tab sections for the same reason as the top-up window -->
+<div id="data-overlay" class="overlay" hidden>
+  <div class="card topup-panel" role="dialog" aria-modal="true" aria-labelledby="data-title">
+    <header class="topup-head">
+      <div class="topup-head-text">
+        <h3 id="data-title" data-i18n="data.title">Мої дані</h3>
+        <p class="muted small" data-i18n="data.intro"></p>
+      </div>
+      <button type="button" id="data-close" class="btn small topup-close" data-i18n-aria="a11y.close" aria-label="Закрити" data-i18n-tip="ctrl.data-close.tip">✕</button>
+    </header>
+    <section class="topup-section">
+      <h4 data-i18n="data.erased.h">Буде видалено</h4>
+      <p class="small" data-i18n="data.erased"></p>
+      <h4 data-i18n="data.kept.h">Лишиться для обліку</h4>
+      <p class="small muted" data-i18n="data.kept"></p>
+    </section>
+    <section class="topup-section">
+      <label class="small"><span data-i18n="data.confirmLabel">Введіть DELETE, щоб підтвердити</span>
+        <input id="data-confirm" class="w120" autocomplete="off" spellcheck="false" placeholder="DELETE"></label>
+      <div class="topup-actions">
+        <button type="button" id="data-run" class="btn small" disabled data-i18n="data.run" data-i18n-tip="data.run.tip">Видалити мої дані</button>
+        <span id="data-msg" class="small" role="status"></span>
+      </div>
+    </section>
+  </div>
+</div>
 
 <!-- Top-up window: must live outside the tab sections, otherwise it is hidden with an inactive tab -->
 <div id="topup-overlay" class="overlay" hidden>

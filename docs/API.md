@@ -115,6 +115,7 @@
 | POST | `/api/set/drop` | `{ dir, edition }` — прибрати поточний кадр із набору, не знищуючи файл: `<N>.png` стає `versions/<N>/v<k>.png`, `current` = null. Повернути — `POST /api/versions/current` |
 | GET | `/api/trash` | записи кошика `out/trash/<id>/` (новіші першими) |
 | POST | `/api/trash/restore` | `{ id }` — повернути файли на місце (відмова, якщо ціль уже існує) |
+| POST | `/api/account/delete-data` | «Мої дані» (лише публічний режим, потрібен вхід). Тіло `{ "confirm": "DELETE" }` (точне слово, інакше 400 `code: "confirm"`). Видаляє теку гаманця (вхідні, пресети, зображення, шари, кошик, робочу копію), рядки `funnel_events`, `referral_codes`, `wallet_nonces`, `freemium_usage` і замінює гаманець на `"erased"` та прибирає назву серії в `render-log.jsonl`. **Лишає** облік грошей: `users` (баланс), `payments`, `transactions`, `sol_orders`, `referrals`, `holder_grants`. Відповідь `{ ok, filesRemoved, rows, logLines }`. |
 | POST | `/api/trash/purge` | `{ id }` — видалити запис назавжди |
 | GET | `/api/spend` | `{ capUsd, spentTodayUsd, byEngine }` з `out/render-log.jsonl` (local) або `data/render-log.jsonl` (public) |
 
