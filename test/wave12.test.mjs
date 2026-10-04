@@ -76,9 +76,18 @@ describe("Wave 12: IPFS / Arweave Storage Dispatcher", () => {
     writeFileSync(join(testDir, "2.png"), tinyPng());
 
     const calls = [];
+    const funded = [];
+    let price = 0.00001;
+    let balance = 1;
     const createUploader = async (key, rpc) => {
       calls.push({ key, rpc });
-      return { uploadFolder: async (dir) => ({ id: "MockManifestId123", dir }) };
+      return {
+        utils: { fromAtomic: (x) => Number(x), toAtomic: (x) => x },
+        getPrice: async () => price,
+        getLoadedBalance: async () => balance,
+        fund: async (x) => funded.push(x),
+        uploadFolder: async (dir) => ({ id: "MockManifestId123", dir }),
+      };
     };
 
     const res = await uploadToIrys({ dir: testDir, irysPrivateKey: "k", rpcUrl: "http://rpc", createUploader });
@@ -89,9 +98,17 @@ describe("Wave 12: IPFS / Arweave Storage Dispatcher", () => {
     assert.equal(res.count, 2);
     assert.deepEqual(calls, [{ key: "k", rpc: "http://rpc" }]);
 
+    // balance short -> top-up with a whole atomic amount; price over the limit -> refused before upload
+    balance = 0;
+    await uploadToIrys({ dir: testDir, irysPrivateKey: "k", createUploader });
+    assert.equal(funded.length, 1);
+    price = 1;
+    await assert.rejects(uploadToIrys({ dir: testDir, irysPrivateKey: "k", createUploader, maxPriceSol: 0.05 }), /above the limit/);
+    price = 0.00001;
+    balance = 1;
     await assert.rejects(uploadToIrys({ dir: testDir, irysPrivateKey: "", createUploader }), /IRYS_PRIVATE_KEY/);
     await assert.rejects(
-      uploadToIrys({ dir: testDir, irysPrivateKey: "k", createUploader: async () => ({ uploadFolder: async () => ({}) }) }),
+      uploadToIrys({ dir: testDir, irysPrivateKey: "k", createUploader: async () => ({ ...(await createUploader()), uploadFolder: async () => ({}) }) }),
       /no manifest ID/,
     );
     await assert.rejects(uploadToIrys({ dir: join(testDir, "nope"), irysPrivateKey: "k", createUploader }), /not found/);

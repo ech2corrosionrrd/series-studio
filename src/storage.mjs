@@ -112,6 +112,30 @@ export async function createIrysUploader(privateKey, rpcUrl) {
 }
 
 /**
+ * Price the upload, enforce the limit, and top the Irys balance up when short.
+ * Shared by `uploadToIrys` (server button) and `uploadBundle` (CLI).
+ * @returns {Promise<number>} estimated price in SOL
+ */
+export async function ensureIrysFunds(irys, bytes, { fund = true, maxPriceSol, log = () => {} } = {}) {
+  await irys.ready?.();
+  const price = Number(irys.utils.fromAtomic(await irys.getPrice(bytes)));
+  log(`estimated cost: ${price.toFixed(6)} SOL`);
+  if (maxPriceSol !== undefined && Number.isFinite(maxPriceSol) && price > maxPriceSol) {
+    throw new Error(`estimated cost ${price.toFixed(6)} SOL is above the limit ${maxPriceSol} SOL; nothing was uploaded`);
+  }
+  const balance = Number(irys.utils.fromAtomic(await irys.getLoadedBalance()));
+  if (balance < price) {
+    if (!fund) throw new Error(`Irys balance ${balance.toFixed(6)} SOL is below the estimate ${price.toFixed(6)} SOL`);
+    const topUp = (price - balance) * 1.05;
+    log(`funding Irys with ${topUp.toFixed(6)} SOL`);
+    // Irys accepts whole atomic units only; round up so the top-up never falls short.
+    const atomic = irys.utils.toAtomic(topUp);
+    await irys.fund(typeof atomic.integerValue === "function" ? atomic.integerValue(2) : Math.ceil(atomic));
+  }
+  return price;
+}
+
+/**
  * Upload a local image set directory to Arweave using Irys.
  * Result is a folder manifest: `ar://<id>/<file>`.
  * @param {object} params
@@ -119,6 +143,7 @@ export async function createIrysUploader(privateKey, rpcUrl) {
  * @param {string} [params.irysPrivateKey]
  * @param {string} [params.rpcUrl]
  * @param {Function} [params.createUploader] - injectable `(key, rpcUrl) => Promise<uploader>` (tests)
+ * @param {number} [params.maxPriceSol] - refuse above this estimate (default env IRYS_MAX_PRICE_SOL, 0.05)
  * @returns {Promise<{ ok: boolean, arweaveId: string, arweaveUri: string, gatewayUrl: string, count: number }>}
  */
 export async function uploadToIrys({
@@ -126,6 +151,7 @@ export async function uploadToIrys({
   irysPrivateKey,
   rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com",
   createUploader = createIrysUploader,
+  maxPriceSol = Number(process.env.IRYS_MAX_PRICE_SOL || 0.05),
 }) {
   if (!dir || !existsSync(dir)) {
     throw new Error(`Directory not found: ${dir}`);
@@ -142,6 +168,8 @@ export async function uploadToIrys({
   }
 
   const irys = await createUploader(String(privateKey).trim(), rpcUrl);
+  const bytes = files.reduce((s, f) => s + statSync(join(dir, f)).size, 0);
+  await ensureIrysFunds(irys, bytes, { maxPriceSol });
   const receipt = await irys.uploadFolder(dir, { keepDeleted: false });
   const id = receipt?.id;
   if (!id) {

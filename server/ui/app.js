@@ -3842,8 +3842,16 @@ function setupExport() {
   });
   $("x-profile")?.addEventListener("change", () => {
     const prof = $("x-profile")?.value;
-    if (prof === "ordinalsbot" && $("x-fee")) {
-      $("x-fee").value = "0";
+    const fee = $("x-fee");
+    if (fee) {
+      // Ordinals has no royalty: remember the value and bring it back when the profile changes again.
+      if (prof === "ordinalsbot") {
+        if (fee.dataset.prevFee === undefined) fee.dataset.prevFee = fee.value;
+        fee.value = "0";
+      } else if (fee.dataset.prevFee !== undefined) {
+        fee.value = fee.dataset.prevFee;
+        delete fee.dataset.prevFee;
+      }
     }
     applyProfileUi();
     updateMetadataPreview();

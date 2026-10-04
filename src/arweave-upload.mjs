@@ -13,7 +13,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { writeJsonAtomic } from "./fs-safe.mjs";
-import { createIrysUploader } from "./storage.mjs";
+import { createIrysUploader, ensureIrysFunds } from "./storage.mjs";
 
 const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif" };
 const FUND_BUFFER = 1.05;
@@ -118,22 +118,7 @@ export async function uploadBundle({
   if (!key) throw new Error("signing key required (keypair file); use dryRun to estimate without it");
 
   const irys = await createUploader(key, rpcUrl);
-  await irys.ready?.();
-  const price = Number(irys.utils.fromAtomic(await irys.getPrice(bytes)));
-  result.priceSol = price;
-  log(`estimated cost: ${price.toFixed(6)} SOL`);
-  if (maxPriceSol !== undefined && price > maxPriceSol) {
-    throw new Error(`estimated cost ${price.toFixed(6)} SOL is above the limit ${maxPriceSol} SOL; nothing was uploaded`);
-  }
-  const balance = Number(irys.utils.fromAtomic(await irys.getLoadedBalance()));
-  if (balance < price) {
-    if (!fund) throw new Error(`Irys balance ${balance.toFixed(6)} SOL is below the estimate ${price.toFixed(6)} SOL`);
-    const topUp = (price - balance) * FUND_BUFFER;
-    log(`funding Irys with ${topUp.toFixed(6)} SOL`);
-    // Irys accepts whole atomic units only; round up so the top-up never falls short.
-    const atomic = irys.utils.toAtomic(topUp);
-    await irys.fund(typeof atomic.integerValue === "function" ? atomic.integerValue(2) : Math.ceil(atomic));
-  }
+  result.priceSol = await ensureIrysFunds(irys, bytes, { fund, maxPriceSol, log });
 
   const save = () => writeJsonAtomic(result.cacheFile, cache);
   for (const e of [...(scan.collection ? [scan.collection] : []), ...scan.items].filter((x) => todo.includes(x))) {
