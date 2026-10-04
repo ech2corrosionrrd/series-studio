@@ -162,7 +162,7 @@ if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 import { testEngineConnection } from "../src/connectors.mjs";
 import { allowedHostnames, checkApiRequest, openAccessError } from "./guard.mjs";
 import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
-import { PACKAGES, checkGenerationRate, creditCost, deductCredits, freemiumCheck, freemiumRecord, getBalance,
+import { PACKAGES, checkGenerationRate, creditCost, deductCredits, getBalance,
   listTransactions, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost,
 } from "../src/platform/billing.mjs";
 import { rateLimit } from "../src/platform/ratelimit.mjs";
@@ -388,14 +388,11 @@ function chargeCredits({ engine, costUsd = 0, reference = false, credits = null,
   const amount = credits ?? creditCost(engine, { reference, costUsd });
   if (amount <= 0) return null;
   if (rateLimited && !checkGenerationRate(wallet)) {
-    throw httpError(429, "Generation rate limit reached — wait a minute (top up to lift the limit).", { code: "rate" });
+    throw httpError(429, "Generation rate limit reached — wait a minute (a top-up or a credit grant lifts the limit).", { code: "rate" });
   }
-  const fm = freemiumCheck(wallet);
-  if (!fm.allowed) throw httpError(429, "Daily free generation limit reached — top up to continue.", { code: "freemium" });
   const debitNote = note
     || (LOCAL_ONLY_ENGINES.has(engine) ? "Lab support · local GPU" : undefined);
   if (!deductCredits(wallet, amount, { engine, ...(debitNote ? { note: debitNote } : {}) })) throw insufficient(wallet, amount);
-  freemiumRecord(wallet, 1);
   return { wallet, amount, engine, note: debitNote };
 }
 
@@ -403,7 +400,6 @@ function refundCharge(charge) {
   if (!charge) return;
   try {
     refundCredits(charge.wallet, charge.amount, { engine: charge.engine, ...(charge.note ? { note: `refund: ${charge.note} failed` } : {}) });
-    freemiumRecord(charge.wallet, -1);
   } catch (e) {
     console.error(`[credits] refund failed for ${charge.wallet}: ${e.message}`);
   }

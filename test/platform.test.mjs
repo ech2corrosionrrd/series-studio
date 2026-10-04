@@ -159,13 +159,41 @@ describe("billing ledger", () => {
     delete process.env.ENGINE_CREDIT_COSTS;
   });
 
-  test("rate limit applies to welcome-only wallets, not to paying ones", () => {
+  test("rate limit applies to welcome-only wallets, not to paying or granted ones", () => {
     process.env.GENERATION_RATE_LIMIT_PER_MINUTE = "2";
+    process.env.FREEMIUM_DAILY_LIMIT = "1";
     const a = "0x1000000000000000000000000000000000000001";
     billing.deductCredits(a, 1);
     billing.deductCredits(a, 1);
-    assert.equal(billing.checkGenerationRate(a), false);
+    assert.equal(billing.checkGenerationRate(a), false, "welcome-only wallet hits the per-minute cap");
+    assert.equal(billing.generationRateLimit(a), 2);
     assert.equal(billing.checkGenerationRate("0x5000000000000000000000000000000000000005"), true, "payer has no cap");
+    assert.equal(billing.generationRateLimit("0x5000000000000000000000000000000000000005"), null);
+    const granted = "0x6000000000000000000000000000000000000006";
+    billing.grantCredits(granted, 20);
+    assert.equal(billing.generationRateLimit(granted), null, "a manual grant lifts the per-minute cap");
+    assert.equal(billing.checkGenerationRate(granted), true);
+    assert.equal(billing.freemiumCheck, undefined, "the daily freemium cap is not a product control");
+    delete process.env.FREEMIUM_DAILY_LIMIT;
+    delete process.env.GENERATION_RATE_LIMIT_PER_MINUTE;
+  });
+
+  test("a daily counter does not block a welcome wallet under the per-minute rate", async () => {
+    process.env.FREEMIUM_DAILY_LIMIT = "1";
+    process.env.GENERATION_RATE_LIMIT_PER_MINUTE = "10";
+    const w = "0x7000000000000000000000000000000000000007";
+    const signed = await billing.completeWalletSignIn(w, { balanceCheck: okBalance });
+    assert.equal(signed.balance, 20);
+    const db = openDb();
+    db.prepare("INSERT INTO freemium_usage (wallet_address, day, count) VALUES (?, ?, 99)").run(
+      wallet.normalizeAddr(w),
+      new Date().toISOString().slice(0, 10),
+    );
+    assert.equal(billing.generationRateLimit(w), 10);
+    assert.equal(billing.checkGenerationRate(w), true);
+    assert.equal(billing.deductCredits(w, 1), true);
+    assert.equal(billing.getBalance(w), 19);
+    delete process.env.FREEMIUM_DAILY_LIMIT;
     delete process.env.GENERATION_RATE_LIMIT_PER_MINUTE;
   });
 
