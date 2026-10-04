@@ -7,7 +7,12 @@
  *   ENGINE_FLUX      Replicate flux-schnell (txt2img) / flux-kontext-dev (reference)
  *   ENGINE_STABILITY Stability Core (txt2img) / SD3 sd3.5-medium (image-to-image)
  *   ENGINE_GPT_IMAGE OpenAI gpt-image-1 generations / edits
+ *
+ * Strength default is DEFAULT_STRENGTH from reference.mjs (the studio scale, 0.45).
+ * fidelityForGptImage stays local: gpt-image-1 input_fidelity is not the studio slider.
  */
+import { DEFAULT_STRENGTH, clampStrength, strengthForStability } from "../reference.mjs";
+
 export const ENGINE_GPT_IMAGE = "OpenAI gpt-image-1";
 export const ENGINE_STABILITY = "Stability AI (Core / SD3)";
 export const ENGINE_FLUX = "Flux.1 (Replicate)";
@@ -16,7 +21,6 @@ export const ENGINES = [ENGINE_GPT_IMAGE, ENGINE_STABILITY, ENGINE_FLUX];
 const TIMEOUT = 180_000;
 const IMAGE_RETRIES = 4;
 const FLUX_NSFW_RETRIES = 2;
-const DEFAULT_STRENGTH = 0.6;
 const PERMANENT = ["insufficient", "billing", "exceeded your current quota", "spend limit", "payment required"];
 const MODERATION = ["moderation_blocked", "safety system", "content_policy", "content policy", "rejected by the safety", "moderation_details"];
 const RETRY_AFTER_RE = /(?:try again in|resets? in)\s+([\d.]+)\s*(ms|s|seconds?)\b/i;
@@ -32,12 +36,7 @@ export function engineStatus(env = process.env) {
   };
 }
 
-export const clampStrength = (v) => {
-  const n = Number(v ?? DEFAULT_STRENGTH);
-  return Math.max(0.1, Math.min(0.95, Number.isFinite(n) ? n : DEFAULT_STRENGTH));
-};
-const mapToRange = (s, low, high) => Math.round((high - ((clampStrength(s) - 0.1) / 0.85) * (high - low)) * 1000) / 1000;
-export const strengthForStability = (s) => mapToRange(s, 0.62, 0.85);
+export { DEFAULT_STRENGTH, clampStrength, strengthForStability };
 export const fidelityForGptImage = (s) => (clampStrength(s) >= 0.5 ? "high" : "low");
 export const closestAspect = (w, h) => (w > h ? "16:9" : h > w ? "9:16" : "1:1");
 const gptImageSize = (w, h) => (w > h ? "1536x1024" : h > w ? "1024x1536" : "1024x1024");

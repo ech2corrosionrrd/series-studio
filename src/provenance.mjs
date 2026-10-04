@@ -38,7 +38,7 @@ export function calculateImageSha256(input) {
  *   records: Array<{ edition: number, file: string, sha256: string }>
  * }}
  */
-export function calculateCollectionProvenance(images = []) {
+export function calculateCollectionProvenance(images = [], extra = {}) {
   if (!Array.isArray(images) || images.length === 0) {
     throw new Error("calculateCollectionProvenance requires a non-empty array of image records");
   }
@@ -73,7 +73,7 @@ export function calculateCollectionProvenance(images = []) {
 
   const provenanceHash = crypto.createHash("sha256").update(concatenated).digest("hex");
 
-  return {
+  const record = {
     provenanceHash,
     algorithm: "sha256",
     count: records.length,
@@ -81,6 +81,10 @@ export function calculateCollectionProvenance(images = []) {
     timestamp: new Date().toISOString(),
     records,
   };
+  if (extra?.presetSeed != null && String(extra.presetSeed) !== "") {
+    record.presetSeed = String(extra.presetSeed);
+  }
+  return record;
 }
 
 /**

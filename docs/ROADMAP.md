@@ -1,9 +1,11 @@
 # Series Lab — план розвитку
 
 Продукт: **Series Lab** (by W3IR) · майстерня `Lab → Studio → Release`  
-**Цикл ядра (хвилі 1–25) завершено 25.09.2026 → v1.5.0.** Далі: стабілізація; хостинг/власний домен і рефакторинг — за командою власника.
+**Цикл ядра (хвилі 1–25) завершено 25.09.2026 → v1.5.0.** Запити #1–#9 (зведення в [CHANGELOG.md](../CHANGELOG.md) від 26.09.2026) додали перевірений архів, набір деплою (типово Core Candy Machine; Sugar — застарілий), набір маркетплейсу (Magic Eden лише для Solana), офлайн-порадник запуску і огляд якості. Хостинг, власний домен і великий розріз файлів сервера — за командою власника.
 
-Папка на диску може лишатись `series-studio`; лендінг: [studio.w3ir.io](https://studio.w3ir.io) · staging: [next.w3ir.io](https://next.w3ir.io) (може відставати від `main`).
+Хвиля 12 нижче називає диспетчер сховища. Кнопка завантаження ходить в Arweave через Irys (Pinata/IPFS прибрано з коду). Хвиля 14 описує перший хаб випуску; поточний типовий конфіг Solana — `cm-config.json`, не Sugar.
+
+Папка на диску може лишатись `series-studio`; основний лендінг та робочий домен: [studio.w3ir.io](https://studio.w3ir.io) · staging: [next.w3ir.io](https://next.w3ir.io) (може відставати від `main`). **У разі високого попиту на сервіс (масштабування), для нього буде виділено окреме доменне ім'я та повністю ізольований хостинг.**
 
 Джерела ідей: `C:\Промт` + `C:\Gremlins\gremlin-nft`  
 **Не** є форком GFAM; lore / treasury / мінт з головної — поза scope Lab.
@@ -35,9 +37,9 @@
 | **Релізні метадані · хвиля 9** | ✅ | Bitcoin Ordinals manifest · OpenSea display_type (boost, number, date) |
 | **Headless CLI · хвиля 10** | ✅ | Headless batch render pipeline (`series render`) · dry-run · cost estimation |
 | **AI Auto-Triage · хвиля 11** | ✅ | AI Auto-Triage & Smart Critic (`/api/qa/triage`, `series triage`) · score & badges |
-| **Storage Dispatcher · хвиля 12** | ✅ | IPFS / Arweave Dispatcher (`series pin`, Pinata upload, `imageUriPrefix`, preview) |
+| **Storage Dispatcher · хвиля 12** | ✅ | Завантаження в Arweave через Irys (`series pin`, `imageUriPrefix` = `ar://<id>/`). Pinata прибрано |
 | **Launchpad Presets · хвиля 13** | ✅ | Launchpad Presets & Multi-Standard Export (`formatForLaunchpad`, `manifest.csv`, `series manifest`) |
-| **Release & Deploy Hub · хвиля 14** | ✅ | Release & Deployment Hub (`sugar.json`, `thirdweb.json`, launchpad deep links, release guide) |
+| **Release & Deploy Hub · хвиля 14** | ✅ | Хаб випуску. Поточний типовий Solana-конфіг — Core `cm-config.json`; Sugar лише як застарілий (`sugar/`) |
 | **Dynamic Media · хвиля 15** | ✅ | Dynamic Media Pipeline (`animation_url`, video/audio/3D support, `properties.category`, files) |
 | **Showcase & Scorecard · хвиля 16** | ✅ | Collection Showcase & Trait Rarity Scorecard (`calculateRarityScores`, standalone HTML visual proof) |
 | **Prompt Matrix · хвиля 17** | ✅ | Multi-Engine Prompt Matrix & LoRA / Model Tags (`src/matrix.mjs`, Flux, Midjourney, SDXL) |
@@ -49,12 +51,13 @@
 | **Безпека й страховка · хвиля 23** | ✅ | захист API (CSRF / DNS rebinding) · версії рендерів · кошик · журнал і денна межа витрат · автостоп batch · атомарний запис JSON |
 | **Довідка й дизайн · хвиля 24** | ✅ | підказки з локалей на кожній вкладці · довідка-путівник з пошуком (uk/en) · `docs/GUIDE.md` · mock у списках рушіїв · оновлений дизайн і мобільна верстка |
 | **Шлях випуску · хвиля 25** | ✅ | «Почати серію» / спін-оф / 12 пілотів / тексти без кредитів · DNA-блок · diff архівів · overrides · архів випуску → портал · підказки hover · `/login` Series Lab · вхід лише гаманцем |
+| **Шлях випуску · upload→guards→verify** | ✅ | `release.json`, `series upload` (відновлюване, з `cache.json`), `series guards`, `series verify` — [RELEASE.md](./RELEASE.md) |
 | **Release Lab-side** | ✅ | ZIP + чекліст + Release Hub (посилання на лаунчпад). Ончейн-клейм — зовні, не в Lab |
 | **Стабілізація шляху** | ▶️ зараз | користуватись майстернею; **без** великого рефакторингу (див. «Поточні рішення») |
 | **Рефакторинг коду** | ⏸ відкладено | після стабілізації шляху / перед власним доменом — не зараз |
 | **Хостинг / власний домен** | ⏸ | [HOSTING.md](./HOSTING.md), [STANDALONE.md](./STANDALONE.md) — лише після рішення власника |
 
-Деталі запозичень з Промт — [FROM-PROMT.md](./FROM-PROMT.md). Етапи — [STAGES.md](./STAGES.md). API — [API.md](./API.md).
+Деталі запозичень з Промт — [FROM-PROMT.md](./FROM-PROMT.md). Етапи — [STAGES.md](./STAGES.md). API — [API.md](./API.md). Наступний план реалізації (сила референсу, Core Candy Machine, маркетплейси, перевірка архіву) — [RECOMMENDATIONS.md](./RECOMMENDATIONS.md). Хвилі нижче він не скасовує.
 
 ## Хвиля 1 (реалізовано)
 
@@ -136,7 +139,7 @@
 
 1. **Launchpad Profiles (`LAUNCHPAD_PROFILES`, `formatForLaunchpad`)** — готові нативні профілі для провідних лаунчпадів:
    - **OpenSea Studio**: стандартний ERC-721 + `display_type` атрибути + CSV маніфест для гуртового імпорту.
-   - **Magic Eden Drops**: Metaplex / EVM Drop формат з масивом роялті (`creators: [{ address, share }]`) та `seller_fee_basis_points`.
+   - **Magic Eden Drop (Solana)**: метадані Metaplex, масив роялті (`creators: [{ address, share }]`) і `seller_fee_basis_points`. EVM цей профіль не обіцяє.
    - **LaunchMyNFT**: Metaplex-сумісний формат з підтримкою 0-based індексації (`0.png`, `0.json`).
    - **Bitcoin Ordinals / Inscriptions**: маніфести інскрипцій з `collection` та `edition` прив'язкою.
 2. **Bulk CSV Manifest (`exportManifestCsv`, `GET /api/export/manifest.csv`, `series manifest`)** — генерація стандартизованого CSV маніфесту для прямого завантаження в OpenSea Studio / launchpad-портали та включення `manifest.csv` у корінь mint-ready ZIP.

@@ -5,7 +5,7 @@
  * and generates standalone, responsive HTML showcases.
  */
 
-import { computeRarity } from "./rarity.mjs";
+import { computeRarity, openRarityByEdition } from "./rarity.mjs";
 
 /**
  * Rarity tier definitions based on percentile ranking.
@@ -118,6 +118,11 @@ export function calculateRarityScores(archive, preset = {}) {
       traitsBreakdown,
     };
   });
+
+  const openMap = new Map(
+    openRarityByEdition(preset, recipes).editions.map((row) => [Number(row.edition), row.openRarity]),
+  );
+  for (const row of editions) row.openRarity = openMap.get(Number(row.edition)) ?? null;
 
   // 4. Sort descending by rarity score and assign ranks
   editions.sort((a, b) => b.rarityScore - a.rarityScore || a.edition - b.edition);

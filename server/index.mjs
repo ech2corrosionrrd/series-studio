@@ -16,15 +16,18 @@ import {
   readdirSync,
   writeFileSync,
   statSync,
+  unlinkSync,
 } from "node:fs";
 import { dirname, extname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   buildRecipes,
+  drySimulate,
   buildPrompt,
   appendSupplyWave,
   describeSupply,
   findDupes,
+  similarityToBase,
   dna,
   duplicates,
   duplicateGroups,
@@ -53,10 +56,11 @@ import {
   analyzeBaseImage,
   mapConcurrent,
   triageBatch,
+  countMissingTraitFrames,
   triageImageOffline,
   triageImageVision,
   checkStorageStatus,
-  uploadToPinata,
+  uploadToIrys,
   generateMetadataPreview,
   calculateDeterministicCid,
   getLaunchpadProfiles,
@@ -64,6 +68,7 @@ import {
   exportManifestCsv,
   getLaunchpadPortalUrls,
   buildSugarConfig,
+  buildCoreCandyConfig,
   buildThirdwebConfig,
   generateShowcaseHtml,
   calculateRarityScores,
@@ -75,7 +80,13 @@ import {
   sendTelegramTest,
   getTelegramConfig,
   formatEnginePrompt,
+  readBundleItems,
 } from "../src/index.mjs";
+import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
+import { buildDeployKit, deployChainChoice } from "../src/deploy-kit.mjs";
+import { buildLaunchAdvisor } from "../src/launch-advisor.mjs";
+import { buildMarketplaceKit } from "../src/marketplace-kit.mjs";
+import { writeFilesZip } from "../src/kit-zip.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
 import {
   ENGINES,
@@ -85,9 +96,14 @@ import {
   getEngine,
   getTxt2Img,
   pickAvailableEngine,
+  listSelectableEngines,
+  planPrimaryGenerate,
+  primaryGenerateArgs,
   withRetry,
   clampStrength,
 } from "../src/engines.mjs";
+import { imagesDirName } from "../src/reference.mjs";
+import { licenseWarning, engineModelId, platformFluxModel } from "../src/license.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -158,6 +174,8 @@ import { economyReport } from "../src/platform/margin.mjs";
 import { funnel } from "../src/platform/stats.mjs";
 import { writeJsonAtomic } from "../src/fs-safe.mjs";
 import { addVersion, dropVersion, listVersions, setCurrent, versionCounts } from "../src/versions.mjs";
+import { containsSecretField } from "../src/secrets.mjs";
+import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
 import { appendRenderLog, capError, engineStatsToday, recentEngineErrors, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
 import { failureBreaker } from "../src/pool.mjs";
@@ -172,7 +190,7 @@ const RESOURCE_KEYS = [
   { name: "STABILITY_API_KEY", env: "STABILITY_API_KEY", note: "Stability AI" },
   { name: "POLLINATIONS_API_KEY", env: "POLLINATIONS_API_KEY", note: "Pollinations / Pollen" },
   { name: "ANTHROPIC_API_KEY", env: "ANTHROPIC_API_KEY", note: "Claude critic (optional, Studio)" },
-  { name: "PINATA_JWT", env: "PINATA_JWT", note: "Pinata IPFS Storage Dispatcher" },
+  { name: "IRYS_PRIVATE_KEY", env: "IRYS_PRIVATE_KEY", note: "Irys Arweave Storage Dispatcher" },
   { name: "SERIES_TELEGRAM_BOT_TOKEN", env: "SERIES_TELEGRAM_BOT_TOKEN", note: "Series Lab Telegram bot" },
   { name: "SERIES_TELEGRAM_CHAT_ID", env: "SERIES_TELEGRAM_CHAT_ID", note: "Series Lab operator chat / channel" },
   { name: "TELEGRAM_BOT_TOKEN", env: "TELEGRAM_BOT_TOKEN", note: "Fallback Telegram bot (Lab .env)" },
@@ -387,6 +405,76 @@ function refundCharge(charge) {
   } catch (e) {
     console.error(`[credits] refund failed for ${charge.wallet}: ${e.message}`);
   }
+}
+
+function rejectSecrets(res, body) {
+  if (!containsSecretField(body)) return false;
+  send(res, 400, {
+    error: "Series Lab does not accept private keys, seed phrases, or secrets. Sign from your own wallet.",
+    code: "secrets",
+  });
+  return true;
+}
+
+const LICENSE_WARNING_ERROR = "FLUX.1 [dev] weights need a licence warning before a credit charge.";
+
+function licenseForBody(engineName, body, mode = "edit") {
+  const model = body?.model || engineModelId(engineName, mode);
+  return licenseWarning(engineName, model, { fluxDevWeights: Boolean(body?.fluxDevWeights) });
+}
+
+/** Public mode must show the warning before any credit debit. Local studio is not blocked. */
+function blockLicenseCharge(res, warning, body) {
+  if (!warning || !PUBLIC_MODE || body?.ackLicense) return false;
+  send(res, 409, {
+    error: LICENSE_WARNING_ERROR,
+    code: "license_warning",
+    licenseWarning: warning,
+    charged: false,
+  });
+  return true;
+}
+
+/**
+ * Flat stage fee (archive / deploy kit / marketplace kit / optional IPFS).
+ * Does not use the generation rate limit. Local mode does not charge.
+ */
+function refundStage(paid) {
+  const charge = paid?.charge;
+  if (!charge) return;
+  try {
+    refundCredits(charge.wallet, charge.amount, { engine: charge.engine, note: `refund: ${charge.note}` });
+  } catch (e) {
+    console.error(`[credits] stage refund failed for ${charge.wallet}: ${e.message}`);
+  }
+}
+
+function chargeStage(stage, opts = {}) {
+  const quote = quoteStage(stage, opts);
+  if (!PUBLIC_MODE) return { quote, charge: null };
+  const wallet = currentWallet();
+  if (!wallet) throw httpError(401, "Sign in with your wallet first", { code: "auth" });
+  if (!quote.credits) return { quote, charge: null };
+  const note = opts.ipfs && opts.zip === false ? "ipfs pin" : String(stage).replaceAll("_", " ");
+  const engine = `stage:${stage}`;
+  if (!deductCredits(wallet, quote.credits, { engine, note })) throw insufficient(wallet, quote.credits);
+  return { quote, charge: { wallet, amount: quote.credits, engine, note } };
+}
+
+function loadSeriesContext(archiveName) {
+  if (!archiveName) {
+    const err = new Error("archive required");
+    err.status = 400;
+    throw err;
+  }
+  const { archive, file } = loadArchiveFile(archiveName);
+  let preset = null;
+  try {
+    preset = loadPresetForArchive(archive)?.preset || null;
+  } catch {
+    preset = loadPresetFileSafe(`${archive.presetId || "x"}.json`)?.preset || null;
+  }
+  return { archive, archiveFile: file, preset };
 }
 
 /** Waits (max ~2 min) for a free per-minute slot — batch mode, like Промт wait_for_generation_rate. */
@@ -690,10 +778,7 @@ function recipesPayload(file, archive, preset) {
 }
 
 function setDirName(engine, strength) {
-  const e = String(engine || "kontext").replace(/[^a-z0-9_-]/gi, "");
-  const s = Number(strength);
-  const str = Number.isFinite(s) ? s.toFixed(2).replace(/0+$/, "").replace(/\.$/, "") : "0.45";
-  return `${e}-s${str}`;
+  return imagesDirName(engine, strength);
 }
 
 function safeSetName(name) {
@@ -1081,38 +1166,47 @@ async function resourcesPayloadLive() {
 async function runPrimaryGenerate({ wish, engine, strength, useRef = false, makePrimary = true, seed }) {
   const text = String(wish || "").trim();
   if (!text) throw new Error("wish text required");
-  const prompt = buildWishPrompt(text);
-  const str = clampStrength(strength);
   const ctx = engineCtx(process.env);
   mkdirSync(P().input, { recursive: true });
 
-  let buf;
-  let usedEngine;
-  let mode;
-  let cost = null;
   const primary = listBases().find((f) => f.primary);
-  if (useRef && primary) {
-    usedEngine = pickAvailableEngine(engine, process.env, ENGINES);
-    if (!usedEngine) throw new Error("No image API key for edit engines (REPLICATE / OPENAI / STABILITY / POLLINATIONS)");
+  let plan;
+  try {
+    plan = planPrimaryGenerate({
+      useRef: Boolean(useRef),
+      hasPrimary: Boolean(primary),
+      engine,
+      env: process.env,
+    });
+  } catch (e) {
+    if (e.code === "no_primary" || e.code === "engine_unavailable") {
+      throw httpError(400, e.message, { code: e.code, requestedEngine: engine || "" });
+    }
+    throw e;
+  }
+
+  let buf;
+  const usedEngine = plan.engine;
+  const mode = plan.mode;
+  let cost = null;
+  if (mode === "edit") {
     const imgPath = join(P().input, primary.file);
     const image = readFileSync(imgPath);
     const mime = mimeOf(primary.file);
+    const args = primaryGenerateArgs({ mode, wish: text, strength, seed, image, mime });
     const eng = getEngine(usedEngine);
-    mode = "edit";
     cost = eng.costUsd ?? null;
     assertSpend(cost);
     buf = await paidCall({ source: "studio", kind: "base", engine: usedEngine, costUsd: cost, seed, reference: true }, () =>
-      withRetry(() => eng.generate({ prompt: text, image, mime, seed, strength: str }, ctx)),
+      withRetry(() => eng.generate(args, ctx)),
     );
   } else {
-    usedEngine = pickAvailableEngine(engine, process.env, TXT2IMG);
-    if (!usedEngine) throw new Error("No image API key for txt2img (OPENAI / REPLICATE / STABILITY / POLLINATIONS)");
+    const args = primaryGenerateArgs({ mode, wish: text, seed });
     const eng = getTxt2Img(usedEngine);
-    mode = "txt2img";
     cost = eng.costUsd ?? null;
     assertSpend(cost);
     buf = await paidCall({ source: "studio", kind: "base", engine: usedEngine, costUsd: cost, seed }, () =>
-      withRetry(() => eng.generate({ prompt, seed }, ctx)),
+      withRetry(() => eng.generate(args, ctx)),
     );
   }
 
@@ -1134,6 +1228,7 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
     stub: false,
     mode,
     engine: usedEngine,
+    requestedEngine: plan.requestedEngine,
     costUsd: cost,
     candidate: candName,
     path: `input/${candName}`,
@@ -1320,6 +1415,8 @@ async function handleApi(req, res, url) {
         txt2img: Object.keys(TXT2IMG),
         availableEdit: pickAvailableEngine("kontext", process.env, ENGINES),
         availableTxt2img: pickAvailableEngine("openai", process.env, TXT2IMG),
+        readyEdit: listSelectableEngines(process.env, ENGINES),
+        readyTxt2img: listSelectableEngines(process.env, TXT2IMG),
       },
     });
   }
@@ -1454,6 +1551,22 @@ async function handleApi(req, res, url) {
         ...(r.wave != null ? { wave: r.wave } : {}),
       })),
     });
+  }
+
+  if (pathname === "/api/simulate" && req.method === "POST") {
+    const body = await readBody(req);
+    let preset = body.preset;
+    if (!preset) {
+      preset = loadPresetByFile(body.file || "demo-series.json").preset;
+    }
+    const checked = checkPreset(preset);
+    if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
+    try {
+      const sim = drySimulate(preset, body.pack || null);
+      return send(res, 200, { ok: true, ...sim });
+    } catch (e) {
+      return send(res, 400, { ok: false, error: String(e.message || e), code: "simulate" });
+    }
   }
 
   if (pathname === "/api/diff-seed" && req.method === "POST") {
@@ -1850,6 +1963,10 @@ async function handleApi(req, res, url) {
       "",
       "Estimate is free. Generate will call the image API.",
     ];
+    const licenseNotice = licenseForBody(engineWanted, body);
+    if (licenseNotice) {
+      lines.push("", `Licence: ${licenseNotice.en}`);
+    }
     const lint = lintPrompts((sel.recipes || []).map((r) => r.prompt || ""));
     if (!lint.ok) {
       lines.push("", `⚠ Lint warn (will block Generate): ${lint.hits.join(", ")}`);
@@ -1874,6 +1991,7 @@ async function handleApi(req, res, url) {
       capError: capMsg,
       text: lines.join("\n"),
       lint: { ok: lint.ok, hits: lint.hits },
+      licenseWarning: licenseNotice,
     });
   }
 
@@ -1890,9 +2008,17 @@ async function handleApi(req, res, url) {
         const blocked = blockedPrompts([prompt]);
         if (blocked) return send(res, 400, blocked);
       }
-      const engineName = pickAvailableEngine(body.engine || "kontext", process.env, ENGINES);
-      if (!engineName) throw new Error("No edit-engine API key available");
+      const requestedEngine = body.engine || "kontext";
+      const engineName = pickAvailableEngine(requestedEngine, process.env, ENGINES, { exact: true });
+      if (!engineName) {
+        throw httpError(400, `Engine unavailable for edit: ${requestedEngine}`, {
+          code: "engine_unavailable",
+          requestedEngine,
+        });
+      }
       const eng = getEngine(engineName);
+      const licenseNotice = licenseForBody(engineName, body);
+      if (blockLicenseCharge(res, licenseNotice, body)) return;
       const image = readFileSync(join(P().input, primary.file));
       const mime = mimeOf(primary.file);
       const str = clampStrength(body.strength);
@@ -1913,6 +2039,7 @@ async function handleApi(req, res, url) {
         ok: true,
         stub: false,
         engine: engineName,
+        requestedEngine,
         costUsd: eng.costUsd,
         path: `out/pilots/${name}`,
         file: name,
@@ -1937,8 +2064,15 @@ async function handleApi(req, res, url) {
     }
     const strength = clampStrength(body.strength);
     const engineWanted = body.engine || "kontext";
-    const engineName = pickAvailableEngine(engineWanted, process.env, ENGINES);
-    if (!engineName) throw new Error("No edit-engine API key available");
+    const licenseNotice = licenseForBody(engineWanted, body);
+    if (blockLicenseCharge(res, licenseNotice, body)) return;
+    const engineName = pickAvailableEngine(engineWanted, process.env, ENGINES, { exact: true });
+    if (!engineName) {
+      throw httpError(400, `Engine unavailable for edit: ${engineWanted}`, {
+        code: "engine_unavailable",
+        requestedEngine: engineWanted,
+      });
+    }
     const set = setDirName(engineWanted, strength);
     const sel = resolveGenerateSelection(archive, body, set);
     if (!sel.editions.length) {
@@ -1946,6 +2080,7 @@ async function handleApi(req, res, url) {
         ok: true,
         file: archiveFile,
         engine: engineName,
+        requestedEngine: engineWanted,
         strength,
         set,
         count: 0,
@@ -1982,7 +2117,7 @@ async function handleApi(req, res, url) {
         "Cache-Control": "no-cache, no-transform",
         "Connection": "keep-alive",
       });
-      res.write(`data: ${JSON.stringify({ type: "start", total: sel.recipes.length, engine: engineName, strength, set })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: "start", total: sel.recipes.length, engine: engineName, requestedEngine: engineWanted, strength, set, licenseWarning: licenseNotice })}\n\n`);
     }
 
     const results = await mapConcurrent(
@@ -2006,7 +2141,15 @@ async function handleApi(req, res, url) {
             }, ctx),
           );
           const name = `${recipe.edition}.png`;
-          const v = addVersion(outDir, recipe.edition, buf, { engine: engineName, strength, seed: recipe.seed });
+          const v = addVersion(outDir, recipe.edition, buf, {
+            engine: engineName,
+            model: modelTitle(engineName, "edit"),
+            strength,
+            seed: recipe.seed,
+            promptHash: promptHash(recipe.prompt),
+            baseSha256: sha256Hex(image),
+            ...(licenseNotice ? { licenseWarning: licenseNotice } : {}),
+          });
           logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, v, ok: true, costUsd: unitCost, seed: recipe.seed });
           breaker.record(true);
           return {
@@ -2049,6 +2192,7 @@ async function handleApi(req, res, url) {
       stub: false,
       file: archiveFile,
       engine: engineName,
+      requestedEngine: engineWanted,
       strength,
       set,
       count: okN,
@@ -2121,6 +2265,28 @@ async function handleApi(req, res, url) {
       engines: engineStatsToday(renderLog()),
       errors: recentEngineErrors(renderLog()),
     });
+  }
+
+  if (pathname === "/api/similarity" && req.method === "GET") {
+    const dirName = safeSetName(url.searchParams.get("dir") || "");
+    const setDir = join(P().out, dirName);
+    if (!existsSync(setDir)) return send(res, 400, { error: "set not found" });
+    const primary = listBases().find((f) => f.primary) || listBases()[0];
+    if (!primary) return send(res, 400, { error: "No base image found to analyze" });
+    const baseBuf = readFileSync(join(P().input, primary.file));
+    const editions = [];
+    for (const name of readdirSync(setDir)) {
+      const m = /^(\d+)\.png$/i.exec(name);
+      if (!m) continue;
+      try {
+        const row = similarityToBase(readFileSync(join(setDir, name)), baseBuf);
+        editions.push({ edition: Number(m[1]), ...row });
+      } catch {
+        editions.push({ edition: Number(m[1]), similarity: null, warn: false, skipped: true });
+      }
+    }
+    editions.sort((a, b) => a.edition - b.edition);
+    return send(res, 200, { ok: true, method: "ahash-64", offline: true, editions });
   }
 
   if (pathname === "/api/waves" && req.method === "GET") {
@@ -2275,6 +2441,14 @@ async function handleApi(req, res, url) {
     }
 
     const autoApply = Boolean(body.autoApplyMarks);
+    const missingTraits = countMissingTraitFrames(results);
+    writeJsonAtomic(join(setDir, "triage.json"), {
+      at: new Date().toISOString(),
+      provider,
+      results,
+      missingTraitFrames: missingTraits.frames,
+    });
+
     if (autoApply) {
       for (const resItem of results) {
         if (resItem.edition != null && (resItem.verdict === "keep" || resItem.verdict === "redo")) {
@@ -2293,6 +2467,7 @@ async function handleApi(req, res, url) {
       evaluated: results.length,
       results,
       marks: currentMarks,
+      missingTraitFrames: missingTraits.frames,
     });
   }
 
@@ -2311,11 +2486,18 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: `set not found: ${dir}` });
     }
     const name = body.name || `series-${dir}`;
-    const result = await uploadToPinata({
-      dir: setDir,
-      name,
-    });
-    return send(res, 200, result);
+    const paid = chargeStage("archive", { ipfs: true, zip: false });
+    let result;
+    try {
+      result = await uploadToIrys({
+        dir: setDir,
+      });
+    } catch (e) {
+      refundStage(paid);
+      throw e;
+    }
+    if (result && result.ok === false) refundStage(paid);
+    return send(res, 200, { ...result, quote: paid.quote, chargedCredits: paid.charge?.amount || 0 });
   }
 
   if (pathname === "/api/launchpads" && req.method === "GET") {
@@ -2428,13 +2610,22 @@ async function handleApi(req, res, url) {
       namePrefix: url.searchParams.get("namePrefix") || "",
     };
 
-    if (profile === "magiceden" || profile === "launchmynft") {
+    const legacy = url.searchParams.get("legacy") === "1" || url.searchParams.get("legacy") === "true";
+    if (profile === "launchmynft" || (profile === "magiceden" && legacy)) {
       const sugar = buildSugarConfig(archive || {}, preset || {}, opts);
       res.writeHead(200, {
         "Content-Type": "application/json; charset=utf-8",
         "Content-Disposition": `attachment; filename="sugar.json"`,
       });
       return res.end(JSON.stringify(sugar, null, 2) + "\n");
+    }
+    if (profile === "magiceden") {
+      const core = buildCoreCandyConfig(archive || {}, preset || {}, opts);
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Disposition": `attachment; filename="cm-config.json"`,
+      });
+      return res.end(JSON.stringify(core, null, 2) + "\n");
     }
 
     const tw = buildThirdwebConfig(archive || {}, preset || {}, opts);
@@ -2509,6 +2700,23 @@ async function handleApi(req, res, url) {
     const marks = readMarks(set);
     const locale = resolveLocale(req, body);
     const onlyKeep = body.onlyKeep === undefined ? true : Boolean(body.onlyKeep);
+    const bundleOpts = {
+      format,
+      profile: profileKey,
+      creatorAddress: body.creatorAddress || null,
+      zeroIndexed: Boolean(body.zeroIndexed || body.zeroIndex),
+      onlyKeep,
+      namePrefix: body.namePrefix || `${archive.presetId || "Series"} #`,
+      symbol: body.symbol || profile.defaultSymbol || "LAB",
+      sellerFeeBasisPoints: body.sellerFeeBasisPoints ?? profile.defaultFee ?? 500,
+      description:
+        body.description ||
+        `${preset?.name || archive.presetId || "Series"} — Series Lab export`,
+      imageUriPrefix: body.imageUriPrefix || body.imagePrefix || "",
+      animationUriPrefix: body.animationUriPrefix || body.animPrefix || "",
+      locale,
+      upscale: Boolean(body.upscale),
+    };
     try {
       const result = await buildBundleZip({
         archive,
@@ -2517,32 +2725,25 @@ async function handleApi(req, res, url) {
         set,
         marks,
         bundlesDir: bundlesDir(),
-        opts: {
-          format,
-          profile: profileKey,
-          creatorAddress: body.creatorAddress || null,
-          zeroIndexed: Boolean(body.zeroIndexed || body.zeroIndex),
-          onlyKeep,
-          namePrefix: body.namePrefix || `${archive.presetId || "Series"} #`,
-          symbol: body.symbol || profile.defaultSymbol || "LAB",
-          sellerFeeBasisPoints: body.sellerFeeBasisPoints ?? profile.defaultFee ?? 500,
-          description:
-            body.description ||
-            `${preset?.name || archive.presetId || "Series"} — Series Lab export`,
-          imageUriPrefix: body.imageUriPrefix || body.imagePrefix || "",
-          animationUriPrefix: body.animationUriPrefix || body.animPrefix || "",
-          locale,
-          upscale: Boolean(body.upscale),
-        },
+        opts: { ...bundleOpts, gate: true },
       });
+      let paid;
+      try {
+        paid = chargeStage("archive", { zip: true, ipfs: false });
+      } catch (e) {
+        try { unlinkSync(join(bundlesDir(), result.file)); } catch { /* already gone */ }
+        throw e;
+      }
       return send(res, 200, {
         ok: true,
+        ready: result.ready === true,
         file: result.file,
         path: result.path,
         count: result.count,
         missing: result.missing || [],
         format: result.format,
         profile: result.profile,
+        chain: result.chain,
         provenanceHash: result.provenanceHash || null,
         upscaled: result.upscaled,
         upscaleSkipped: result.upscaleSkipped || null,
@@ -2550,11 +2751,208 @@ async function handleApi(req, res, url) {
         archive: archiveFile,
         set,
         downloadUrl: `/${result.path}`,
+        preflight: result.preflight,
+        report: result.preflight?.report || "",
+        quote: paid.quote,
+        chargedCredits: paid.charge?.amount || 0,
       });
     } catch (e) {
+      if (e.extra?.code === "credits" || e.extra?.code === "auth" || e.status === 401) throw e;
       const status =
         e.status || (e.code === "bundle_select" || e.code === "bundle_empty" ? 400 : 500);
-      return send(res, status, { error: String(e.message || e), code: e.code || "bundle" });
+      return send(res, status, {
+        error: e.report || String(e.message || e),
+        code: e.code || e.extra?.code || "bundle",
+        ready: false,
+        preflight: e.preflight || null,
+        report: e.report || e.preflight?.report || "",
+        ...(e.extra || {}),
+      });
+    }
+  }
+
+  if (pathname === "/api/preflight" && req.method === "POST") {
+    const body = await readBody(req);
+    if (rejectSecrets(res, body)) return;
+    const archiveName = body.archive || body.file;
+    const profileKey = body.profile || (body.format === "metaplex" ? "magiceden" : body.format === "ordinals" ? "ordinalsbot" : "opensea");
+    const profile = LAUNCHPAD_PROFILES[profileKey] || LAUNCHPAD_PROFILES.opensea;
+    const format = profile.format || body.format || "erc721";
+    let loaded;
+    try {
+      loaded = loadSeriesContext(archiveName);
+    } catch (e) {
+      return send(res, e.status || 404, { error: String(e.message || e) });
+    }
+    const set = safeSetName(body.set);
+    const setDir = join(P().out, set);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
+      return send(res, 400, { error: `set not found: ${set}` });
+    }
+    const locale = resolveLocale(req, body);
+    try {
+      const result = await buildBundleZip({
+        archive: loaded.archive,
+        preset: loaded.preset,
+        setDir,
+        set,
+        marks: readMarks(set),
+        bundlesDir: bundlesDir(),
+        opts: {
+          format,
+          profile: profileKey,
+          creatorAddress: body.creatorAddress || null,
+          zeroIndexed: Boolean(body.zeroIndexed || body.zeroIndex),
+          onlyKeep: body.onlyKeep === undefined ? true : Boolean(body.onlyKeep),
+          namePrefix: body.namePrefix || `${loaded.archive.presetId || "Series"} #`,
+          symbol: body.symbol || profile.defaultSymbol || "LAB",
+          sellerFeeBasisPoints: body.sellerFeeBasisPoints ?? profile.defaultFee ?? 500,
+          description: body.description || `${loaded.preset?.name || loaded.archive.presetId || "Series"} — Series Lab export`,
+          imageUriPrefix: body.imageUriPrefix || "",
+          animationUriPrefix: body.animationUriPrefix || "",
+          locale,
+          dryRun: true,
+        },
+      });
+      return send(res, 200, {
+        ok: true,
+        ready: result.ready === true,
+        count: result.count,
+        chain: result.chain,
+        profile: result.profile,
+        preflight: result.preflight,
+        report: result.preflight?.report || "",
+      });
+    } catch (e) {
+      const status = e.status || (e.code === "bundle_select" || e.code === "bundle_empty" ? 400 : 500);
+      return send(res, status, { error: String(e.message || e), code: e.code || "preflight", ready: false });
+    }
+  }
+
+  if (pathname === "/api/stages/quotes" && req.method === "GET") {
+    const count = Number(url.searchParams.get("count") || 1);
+    const engine = url.searchParams.get("engine") || "kontext";
+    const provider = url.searchParams.get("provider") || "heuristic";
+    return send(res, 200, {
+      ok: true,
+      quotes: {
+        generation: quoteStage("generation", { engine, count, reference: true }),
+        curation: quoteStage("curation", { provider, count }),
+        archive: quoteStage("archive", { zip: true }),
+        archive_ipfs: quoteStage("archive", { zip: false, ipfs: true }),
+        deploy_kit: quoteStage("deploy_kit"),
+        marketplace_kit: quoteStage("marketplace_kit"),
+      },
+    });
+  }
+
+  if (pathname === "/api/stages/quote" && req.method === "GET") {
+    const stage = url.searchParams.get("stage") || "archive";
+    try {
+      const quote = quoteStage(stage, {
+        engine: url.searchParams.get("engine") || "kontext",
+        count: Number(url.searchParams.get("count") || 1),
+        reference: url.searchParams.get("reference") !== "0",
+        provider: url.searchParams.get("provider") || "heuristic",
+        ipfs: url.searchParams.get("ipfs") === "1",
+        zip: url.searchParams.get("zip") !== "0",
+      });
+      return send(res, 200, { ok: true, quote });
+    } catch (e) {
+      return send(res, e.status || 400, { error: String(e.message || e) });
+    }
+  }
+
+  if (pathname === "/api/launch-advisor" && req.method === "GET") {
+    const chain = url.searchParams.get("chain") || "solana";
+    const locale = url.searchParams.get("locale") || resolveLocale(req, {});
+    return send(res, 200, { ok: true, ...buildLaunchAdvisor({ chain, locale }) });
+  }
+
+  if ((pathname === "/api/deploy-kit" || pathname === "/api/marketplace-kit") && req.method === "POST") {
+    const body = await readBody(req);
+    if (rejectSecrets(res, body)) return;
+    const kind = pathname.endsWith("marketplace-kit") ? "marketplace_kit" : "deploy_kit";
+    let loaded;
+    try {
+      loaded = loadSeriesContext(body.archive || body.file);
+    } catch (e) {
+      return send(res, e.status || 404, { error: String(e.message || e) });
+    }
+    const set = safeSetName(body.set);
+    const setDir = join(P().out, set);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
+      return send(res, 400, { error: `set not found: ${set}` });
+    }
+    const locale = resolveLocale(req, body);
+    const choice = deployChainChoice(body.chain, body.legacy === true);
+    const profileKey = body.profile || (choice.chain === "solana" ? "magiceden" : choice.chain === "bitcoin" ? "ordinalsbot" : "opensea");
+    const onlyKeep = body.onlyKeep === undefined ? false : Boolean(body.onlyKeep);
+    const loadedItems = readBundleItems({
+      archive: loaded.archive,
+      setDir,
+      marks: readMarks(set),
+      onlyKeep,
+    });
+    if (loadedItems.error || !loadedItems.items.length) {
+      return send(res, 400, { error: loadedItems.error || "no images" });
+    }
+    const sharedOpts = {
+      chain: choice.chain,
+      legacy: choice.legacy,
+      profile: profileKey,
+      format: body.format,
+      creatorAddress: body.creatorAddress || "",
+      symbol: body.symbol || loaded.preset?.symbol || "LAB",
+      sellerFeeBasisPoints: body.sellerFeeBasisPoints ?? 500,
+      description: body.description || loaded.preset?.description || `${loaded.preset?.name || loaded.archive.presetId || "Series"} — Series Lab`,
+      name: body.name || loaded.preset?.name || loaded.archive.presetId,
+      namePrefix: body.namePrefix,
+      price: body.price,
+      includeHolderLicence: body.includeHolderLicence !== false,
+      holderLicence: typeof body.holderLicence === "string" ? body.holderLicence : "",
+    };
+    const stamp = Date.now().toString(36);
+    const file = `${kind === "deploy_kit" ? "deploy" : "market"}-${String(loaded.archive.presetId || "series").replace(/[^a-zA-Z0-9_-]/g, "")}-${stamp}.zip`;
+    let paid;
+    try {
+      paid = chargeStage(kind);
+    } catch (e) {
+      return send(res, e.status || 402, { error: String(e.message || e), code: e.extra?.code || e.code || "credits", ...(e.extra || {}) });
+    }
+    try {
+      const built = kind === "deploy_kit"
+        ? buildDeployKit({
+          archive: loaded.archive,
+          preset: loaded.preset,
+          items: loadedItems.items,
+          opts: sharedOpts,
+          locale,
+        })
+        : await buildMarketplaceKit({
+          coverBuffer: loadedItems.items.slice().sort((a, b) => a.edition - b.edition)[0]?.buffer,
+          opts: sharedOpts,
+          locale,
+          preset: loaded.preset,
+          archive: loaded.archive,
+        });
+      await writeFilesZip(built.files, join(bundlesDir(), file));
+      return send(res, 200, {
+        ok: true,
+        file,
+        path: `out/bundles/${file}`,
+        downloadUrl: `/out/bundles/${file}`,
+        chain: built.chain,
+        count: built.count ?? loadedItems.items.length,
+        estimate: built.estimate || null,
+        warnings: built.warnings || [],
+        quote: paid.quote,
+        chargedCredits: paid.charge?.amount || 0,
+        guide: kind === "deploy_kit" ? built.guide : undefined,
+      });
+    } catch (e) {
+      refundStage(paid);
+      return send(res, 500, { error: String(e.message || e), code: kind });
     }
   }
 

@@ -13,6 +13,7 @@ import { openDb } from "./db.mjs";
 import { ENGINES } from "../engines.mjs";
 import { scopeSql } from "./ops.mjs";
 import { overview, creditsByKindSince } from "./stats.mjs";
+import { stageLedgerReport, listStagePrices } from "./stage-pricing.mjs";
 
 /** USD per API op by (family, credits charged) — same table as Промт. */
 export const API_USD_BY_TARIFF = {
@@ -33,7 +34,7 @@ const DEFAULT_API_USD = 0.01;
 
 /** Lean monthly ops (USD) — used when FIXED_MONTHLY_USD unset. */
 export const DEFAULT_HOSTING_MONTHLY_USD = 8; // Hetzner CX/CPX + backups slice
-export const DEFAULT_SAAS_MONTHLY_USD = 10; // Pinata/Alchemy/DNS buffer (free tiers → raise when paid)
+export const DEFAULT_SAAS_MONTHLY_USD = 10; // Irys/Alchemy/DNS buffer (free tiers → raise when paid)
 
 const ENGINE_FAMILY = {
   openai: "openai",
@@ -95,7 +96,7 @@ export function overheadBreakdown(env = process.env) {
       ? [{ id: "fixed", label: "Фікс (FIXED_MONTHLY_USD)", usd: fixed }]
       : [
         { id: "hosting", label: "Хостинг (VPS / backups)", usd: hosting },
-        { id: "saas", label: "Підписки ресурсів (Pinata / RPC / DNS…)", usd: saas },
+        { id: "saas", label: "Підписки ресурсів (Irys / RPC / DNS…)", usd: saas },
       ],
   };
 }
@@ -469,5 +470,10 @@ export function economyReport(days = null, db = openDb()) {
     break_even: breakEvenSummary({ db }),
     model: unitEconomicsModel(),
     funnel_30d: null,
+    stages: stageLedgerReport(db, days, {
+      apiUsd: apiUsdPerOp,
+      avgUsdPerCredit: gross.avg_usd_per_credit,
+    }),
+    stage_prices: listStagePrices(),
   };
 }

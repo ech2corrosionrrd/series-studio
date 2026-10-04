@@ -52,7 +52,7 @@ RPC для перевірки переказів: `SOLANA_PAY_RPC_URL` / `SOLANA
 | Змінна | Що | Типово |
 |--------|-----|--------|
 | `HOSTING_MONTHLY_USD` | VPS / backups | **8** |
-| `SAAS_MONTHLY_USD` | Pinata / RPC / DNS buffer | **10** |
+| `SAAS_MONTHLY_USD` | Irys / RPC / DNS buffer | **10** |
 | `FIXED_MONTHLY_USD` | Якщо задано — **перебиває** суму hosting+saas | — |
 | `PAYMENT_FEE_PCT` | Комісія платіжного провайдера на вхідний дохід (для прямого переказу USDC — 0) | **0** |
 | `FX_FEE_PCT` | Вхід: USDC → ops USD (спред/комісія біржі чи обмінника) | **2** |
@@ -100,6 +100,10 @@ revenue
 Перерахунок: `node scripts/econ-check.mjs`.
 
 ---
+
+## Етапи (архів, деплой, маркет)
+
+Окремо від тарифу рушіїв. Формула й типові числа — [PRODUCT.md](./PRODUCT.md). Код: `src/platform/stage-pricing.mjs`. Користувач бачить ціну до дії (`GET /api/stages/quote`). Адмін → Економіка додає таблицю собівартість / виручка / різниця по етапах. Оплата USDC і Phantom не змінювались.
 
 ## Пов’язані файли
 

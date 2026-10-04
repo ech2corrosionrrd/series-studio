@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
@@ -12,11 +13,11 @@ import {
   buildBundleZip,
   generateMetadataPreview,
 } from "../src/index.mjs";
+import { loadDemoPreset, writeDemoArchive } from "./helpers/demo-archive.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const preset = JSON.parse(readFileSync(join(ROOT, "presets", "demo-series.json"), "utf8"));
-const archiveFull = JSON.parse(readFileSync(join(ROOT, "out", "demo-series.json"), "utf8"));
+const preset = loadDemoPreset();
 
 function mockPng() {
   // 1x1 PNG header + padding to pass QA min size (>1024 bytes)
@@ -204,8 +205,10 @@ test("buildBundleZip generates bundle with launchpad profile and manifest.csv", 
 });
 
 test("CLI series manifest command creates CSV", () => {
-  const archivePath = join(ROOT, "out", "demo-series.json");
-  const outCsv = join(ROOT, "out", "test-cli-manifest.csv");
+  const scratch = mkdtempSync(join(tmpdir(), "series-w13-"));
+  const archivePath = join(scratch, "demo-series.json");
+  const outCsv = join(scratch, "manifest.csv");
+  writeDemoArchive(archivePath, preset);
 
   execSync(`node bin/series.mjs manifest "${archivePath}" -o "${outCsv}" --profile opensea --image-prefix "ipfs://QmCLI/"`, {
     cwd: ROOT,
@@ -217,7 +220,5 @@ test("CLI series manifest command creates CSV", () => {
   assert.ok(content.startsWith("id,edition,name,description,image"));
   assert.ok(content.includes("ipfs://QmCLI/1.png"));
 
-  try {
-    rmSync(outCsv, { force: true });
-  } catch {}
+  rmSync(scratch, { recursive: true, force: true });
 });

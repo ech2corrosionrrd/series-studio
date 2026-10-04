@@ -1,6 +1,6 @@
 /**
  * Launchpad Presets & Multi-Standard Export Profiles for Series Lab.
- * Supports OpenSea Studio, Magic Eden Drops, LaunchMyNFT, and Bitcoin Ordinals Bots.
+ * Supports OpenSea Studio, Magic Eden Drop on Solana, LaunchMyNFT, and Bitcoin Ordinals Bots.
  */
 
 import { traitsToAttributes } from "./checklist.mjs";
@@ -22,10 +22,10 @@ export const LAUNCHPAD_PROFILES = {
   },
   magiceden: {
     id: "magiceden",
-    name: "Magic Eden Drop (Solana / EVM)",
+    name: "Magic Eden Drop (Solana)",
     standard: "metaplex",
     format: "metaplex",
-    description: "Metaplex / EVM Drop metadata with creator royalties array and seller fee basis points.",
+    description: "Metaplex metadata for a Solana Magic Eden drop, with a creator royalties array and seller fee basis points.",
     defaultNamePrefix: "Series #",
     defaultSymbol: "LAB",
     defaultFee: 500,

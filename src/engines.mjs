@@ -3,7 +3,13 @@
  * Inspired by gremlin-nft / W3IR Prompt — clean reimplementation.
  * Keys only from env (src/keys.mjs ← local .env / SERIES_KEYS_FILE).
  */
-import { kontextGuidance, strengthForStability, clampStrength } from "./reference.mjs";
+import {
+  kontextGuidance,
+  strengthForStability,
+  strengthForFal,
+  strengthForRunware,
+  clampStrength,
+} from "./reference.mjs";
 import {
   falRun,
   runwareRun,
@@ -94,7 +100,7 @@ export const ENGINES = {
         input: {
           prompt: `${kontextGuidance(strength)} ${prompt}`,
           image_url: `data:${mime};base64,${image.toString("base64")}`,
-          strength: (strengthForStability(strength) || 70) / 100,
+          strength: strengthForFal(strength),
           ...(seed != null ? { seed: Number(seed) } : {}),
         },
         key,
@@ -113,7 +119,7 @@ export const ENGINES = {
         image,
         mime,
         seed,
-        strength: (strengthForStability(strength) || 70) / 100,
+        strength: strengthForStability(strength),
         url: env.COMFYUI_URL || DEFAULT_COMFYUI_URL,
         fetch,
       });
@@ -129,7 +135,7 @@ export const ENGINES = {
         prompt,
         image,
         seed,
-        strength: (strengthForStability(strength) || 70) / 100,
+        strength: strengthForStability(strength),
         url: env.A1111_URL || env.SD_WEBUI_URL || DEFAULT_A1111_URL,
         fetch,
       });
@@ -145,7 +151,7 @@ export const ENGINES = {
         prompt,
         seed,
         inputImage: `data:${mime};base64,${image.toString("base64")}`,
-        strength: (strengthForStability(strength) || 70) / 100,
+        strength: strengthForRunware(strength),
         key: env.RUNWARE_API_KEY,
         fetch,
       });
@@ -429,8 +435,8 @@ export function getEngine(name) {
 }
 
 export function getTxt2Img(name) {
-  const engine = TXT2IMG[name] || TXT2IMG.openai;
-  if (!engine) throw new Error(`unknown txt2img "${name}"`);
+  const engine = TXT2IMG[name];
+  if (!engine) throw new Error(`unknown txt2img "${name}"; choose: ${Object.keys(TXT2IMG).join(", ")}`);
   return engine;
 }
 
@@ -464,9 +470,8 @@ export function buildWishPrompt(wish) {
   return `${base}${String(wish || "").trim()}`;
 }
 
-export function pickAvailableEngine(preferred, env = process.env, table = ENGINES) {
-  const order = [
-    preferred,
+export function pickAvailableEngine(preferred, env = process.env, table = ENGINES, opts = {}) {
+  const fallback = [
     "fal",
     "kontext",
     "schnell",
@@ -477,7 +482,8 @@ export function pickAvailableEngine(preferred, env = process.env, table = ENGINE
     "comfyui",
     "a1111",
     "mock",
-  ].filter(Boolean);
+  ];
+  const order = (opts.exact ? [preferred] : [preferred, ...fallback]).filter(Boolean);
   const seen = new Set();
   for (const name of order) {
     if (seen.has(name)) continue;
@@ -520,8 +526,52 @@ export function pickAvailableEngine(preferred, env = process.env, table = ENGINE
         : null;
     if ((env[key] && String(env[key]).trim()) || (alt && String(alt).trim())) return name;
   }
-  if (preferred === "mock") return "mock";
+  if (!opts.exact && preferred === "mock") return "mock";
   return null;
+}
+
+/** Names in `table` the user can select without a silent swap. */
+export function listSelectableEngines(env = process.env, table = ENGINES) {
+  return Object.keys(table).filter((name) => pickAvailableEngine(name, env, table, { exact: true }) === name);
+}
+
+/**
+ * Decide Path B before any paid call.
+ * useRef without a primary is an error, not a silent txt2img.
+ * exact: the requested engine is used or the call fails — no fallback.
+ */
+export function planPrimaryGenerate({ useRef = false, hasPrimary = false, engine, env = process.env } = {}) {
+  if (useRef && !hasPrimary) {
+    const err = new Error("Image-to-image needs a primary base image.");
+    err.code = "no_primary";
+    err.status = 400;
+    throw err;
+  }
+  const mode = useRef ? "edit" : "txt2img";
+  const table = useRef ? ENGINES : TXT2IMG;
+  const requestedEngine = engine || (useRef ? "kontext" : "openai");
+  const resolved = pickAvailableEngine(requestedEngine, env, table, { exact: true });
+  if (!resolved) {
+    const err = new Error(`Engine unavailable for ${mode}: ${requestedEngine}`);
+    err.code = "engine_unavailable";
+    err.status = 400;
+    throw err;
+  }
+  return { mode, engine: resolved, requestedEngine };
+}
+
+/** Arguments for one primary generate. txt2img omits strength; edit sends the raw wish. */
+export function primaryGenerateArgs({ mode, wish, strength, seed, image, mime } = {}) {
+  if (mode === "edit") {
+    return {
+      prompt: String(wish || "").trim(),
+      image,
+      mime,
+      seed,
+      strength: clampStrength(strength),
+    };
+  }
+  return { prompt: buildWishPrompt(wish), seed };
 }
 
 export { clampStrength };

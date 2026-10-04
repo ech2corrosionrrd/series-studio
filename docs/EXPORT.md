@@ -20,7 +20,8 @@ metadata/
   1.json             # Метадані відповідного стандарту (ERC-721 / Metaplex / Ordinals)
   2.json
 manifest.csv         # Гуртовий CSV маніфест з усіма трейтами та посиланнями
-sugar.json           # Конфігурація для Solana Metaplex Sugar CLI (для Magic Eden / Solana)
+cm-config.json       # Чернетка Core Candy Machine (Solana, типово)
+sugar/config.json    # Застарілий Sugar, не для нової колекції
 thirdweb.json        # Конфігурація для деплою ERC-721 Drop контракту (для OpenSea / EVM)
 release-guide.txt    # Локалізована покрокова інструкція для запуску
 collection.json      # Підсумок параметрів та складу бандлу
@@ -34,7 +35,7 @@ README.txt           # Загальний опис архіву
 | Профіль | Стандарт | Підтримка | Особливості |
 |---------|----------|-----------|-------------|
 | **`opensea`** | ERC-721 | Ethereum, Polygon, Base, Arbitrum | `display_type` для числових характеристик, гуртовий CSV імпорт, `thirdweb.json` |
-| **`magiceden`** | Metaplex | Solana, EVM | Масив роялті `properties.creators`, `seller_fee_basis_points`, `sugar.json` |
+| **`magiceden`** | Metaplex | Solana | Масив роялті `properties.creators`, `seller_fee_basis_points`, `cm-config.json` (Sugar лише в `sugar/`) |
 | **`launchmynft`** | Metaplex | Solana | Підтримка 0-based індексації (`0.png`, `0.json`) |
 | **`ordinalsbot`** | Ordinals | Bitcoin | Маніфести інскрипцій з прив'язкою `collection` та `edition` |
 
@@ -73,26 +74,35 @@ Series Lab підтримує автоматичне виявлення та п�
 
 ---
 
-## 6. Децентралізоване зберігання (IPFS Pinata Dispatcher)
+## 6. Децентралізоване зберігання (Arweave через Irys)
 
-Вкладка Експорт підтримує 1-клік завантаження набору зображень у Pinata IPFS:
+> Мережа спільна для вкладок Експорт, Набір деплою і Набір маркетплейсу: зміна профілю чи мережі на одній оновлює решту (Sugar лишається Sugar на Solana). Зібрані ZIP, гайд і статуси при цьому очищаються. Поля Експорту й підказки залежать від профілю. **Solana** (Magic Eden, LaunchMyNFT): префікс `ar://…`, кнопка Arweave, адреса Solana. **EVM** (OpenSea): префікс `ipfs://…` або `https://…`, кнопки Arweave немає. **Bitcoin Ordinals**: файли йдуть в інскрипцію, поля префіксів приховані й очищаються, роялті 0 (попереднє значення повертається при зміні профілю).
+
+Вкладка Експорт підтримує 1-клік завантаження набору зображень в Arweave через Irys (потрібен `IRYS_PRIVATE_KEY` окремого гаманця з малим балансом і пакети `@irys/upload`, `@irys/upload-solana`):
 - **API**: `POST /api/storage/pin` `{ dir: "set-dir", name: "my-series" }`
 - **CLI**: `node bin/series.mjs pin out/set-dir --name my-series`
-- Отриманий CID автоматично підставляється в поле `Image URI Prefix` (`ipfs://<CID>/`), оновлюючи попередній перегляд метаданих у реальному часі.
+- Для випуску в мережу використовуйте `series upload` (ключ на ПК, відновлюване, `cache.json`): [RELEASE.md](./RELEASE.md).
+- Отриманий ID маніфесту автоматично підставляється в поле `Image URI Prefix` (`ar://<id>/`), оновлюючи попередній перегляд метаданих у реальному часі.
 
 ---
 
 ## 7. Release & Deployment Hub
 
 Спеціальний блок у вкладці Експорт надає:
-- Прямі посилання на створення дропу в **OpenSea Studio**, **Magic Eden Creator Hub**, **LaunchMyNFT**, **Thirdweb**, **OrdinalsBot**.
+- Прямі посилання на створення дропу в **OpenSea Studio**, **Magic Eden Creator Hub (лише Solana)**, **LaunchMyNFT**, **Thirdweb**, **OrdinalsBot**.
 - Посилання на **Тестнет-портали** (Sepolia, Devnet).
 - Кнопку завантаження конфігурацій деплою:
-  - `sugar.json` для розгортання через Solana Metaplex Sugar CLI.
-  - `thirdweb.json` для 1-клік деплою через Thirdweb / Hardhat.
+  - `cm-config.json` для Core Candy Machine (типово для Solana). `sugar.json` лише з `?legacy=1` і позначкою «застарілий».
+  - `thirdweb.json` для деплою через Thirdweb. Пароль delayed reveal туди не входить.
 - Покроковий інтерактивний чекліст підготовки до запуску.
 
 ---
+
+## 7a. Перевірка перед завантаженням
+
+`POST /api/preflight` і збірка ZIP (`gate`) проганяють `src/preflight.mjs`: унікальні DNA і байти картинок, кількість файлів = кількості метаданих, схема ERC-721 / Metaplex / Ordinals, роялті в межах 0–10000 bps, формат і розмір. Помилка блокує ZIP (HTTP 422) і звіт показується в UI. Попередження (порожній опис, локальні URI, заглушка адреси) не блокують. У архіві також `cover.*`, `royalties.json`, `rarity.json`, `rarity.txt`, `README.txt` під обрану мережу.
+
+Набір деплою і набір маркетплейсу — `POST /api/deploy-kit`, `POST /api/marketplace-kit`. Деталі й ціни: [PRODUCT.md](./PRODUCT.md).
 
 ## 8. NFT Readiness Checklist
 
