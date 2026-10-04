@@ -195,6 +195,37 @@ test("preflight warns above 1 MB and still errors above the hard cap", () => {
   assert.ok(blocked.errors.some((e) => e.code === "size"));
 });
 
+test("preflight names ar://, ipfs:// and https:// when image URIs are local filenames", () => {
+  const png = createMockPng({ seed: 9, width: 8, height: 8 });
+  const local = runPreflight(baseInput(
+    [{ edition: 1, filename: "1.png", buffer: png }],
+    [{ edition: 1, dna: "solo", traits: { bg: "red" } }],
+  ));
+  const uri = local.warnings.find((w) => w.code === "uri");
+  assert.ok(uri);
+  assert.match(uri.message, /ar:\/\//);
+  assert.match(uri.message, /ipfs:\/\//);
+  assert.match(uri.message, /https:\/\//);
+
+  const uk = runPreflight({
+    ...baseInput(
+      [{ edition: 1, filename: "1.png", buffer: png }],
+      [{ edition: 1, dna: "solo", traits: { bg: "red" } }],
+    ),
+    locale: "uk",
+  });
+  assert.match(uk.warnings.find((w) => w.code === "uri").message, /ar:\/\//);
+
+  const remote = runPreflight({
+    ...baseInput(
+      [{ edition: 1, filename: "1.png", buffer: png }],
+      [{ edition: 1, dna: "solo", traits: { bg: "red" } }],
+    ),
+    metadata: [meta(1, { image: "ar://manifest/1.png" })],
+  });
+  assert.equal(remote.warnings.some((w) => w.code === "uri"), false);
+});
+
 test("preflight uses the recipe DNA helper and warns on a close aHash", () => {
   const traits = { hat: "cap" };
   const key = dnaKey({ line: "a", traits }, ["hat"]);
