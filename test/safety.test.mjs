@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { atomicWriteFileSync, writeJsonAtomic } from "../src/fs-safe.mjs";
-import { addVersion, dropVersion, listVersions, readMeta, setCurrent, versionCounts } from "../src/versions.mjs";
+import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, readMeta, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
 import { appendRenderLog, capError, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
 import { failureBreaker, mapConcurrent } from "../src/pool.mjs";
@@ -67,6 +67,40 @@ describe("versions", () => {
     setCurrent(set, 1, 2);
     assert.equal(readFileSync(join(set, "1.png"), "utf8"), "B");
     assert.throws(() => readMeta(set, "../x"), /bad edition/);
+    rmSync(set, { recursive: true, force: true });
+  });
+
+  test("shelveCurrent parks the file; a new render and setCurrent keep it", () => {
+    const set = tmp();
+    addVersion(set, 4, Buffer.from("only"));
+    writeFileSync(join(set, "2.png"), "raw");
+    const parked = shelveCurrent(set, 4);
+    assert.equal(parked.v, 1);
+    assert.equal(existsSync(join(set, "4.png")), false);
+    assert.equal(readFileSync(join(set, "versions", "4", "v1.png"), "utf8"), "only");
+    assert.equal(readMeta(set, 4).current, null);
+    const listed = listShelved(set, "mock-s0.45");
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0].edition, 4);
+    assert.equal(listed[0].url, "/out/mock-s0.45/versions/4/v1.png");
+    const assets = editionAssetFiles(set, 4);
+    assert.ok(assets.includes(join(set, "versions", "4", "v1.png")));
+    assert.ok(assets.includes(join(set, "versions", "4", "meta.json")));
+    assert.ok(assets.includes(join(set, "creation", "4.json")));
+    assert.equal(assets.includes(join(set, "4.png")), false);
+
+    addVersion(set, 4, Buffer.from("new"));
+    assert.equal(readFileSync(join(set, "4.png"), "utf8"), "new");
+    assert.equal(readFileSync(join(set, "versions", "4", "v1.png"), "utf8"), "only");
+    assert.equal(readMeta(set, 4).current, 2);
+    assert.equal(listShelved(set, "mock-s0.45").length, 0);
+
+    shelveCurrent(set, 2);
+    assert.equal(existsSync(join(set, "2.png")), false);
+    assert.equal(readFileSync(join(set, "versions", "2", "v1.png"), "utf8"), "raw");
+    setCurrent(set, 2, 1);
+    assert.equal(readFileSync(join(set, "2.png"), "utf8"), "raw");
+    assert.throws(() => shelveCurrent(set, 9), /no current image to drop/);
     rmSync(set, { recursive: true, force: true });
   });
 });

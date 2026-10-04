@@ -35,6 +35,8 @@ const state = {
   galleryMarks: {},
   galleryTriage: {},
   gallerySets: [],
+  galleryShelved: [],
+  galleryTrash: [],
   renderPlan: null,
   lastSet: null,
   rarity: null,
@@ -163,7 +165,10 @@ function lockGenerate(locked) {
 async function ensureGalleryLoaded() {
   await loadGallerySets();
   if (state.galleryDir) await loadGalleryDir(state.galleryDir);
-  else renderGallery();
+  else {
+    await loadSetTrash();
+    renderGallery();
+  }
 }
 
 async function ensureRecipesLoaded() {
@@ -2218,7 +2223,11 @@ async function loadGalleryDir(dir) {
     if ($("v-stats")) $("v-stats").textContent = "";
     state.galleryImages = [];
     state.galleryMarks = {};
+    state.galleryShelved = [];
     state.galleryImages2 = [];
+    await loadSetTrash();
+    renderAside();
+    renderSetTrash();
     return;
   }
   try {
@@ -2226,7 +2235,9 @@ async function loadGalleryDir(dir) {
     state.galleryDir = data.dir;
     state.galleryImages = data.images || [];
     state.galleryMarks = data.marks || {};
+    state.galleryShelved = data.shelved || [];
     await loadGalleryDir2($("v-dir2")?.value || state.galleryDir2);
+    await loadSetTrash();
     renderGallery();
   } catch (e) {
     if (empty) {
@@ -2261,15 +2272,18 @@ function renderGallery() {
   const rows = comparing
     ? mergeEditions(images, images2)
     : images.map((img) => ({ edition: Number(img.edition), a: img, b: null }));
+  const shelved = state.galleryShelved || [];
 
   if (!rows.length) {
     if (empty) {
-      empty.hidden = false;
+      empty.hidden = shelved.length > 0;
       empty.textContent = t("gallery.empty");
     }
     grid.innerHTML = "";
     grid.classList.remove("pair");
     if ($("v-stats")) $("v-stats").textContent = "";
+    renderAside();
+    renderSetTrash();
     return;
   }
   if (empty) empty.hidden = true;
@@ -2311,10 +2325,7 @@ function renderGallery() {
       tile.innerHTML = `
         <div class="imgs">${sideHtml(row.a, dir)}${sideHtml(row.b, dir2)}</div>
         <div class="meta"><b>#${row.edition}</b>${triageBadge}</div>
-        <div class="btns">
-          <button type="button" class="btn small b-keep"${tipAttr("gallery.keep")}>${t("gallery.keep")}</button>
-          <button type="button" class="btn small b-redo"${tipAttr("gallery.redo")}>${t("gallery.redo")}</button>
-        </div>`;
+        ${frameActionButtons(Boolean(row.a))}`;
       tile.querySelectorAll("img").forEach((el) => {
         el.addEventListener("click", () => openLightbox(el.dataset.url || el.src));
       });
@@ -2339,10 +2350,7 @@ function renderGallery() {
           ${thumb}
         </div>
         <div class="meta">#${img.edition} ${ver}${qa}${triageBadge}${simBadge}</div>
-        <div class="btns">
-          <button type="button" class="btn small b-keep"${tipAttr("gallery.keep")}>${t("gallery.keep")}</button>
-          <button type="button" class="btn small b-redo"${tipAttr("gallery.redo")}>${t("gallery.redo")}</button>
-        </div>`;
+        ${frameActionButtons(true)}`;
       tile.querySelectorAll(".shot img").forEach((el) => {
         el.addEventListener("click", () => openLightbox(img.url));
       });
@@ -2351,10 +2359,26 @@ function renderGallery() {
 
     tile.querySelector(".b-keep").addEventListener("click", () => toggleMark(row.edition, "keep"));
     tile.querySelector(".b-redo").addEventListener("click", () => toggleMark(row.edition, "redo"));
+    tile.querySelector(".b-drop")?.addEventListener("click", () => dropFrame(row.edition));
+    tile.querySelector(".b-delete")?.addEventListener("click", () => deleteFrame(row.edition));
     grid.appendChild(tile);
   }
   if ($("v-stats")) $("v-stats").textContent = t("gallery.stats", { keep, redo, none });
   applyTips(grid);
+  renderAside();
+  renderSetTrash();
+}
+
+function frameActionButtons(canFile) {
+  const fileBtns = canFile
+    ? `<button type="button" class="btn small b-drop"${tipAttr("gallery.drop")}>${t("gallery.drop")}</button>
+       <button type="button" class="btn small b-delete"${tipAttr("gallery.delete")}>${t("gallery.delete")}</button>`
+    : "";
+  return `<div class="btns">
+    <button type="button" class="btn small b-keep"${tipAttr("gallery.keep")}>${t("gallery.keep")}</button>
+    <button type="button" class="btn small b-redo"${tipAttr("gallery.redo")}>${t("gallery.redo")}</button>
+    ${fileBtns}
+  </div>`;
 }
 
 /* ---------- Help (built from locale keys, works offline) ---------- */
@@ -3202,6 +3226,162 @@ async function versionAction(path, edition, v) {
 function galleryStatus(msg) {
   const el = $("v-triage-status");
   if (el) el.textContent = msg;
+}
+
+function manageStatus(msg) {
+  const el = $("v-manage-status");
+  if (el) el.textContent = msg || "";
+}
+
+function applyFramePayload(data) {
+  if (!data) return;
+  if (Array.isArray(data.images)) state.galleryImages = data.images;
+  if (data.marks) state.galleryMarks = data.marks;
+  if (Array.isArray(data.shelved)) state.galleryShelved = data.shelved;
+}
+
+async function dropFrame(edition) {
+  if (!state.galleryDir) return;
+  try {
+    const data = await api("/api/set/drop", {
+      method: "POST",
+      body: JSON.stringify({ dir: state.galleryDir, edition }),
+    });
+    applyFramePayload(data);
+    delete state.galleryTriage[String(edition)];
+    manageStatus(t("gallery.dropped", { edition }));
+    renderGallery();
+    await loadGallerySets();
+  } catch (e) {
+    manageStatus(e.message);
+  }
+}
+
+async function deleteFrame(edition) {
+  if (!state.galleryDir) return;
+  try {
+    const data = await api("/api/set/delete", {
+      method: "POST",
+      body: JSON.stringify({ dir: state.galleryDir, edition }),
+    });
+    applyFramePayload(data);
+    delete state.galleryTriage[String(edition)];
+    manageStatus(t("gallery.deleted", { edition }));
+    renderGallery();
+    await loadGallerySets();
+    await loadSetTrash();
+  } catch (e) {
+    manageStatus(e.message);
+  }
+}
+
+async function returnFrame(edition, v) {
+  if (!state.galleryDir) return;
+  try {
+    await api("/api/versions/current", {
+      method: "POST",
+      body: JSON.stringify({ dir: state.galleryDir, edition, v }),
+    });
+    manageStatus(t("gallery.returned", { edition }));
+    await loadGallerySets();
+    await loadGalleryDir(state.galleryDir);
+  } catch (e) {
+    manageStatus(e.message);
+  }
+}
+
+function frameTrashMatch(from, dir) {
+  const p = String(from || "");
+  const rest = dir && p.startsWith(`out/${dir}/`) ? p.slice(`out/${dir}/`.length) : "";
+  const body = dir ? rest : p.replace(/^out\/(?!trash\/)[^/]+\//, "");
+  if (dir && !p.startsWith(`out/${dir}/`)) return false;
+  if (!dir && !/^out\/(?!trash\/)[^/]+\//.test(p)) return false;
+  return /^\d+\.(png|jpe?g|webp)$/i.test(body)
+    || /^versions\/\d+\//.test(body)
+    || /^creation\/\d+\.json$/i.test(body);
+}
+
+function trashEdition(item) {
+  for (const f of item.files || []) {
+    const m = String(f.from || "").match(/\/(\d+)\.(?:png|jpe?g|webp)$/i)
+      || String(f.from || "").match(/\/versions\/(\d+)\//)
+      || String(f.from || "").match(/\/creation\/(\d+)\.json$/i);
+    if (m) return m[1];
+  }
+  return "";
+}
+
+async function loadSetTrash() {
+  try {
+    const data = await api("/api/trash");
+    const dir = state.galleryDir;
+    state.galleryTrash = (data.items || []).filter((it) =>
+      (it.files || []).some((f) => frameTrashMatch(f.from, dir)));
+  } catch {
+    state.galleryTrash = [];
+  }
+  renderSetTrash();
+}
+
+function renderAside() {
+  const box = $("v-aside");
+  const list = $("v-aside-list");
+  if (!box || !list) return;
+  const rows = state.galleryShelved || [];
+  box.hidden = rows.length === 0;
+  list.innerHTML = "";
+  for (const row of rows) {
+    const item = document.createElement("div");
+    item.className = "aside-row";
+    item.innerHTML = `
+      <img src="${escapeHtml(row.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${row.edition}" />
+      <div class="small"><b>#${row.edition}</b> <span class="muted">v${row.v}</span></div>
+      <div class="btns">
+        <button type="button" class="btn small b-return"${tipAttr("gallery.return")}>${escapeHtml(t("gallery.return"))}</button>
+        <button type="button" class="btn small b-delete"${tipAttr("gallery.delete")}>${escapeHtml(t("gallery.delete"))}</button>
+      </div>`;
+    item.querySelector("img").addEventListener("click", () => openLightbox(row.url));
+    item.querySelector(".b-return").addEventListener("click", () => returnFrame(row.edition, row.v));
+    item.querySelector(".b-delete").addEventListener("click", () => deleteFrame(row.edition));
+    list.appendChild(item);
+  }
+  applyTips(list);
+}
+
+function renderSetTrash() {
+  const box = $("v-set-trash");
+  const list = $("v-set-trash-list");
+  if (!box || !list) return;
+  const items = state.galleryTrash || [];
+  box.hidden = items.length === 0;
+  list.innerHTML = "";
+  for (const it of items) {
+    const edition = trashEdition(it);
+    const row = document.createElement("div");
+    row.className = "trash-row";
+    const label = edition ? `#${edition}` : (it.files || []).map((f) => f.from).join(", ");
+    row.innerHTML = `
+      <div><b>${escapeHtml(label)}</b> · ${escapeHtml(it.reason || "")}
+        <div class="muted">${escapeHtml(fmtDate(it.at))}</div></div>
+      <div class="btns">
+        <button type="button" class="btn small b-restore"${tipAttr("trash.restore")}>${escapeHtml(t("trash.restore"))}</button>
+      </div>`;
+    row.querySelector(".b-restore").addEventListener("click", () => restoreFrame(it.id));
+    list.appendChild(row);
+  }
+  applyTips(list);
+}
+
+async function restoreFrame(id) {
+  try {
+    await api("/api/trash/restore", { method: "POST", body: JSON.stringify({ id }) });
+    manageStatus(t("gallery.restored"));
+    await loadGallerySets();
+    if (state.galleryDir) await loadGalleryDir(state.galleryDir);
+    else await loadSetTrash();
+  } catch (e) {
+    manageStatus(e.message);
+  }
 }
 
 function setupVersions() {

@@ -70,7 +70,9 @@
 | Method | Path | Опис |
 |--------|------|------|
 | GET | `/api/sets` | список наборів у `out/` |
-| GET | `/api/set?dir=` | зображення сету + marks + light QA |
+| GET | `/api/set?dir=` | зображення набору + marks + light QA + `shelved` (кадри, прибрані з набору) |
+| POST | `/api/set/delete` | `{ dir, edition }` — кадр у кошик |
+| POST | `/api/set/drop` | `{ dir, edition }` — прибрати кадр із набору, файл лишається у `versions/` |
 | GET | `/api/marks?dir=` | keep/redo marks |
 | POST | `/api/marks` | оновити marks (`dir` + `edition`/`mark` або `marks`) |
 | POST | `/api/qa/triage` | AI Auto-Triage & Smart Critic (`dir`, `mode`, `provider`, `autoApplyMarks`) |
@@ -106,13 +108,15 @@
 | GET | `/api/versions?dir=&edition=` | історія версій картинки: `out/<set>/versions/<N>/` |
 | POST | `/api/versions/current` | `{ dir, edition, v }` — зробити версію поточною (`<N>.png`) |
 | POST | `/api/versions/drop` | `{ dir, edition, v }` — непоточну версію в кошик |
+| POST | `/api/set/delete` | `{ dir, edition }` — поточний кадр, його версії й нотатку створення в кошик; позначку keep/redo знімає |
+| POST | `/api/set/drop` | `{ dir, edition }` — прибрати поточний кадр із набору, не знищуючи файл: `<N>.png` стає `versions/<N>/v<k>.png`, `current` = null. Повернути — `POST /api/versions/current` |
 | GET | `/api/trash` | записи кошика `out/trash/<id>/` (новіші першими) |
 | POST | `/api/trash/restore` | `{ id }` — повернути файли на місце (відмова, якщо ціль уже існує) |
 | POST | `/api/trash/purge` | `{ id }` — видалити запис назавжди |
 | GET | `/api/spend` | `{ capUsd, spentTodayUsd, byEngine }` з `out/render-log.jsonl` (local) або `data/render-log.jsonl` (public) |
 
 Перегенерація (`force`) і `series render` більше не перезаписують `<N>.png`: попередня картинка переходить у `versions/`.
-Видалення базових картинок, паків трейтів, перезапис пілотів і primary — через кошик.
+Видалення базових картинок, паків трейтів, перезапис пілотів, primary і кадрів Відбору — через кошик. Кадр, прибраний із набору (`/api/set/drop`), у кошик не їде: файл лишається у `versions/`, тож галерея, експорт і завантаження його не бачать, доки його не зроблять поточним. `GET /api/set` віддає такі кадри в `shelved`. Набір лишається в `GET /api/sets`, навіть якщо поточних картинок уже немає (`marks.json` або `versions/`).
 Платні виклики пишуться в `out/render-log.jsonl` (local) або `data/render-log.jsonl` (public); `SERIES_SPEND_CAP_USD` блокує запуск понад денну межу (400, `code: "spend_cap"`).
 Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) помилок поспіль (`stopped` у відповіді).
 
