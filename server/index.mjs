@@ -179,7 +179,7 @@ import { publishCollection } from "../src/platform/site.mjs";
 import { economyReport } from "../src/platform/margin.mjs";
 import { funnel } from "../src/platform/stats.mjs";
 import { writeJsonAtomic } from "../src/fs-safe.mjs";
-import { addVersion, dropVersion, listVersions, setCurrent, versionCounts } from "../src/versions.mjs";
+import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
 import { containsSecretField } from "../src/secrets.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
@@ -825,11 +825,12 @@ function listImageSets() {
     try { st = statSync(dir); } catch { continue; }
     if (!st.isDirectory()) continue;
     if (name === "pilots" || name === "trash") continue;
-    const files = readdirSync(dir).filter((f) => /\.(png|jpe?g|webp)$/i.test(f));
-    if (!files.length && name !== "pilots") {
-      // still list dirs that look like engine sets even if empty after wipe? skip empty
-      if (!files.length) continue;
-    }
+    const names = readdirSync(dir);
+    const files = names.filter((f) => /\.(png|jpe?g|webp)$/i.test(f));
+    const shelvedN = names.includes("versions") ? listShelved(dir, name).length : 0;
+    // A set stays listed after its last frame is deleted or parked in versions/,
+    // so Review can restore it. marks.json is written on delete for that reason.
+    if (!files.length && !shelvedN && !names.includes("marks.json")) continue;
     let mtime = st.mtimeMs;
     sets.push({
       dir: name,
@@ -868,6 +869,23 @@ function listSetImages(setName) {
   }
   images.sort((a, b) => (a.edition ?? 0) - (b.edition ?? 0) || a.file.localeCompare(b.file));
   return { dir: dirName, images };
+}
+
+function setPayload(setName) {
+  const payload = listSetImages(setName);
+  return {
+    ...payload,
+    marks: readMarks(payload.dir),
+    shelved: listShelved(join(P().out, payload.dir), payload.dir),
+  };
+}
+
+/** Drop the edition's keep/redo mark. Always rewrites marks.json so an emptied set stays listed. */
+function clearEditionMark(dirName, edition) {
+  const marks = readMarks(dirName);
+  delete marks[String(edition)];
+  writeMarks(dirName, marks);
+  return marks;
 }
 
 function readMarks(setName) {
@@ -2413,9 +2431,39 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/set" && req.method === "GET") {
     const dir = url.searchParams.get("dir");
     if (!dir) return send(res, 400, { error: "dir required" });
-    const payload = listSetImages(dir);
-    const marks = readMarks(dir);
-    return send(res, 200, { ...payload, marks });
+    return send(res, 200, setPayload(dir));
+  }
+
+  if (pathname === "/api/set/delete" && req.method === "POST") {
+    const body = await readBody(req);
+    const dir = safeSetName(body.dir || "");
+    const setDir = join(P().out, dir);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) return send(res, 404, { error: "set not found" });
+    let files;
+    try {
+      files = editionAssetFiles(setDir, body.edition);
+    } catch (e) {
+      return send(res, 400, { error: e.message });
+    }
+    if (!files.length) return send(res, 400, { error: "nothing to delete" });
+    const trashed = toTrash(files, `${dir} #${body.edition} deleted`);
+    clearEditionMark(dir, body.edition);
+    return send(res, 200, { ok: true, dir, edition: Number(body.edition), trashId: trashed?.id ?? null, ...setPayload(dir) });
+  }
+
+  if (pathname === "/api/set/drop" && req.method === "POST") {
+    const body = await readBody(req);
+    const dir = safeSetName(body.dir || "");
+    const setDir = join(P().out, dir);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) return send(res, 404, { error: "set not found" });
+    let shelved;
+    try {
+      shelved = shelveCurrent(setDir, body.edition);
+    } catch (e) {
+      return send(res, 400, { error: e.message });
+    }
+    clearEditionMark(dir, body.edition);
+    return send(res, 200, { ok: true, dir, shelved, ...setPayload(dir) });
   }
 
   if (pathname === "/api/marks" && req.method === "GET") {
