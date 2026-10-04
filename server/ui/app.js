@@ -3806,6 +3806,25 @@ const PROFILE_UI = {
  *   profile: opensea → evm · magiceden / launchmynft → solana · ordinalsbot → bitcoin
  *   deploy:  solana / solana-legacy / evm / bitcoin (Sugar stays Sugar while the network is Solana)
  */
+let builtNetworkKey = null;
+
+/** A built ZIP, its guide and status belong to the network it was built for: drop them when the network changes. */
+function clearBuiltKits() {
+  for (const [dl, ...texts] of [["x-download", "x-bundle-msg"], ["d-download", "d-msg", "d-guide"], ["m-download", "m-msg", "m-note"]]) {
+    const a = $(dl);
+    if (a) {
+      a.hidden = true;
+      a.removeAttribute("href");
+    }
+    for (const id of texts) {
+      const el = $(id);
+      if (!el) continue;
+      el.textContent = "";
+      if (id === "d-guide" || id === "m-note") el.hidden = true;
+    }
+  }
+}
+
 function syncNetwork(source) {
   const x = $("x-profile");
   const d = $("d-chain");
@@ -3829,6 +3848,9 @@ function syncNetwork(source) {
     }
   }
   if (source !== "market" && m && m.value !== chain) m.value = chain;
+  const key = `${x?.value}|${d?.value}|${m?.value}`;
+  if (builtNetworkKey !== null && builtNetworkKey !== key) clearBuiltKits();
+  builtNetworkKey = key;
 }
 
 function applyProfileUi() {
