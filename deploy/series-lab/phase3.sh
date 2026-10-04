@@ -10,8 +10,12 @@
 #   1. unpacks the source into /opt/series-lab/src;
 #   2. builds the image series-lab:<rev>;
 #   3. creates Lab's OWN empty data dir (data-next) — the ledger starts from zero;
-#   4. builds .env.series-lab from Lab's own secrets file lab.env + staging overrides
-#      (no payments, no Telegram, invite-only, $5/day cap, SIWE domain next.w3ir.io);
+#   4. builds .env.series-lab from Lab's own secrets file lab.env + overrides. Default is a
+#      locked staging: no payments, no Telegram, invite-only, $5/day cap, SIWE domain next.w3ir.io.
+#      Public mode is opt-in per knob (all forwarded by upload.sh):
+#        OPEN_ACCESS=1      any wallet may sign in (no SERIES_ALLOWED_WALLETS list)
+#        ENABLE_PAYMENTS=1  keep SOLANA_PAY_RECIPIENT (public address) / RPC from lab.env
+#        ENABLE_TELEGRAM=1  keep SERIES_TELEGRAM_* from lab.env
 #   5. starts the container;
 #   6. adds a `next.w3ir.io` block to the reverse proxy, validates, reloads (restores on failure);
 #   7. installs Lab's own ledger backup (cron);
@@ -67,38 +71,54 @@ if ! grep -qE '^AUTH_SESSION_SECRET=.+' "$LAB_ENV"; then
   echo "AUTH_SESSION_SECRET is empty in $LAB_ENV — sessions would be insecure. Fill it in and re-run."
   exit 1
 fi
-OVERRIDES="SOLANA_PAY_RECIPIENT SOLANA_PAY_TEST_PACK TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID SERIES_TELEGRAM_BOT_TOKEN SERIES_TELEGRAM_CHAT_ID VAULT_WALLET_ADDRESS AUTH_DOMAIN AUTH_URI SERIES_SPEND_CAP_USD SERIES_ALLOWED_WALLETS SERIES_ALLOWED_HOSTS LANDING_HOSTS APP_ENV"
+OPEN_ACCESS="${OPEN_ACCESS:-0}"; ENABLE_PAYMENTS="${ENABLE_PAYMENTS:-0}"; ENABLE_TELEGRAM="${ENABLE_TELEGRAM:-0}"
+OVERRIDES="VAULT_WALLET_ADDRESS AUTH_DOMAIN AUTH_URI SERIES_SPEND_CAP_USD SERIES_ALLOWED_WALLETS SERIES_ALLOWED_HOSTS LANDING_HOSTS APP_ENV"
+[ "$ENABLE_PAYMENTS" = 1 ] || OVERRIDES="$OVERRIDES SOLANA_PAY_RECIPIENT SOLANA_PAY_TEST_PACK"
+[ "$ENABLE_TELEGRAM" = 1 ] || OVERRIDES="$OVERRIDES TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID SERIES_TELEGRAM_BOT_TOKEN SERIES_TELEGRAM_CHAT_ID"
 PATTERN=$(echo "$OVERRIDES" | sed 's/ /=|^/g')
 grep -vE "^(${PATTERN}=)" "$LAB_ENV" > "$BASE/.env.series-lab.tmp"
 ADMINS=$(grep -E '^ADMIN_WALLETS=' "$LAB_ENV" | cut -d= -f2- || true)
-if [ -z "${SERIES_ALLOWED_WALLETS:-}${ADMINS}" ]; then
+if [ "$OPEN_ACCESS" != 1 ] && [ -z "${SERIES_ALLOWED_WALLETS:-}${ADMINS}" ]; then
   # An empty invite list means "everyone" — never for a server that spends real API money.
   echo "No ADMIN_WALLETS in $LAB_ENV and no SERIES_ALLOWED_WALLETS given — refusing to open staging to everyone."
   echo "Re-run as: SERIES_ALLOWED_WALLETS=0xYourWallet,... bash $0 $SRC_TAR"
   exit 1
 fi
-cat >> "$BASE/.env.series-lab.tmp" <<EOF
+if [ "$OPEN_ACCESS" = 1 ]; then
+  [ -n "$ADMINS" ] || { echo "OPEN_ACCESS=1 needs ADMIN_WALLETS in $LAB_ENV (someone must administer the open service)."; exit 1; }
+  grep -qE '^ALCHEMY_API_KEY=.+|^SOLANA_RPC_URL=.+' "$LAB_ENV" || echo "WARNING: no ALCHEMY_API_KEY/SOLANA_RPC_URL — the welcome-credit balance check cannot reach Solana."
+fi
+if [ "$ENABLE_PAYMENTS" = 1 ]; then
+  grep -qE '^SOLANA_PAY_RECIPIENT=.+' "$LAB_ENV" || { echo "ENABLE_PAYMENTS=1 needs SOLANA_PAY_RECIPIENT (public USDC address) in $LAB_ENV."; exit 1; }
+  grep -qE '^SOLANA_PAY_TEST_PACK=1' "$LAB_ENV" && echo "WARNING: SOLANA_PAY_TEST_PACK=1 in $LAB_ENV — remove it after the micro-test."
+fi
+{
+cat <<EOF
 
-# ---- Series Lab staging overrides (phase3.sh) ----
+# ---- Series Lab host overrides (phase3.sh): OPEN_ACCESS=$OPEN_ACCESS ENABLE_PAYMENTS=$ENABLE_PAYMENTS ENABLE_TELEGRAM=$ENABLE_TELEGRAM ----
 APP_ENV=production
 AUTH_DOMAIN=next.w3ir.io
 AUTH_URI=https://next.w3ir.io
-# no payments or operator notifications from staging
-SOLANA_PAY_RECIPIENT=
-SOLANA_PAY_TEST_PACK=
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-SERIES_TELEGRAM_BOT_TOKEN=
-SERIES_TELEGRAM_CHAT_ID=
 VAULT_WALLET_ADDRESS=
-# invite-only (admins always allowed); add tester wallets comma-separated
-SERIES_ALLOWED_WALLETS=${SERIES_ALLOWED_WALLETS:+${SERIES_ALLOWED_WALLETS},}$ADMINS
-# real API keys are used — cap the staging bill
+# real API keys are used — cap the daily bill
 SERIES_SPEND_CAP_USD=${SERIES_SPEND_CAP_USD:-5}
 # Public bind is 0.0.0.0; without this list the Host check is skipped.
 SERIES_ALLOWED_HOSTS=next.w3ir.io
 LANDING_HOSTS=
 EOF
+if [ "$OPEN_ACCESS" != 1 ]; then
+  # invite-only (admins always allowed); add tester wallets comma-separated
+  echo "SERIES_ALLOWED_WALLETS=${SERIES_ALLOWED_WALLETS:+${SERIES_ALLOWED_WALLETS},}$ADMINS"
+fi
+if [ "$ENABLE_PAYMENTS" != 1 ]; then
+  printf '%s
+' "# no payments from this deployment" "SOLANA_PAY_RECIPIENT=" "SOLANA_PAY_TEST_PACK="
+fi
+if [ "$ENABLE_TELEGRAM" != 1 ]; then
+  printf '%s
+' "# no operator notifications from this deployment" "TELEGRAM_BOT_TOKEN=" "TELEGRAM_CHAT_ID=" "SERIES_TELEGRAM_BOT_TOKEN=" "SERIES_TELEGRAM_CHAT_ID="
+fi
+} >> "$BASE/.env.series-lab.tmp"
 install -m 600 -o "$LAB_USER" -g "$LAB_USER" "$BASE/.env.series-lab.tmp" "$BASE/.env.series-lab"
 rm -f "$BASE/.env.series-lab.tmp"
 
