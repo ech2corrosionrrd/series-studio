@@ -261,13 +261,18 @@ export function recordFunnelEvent(wallet, event, payload = null, db = openDb()) 
   }
 }
 
-// ── Rate limit & freemium (same rules as Промт) ──────────────────────────────
+// ── Per-minute generation rate ───────────────────────────────────────────────
+// The daily freemium cap was removed: welcome credits are a one-time grant, so a
+// per-day counter only rationed that single pile. Welcome credits are the only
+// free ceiling. Wallets that have not paid or been granted credits stay limited
+// to GENERATION_RATE_LIMIT_PER_MINUTE (default 10). A payment or a manual grant
+// lifts that per-minute cap.
 function hasTopUp(db, wallet) {
   if (db.prepare("SELECT 1 FROM payments WHERE wallet_address = ? LIMIT 1").get(wallet)) return true;
   return !!db.prepare("SELECT 1 FROM transactions WHERE wallet_address = ? AND kind IN ('grant', 'payment') LIMIT 1").get(wallet);
 }
 
-/** Generations per minute for welcome-only wallets; null = topped-up (no cap). */
+/** Generations per minute for welcome-only wallets; null = paid or granted (no cap). */
 export function generationRateLimit(wallet, db = openDb()) {
   const configured = Math.max(1, Number.parseInt(process.env.GENERATION_RATE_LIMIT_PER_MINUTE || "10", 10) || 10);
   try {
@@ -283,37 +288,6 @@ export function checkGenerationRate(wallet, db = openDb()) {
   const cutoff = nowIso(new Date(Date.now() - 60_000));
   const n = db.prepare("SELECT COUNT(*) AS n FROM transactions WHERE wallet_address = ? AND kind = 'debit' AND created_at >= ?").get(normalizeWallet(wallet), cutoff).n;
   return Number(n) < limit;
-}
-
-export const freemiumDailyLimit = () => envInt("FREEMIUM_DAILY_LIMIT", 0);
-const utcDay = () => new Date().toISOString().slice(0, 10);
-
-/** → { allowed, remaining|null }. Fail-open like Промт. */
-export function freemiumCheck(wallet, db = openDb()) {
-  const limit = freemiumDailyLimit();
-  if (limit <= 0) return { allowed: true, remaining: null };
-  try {
-    const w = normalizeWallet(wallet);
-    if (hasTopUp(db, w)) return { allowed: true, remaining: null };
-    const row = db.prepare("SELECT count FROM freemium_usage WHERE wallet_address = ? AND day = ?").get(w, utcDay());
-    const used = row ? Number(row.count) : 0;
-    return { allowed: used < limit, remaining: Math.max(0, limit - used) };
-  } catch {
-    return { allowed: true, remaining: null };
-  }
-}
-
-export function freemiumRecord(wallet, delta = 1, db = openDb()) {
-  if (freemiumDailyLimit() <= 0) return;
-  try {
-    const w = normalizeWallet(wallet);
-    if (hasTopUp(db, w)) return;
-    if (delta > 0) {
-      db.prepare("INSERT INTO freemium_usage (wallet_address, day, count) VALUES (?, ?, 1) ON CONFLICT(wallet_address, day) DO UPDATE SET count = count + 1").run(w, utcDay());
-    } else {
-      db.prepare("UPDATE freemium_usage SET count = MAX(0, count - 1) WHERE wallet_address = ? AND day = ?").run(w, utcDay());
-    }
-  } catch { /* fail-open */ }
 }
 
 // ── Referrals ────────────────────────────────────────────────────────────────
