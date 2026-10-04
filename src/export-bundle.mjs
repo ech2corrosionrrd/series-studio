@@ -188,7 +188,7 @@ export function buildReadme(locale, collection) {
     "LaunchMyNFT: Metaplex compatible, supports 0-based indexing.",
     "Bitcoin Ordinals / Inscriptions: metadata/ + images/ — manifests formatted for inscription batches.",
     "",
-    "Lab does not mint by default — this ZIP is for the Release step.",
+    "This ZIP does not start a mint. It is the marketplace package. A Solana Core mint is `series mint` on your PC after the deploy kit. The studio does not take a private key.",
     "",
   ].filter(Boolean).join("\n");
 }

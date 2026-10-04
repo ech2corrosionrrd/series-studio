@@ -109,7 +109,10 @@ test("solana kit defaults to Core Candy Machine, keeps Sugar as labelled legacy,
   assert.ok(kit.files["DEPLOY.txt"].toLowerCase().indexOf("devnet") < kit.files["DEPLOY.txt"].toLowerCase().indexOf("mainnet"));
   assert.match(kit.files["DEPLOY.txt"], /allowList/);
   assert.match(kit.files["DEPLOY.txt"], /mintLimit/);
-  assert.match(kit.files["DEPLOY.txt"], /botTax/);
+  assert.match(kit.files["DEPLOY.txt"], /series release-init/);
+  assert.match(kit.files["DEPLOY.txt"], /series mint/);
+  assert.match(kit.files["DEPLOY.txt"], /series reveal/);
+  assert.equal(/botTax/.test(kit.files["DEPLOY.txt"]), false);
   assert.equal(/startDate/.test(kit.files["DEPLOY.txt"]), false);
   assert.match(kit.files["ROYALTIES.txt"], /ProgramAllowList/);
   assert.match(kit.files["sugar/LEGACY.txt"], /sugar/);

@@ -14,7 +14,7 @@
 
 ## Що вміє
 
-**пресет + seed** → унікальні детерміновані рецепти (DNA + промпти) → **базова картинка серії** (+ Vision Assist) → рендер у кілька потоків з живим прогресом → **відбір** (keep/redo, AI Triage, версії) → **експорт** (перевірений архів, ERC-721 / Metaplex / Ordinals ZIP, CSV, Arweave через Irys, хеш походження, вітрина, датасет LoRA) → **набір деплою** (типово Core Candy Machine; Sugar — застарілий; EVM: Thirdweb; Ordinals: інструкція) і **набір маркетплейсу** (Solana: Magic Eden і Tensor; EVM: OpenSea; Bitcoin: Ordinals). Продаж і мінт — з вашого гаманця, не з майстерні.
+**пресет + seed** → унікальні детерміновані рецепти (DNA + промпти) → **базова картинка серії** (+ Vision Assist) → рендер у кілька потоків з живим прогресом або складання шарів PNG → **відбір** (keep/redo, AI Triage, версії) → **експорт** (перевірений архів, ERC-721 / Metaplex / Ordinals ZIP, CSV, Arweave через Irys, хеш походження, вітрина, датасет LoRA) → **набір деплою** (типово Core Candy Machine; Sugar — застарілий; EVM: Thirdweb; Ordinals: інструкція) → на цьому ПК `release-init`, `upload`, `hidden`, `guards`, `mplx cm create`, `verify`, `series mint --keypair`, `series reveal --keypair` → **набір маркетплейсу** (продаж: Solana — Magic Eden і Tensor; EVM — OpenSea; Bitcoin — Ordinals). Майстерня ключ не бере. Розкриття EVM лишається в кабінеті Thirdweb.
 
 **Страховка для грошей і файлів** (працює автоматично):
 
@@ -160,7 +160,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 - [docs/DEPLOY.md](docs/DEPLOY.md) — https://studio.w3ir.io
 - [docs/STANDALONE.md](docs/STANDALONE.md) · [docs/DEPLOY-PLATFORM.md](docs/DEPLOY-PLATFORM.md) — окремий продукт і розгортання
 
-Термінологія: **базова картинка(и) серії**; `primary` = головна базова. Ончейн-мінт — зовні через лаунчпад.
+Термінологія: **базова картинка(и) серії**; `primary` = головна базова. Мінт Solana Core — `series mint` на цьому ПК. Продаж — на майданчику. Розкриття EVM — кабінет Thirdweb.
 
 ## Ліцензія
 
