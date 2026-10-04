@@ -238,6 +238,31 @@ function send(res, status, body, type = "application/json; charset=utf-8", extra
   res.end(data);
 }
 
+function writeSse(res, payload) {
+  if (!res || res.writableEnded || res.destroyed) return false;
+  try {
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Abort the batch when the browser drops the live stream (Stop). */
+function attachStopOnDisconnect(res, stop) {
+  const onGone = () => {
+    if (res.writableEnded || stop.signal.aborted) return;
+    stop.abort(new Error("stopped"));
+  };
+  res.on("close", onGone);
+  res.on("error", onGone);
+  const req = res.req;
+  if (req) {
+    req.on("aborted", onGone);
+    req.on("error", onGone);
+  }
+}
+
 function readBody(req) {
   return new Promise((resolveBody, reject) => {
     const chunks = [];
@@ -2089,8 +2114,11 @@ async function handleApi(req, res, url) {
     const set = setDirName(engineWanted, strength);
     const sel = resolveGenerateSelection(archive, body, set);
     if (!sel.editions.length) {
+      // Do not open SSE. A finished JSON body is the whole reply; the panel
+      // must not sit on a 0% "live stream" waiting for a done event.
       return send(res, 200, {
         ok: true,
+        stream: false,
         file: archiveFile,
         engine: engineName,
         requestedEngine: engineWanted,
@@ -2117,87 +2145,133 @@ async function handleApi(req, res, url) {
     }
     const allBases = listBases();
     const ctx = engineCtx(process.env);
+    const stop = new AbortController();
+    ctx.signal = stop.signal;
+    const timedFetch = ctx.fetch;
+    ctx.fetch = (url, init = {}) => {
+      const signal = init.signal ? AbortSignal.any([init.signal, stop.signal]) : stop.signal;
+      return timedFetch(url, { ...init, signal });
+    };
     const outDir = join(P().out, set);
     const breaker = failureBreaker({ maxConsecutive: Number(process.env.SERIES_MAX_CONSECUTIVE_FAILURES) || 5 });
     mkdirSync(outDir, { recursive: true });
 
     const isStream = Boolean(body.stream) || String(req.headers["accept"] || "").includes("text/event-stream");
     const concurrency = Math.max(1, Math.min(4, Number(body.concurrency) || 2));
+    const batchSignal = AbortSignal.any([breaker.signal, stop.signal]);
+    attachStopOnDisconnect(res, stop);
 
     if (isStream) {
       res.writeHead(200, {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
-        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+        Connection: "keep-alive",
       });
-      res.write(`data: ${JSON.stringify({ type: "start", total: sel.recipes.length, engine: engineName, requestedEngine: engineWanted, strength, set, licenseWarning: licenseNotice })}\n\n`);
+      res.flushHeaders?.();
+      res.socket?.setNoDelay?.(true);
+      writeSse(res, {
+        type: "start",
+        total: sel.recipes.length,
+        engine: engineName,
+        requestedEngine: engineWanted,
+        strength,
+        set,
+        licenseWarning: licenseNotice,
+      });
     }
 
-    const results = await mapConcurrent(
-      sel.recipes,
-      concurrency,
-      async (recipe) => {
-        let charge = null;
-        try {
-          await waitForRateSlot();
-          charge = chargeCredits({ engine: engineName, costUsd: unitCost ?? 0, reference: true });
-          const recipeBase = resolveBaseImageForRecipe(recipe, allBases) || primary;
-          const image = readFileSync(join(P().input, recipeBase.file));
-          const mime = mimeOf(recipeBase.file);
-          const buf = await withRetry(() =>
-            eng.generate({
-              prompt: recipe.prompt,
-              image,
-              mime,
-              seed: recipe.seed,
+    let results;
+    try {
+      results = await mapConcurrent(
+        sel.recipes,
+        concurrency,
+        async (recipe) => {
+          let charge = null;
+          try {
+            if (stop.signal.aborted) {
+              return { ok: false, skipped: true, edition: recipe.edition, index: recipe.index, code: "stopped" };
+            }
+            await waitForRateSlot();
+            if (stop.signal.aborted) {
+              return { ok: false, skipped: true, edition: recipe.edition, index: recipe.index, code: "stopped" };
+            }
+            charge = chargeCredits({ engine: engineName, costUsd: unitCost ?? 0, reference: true });
+            const recipeBase = resolveBaseImageForRecipe(recipe, allBases) || primary;
+            const image = readFileSync(join(P().input, recipeBase.file));
+            const mime = mimeOf(recipeBase.file);
+            const buf = await withRetry(() =>
+              eng.generate({
+                prompt: recipe.prompt,
+                image,
+                mime,
+                seed: recipe.seed,
+                strength,
+              }, ctx),
+            );
+            if (stop.signal.aborted) {
+              refundCharge(charge);
+              return { ok: false, skipped: true, edition: recipe.edition, index: recipe.index, code: "stopped" };
+            }
+            const name = `${recipe.edition}.png`;
+            const v = addVersion(outDir, recipe.edition, buf, {
+              engine: engineName,
+              model: modelTitle(engineName, "edit"),
               strength,
-            }, ctx),
-          );
-          const name = `${recipe.edition}.png`;
-          const v = addVersion(outDir, recipe.edition, buf, {
-            engine: engineName,
-            model: modelTitle(engineName, "edit"),
-            strength,
-            seed: recipe.seed,
-            promptHash: promptHash(recipe.prompt),
-            baseSha256: sha256Hex(image),
-            ...(licenseNotice ? { licenseWarning: licenseNotice } : {}),
-          });
-          logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, v, ok: true, costUsd: unitCost, seed: recipe.seed });
-          breaker.record(true);
-          return {
-            ok: true,
-            edition: recipe.edition,
-            index: recipe.index,
-            file: name,
-            v,
-            path: `out/${set}/${name}`,
-            url: `/out/${set}/${name}?v=${v}`,
-          };
-        } catch (e) {
-          refundCharge(charge);
-          logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, ok: false, costUsd: 0, error: String(e.message || e).slice(0, 300) });
-          breaker.record(false);
-          return {
-            ok: false,
-            edition: recipe.edition,
-            index: recipe.index,
-            error: String(e.message || e),
-          };
+              seed: recipe.seed,
+              promptHash: promptHash(recipe.prompt),
+              baseSha256: sha256Hex(image),
+              ...(licenseNotice ? { licenseWarning: licenseNotice } : {}),
+            });
+            logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, v, ok: true, costUsd: unitCost, seed: recipe.seed });
+            breaker.record(true);
+            return {
+              ok: true,
+              edition: recipe.edition,
+              index: recipe.index,
+              file: name,
+              v,
+              path: `out/${set}/${name}`,
+              url: `/out/${set}/${name}?v=${v}`,
+            };
+          } catch (e) {
+            refundCharge(charge);
+            const stopped = stop.signal.aborted || e?.name === "AbortError";
+            if (!stopped) {
+              logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, ok: false, costUsd: 0, error: String(e.message || e).slice(0, 300) });
+              breaker.record(false);
+            }
+            return {
+              ok: false,
+              skipped: stopped,
+              edition: recipe.edition,
+              index: recipe.index,
+              ...(stopped ? { code: "stopped" } : { error: String(e.message || e) }),
+            };
+          }
+        },
+        (progress) => {
+          if (isStream) {
+            writeSse(res, {
+              type: "progress",
+              result: progress.result,
+              completed: progress.completed,
+              total: progress.total,
+            });
+          }
+        },
+        { signal: batchSignal },
+      );
+    } catch (e) {
+      if (isStream) {
+        writeSse(res, { type: "error", error: String(e.message || e) });
+        if (!res.writableEnded) {
+          try { res.end(); } catch { /* client already gone */ }
         }
-      },
-      (progress) => {
-        if (isStream) {
-          res.write(`data: ${JSON.stringify({
-            type: "progress",
-            result: progress.result,
-            completed: progress.completed,
-            total: progress.total,
-          })}\n\n`);
-        }
-      },
-      { signal: breaker.signal },
-    );
+        return;
+      }
+      throw e;
+    }
 
     const okN = results.filter((r) => r.ok).length;
     const finalPayload = {
@@ -2210,7 +2284,7 @@ async function handleApi(req, res, url) {
       set,
       count: okN,
       costUsd: Math.round(okN * (eng.costUsd || 0) * 1000) / 1000,
-      stopped: breaker.reason,
+      stopped: breaker.reason || (stop.signal.aborted ? "stopped" : null),
       skipped: results.filter((r) => r.skipped).length,
       results,
       thumbs: results.filter((r) => r.ok).map((r) => ({ edition: r.edition, url: r.url, path: r.path })),
@@ -2225,8 +2299,10 @@ async function handleApi(req, res, url) {
     }).catch(() => {});
 
     if (isStream) {
-      res.write(`data: ${JSON.stringify({ type: "done", ...finalPayload })}\n\n`);
-      res.end();
+      writeSse(res, { type: "done", ...finalPayload });
+      if (!res.writableEnded) {
+        try { res.end(); } catch { /* client already gone */ }
+      }
       return;
     }
 
