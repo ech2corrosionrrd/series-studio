@@ -148,6 +148,7 @@ const LOCAL_PATHS = {
   traits: join(ROOT, "libraries", "traits"),
   out: join(ROOT, "out"),
   workspace: join(ROOT, "workspace"),
+  layers: join(ROOT, "layers"),
 };
 const reqCtx = new AsyncLocalStorage();
 const P = () => reqCtx.getStore()?.paths ?? LOCAL_PATHS;
@@ -180,6 +181,7 @@ import { publishCollection } from "../src/platform/site.mjs";
 import { economyReport } from "../src/platform/margin.mjs";
 import { funnel } from "../src/platform/stats.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
+import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
 import { containsSecretField } from "../src/secrets.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
@@ -262,6 +264,26 @@ function attachStopOnDisconnect(res, stop) {
     req.on("aborted", onGone);
     req.on("error", onGone);
   }
+}
+
+/** Raw (binary) request body with its own cap; JSON bodies keep readBody's 25 MB. */
+function readRawBody(req, max) {
+  return new Promise((resolveBody, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (c) => {
+      size += c.length;
+      if (size > max) {
+        const err = new LayersZipError("zip_too_large", `upload is larger than ${Math.round(max / 1048576)} MB`);
+        reject(err);
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on("end", () => resolveBody(Buffer.concat(chunks)));
+    req.on("error", reject);
+  });
 }
 
 function readBody(req) {
@@ -3134,6 +3156,54 @@ async function handleApi(req, res, url) {
     }
   }
 
+  // ---- PNG layers as a ZIP (the hosted studio gives the user no file system) ----
+  if (pathname === "/api/layers/status" && req.method === "GET") {
+    let items = null;
+    const archiveName = url.searchParams.get("archive");
+    if (archiveName) {
+      try {
+        items = loadSeriesContext(archiveName).preset?.traits?.items || null;
+      } catch {
+        items = null;
+      }
+    }
+    return send(res, 200, { ok: true, limits: LAYER_LIMITS, ...layersStatus(P().layers, items) });
+  }
+
+  if (pathname === "/api/layers/upload" && req.method === "POST") {
+    try {
+      const buffer = await readRawBody(req, LAYER_LIMITS.zipBytes);
+      const result = await importLayersZip(buffer, P().layers, {
+        clear: url.searchParams.get("clear") === "1",
+        // Replacing is reversible: the old layers go to the trash (Resources → Trash), like other deletions.
+        onClear: (dir) => {
+          const old = listLayerFiles(dir);
+          if (old.length) toTrash(old, "layers replaced");
+        },
+      });
+      let items = null;
+      const archiveName = url.searchParams.get("archive");
+      if (archiveName) {
+        try {
+          items = loadSeriesContext(archiveName).preset?.traits?.items || null;
+        } catch {
+          items = null;
+        }
+      }
+      return send(res, 200, { ok: true, ...result, status: layersStatus(P().layers, items) });
+    } catch (e) {
+      if (e instanceof LayersZipError) return send(res, e.status, { error: e.message, code: `layers_${e.code}` });
+      throw e;
+    }
+  }
+
+  if (pathname === "/api/layers/clear" && req.method === "POST") {
+    const old = listLayerFiles(P().layers);
+    const trashed = old.length ? toTrash(old, "layers cleared") : null;
+    clearLayers(P().layers);
+    return send(res, 200, { ok: true, removed: old.length, trashId: trashed?.id ?? null });
+  }
+
   if (pathname === "/api/compose" && req.method === "POST") {
     const body = await readBody(req);
     if (rejectSecrets(res, body)) return;
@@ -3148,7 +3218,7 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: "preset traits are required to compose layers" });
     }
     const root = resolve(P().root);
-    const layerDir = resolve(root, String(body.layers || "layers"));
+    const layerDir = body.layers ? resolve(root, String(body.layers)) : resolve(P().layers);
     if (!isInsideDir(root, layerDir)) {
       return send(res, 400, { error: "layers directory must stay inside the project" });
     }
@@ -3429,6 +3499,7 @@ function userPaths(wallet) {
     traits: join(base, "traits"),
     out: join(base, "out"),
     workspace: join(base, "workspace"),
+    layers: join(base, "layers"),
   };
   for (const [key, shared] of [["presets", LOCAL_PATHS.presets], ["traits", LOCAL_PATHS.traits]]) {
     if (existsSync(paths[key])) continue;
@@ -3468,7 +3539,7 @@ const server = createServer(async (req, res) => {
 async function handleRequest(req, res, url) {
   {
     if (url.pathname.startsWith("/api/")) {
-      const blocked = checkApiRequest(req, { allowedHosts: ALLOWED_HOSTS, port: PORT });
+      const blocked = checkApiRequest({ method: req.method, headers: req.headers, path: url.pathname }, { allowedHosts: ALLOWED_HOSTS, port: PORT });
       if (blocked) return send(res, 403, { error: blocked });
       await handleApi(req, res, url);
       return;

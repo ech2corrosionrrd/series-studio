@@ -118,3 +118,17 @@ test("guard: studio.w3ir.io on the studio process is a warning, not the landing"
   assert.equal(hostedConfigWarning("127.0.0.1", true, env), null);
   assert.equal(hostedConfigWarning("0.0.0.0", true, { SERIES_ALLOWED_HOSTS: "next.w3ir.io", AUTH_DOMAIN: "next.w3ir.io" }), null);
 });
+
+test("guard: application/zip is accepted only for the layers upload; everything else stays JSON-only", () => {
+  const zip = { "content-type": "application/zip" };
+  const up = (headers, path = "/api/layers/upload") => ({ method: "POST", path, headers: { host: "127.0.0.1:5344", ...headers } });
+  assert.equal(checkApiRequest(up(zip), opts), null);
+  assert.equal(checkApiRequest(up({ "content-type": "application/zip; charset=binary" }), opts), null);
+  assert.equal(checkApiRequest(up({ "content-type": "application/x-zip-compressed" }), opts), null);
+  assert.match(checkApiRequest(up(zip, "/api/preset/save"), opts), /Content-Type/, "another route is still JSON-only");
+  assert.match(checkApiRequest(up({ "content-type": "text/plain" }), opts), /Content-Type/);
+  assert.match(checkApiRequest(up({ "content-type": "multipart/form-data" }), opts), /Content-Type/);
+  assert.match(checkApiRequest(up({ ...zip, origin: "http://evil.example" }), opts), /cross-origin/, "Origin check still applies");
+  assert.match(checkApiRequest(up({}), opts), /Content-Type/, "no content type at all");
+});
+

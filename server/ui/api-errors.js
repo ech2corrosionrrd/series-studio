@@ -126,6 +126,19 @@ const CODE_KEYS = {
   no_primary: "api.noPrimary",
   engine_unavailable: "api.engineUnavailable",
   license_warning: "api.licenseWarning",
+  layers_unsafe_path: "api.layers.unsafe_path",
+  layers_name_too_long: "api.layers.name_too_long",
+  layers_not_png: "api.layers.not_png",
+  layers_png_dimensions: "api.layers.png_dimensions",
+  layers_bad_zip: "api.layers.bad_zip",
+  layers_empty: "api.layers.empty",
+  layers_too_many_files: "api.layers.too_many_files",
+  layers_no_layers: "api.layers.no_layers",
+  layers_duplicate: "api.layers.duplicate",
+  layers_file_too_large: "api.layers.file_too_large",
+  layers_upload_too_large: "api.layers.upload_too_large",
+  layers_folder_full: "api.layers.folder_full",
+  layers_zip_too_large: "api.layers.zip_too_large",
 };
 
 function rawMessage(data) {
