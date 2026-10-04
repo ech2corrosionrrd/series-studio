@@ -241,7 +241,7 @@ async function routes(req, res, url) {
     if (entry.address !== normalizeAddr(address)) throw new HttpError(401, "Адреса не збігається з nonce");
     const ok = evm ? verifyEvmSignature(address, entry.message, String(body.signature || "")) : verifySolanaSignature(address, entry.message, String(body.signature || ""));
     if (!ok) throw new HttpError(401, "Підпис не пройшов перевірку");
-    // Staging / invite-only: only listed wallets (and admins) may sign in.
+    // Staging / invite-only: only listed wallets (and admins) may sign in; empty list = public.
     const invited = String(process.env.SERIES_ALLOWED_WALLETS || "").split(",").map((w) => normalizeAddr(w)).filter(Boolean);
     if (invited.length && !invited.includes(normalizeAddr(address)) && !isAdmin(address)) {
       throw new HttpError(403, "Access by invitation only on this server");

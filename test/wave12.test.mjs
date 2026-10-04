@@ -10,7 +10,7 @@ import {
   buildImageUri,
   calculateDeterministicCid,
   checkStorageStatus,
-  uploadToPinata,
+  uploadToIrys,
   generateMetadataPreview,
   buildBundleZip,
 } from "../src/index.mjs";
@@ -63,44 +63,38 @@ describe("Wave 12: IPFS / Arweave Storage Dispatcher", () => {
     assert.notEqual(cid1, cidOther);
   });
 
-  it("checkStorageStatus detects present Pinata env keys", () => {
-    const empty = checkStorageStatus({});
-    assert.equal(empty.pinata.present, false);
-
-    const withJwt = checkStorageStatus({ PINATA_JWT: "mock-jwt" });
-    assert.equal(withJwt.pinata.present, true);
-    assert.equal(withJwt.pinata.type, "jwt");
-
-    const withKeys = checkStorageStatus({ PINATA_API_KEY: "k", PINATA_SECRET_API_KEY: "s" });
-    assert.equal(withKeys.pinata.present, true);
-    assert.equal(withKeys.pinata.type, "keys");
+  it("checkStorageStatus detects Irys key", () => {
+    assert.equal(checkStorageStatus({}).irys.present, false);
+    assert.equal(checkStorageStatus({ IRYS_PRIVATE_KEY: "  " }).irys.present, false);
+    assert.equal(checkStorageStatus({ IRYS_PRIVATE_KEY: "key" }).irys.present, true);
   });
 
-  it("uploadToPinata handles mock responses and error paths", async () => {
-    const testDir = join(rootDir, "out", "test-pinata-upload");
+  it("uploadToIrys uploads the folder via injected uploader and errors clearly", async () => {
+    const testDir = join(rootDir, "out", "test-irys-upload");
     mkdirSync(testDir, { recursive: true });
     writeFileSync(join(testDir, "1.png"), tinyPng());
+    writeFileSync(join(testDir, "2.png"), tinyPng());
 
-    const mockFetch = async () => ({
-      ok: true,
-      json: async () => ({
-        IpfsHash: "QmMockPinataCid123456789",
-        PinSize: 1024,
-        Timestamp: new Date().toISOString(),
-      }),
-    });
+    const calls = [];
+    const createUploader = async (key, rpc) => {
+      calls.push({ key, rpc });
+      return { uploadFolder: async (dir) => ({ id: "MockManifestId123", dir }) };
+    };
 
-    const res = await uploadToPinata({
-      dir: testDir,
-      name: "test-collection",
-      pinataJwt: "mock-jwt",
-      fetchFn: mockFetch,
-    });
-
+    const res = await uploadToIrys({ dir: testDir, irysPrivateKey: "k", rpcUrl: "http://rpc", createUploader });
     assert.equal(res.ok, true);
-    assert.equal(res.ipfsHash, "QmMockPinataCid123456789");
-    assert.equal(res.ipfsUri, "ipfs://QmMockPinataCid123456789/");
-    assert.equal(res.gatewayUrl, "https://gateway.pinata.cloud/ipfs/QmMockPinataCid123456789/");
+    assert.equal(res.arweaveId, "MockManifestId123");
+    assert.equal(res.arweaveUri, "ar://MockManifestId123/");
+    assert.equal(res.gatewayUrl, "https://gateway.irys.xyz/MockManifestId123/");
+    assert.equal(res.count, 2);
+    assert.deepEqual(calls, [{ key: "k", rpc: "http://rpc" }]);
+
+    await assert.rejects(uploadToIrys({ dir: testDir, irysPrivateKey: "", createUploader }), /IRYS_PRIVATE_KEY/);
+    await assert.rejects(
+      uploadToIrys({ dir: testDir, irysPrivateKey: "k", createUploader: async () => ({ uploadFolder: async () => ({}) }) }),
+      /no manifest ID/,
+    );
+    await assert.rejects(uploadToIrys({ dir: join(testDir, "nope"), irysPrivateKey: "k", createUploader }), /not found/);
   });
 
   it("generateMetadataPreview formats sample metadata with custom IPFS URI prefix", () => {
@@ -176,7 +170,7 @@ describe("Wave 12: IPFS / Arweave Storage Dispatcher", () => {
     assert.equal(coll.imageUriPrefix, "ipfs://QmBundleTestCid/");
   });
 
-  it("CLI pin command executes dry-run cleanly with simulated CID", async () => {
+  it("CLI pin command executes dry-run cleanly with simulated content ID", async () => {
     const testDir = join(rootDir, "out", "test-cli-pin");
     mkdirSync(testDir, { recursive: true });
     writeFileSync(join(testDir, "1.png"), tinyPng());
@@ -190,7 +184,7 @@ describe("Wave 12: IPFS / Arweave Storage Dispatcher", () => {
 
     assert.equal(stderr, "");
     assert.ok(stdout.includes("Series Lab CLI Pin"));
-    assert.ok(stdout.includes("[DRY-RUN] Simulated IPFS CID: Qm"));
-    assert.ok(stdout.includes("[DRY-RUN] Gateway URI: ipfs://Qm"));
+    assert.ok(stdout.includes("[DRY-RUN] Simulated content ID: Qm"));
+    assert.ok(stdout.includes("Arweave (Irys): ar://<manifest-id>/"));
   });
 });

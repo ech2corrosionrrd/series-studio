@@ -41,11 +41,7 @@ const admin = evmWallet();
 const BLOCKED_EXTERNAL = [
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
-  "PINATA_JWT",
-  "PINATA_API_KEY",
-  "PINATA_KEY",
-  "PINATA_SECRET_API_KEY",
-  "PINATA_SECRET",
+  "IRYS_PRIVATE_KEY",
   "ALCHEMY_API_KEY",
   "VITE_ALCHEMY_API_KEY",
   "REPLICATE_API_TOKEN",
@@ -361,7 +357,7 @@ async function main() {
     });
     ok("7", "deploy-kit відхиляє privateKey", secrets.status === 400 && secrets.json?.code === "secrets", `${secrets.status} ${secrets.json?.code || secrets.text?.slice(0, 80)}`);
     const pinStatus = await call("GET", "/api/storage/status");
-    ok("7", "GET /api/storage/status (Pinata)", pinStatus.status === 200);
+    ok("7", "GET /api/storage/status (Irys)", pinStatus.status === 200);
     const pub = await call("POST", "/api/publish", { body: { dir: setDir, title: "Stage Smoke Collection" } });
     ok("7", "POST /api/publish", pub.status === 200, pub.json?.slug || pub.text?.slice(0, 60));
   }

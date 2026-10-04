@@ -21,7 +21,7 @@ import {
   clampStrength,
   mapConcurrent,
   triageBatch,
-  uploadToPinata,
+  uploadToIrys,
   calculateDeterministicCid,
   exportManifestCsv,
   buildSugarConfig,
@@ -77,8 +77,8 @@ Options:
   --image-prefix <uri>    URI prefix for images (e.g. ipfs://CID/)
   --anim-prefix <uri>     URI prefix for animations/videos (e.g. ipfs://CID/)
   --name-prefix <str>     Token name prefix (e.g. Series #)
-  --name <str>            Collection name for IPFS pin
-  --provider <name>       Triage/Storage provider (heuristic, vision, pinata)
+  --name <str>            Collection name
+  --provider <name>       Triage/Storage provider (heuristic, vision)
   --apply                 Apply triage keep/redo verdicts to marks.json
   --limit <num>           Process only first N recipes/images
   --dry-run               Simulate execution without external API calls
@@ -439,21 +439,17 @@ async function cmdPin(setDirPath, opts = {}) {
 
   if (opts.dryRun) {
     const mockCid = calculateDeterministicCid(files.join(","));
-    console.log(`[DRY-RUN] Simulated IPFS CID: ${mockCid}`);
-    console.log(`[DRY-RUN] Gateway URI: ipfs://${mockCid}/`);
+    console.log(`[DRY-RUN] Simulated content ID: ${mockCid}`);
+    console.log(`[DRY-RUN] Would upload ${files.length} files to Arweave (Irys): ar://<manifest-id>/`);
     return;
   }
 
   loadKeys();
-  const name = opts.name || `series-${basename(setDir)}`;
-  const res = await uploadToPinata({
-    dir: setDir,
-    name,
-  });
+  const res = await uploadToIrys({ dir: setDir });
 
-  console.log(`\nSuccessfully pinned to IPFS!`);
-  console.log(`IPFS CID:    ${res.ipfsHash}`);
-  console.log(`IPFS URI:    ${res.ipfsUri}`);
+  console.log("\nSuccessfully uploaded to Arweave (Irys)!");
+  console.log(`Manifest ID: ${res.arweaveId}`);
+  console.log(`URI:         ${res.arweaveUri}`);
   console.log(`Gateway URL: ${res.gatewayUrl}`);
 }
 

@@ -14,7 +14,7 @@ export const LIST_USD_PER_CREDIT = 0.03;
 
 export const STAGE_IDS = ["generation", "curation", "archive", "deploy_kit", "marketplace_kit"];
 
-/** Defaults are conservative: local file work has ~$0 marginal infra, so the fee is a small fixed margin. IPFS has a real Pinata-shaped cost the owner can replace. */
+/** Defaults are conservative: local file work has ~$0 marginal infra, so the fee is a small fixed margin. Arweave upload has a real Irys-shaped cost the owner can replace. */
 export const STAGE_DEFAULTS = {
   generation: {
     label: "Generation / render",
@@ -209,7 +209,7 @@ export function quoteStage(stage, opts = {}, env = process.env) {
       assumptions: [
         `zip=${zipOn} cost ${zip.costUsd} + margin ${zip.marginUsd} (STAGE_ARCHIVE_COST_USD / STAGE_ARCHIVE_MARGIN_USD)`,
         `ipfs=${ipfsOn} cost ${ipfsCost} + margin ${ipfsMargin} (STAGE_IPFS_COST_USD / STAGE_IPFS_MARGIN_USD)`,
-        "Not a live Pinata invoice — replace the IPFS numbers when your plan changes.",
+        "Not a live Irys invoice — replace the storage numbers when your plan changes.",
       ],
     }, env);
   }

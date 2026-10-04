@@ -34,7 +34,7 @@ const DEFAULT_API_USD = 0.01;
 
 /** Lean monthly ops (USD) — used when FIXED_MONTHLY_USD unset. */
 export const DEFAULT_HOSTING_MONTHLY_USD = 8; // Hetzner CX/CPX + backups slice
-export const DEFAULT_SAAS_MONTHLY_USD = 10; // Pinata/Alchemy/DNS buffer (free tiers → raise when paid)
+export const DEFAULT_SAAS_MONTHLY_USD = 10; // Irys/Alchemy/DNS buffer (free tiers → raise when paid)
 
 const ENGINE_FAMILY = {
   openai: "openai",
@@ -96,7 +96,7 @@ export function overheadBreakdown(env = process.env) {
       ? [{ id: "fixed", label: "Фікс (FIXED_MONTHLY_USD)", usd: fixed }]
       : [
         { id: "hosting", label: "Хостинг (VPS / backups)", usd: hosting },
-        { id: "saas", label: "Підписки ресурсів (Pinata / RPC / DNS…)", usd: saas },
+        { id: "saas", label: "Підписки ресурсів (Irys / RPC / DNS…)", usd: saas },
       ],
   };
 }
