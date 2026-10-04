@@ -52,12 +52,14 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 15 3 * * * root $BASE/backup.sh >> $BASE/logs/backup.log 2>&1
 # every 6 h: newest hourly snapshot must be fresh (a dead cron is otherwise silent)
 20 */6 * * * root $BASE/verify-backup.sh fresh >> $BASE/logs/verify.log 2>&1
+# every 6 h: disk below DISK_WARN_PCT (default 80%), Telegram alert otherwise
+25 */6 * * * root $BASE/verify-backup.sh disk >> $BASE/logs/verify.log 2>&1
 # weekly restore drill: newest daily snapshot must really open
 0 5 * * 0 root $BASE/verify-backup.sh drill >> $BASE/logs/verify.log 2>&1
 EOF
 chmod 644 /etc/cron.d/series-lab-backup
 
-echo "cron installed: hourly ledger, 03:15 UTC full, freshness every 6 h, drill on Sundays"
+echo "cron installed: hourly ledger, 03:15 UTC full, freshness and disk every 6 h, drill on Sundays"
 "$BASE/backup.sh"
 BACKUP_MODE=hourly "$BASE/backup.sh"
 "$BASE/verify-backup.sh" drill
