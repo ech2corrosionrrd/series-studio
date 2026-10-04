@@ -19,3 +19,6 @@ dist/
 
 # local backups made by `npm run backup`
 backups/
+
+# PNG layers uploaded as a ZIP (Generate → PNG layers)
+layers/

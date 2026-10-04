@@ -109,7 +109,7 @@ Series Lab підтримує автоматичне виявлення та п�
 
 Solana-набір деплою також містить `hidden.json` + `hidden.png` (плейсхолдер до розкриття) і `hidden-settings.json` з порожнім хешем: його заповнює `series hidden` після `series upload`. Якщо в тілі є `allowlist`, у ZIP з’являється `allowlist.json` (merkle root і докази). Повний guard з оплатою — `series guards`. Доказ у транзакцію кладе `series mint`; окремо передавати його не треба. Створення машини лишається `mplx cm create`. Порядок на цьому ПК: `series release-init`, `series upload --keypair`, `series hidden --uri`, `series guards`, `mplx cm create`, `series verify`, `series mint --keypair`, `series reveal --keypair` (ключ оновлення колекції). Майстерня ключ не приймає. EVM delayed reveal лишається інструкцією Thirdweb, пароль не зберігається. `series mint` не збирає Sugar.
 
-Шари PNG (поруч із промптами, не замість них): `series compose` або `POST /api/compose`. Файли `layers/<ключ>/<значення>.png`, результат `out/layers/<видання>.png` і `dna.json`. Див. [TRAITS.md](./TRAITS.md) і [RELEASE.md](./RELEASE.md).
+Шари PNG (поруч із промптами, не замість них): `series compose` або `POST /api/compose`. Файли `layers/<ключ>/<значення>.png` (на хості — завантаженням ZIP у картці «Шари PNG»), результат `out/layers/<видання>.png` і `dna.json`. Див. [TRAITS.md](./TRAITS.md) і [RELEASE.md](./RELEASE.md).
 
 ## 8. NFT Readiness Checklist
 

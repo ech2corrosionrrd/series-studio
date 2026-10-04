@@ -112,10 +112,17 @@ function portAllowed(hostHeader, listenPort) {
 }
 
 /**
- * @param {{ method?: string, headers: Record<string, string|undefined> }} req
+ * @param {{ method?: string, path?: string, headers: Record<string, string|undefined> }} req
  * @param {{ allowedHosts: Set<string>|null, port: number }} opts
  * @returns {string|null} rejection reason, or null when the request is allowed
  */
+/**
+ * Binary uploads that may use their own Content-Type instead of JSON. `application/zip` is not a
+ * CORS-safelisted type, so a cross-site page cannot send it without a preflight (which the server
+ * never grants); the Origin check above still applies.
+ */
+const RAW_UPLOADS = new Map([["/api/layers/upload", new Set(["application/zip", "application/x-zip-compressed"])]]);
+
 export function checkApiRequest(req, { allowedHosts, port }) {
   const hostHeader = String(req.headers.host || "").toLowerCase();
   if (!hostHeader) return "missing Host header";
@@ -140,7 +147,9 @@ export function checkApiRequest(req, { allowedHosts, port }) {
   const method = String(req.method || "GET").toUpperCase();
   if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
     const ct = String(req.headers["content-type"] || "").toLowerCase();
-    if (!ct.startsWith("application/json")) return "Content-Type must be application/json";
+    const rawTypes = RAW_UPLOADS.get(String(req.path || ""));
+    const rawOk = rawTypes && [...rawTypes].some((t) => ct === t || ct.startsWith(`${t};`));
+    if (!ct.startsWith("application/json") && !rawOk) return "Content-Type must be application/json";
   }
   return null;
 }

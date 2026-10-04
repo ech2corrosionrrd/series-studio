@@ -90,10 +90,10 @@
           <input id="o-id" autocomplete="off" data-i18n-placeholder="home.field.id.ph" placeholder="my-series"></label>
         <label><span data-i18n="home.field.size">Кількість NFT</span>
           <input id="o-size" type="number" min="1" class="w120" value="48"></label>
-        <label class="small" style="display:flex; align-items:center; gap:8px; align-self:end">
-          <input id="o-genesis" type="checkbox">
-          <span><span data-i18n="home.field.genesis">База — частина колекції (видання #0)</span>
-            <span class="muted" data-i18n="home.field.genesis.hint"></span></span></label>
+        <label class="small" style="display:flex; align-items:flex-start; gap:8px; align-self:end">
+          <input id="o-genesis" type="checkbox" style="margin-top:3px">
+          <span><b data-i18n="home.field.genesis">База — частина колекції (видання #0)</b>
+            <span class="muted" style="display:block" data-i18n="home.field.genesis.hint"></span></span></label>
         <label><span data-i18n="home.field.seed">Seed</span>
           <input id="o-seed" autocomplete="off" data-i18n-placeholder="home.field.seed.ph" placeholder="my-series-v1"></label>
         <label><span data-i18n="home.field.engine">Двигун (пізніше)</span>
@@ -572,6 +572,15 @@
         <div class="card" id="g-layers" style="margin-top:12px">
           <h3 data-i18n="render.layers.h">PNG layers</h3>
           <p class="muted small" data-i18n="render.layers.help"></p>
+          <div class="actions">
+            <input type="file" id="g-layers-file" accept=".zip,application/zip,application/x-zip-compressed" hidden>
+            <button type="button" id="g-layers-pick" class="btn" data-i18n="render.layers.pick">Choose ZIP…</button>
+            <label class="small"><input type="checkbox" id="g-layers-replace"> <span data-i18n="render.layers.replace">Replace all layers</span></label>
+            <button type="button" id="g-layers-upload" class="btn" disabled data-i18n="render.layers.upload">Upload ZIP</button>
+            <button type="button" id="g-layers-clear" class="btn" data-i18n="render.layers.clear">Clear layers</button>
+          </div>
+          <p id="g-layers-picked" class="muted small"></p>
+          <div id="g-layers-status" class="small" role="status"></div>
           <div class="actions">
             <button type="button" id="g-compose" class="btn" data-i18n="render.layers.run">Compose layers</button>
             <span id="g-compose-msg" class="small" role="status"></span>
