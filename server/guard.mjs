@@ -20,11 +20,52 @@ export function openAccessError(host, publicMode) {
 }
 const WILDCARD = new Set(["0.0.0.0", "::", "[::]"]);
 
+function hostList(extra) {
+  const out = [];
+  for (const x of String(extra || "").split(",")) {
+    const v = x.trim().toLowerCase();
+    if (v) out.push(v);
+  }
+  return out;
+}
+
+/**
+ * Public mode on a non-loopback address is the hosted studio process.
+ * It must name the hostname people type, and the SIWE domain must be that
+ * name. studio.w3ir.io is not assumed: that name is the static Pages site.
+ * Returns an error string, or null when the process may listen.
+ */
+export function hostedConfigError(host, publicMode, env = {}) {
+  const h = String(host || "").toLowerCase();
+  if (!publicMode || LOOPBACK.has(h)) return null;
+  const extras = hostList(env.SERIES_ALLOWED_HOSTS);
+  if (WILDCARD.has(h) && extras.length === 0) {
+    return "Public studio listening on all interfaces needs SERIES_ALLOWED_HOSTS set to the hostname people type in the browser. Without it the Host check is skipped. studio.w3ir.io is the static site, not this process.";
+  }
+  const names = new Set(extras);
+  if (!WILDCARD.has(h)) names.add(h);
+  const domain = String(env.AUTH_DOMAIN || "ai.w3ir.io").trim().toLowerCase();
+  if (!names.has(domain)) {
+    return `AUTH_DOMAIN (${domain}) must be one of the studio hostnames (${[...names].join(", ")}). Wallet sign-in text has to match the address people open. The Pages site studio.w3ir.io is not this process.`;
+  }
+  return null;
+}
+
+/** Non-fatal: the landing hostname was pasted onto the studio process. */
+export function hostedConfigWarning(host, publicMode, env = {}) {
+  const h = String(host || "").toLowerCase();
+  if (!publicMode || LOOPBACK.has(h)) return null;
+  const names = new Set([...hostList(env.SERIES_ALLOWED_HOSTS), String(env.AUTH_DOMAIN || "").trim().toLowerCase()].filter(Boolean));
+  if (!names.has("studio.w3ir.io")) return null;
+  return "studio.w3ir.io is the Cloudflare Pages landing and has no studio API. This process is separate. Use that name here only after DNS has been moved on purpose.";
+}
+
 /**
  * Hostnames (without port) the API accepts in the Host header.
  * Listening on all interfaces skips the Host check only when SERIES_ALLOWED_HOSTS
- * is empty — same-origin still applies. Once any public name is listed, that
- * list (plus loopback) is enforced, including on 0.0.0.0.
+ * is empty — same-origin still applies. The studio process refuses to start in
+ * that state (`hostedConfigError`). Once any public name is listed, that list
+ * (plus loopback) is enforced, including on 0.0.0.0.
  * Returns null when the Host check should be skipped.
  */
 export function allowedHostnames(host, extra = "") {

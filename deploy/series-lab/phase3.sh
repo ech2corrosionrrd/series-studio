@@ -121,7 +121,7 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5344/health"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5344/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -138,7 +138,7 @@ chown -R 1000:1000 "$BASE/data-next"
 echo "==> 5. container"
 docker compose -f "$BASE/docker-compose.yml" up -d
 for i in $(seq 1 30); do
-  if docker exec serieslab wget -qO- http://127.0.0.1:5344/health >/dev/null 2>&1; then echo "healthy"; break; fi
+  if docker exec serieslab node -e "fetch('http://127.0.0.1:5344/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then echo "healthy"; break; fi
   sleep 2
   [ "$i" = 30 ] && { echo "container not healthy"; docker logs --tail 50 serieslab; exit 1; }
 done
