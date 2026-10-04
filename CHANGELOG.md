@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+## [1.7.1] — 2026-10-04
+
+Виправлення за зауваженнями до 1.7.0: `series guards` для Core, Arweave замість IPFS в оплаті й документації, перевірка версії Node, узгоджений roadmap.
+
+**Для тих, хто читає API й змінні:** у `GET /api/stages/quotes` ключ `archive_ipfs` перейменовано в `archive_storage`; `GET /api/stages/quote` приймає `storage=1` (старий `ipfs=1` теж діє); змінні `STAGE_STORAGE_*` замінюють `STAGE_IPFS_*`, які ще читаються як запасні. Інших несумісностей немає.
+
 ### Зауваження після релізу 1.7.0
 - `series guards` для `standard: "core"` (типово) більше не пише Sugar і не радить `sugar guard update`: видає `guardConfig` для `mplx cm create` (ціна в лампортах, ціле), а для застосування до готової машини вказує на SDK `updateCandyGuard`, бо в `mplx` такої команди немає. Для `v3` лишився Sugar.
 - Кнопка Arweave в Експорті ховається, якщо на сервері немає `IRYS_PRIVATE_KEY`, з поясненням і підказкою про `series upload --keypair`.
