@@ -10,7 +10,7 @@ where fnm >nul 2>nul && (
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [ERROR] Node.js not in PATH. Install Node 20+ and retry.
+  echo [ERROR] Node.js not in PATH. Install Node 22.13+ and retry.
   pause
   exit /b 1
 )

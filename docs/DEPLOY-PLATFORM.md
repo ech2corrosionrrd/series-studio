@@ -28,16 +28,26 @@
 
 ## Бекап
 
-`deploy/series-lab/backup.sh` знімає узгоджену копію **лише даних Lab**: `users.db` (SQLite online backup, потім `PRAGMA integrity_check`), `data-next/users/` (дані гаманців) і `genesis_mints.json` / `vault_catalog.json`. Ротація: 7 щоденних і 4 щотижневі в `/opt/series-lab/backups/`. `phase3.sh` ставить cron на 03:15 UTC. Локально те саме робить `npm run backup` ([GUIDE.md](./GUIDE.md#бекап)).
+`deploy/series-lab/backup.sh` знімає узгоджену копію **лише даних Lab**: `users.db` (SQLite online backup, потім `PRAGMA integrity_check`), `data-next/users/` (дані гаманців) і `genesis_mints.json` / `vault_catalog.json`. `install-backup.sh` (його викликає `phase3.sh`) ставить cron у `/etc/cron.d/series-lab-backup`:
 
-Копії лежать на тому ж диску, що й жива база. Вивантаження назовні вмикається в `/opt/series-lab/backup.env`:
+| Коли (UTC) | Що | Зберігається |
+|---|---|---|
+| щогодини, :05 | `BACKUP_MODE=hourly` — лише `users.db` (платежі й баланси) | 48 копій у `backups/hourly/` |
+| щодня 03:15 | повний знімок + хмарна копія, якщо ввімкнена | 7 у `backups/daily/` і 4 тижневі у `backups/weekly/` |
+| кожні 6 год | `verify-backup.sh fresh` — найновіша погодинна копія не старша за `VERIFY_MAX_AGE_HOURS` (3) | — |
+| неділя 05:00 | `verify-backup.sh drill` — найновіша добова копія відкривається, `integrity_check` ок, є таблиці `users`, `payments`, `transactions`, `wallet_nonces` | — |
+
+Копія, яку ніхто не пробував відкрити, не є бекапом, тому перевірки не пропускайте. За збою `verify-backup.sh` завершується з кодом 1 і пише в `logs/verify.log`; якщо в `backup.env` задано `SERIES_TELEGRAM_BOT_TOKEN` і `SERIES_TELEGRAM_CHAT_ID`, надсилає алерт у Telegram. Локально те саме робить `npm run backup` ([GUIDE.md](./GUIDE.md#бекап)); окрему копію перевіряє `node scripts/verify-backup.mjs --path users.db`.
+
+Копії лежать на тому ж диску, що й жива база. Вивантаження назовні вмикає одноразовий скрипт (на сервері, від root):
 
 ```bash
-BACKUP_RCLONE_REMOTE=offsite:series-lab-backups
-BACKUP_PASSPHRASE=...
+ENDPOINT=fsn1.your-objectstorage.com PROVIDER=Hetzner bash /opt/series-lab/src/deploy/series-lab/setup-offsite.sh
 ```
 
-Без парольної фрази скрипт відмовляється відправляти архів. Відновлення: `openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_PASSPHRASE -in users-YYYYMMDD-HHMM.tar.gz.enc | tar -xz`, потім відкрити `users.db` і перевірити `PRAGMA integrity_check`.
+Він приховано питає ключі S3, створює remote `series-offsite`, перевіряє досяжність (невдалий remote видаляється), заливає зашифрований знімок, завантажує його назад, розшифровує й лише тоді записує `BACKUP_RCLONE_REMOTE` та випадкову `BACKUP_PASSPHRASE` у `backup.env`. **Збережіть фразу в менеджері паролів:** без неї хмарні копії не розшифрувати. Підходить будь-яке S3-сховище з ключами API (Hetzner Object Storage, Backblaze B2, Cloudflare R2); OAuth-сховища (Proton, Drive) не беріть: токен спливає, і бекап мовчки зупиняється. Cloudflare R2 вимагає окремої підписки на картку (безкоштовно в межах 10 ГБ), тому типовий вибір — Hetzner Object Storage у тому ж дата-центрі.
+
+Відновлення: `openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_PASSPHRASE -in users-YYYYMMDD-HHMM.tar.gz.enc | tar -xz`, потім знайдіть `users.db` у розпакованому й перевірте `PRAGMA integrity_check` (або `verify-backup.mjs`).
 
 ## Staging на `next.w3ir.io`
 
