@@ -82,7 +82,8 @@ test("deploy kit includes the advisor and can omit the holder statement", () => 
     env: {},
   });
   assert.equal(omitted.files["HOLDER-LICENCE.txt"], undefined);
-  assert.match(omitted.files["ADVISOR.txt"], /Arweave/);
+  assert.match(omitted.files["ADVISOR.txt"], /IPFS/);
+  assert.equal(omitted.files["ADVISOR.txt"].includes("Arweave"), false, "EVM advisor must not push the Solana storage choice");
 });
 
 test("export help quotes the button label of the active locale", () => {
@@ -94,4 +95,17 @@ test("export help quotes the button label of the active locale", () => {
   assert.match(en["export.hint.tip"], /«Run checklist»/);
   assert.equal(en["export.checklist.run"], "Run checklist");
   assert.match(en["help.aiMark"], /does not say whether Series Lab is a provider/);
+});
+
+test("advisor sections follow the chosen chain only", () => {
+  const sol = buildLaunchAdvisor({ chain: "solana", locale: "en" });
+  const evm = buildLaunchAdvisor({ chain: "evm", locale: "en" });
+  const btc = buildLaunchAdvisor({ chain: "bitcoin", locale: "en" });
+  const store = (a) => a.sections.find((s) => s.id === "storage").body;
+  assert.match(store(sol), /Arweave/);
+  assert.equal(/Magic Eden|OpenSea/.test(store(sol)), false);
+  assert.match(store(evm), /IPFS/);
+  assert.equal(/Arweave|Irys/.test(store(evm)), false);
+  assert.match(store(btc), /inscription/);
+  assert.equal(/IPFS|Arweave|Irys|pin/i.test(store(btc)), false);
 });

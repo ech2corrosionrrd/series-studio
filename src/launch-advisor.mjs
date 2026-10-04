@@ -163,38 +163,71 @@ function royaltySection(chain, uk) {
   return section;
 }
 
-function storageSection(uk) {
-  const section = uk
-    ? {
-      id: "storage",
-      title: "Сховище — типово Arweave через Irys",
-      lead: "Типове сховище набору — Arweave через Irys, не IPFS.",
-      paragraphs: [
-        "Для Solana це рекомендований префікс посилання (ar://). Series Lab файл туди не відправляє і не оплачує.",
-        "Попередження про постійність: Arweave задуманий так, щоб дані лишались після однієї оплати. Це властивість мережі, не обіцянка Lab. Шлюз може відповідати повільно, а Irys — лише шлях завантаження, не сховище Lab.",
-        "Якщо лишаєте IPFS, пін має тривати постійно: без піна файл зникає з мережі. NFT.Storage (Classic) з 30.06.2024 нові завантаження не приймає.",
-      ],
-      links: [
-        link(SOURCES.irys, "Документація Irys"),
-        link(SOURCES.arweave, "Документація Arweave"),
-        link(SOURCES.nftStorage, "Архів NFT.Storage (Classic)"),
-      ],
-    }
-    : {
-      id: "storage",
-      title: "Storage — Arweave via Irys by default",
-      lead: "The default store for the kit is Arweave via Irys, not IPFS.",
-      paragraphs: [
-        "For Solana that is the recommended link prefix (ar://). Series Lab does not upload the file and does not pay for it.",
-        "Permanence warning: Arweave is designed so data remains after a single payment. That is a property of the network, not a promise from Lab. A gateway can be slow, and Irys is only an upload path, not storage run by Lab.",
-        "If you keep IPFS, the pin has to stay up: without a pin the file leaves the network. NFT.Storage (Classic) has not accepted new uploads since 30 June 2024.",
-      ],
-      links: [
-        link(SOURCES.irys, "Irys documentation"),
-        link(SOURCES.arweave, "Arweave documentation"),
-        link(SOURCES.nftStorage, "NFT.Storage archive (Classic)"),
-      ],
-    };
+function storageSection(chain, uk) {
+  const copy = {
+    solana: uk
+      ? {
+        title: "Сховище — типово Arweave через Irys",
+        lead: "Типове сховище набору для Solana — Arweave через Irys, не IPFS.",
+        paragraphs: [
+          "Рекомендований префікс посилання — ar://. Завантаження: `series upload <тека> --keypair <файл>` (ключ лишається на вашому ПК, перервану загрузку можна продовжити) або кнопка в Експорті.",
+          "Попередження про постійність: Arweave задуманий так, щоб дані лишались після однієї оплати. Це властивість мережі, не обіцянка Lab. Шлюз може бути повільним, а Irys — лише шлях завантаження, не окреме сховище.",
+          "Якщо лишаєте IPFS, пін має тривати постійно: без піна файл зникає з мережі. NFT.Storage (Classic) з 30.06.2024 нові завантаження не приймає.",
+        ],
+        links: [
+          link(SOURCES.irys, "Документація Irys"),
+          link(SOURCES.arweave, "Документація Arweave"),
+          link(SOURCES.nftStorage, "Архів NFT.Storage (Classic)"),
+        ],
+      }
+      : {
+        title: "Storage — Arweave via Irys by default",
+        lead: "The default store for a Solana kit is Arweave via Irys, not IPFS.",
+        paragraphs: [
+          "The recommended link prefix is ar://. Upload with `series upload <folder> --keypair <file>` (the key stays on your computer, an interrupted upload resumes) or with the Export button.",
+          "Permanence warning: Arweave is designed so data remains after a single payment. That is a property of the network, not a promise from Lab. A gateway can be slow, and Irys is only an upload path, not a separate store.",
+          "If you keep IPFS, the pin has to stay up: without a pin the file leaves the network. NFT.Storage (Classic) has not accepted new uploads since 30 June 2024.",
+        ],
+        links: [
+          link(SOURCES.irys, "Irys documentation"),
+          link(SOURCES.arweave, "Arweave documentation"),
+          link(SOURCES.nftStorage, "NFT.Storage archive (Classic)"),
+        ],
+      },
+    evm: uk
+      ? {
+        title: "Сховище — IPFS або https",
+        lead: "Для EVM картинки й метадані зазвичай лежать в IPFS (ipfs://) або на вашому https-хості.",
+        paragraphs: [
+          "Пін має тривати постійно: без піна файл зникає з мережі. Оберіть сервіс піна самі; Series Lab на IPFS нічого не завантажує.",
+          "Префікс вкажіть у полі «Префікс URI зображень» в Експорті; порожньо = локальні імена 1.png.",
+        ],
+        links: [link(SOURCES.nftStorage, "Архів NFT.Storage (Classic)")],
+      }
+      : {
+        title: "Storage — IPFS or https",
+        lead: "On EVM the images and metadata usually live on IPFS (ipfs://) or on your own https host.",
+        paragraphs: [
+          "The pin has to stay up: without a pin the file leaves the network. Pick the pinning service yourself; Series Lab does not upload to IPFS.",
+          "Put the prefix into the image URI prefix field in Export; empty = local names 1.png.",
+        ],
+        links: [link(SOURCES.nftStorage, "NFT.Storage archive (Classic)")],
+      },
+    bitcoin: uk
+      ? {
+        title: "Сховище — файли в самій інскрипції",
+        lead: "Для Ordinals файли записуються в Bitcoin під час інскрипції, зовнішнє сховище не потрібне.",
+        paragraphs: ["Префікс посилань на файли тут не потрібен. Розмір файлів визначає вартість інскрипції: стискайте картинки."],
+        links: [],
+      }
+      : {
+        title: "Storage — files inside the inscription",
+        lead: "For Ordinals the files are written to Bitcoin at inscription, so no external storage is needed.",
+        paragraphs: ["No file-link prefix is needed here. File size sets the inscription cost: keep images small."],
+        links: [],
+      },
+  }[chain];
+  const section = { id: "storage", ...copy };
   section.body = sectionText(section);
   return section;
 }
@@ -235,7 +268,7 @@ export function buildLaunchAdvisor({ chain = "solana", locale = "uk" } = {}) {
     supplySection(uk),
     ...(id === "solana" ? [readinessSection(uk)] : []),
     royaltySection(id, uk),
-    storageSection(uk),
+    storageSection(id, uk),
   ];
   const template = holderTemplate(uk);
   const text = [

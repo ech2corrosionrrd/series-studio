@@ -3792,6 +3792,48 @@ function bundleBody(extra = {}) {
   };
 }
 
+/** What each launchpad profile needs: only that profile's hints and fields are shown. */
+const PROFILE_UI = {
+  opensea: { chain: "evm", storage: true, pin: false },
+  magiceden: { chain: "solana", storage: true, pin: true },
+  launchmynft: { chain: "solana", storage: true, pin: true },
+  ordinalsbot: { chain: "bitcoin", storage: false, pin: false },
+};
+
+function applyProfileUi() {
+  const prof = $("x-profile")?.value || "opensea";
+  const cfg = PROFILE_UI[prof] || PROFILE_UI.opensea;
+  const hint = $("x-profile-hint");
+  if (hint) {
+    hint.setAttribute("data-i18n", `export.profileHint.${prof}`);
+    hint.textContent = t(`export.profileHint.${prof}`);
+  }
+  const creator = $("x-creator-address");
+  if (creator) {
+    const key = `export.creator.ph.${cfg.chain}`;
+    creator.setAttribute("data-i18n-placeholder", key);
+    creator.placeholder = t(key);
+  }
+  const uri = $("x-uri-prefix");
+  if (uri && cfg.storage) {
+    const key = `export.bundle.uriPrefix.ph.${cfg.chain === "solana" ? "solana" : "evm"}`;
+    uri.setAttribute("data-i18n-placeholder", key);
+    uri.placeholder = t(key);
+  }
+  for (const id of ["x-uri-wrap", "x-anim-wrap"]) {
+    const wrap = $(id);
+    if (wrap) wrap.hidden = !cfg.storage;
+  }
+  if (!cfg.storage) {
+    // A stale prefix from another profile must not leak into Ordinals metadata.
+    if ($("x-uri-prefix")) $("x-uri-prefix").value = "";
+    if ($("x-anim-prefix")) $("x-anim-prefix").value = "";
+  }
+  const pin = $("x-pin-irys");
+  if (pin) pin.hidden = !cfg.pin;
+  if (!cfg.pin && $("x-pin-status")) $("x-pin-status").textContent = "";
+}
+
 function setupExport() {
   $("x-file")?.addEventListener("change", () => {
     updateJsonLink();
@@ -3803,6 +3845,7 @@ function setupExport() {
     if (prof === "ordinalsbot" && $("x-fee")) {
       $("x-fee").value = "0";
     }
+    applyProfileUi();
     updateMetadataPreview();
   });
   $("x-creator-address")?.addEventListener("input", updateMetadataPreview);
@@ -3814,8 +3857,8 @@ function setupExport() {
   $("x-fee")?.addEventListener("input", updateMetadataPreview);
   $("x-desc")?.addEventListener("input", updateMetadataPreview);
 
-  $("x-pin-pinata")?.addEventListener("click", async () => {
-    const btn = $("x-pin-pinata");
+  $("x-pin-irys")?.addEventListener("click", async () => {
+    const btn = $("x-pin-irys");
     const status = $("x-pin-status");
     const set = $("x-set")?.value;
     if (!set) {
@@ -3830,11 +3873,11 @@ function setupExport() {
         method: "POST",
         body: JSON.stringify({ dir: set, name }),
       });
-      if (data.ipfsUri && $("x-uri-prefix")) {
-        $("x-uri-prefix").value = data.ipfsUri;
+      if (data.arweaveUri && $("x-uri-prefix")) {
+        $("x-uri-prefix").value = data.arweaveUri;
       }
       if (status) {
-        status.textContent = t("export.bundle.pinned", { cid: data.ipfsHash });
+        status.textContent = t("export.bundle.pinned", { cid: data.arweaveId });
       }
       updateMetadataPreview();
     } catch (e) {
@@ -4162,6 +4205,7 @@ function setupExport() {
     updateReleaseHub();
   });
 
+  applyProfileUi();
   setTimeout(() => {
     updateMetadataPreview();
     updateReleaseHub();
