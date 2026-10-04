@@ -3521,7 +3521,7 @@ async function showStagePrice(stage, elementId, extra = {}) {
   const el = $(elementId);
   if (!el) return;
   const q = new URLSearchParams({ stage, ...Object.fromEntries(Object.entries(extra).map(([k, v]) => [k, String(v)])) });
-  if (stage === "archive" && extra.ipfs) q.set("ipfs", "1");
+  if (stage === "archive" && (extra.storage || extra.ipfs)) q.set("storage", "1");
   if (stage === "archive" && extra.zip === false) q.set("zip", "0");
   try {
     const data = await api(`/api/stages/quote?${q}`);
@@ -3853,6 +3853,9 @@ function syncNetwork(source) {
   builtNetworkKey = key;
 }
 
+/** null until /api/storage/status answered; false = the server has no IRYS_PRIVATE_KEY. */
+let irysKeyPresent = null;
+
 function applyProfileUi() {
   const prof = $("x-profile")?.value || "opensea";
   const cfg = PROFILE_UI[prof] || PROFILE_UI.opensea;
@@ -3894,8 +3897,10 @@ function applyProfileUi() {
     if ($("x-anim-prefix")) $("x-anim-prefix").value = "";
   }
   const pin = $("x-pin-irys");
-  if (pin) pin.hidden = !cfg.pin;
-  if (!cfg.pin && $("x-pin-status")) $("x-pin-status").textContent = "";
+  const noKey = cfg.pin && irysKeyPresent === false;
+  if (pin) pin.hidden = !cfg.pin || irysKeyPresent === false;
+  const pinStatus = $("x-pin-status");
+  if (pinStatus && (!cfg.pin || noKey)) pinStatus.textContent = noKey ? t("export.bundle.pinNoKey") : "";
 }
 
 function setupExport() {
@@ -3938,7 +3943,7 @@ function setupExport() {
         $("x-uri-prefix").value = data.arweaveUri;
       }
       if (status) {
-        status.textContent = t("export.bundle.pinned", { cid: data.arweaveId });
+        status.textContent = t("export.bundle.pinned", { id: data.arweaveId });
       }
       updateMetadataPreview();
     } catch (e) {
@@ -4267,6 +4272,12 @@ function setupExport() {
   });
 
   applyProfileUi();
+  api("/api/storage/status")
+    .then((st) => {
+      irysKeyPresent = Boolean(st?.irys?.present);
+      applyProfileUi();
+    })
+    .catch(() => {});
   setTimeout(() => {
     updateMetadataPreview();
     updateReleaseHub();

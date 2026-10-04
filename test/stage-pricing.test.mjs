@@ -27,10 +27,18 @@ test("credits are ceil((cost + margin) / rate) and defaults stay small", () => {
   assert.equal(archive.marginUsd, 0.03);
   assert.equal(archive.credits, 1);
   assert.match(archive.formula, /ceil/);
-  const ipfs = quoteStage("archive", { zip: false, ipfs: true }, env);
-  assert.equal(ipfs.costUsd, 0.05);
-  assert.equal(ipfs.marginUsd, 0.01);
-  assert.equal(ipfs.credits, 2);
+  const storage = quoteStage("archive", { zip: false, storage: true }, env);
+  assert.equal(storage.costUsd, 0.05);
+  assert.equal(storage.marginUsd, 0.01);
+  assert.equal(storage.credits, 2);
+  assert.match(storage.note, /Arweave/);
+  // legacy option and env names still work
+  const legacy = quoteStage("archive", { zip: false, ipfs: true }, { ...env, STAGE_IPFS_COST_USD: "0.2", STAGE_IPFS_MARGIN_USD: "0.04" });
+  assert.equal(legacy.costUsd, 0.2);
+  assert.equal(legacy.marginUsd, 0.04);
+  // new names win over the legacy ones
+  const both = quoteStage("archive", { zip: false, storage: true }, { ...env, STAGE_IPFS_COST_USD: "0.2", STAGE_STORAGE_COST_USD: "0.07" });
+  assert.equal(both.costUsd, 0.07);
   const deploy = quoteStage("deploy_kit", {}, env);
   assert.equal(deploy.credits, 2);
   const market = quoteStage("marketplace_kit", {}, env);

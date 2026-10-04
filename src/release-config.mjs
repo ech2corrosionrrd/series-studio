@@ -111,6 +111,21 @@ export function buildReleaseGuards(cfg) {
   return guards;
 }
 
+/**
+ * Core Candy Machine guard config, the `guardConfig` object of an `mplx cm create` config file
+ * (https://metaplex.com/docs/dev-tools/cli/cm). Prices are lamports, not SOL.
+ * The CLI has no command to change guards on an existing Core machine; that needs the SDK (`updateCandyGuard`),
+ * which replaces the whole guard set, so payment is always included here as well.
+ */
+export function coreGuardConfig(cfg) {
+  const g = buildReleaseGuards(cfg);
+  const lamports = Math.round(g.solPayment.value * 1e9);
+  const guardConfig = { solPayment: { lamports, destination: g.solPayment.destination } };
+  if (cfg.mint?.startDate) guardConfig.startDate = { date: new Date(cfg.mint.startDate).toISOString() };
+  if (g.mintLimit) guardConfig.mintLimit = { id: g.mintLimit.id, limit: g.mintLimit.limit };
+  return { guardConfig };
+}
+
 /** Sugar-format guard config (`sugar guard update --config …`). */
 export function guardUpdateConfig(cfg) {
   return {

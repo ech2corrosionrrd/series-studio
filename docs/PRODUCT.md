@@ -86,7 +86,7 @@ Series Lab допомагає людині створити NFT-колекцію
 |---|---|---|
 | `STAGE_USD_PER_CREDIT` | Долар у формулі кредитів етапу | 0.03 |
 | `STAGE_ARCHIVE_COST_USD` / `STAGE_ARCHIVE_MARGIN_USD` | Собівартість і маржа ZIP | 0 / 0.03 |
-| `STAGE_IPFS_COST_USD` / `STAGE_IPFS_MARGIN_USD` | Завантаження Arweave (Irys) | 0.05 / 0.01 |
+| `STAGE_STORAGE_COST_USD` / `STAGE_STORAGE_MARGIN_USD` | Завантаження в Arweave (Irys); старі `STAGE_IPFS_*` ще читаються як запасні | 0.05 / 0.01 |
 | `STAGE_DEPLOY_KIT_COST_USD` / `STAGE_DEPLOY_KIT_MARGIN_USD` | Набір деплою | 0 / 0.06 |
 | `STAGE_MARKET_KIT_COST_USD` / `STAGE_MARKET_KIT_MARGIN_USD` | Набір маркетплейсу | 0 / 0.06 |
 | `STAGE_CURATION_COST_USD` / `STAGE_CURATION_MARGIN_USD` | Евристичний відбір | 0 / 0 |

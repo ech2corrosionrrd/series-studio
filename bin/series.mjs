@@ -3,6 +3,7 @@
  * Series Lab CLI — validate / build / diff-seed / render.
  * Fast deterministic operations + optional headless render pipeline.
  */
+import "../src/require-node.mjs";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,7 +38,7 @@ import {
 } from "../src/index.mjs";
 import { loadKeys } from "../src/keys.mjs";
 import { uploadBundle, planUpload, loadKeypairFile } from "../src/arweave-upload.mjs";
-import { releaseFromArchive, validateRelease, guardUpdateConfig } from "../src/release-config.mjs";
+import { releaseFromArchive, validateRelease, guardUpdateConfig, coreGuardConfig } from "../src/release-config.mjs";
 import { verifyRelease } from "../src/candy-verify.mjs";
 import { ENGINES, TXT2IMG, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
@@ -491,8 +492,20 @@ function cmdGuards(releasePath, opts = {}) {
     for (const e of errors) console.error(`[ERROR] ${e}`);
     process.exit(1);
   }
-  const conf = guardUpdateConfig(cfg);
   const out = resolve(opts.out || "guard-config.json");
+  if (cfg.standard === "core") {
+    const conf = coreGuardConfig(cfg);
+    writeJsonAtomic(out, conf);
+    console.log(`Core guard config written: ${out}`);
+    console.log(JSON.stringify(conf.guardConfig));
+    console.log("Format: the guardConfig object of an `mplx cm create` config (prices in lamports).");
+    console.log("mplx has no command to change guards on an existing Core Candy Machine. Use it when creating the machine,");
+    console.log("or apply the same set with the SDK (updateCandyGuard), which REPLACES all guards: keep the payment rule.");
+    if (conf.guardConfig.startDate) console.log("Note: the Metaplex docs show the start date only for the SDK (ISO 8601); run `mplx cm validate` to confirm your mplx version accepts it in JSON.");
+    console.log("Check on chain afterwards: series verify release.json");
+    return;
+  }
+  const conf = guardUpdateConfig(cfg);
   writeJsonAtomic(out, conf);
   console.log(`Guard config written: ${out}`);
   console.log(JSON.stringify(conf.guards.default));
