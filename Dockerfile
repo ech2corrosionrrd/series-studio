@@ -21,7 +21,7 @@ COPY templates ./templates
 COPY libraries ./libraries
 COPY scripts/backup-db.mjs ./scripts/backup-db.mjs
 # server/index.mjs imports these at start (creator docs pages); test/dockerfile.test.mjs guards the list.
-COPY scripts/site-html.mjs scripts/site-pages.mjs ./scripts/
+COPY scripts/site-html.mjs scripts/site-pages.mjs scripts/legal-pages.mjs scripts/inline-md.mjs ./scripts/
 
 # Public mode: sign-in required, per-wallet data, credits. Data lives on a volume.
 ENV SERIES_MODE=public \

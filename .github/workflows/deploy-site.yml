@@ -16,6 +16,10 @@ on:
       - "scripts/build-site.mjs"
       - "scripts/site-pages.mjs"
       - "server/ui/locales/**"
+      - "scripts/site-*.mjs"
+      - "scripts/legal-pages.mjs"
+      - "scripts/inline-md.mjs"
+      - "docs/legal/published/**"
       - "package.json"
       - ".github/workflows/deploy-site.yml"
   workflow_dispatch:
