@@ -92,7 +92,17 @@ docker build -t series-lab:local .
 
 Зразок — `deploy/series-lab/docker-compose.yml`. Він **не** монтує `/opt/sugar` (сейф вимкнений). `SERIES_ALLOWED_HOSTS`, `AUTH_DOMAIN` і `AUTH_URI` у зразку типові для `next.w3ir.io` і перекривають ті самі рядки у файлі секретів: міняти ім'я треба в усіх трьох. Том даних — каталог поруч із файлом (`data-next` або `SERIES_LAB_DATA`), власник **uid 1000**. Перевірка здоров'я всередині контейнера — `node`, не `wget`: в образі Alpine немає GNU wget.
 
-`deploy/series-lab/phase3.sh` збирає той самий образ на сервері, пише `.env.series-lab` (домен `next.w3ir.io`, оплата й Telegram вимкнені, стеля $5, вхід за списком) і додає блок Caddy з `Caddyfile.staging`. Ліміт пам'яті контейнера staging — 512 МБ; під генерацію варто глянути `docker stats` і підняти ліміт вручну, якщо процес упирається. Скрипт запускається лише з сервера і лише за рішенням власника (`upload.sh` з ПК). Тут він не запускався.
+`deploy/series-lab/phase3.sh` збирає той самий образ на сервері, пише `.env.series-lab` (домен `next.w3ir.io`, оплата й Telegram вимкнені, стеля $5, вхід за списком) і додає блок Caddy з `Caddyfile.staging`. **Публічний режим (рішення власника 04.10.2026).** За замовчуванням `phase3.sh` лишає закритий staging. Відкрити сервіс можна прапорцями, які `upload.sh` передає на сервер:
+
+| Прапорець | Що робить |
+|---|---|
+| `OPEN_ACCESS=1` | не пише `SERIES_ALLOWED_WALLETS`: увійти може будь-який гаманець. Потрібен `ADMIN_WALLETS` у `lab.env`, інакше скрипт зупиняється. Вітальні кредити видає правило `WELCOME_*` (з перевіркою балансу гаманця, потрібен RPC) |
+| `ENABLE_PAYMENTS=1` | лишає `SOLANA_PAY_RECIPIENT` (публічна адреса USDC) і RPC з `lab.env`; без адреси скрипт зупиняється. Попереджає, якщо лишився `SOLANA_PAY_TEST_PACK=1` |
+| `ENABLE_TELEGRAM=1` | лишає `SERIES_TELEGRAM_*` з `lab.env` |
+
+Стеля `SERIES_SPEND_CAP_USD` (типово 5) діє завжди; для відкритого доступу це головний захист ключів оператора, піднімайте її свідомо.
+
+Ліміт пам'яті контейнера staging — 512 МБ; під генерацію варто глянути `docker stats` і підняти ліміт вручну, якщо процес упирається. Скрипт запускається лише з сервера і лише за рішенням власника (`upload.sh` з ПК). Тут він не запускався.
 
 Перед відкриттям: бекап `deploy/series-lab/backup.sh` (локально те саме — `npm run backup`). Offsite вмикає `deploy/series-lab/setup-offsite.sh` (S3-сховище, шифрування, перевірка копії назад): він сам записує `BACKUP_RCLONE_REMOTE` і `BACKUP_PASSPHRASE` у `backup.env`. Погодинні копії й перевірки відновлення описані в [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md#бекап).
 
