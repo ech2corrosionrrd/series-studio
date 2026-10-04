@@ -1,6 +1,6 @@
 # Документація Series Lab
 
-Стан: **v1.6.1** ([CHANGELOG](../CHANGELOG.md)) — запити #1–#9: перевірений архів, Core Candy Machine, маркет, порадник, огляд якості ([PRODUCT.md](./PRODUCT.md), [RECOMMENDATIONS.md](./RECOMMENDATIONS.md), [QUALITY-REVIEW.md](./QUALITY-REVIEW.md)). Ядро майстерні (хвилі 1–25) закрито раніше.
+Стан: **v1.7.0** ([CHANGELOG](../CHANGELOG.md)) — Arweave (Irys), шлях випуску upload → guards → verify (Core і v3), підказки й мережа за вибором; раніше (v1.6.1) запити #1–#9: перевірений архів, Core Candy Machine, маркет, порадник, огляд якості ([PRODUCT.md](./PRODUCT.md), [RECOMMENDATIONS.md](./RECOMMENDATIONS.md), [QUALITY-REVIEW.md](./QUALITY-REVIEW.md)). Ядро майстерні (хвилі 1–25) закрито раніше.
 
 Запуск: `start-lab.bat` або `npm start` → http://127.0.0.1:5344/studio/ (у `public` — спочатку `/login`).
 
