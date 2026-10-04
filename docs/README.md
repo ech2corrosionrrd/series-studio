@@ -39,6 +39,7 @@
 | [DEPLOY-PLATFORM.md](./DEPLOY-PLATFORM.md) | VPS / staging / cutover |
 | [DEPLOY.md](./DEPLOY.md) | Сайт studio.w3ir.io (Cloudflare Pages): статичний лендінг, посібник і сторінки для автора, без API майстерні |
 | [HOSTING.md](./HOSTING.md) | Перенос процесу майстерні на хост: що задати, що лишається на ПК, що сайт Pages не чіпати |
+| [LEGAL-DRAFT.md](./LEGAL-DRAFT.md) · [LEGAL-DRAFT.en.md](./LEGAL-DRAFT.en.md) | **Чернетка** Умов користування, Політики конфіденційності й Політики повернення (uk / en) для юриста; з переліком питань і технічних прогалин. Не опубліковано, не юридична порада |
 | [ROADMAP.md](./ROADMAP.md) | Хвилі 1–25 ✅ · стабілізація ▶️ · рефакторинг/власний домен ⏸ |
 | [SYNTHESIS.md](./SYNTHESIS.md) · [FROM-PROMT.md](./FROM-PROMT.md) | Донори |
 | [BRAND.md](./BRAND.md) · [BOUNDARIES.md](./BOUNDARIES.md) | Бренд і межі |
