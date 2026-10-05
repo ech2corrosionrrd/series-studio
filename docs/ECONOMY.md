@@ -112,4 +112,4 @@ revenue
 - `.env.example` — блок «Економіка»
 - `src/platform/margin.mjs` · `billing.mjs`
 - `test/margin.test.mjs`
-- [FROM-PROMT.md](./FROM-PROMT.md) · [HOSTING.md](./HOSTING.md) · [GUIDE.md](./GUIDE.md)
+- [HOSTING.md](./HOSTING.md) · [GUIDE.md](./GUIDE.md)

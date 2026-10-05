@@ -343,7 +343,7 @@ export default {
     "release.hub.configBtn.tip": "Download a deploy config JSON for the selected profile.",
     "admin.tab.res.tip": "API keys, provider balances and Trash.",
     "res.providers.probe.tip": "Ping OpenAI / Stability / Replicate / Irys / RPC and show Stability balance.",
-    "admin.tab.econ.tip": "Margin, ARPU, packs and credit tariff (Promt model + live ledger).",
+    "admin.tab.econ.tip": "Margin, ARPU, packs and credit tariff (model + live ledger).",
     "admin.tab.stats.tip": "Today’s spend and each engine’s failure share.",
     "admin.tab.errors.tip": "Recent generation failures and connection checks.",
     "admin.engines.test.tip": "Ping every configured engine: who answers and how fast.",

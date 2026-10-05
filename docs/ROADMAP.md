@@ -59,7 +59,7 @@
 | **Рефакторинг коду** | ⏸ відкладено | після стабілізації шляху / перед власним доменом — не зараз |
 | **Хостинг студії / власний домен** | ✅ хост, ⏸ окреме ім'я | [HOSTING.md](./HOSTING.md): той самий `server/index.mjs`, не Pages. [studio.w3ir.io](https://studio.w3ir.io) лишається статичним лендінгом; майстерня на [lab.w3ir.io](https://lab.w3ir.io) (v1.8.0). Остаточний домен — рішення власника |
 
-Деталі запозичень з Промт — [FROM-PROMT.md](./FROM-PROMT.md). Етапи — [STAGES.md](./STAGES.md). API — [API.md](./API.md). Наступний план реалізації (сила референсу, Core Candy Machine, маркетплейси, перевірка архіву) — [RECOMMENDATIONS.md](./RECOMMENDATIONS.md). Хвилі нижче він не скасовує.
+Етапи — [STAGES.md](./STAGES.md). API — [API.md](./API.md). Наступний план реалізації (сила референсу, Core Candy Machine, маркетплейси, перевірка архіву) — [RECOMMENDATIONS.md](./RECOMMENDATIONS.md). Хвилі нижче він не скасовує.
 
 ## Хвиля 1 (реалізовано)
 

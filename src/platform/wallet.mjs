@@ -1,8 +1,6 @@
 /**
- * Wallet addresses, sign-in messages and signature verification.
- * Port of Промт `services/wallet_auth.py` + the SIWE part of `auth_gateway.py`.
- * Message texts are byte-identical: a user mid-login during the switch, and the
- * existing login page, sign exactly what the server rebuilds.
+ * Wallet addresses, EIP-4361 (SIWE) sign-in messages and signature verification.
+ * Message texts are fixed: the login page signs exactly what the server rebuilds.
  */
 import { createPublicKey, randomBytes, verify as cryptoVerify } from "node:crypto";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
@@ -38,7 +36,7 @@ export function resolveSolanaRpcUrl(env = process.env, { pay = false } = {}) {
 export function solanaRpcHeaders(url, env = process.env) {
   const headers = { "Content-Type": "application/json" };
   if (String(url || "").includes("alchemy.com")) {
-    // Whitelist in Alchemy dashboard currently includes mint.w3ir.io (Promt mint).
+    // Whitelist in Alchemy dashboard currently includes mint.w3ir.io (mint site).
     const origin = String(env.GENESIS_RPC_ORIGIN || "https://mint.w3ir.io").trim();
     if (origin) headers.Origin = origin;
   }

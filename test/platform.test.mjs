@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import JSZip from "jszip";
 
-const parity = JSON.parse(readFileSync(new URL("./fixtures/promt-parity.json", import.meta.url), "utf8"));
+const parity = JSON.parse(readFileSync(new URL("./fixtures/compat-snapshot.json", import.meta.url), "utf8"));
 const sigs = JSON.parse(readFileSync(new URL("./fixtures/platform-signatures.json", import.meta.url), "utf8"));
 
 const dir = mkdtempSync(join(tmpdir(), "series-platform-"));
