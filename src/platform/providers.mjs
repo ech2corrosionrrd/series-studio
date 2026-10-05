@@ -1,6 +1,6 @@
 /**
  * External provider status: key presence, optional live probe, Stability balance.
- * Port of Промт `services/provider_status.py` (Lab engines + RPC).
+ * Covers Lab engines and RPC.
  *
  * Direct balance via API key: Stability only. Others → dashboard URL (postpaid).
  */

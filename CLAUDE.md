@@ -19,7 +19,7 @@
 | Новий файл у `docs/` | рядок в індексі `docs/README.md` |
 | Версію в `package.json` | рядок «Стан: vX.Y.Z» у `docs/README.md` |
 
-Видалений постачальник (Pinata) не має лишатись у живих документах і коді. Історичні згадки дозволені лише в `CHANGELOG.md`, `docs/ROADMAP.md`, `docs/RECOMMENDATIONS.md`, `docs/FROM-PROMT.md`, `docs/QUALITY-REVIEW.md`.
+Видалений постачальник (Pinata) не має лишатись у живих документах і коді. Історичні згадки дозволені лише в `CHANGELOG.md`, `docs/ROADMAP.md`, `docs/RECOMMENDATIONS.md`, `docs/QUALITY-REVIEW.md`.
 
 ### Як це перевіряється
 

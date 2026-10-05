@@ -1,8 +1,8 @@
 /**
  * Credits ledger, welcome grant, payments and referrals.
- * Port of Промт `services/payment_service.py` (money path) over the same tables.
+ * The money path.
  *
- * Invariants kept from Промт:
+ * Invariants:
  *  - every balance change is written together with a `transactions` row in ONE
  *    SQLite transaction;
  *  - a payment is credited exactly once (`payments.tx_id` PRIMARY KEY);
@@ -27,7 +27,7 @@ export const PACKAGES = {
 };
 
 // ── Pricing ──────────────────────────────────────────────────────────────────
-// Промт tariff by engine family: [draft, final, reference, reference+final].
+// Tariff by engine family: [draft, final, reference, reference+final].
 const FAMILY_CREDITS = {
   openai: [4, 8, 6, 10],
   stability: [1, 2, 2, 3],
@@ -47,7 +47,7 @@ export function localGpuCreditCost(env = process.env) {
 }
 
 /**
- * Credits for ONE image. Промт table, with a margin floor: at the cheapest pack
+ * Credits for ONE image. Tariff table, with a margin floor: at the cheapest pack
  * price ($0.03/credit) an image must still cover 1.5 × provider cost.
  * Override per engine with env ENGINE_CREDIT_COSTS='{"kontext":3}'.
  * Local GPU (comfyui/a1111): LOCAL_GPU_CREDIT_COST (default 1) — support fee for Lab.
@@ -141,7 +141,7 @@ export function ensureUser(db, wallet) {
 export async function completeWalletSignIn(wallet, { db = openDb(), balanceCheck = welcomeBalanceOk } = {}) {
   wallet = normalizeWallet(wallet);
   const existing = db.prepare("SELECT 1 FROM transactions WHERE wallet_address = ? AND kind = 'welcome' LIMIT 1").get(wallet);
-  // The RPC balance check happens only while no grant exists (as in Промт) and
+  // The RPC balance check happens only while no grant exists and
   // outside the SQLite transaction, so a slow RPC never holds the write lock.
   const check = existing ? { ok: false } : await balanceCheck(wallet);
   const now = nowIso();
@@ -293,7 +293,7 @@ export function checkGenerationRate(wallet, db = openDb()) {
 // ── Referrals ────────────────────────────────────────────────────────────────
 export const referralBonusCredits = () => envInt("REFERRAL_BONUS_CREDITS", 50);
 
-/** Deterministic opaque code (HMAC, base32, 10 chars) — same algorithm as Промт. */
+/** Deterministic opaque code (HMAC, base32, 10 chars). */
 export function referralCodeFor(wallet, db = openDb()) {
   const secret = String(process.env.AUTH_SESSION_SECRET || "").trim();
   if (!secret) return "";

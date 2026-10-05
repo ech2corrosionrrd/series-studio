@@ -2,7 +2,7 @@
 
 | | Gremlin Family (GFAM) | **Series Lab** (ця папка) |
 |--|----------------------|---------------------------|
-| Мета | Випустити / допиляти NFT-колекцію GFAM | Двигун серій (Промт × health workshop) |
+| Мета | Випустити / допиляти NFT-колекцію GFAM | Двигун серій |
 | Репо / папка | `gremlin-nft` | `C:\Gremlins\series-studio` (`series-lab`) |
 | Бренд | Gremlin Family / GFAM | Series Lab by W3IR · `studio.w3ir.io` |
 | Base | Father/Mother канон GFAM | **Базова картинка(и) серії** (будь-який реф) |
@@ -10,6 +10,6 @@
 | Ончейн / ME | Так, у плані мінту GFAM | Перевірений архів + набір деплою й маркетплейсу. Людина деплоїть і виставляє сама. Lab не тримає ключі й кошти. Бачення: [PRODUCT.md](./PRODUCT.md) |
 | Білінг | — | Леджер кредитів працює разом із входом (`SERIES_MODE=public`). Хостинг — план розміщення в [HOSTING.md](./HOSTING.md) |
 
-Series Lab **надихається** gremlin-nft і Промт, але **не** є гілкою мінту health.w3ir.io і не тягне GFAM lore.
+Series Lab **надихається** gremlin-nft, але **не** є гілкою мінту health.w3ir.io і не тягне GFAM lore.
 
 Дроп #2 (сейф, який сам розсилає NFT) до цього продукту не входить і лишається вимкненим — [PRODUCT.md](./PRODUCT.md), [STANDALONE.md](./STANDALONE.md).

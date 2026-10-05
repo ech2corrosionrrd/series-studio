@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import JSZip from "jszip";
 
-const parity = JSON.parse(readFileSync(new URL("./fixtures/promt-parity.json", import.meta.url), "utf8"));
+const parity = JSON.parse(readFileSync(new URL("./fixtures/compat-snapshot.json", import.meta.url), "utf8"));
 const sigs = JSON.parse(readFileSync(new URL("./fixtures/platform-signatures.json", import.meta.url), "utf8"));
 
 const dir = mkdtempSync(join(tmpdir(), "series-platform-"));
@@ -34,7 +34,7 @@ after(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe("parity with Промт (Python reference outputs)", () => {
+describe("compatibility snapshot (reference outputs)", () => {
   test("session tokens are byte-identical", () => {
     for (const v of parity.tokens) {
       assert.equal(session.issueSessionToken(v.addr, { secret: "parity-secret", now: v.now }), v.token);

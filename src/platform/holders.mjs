@@ -1,7 +1,6 @@
 /**
  * Genesis NFT holders: on-chain ownership count, holder bonus, mint-list sync.
- * Port of Промт `services/holder_rewards.py`. Mint list: `<data>/genesis_mints.json`
- * (same file format — copy Промт's file on migration).
+ * Mint list: `<data>/genesis_mints.json`.
  */
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

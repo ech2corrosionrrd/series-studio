@@ -1,6 +1,5 @@
 /**
  * In-memory sliding-window rate limiter (single process) and client IP resolution.
- * Port of Промт `services/rate_limit.py` + `api_server._client_ip`.
  */
 const hits = new Map();
 
