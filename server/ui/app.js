@@ -2585,6 +2585,11 @@ const HELP_CLI = [
   ["mint", "mint release.json --keypair minter.json"],
   ["reveal", "reveal <bundle-dir> --keypair creator.json"],
   ["compose", "compose out/demo-archive.json --layers layers --base input/primary.png"],
+  ["diffSeed", "diff-seed presets/demo-series.json"],
+  ["upload", "upload <bundle-dir> --keypair deployer.json"],
+  ["releaseInit", "release-init out/demo-archive.json -o release.json"],
+  ["verify", "verify release.json"],
+  ["notify", "notify \"Done\""],
 ];
 const HELP_DOC_PAGES = [
   ["guide", "help.doc.guide.title", "help.doc.guide"],
