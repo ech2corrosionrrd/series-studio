@@ -29,7 +29,6 @@
     "backup": "node scripts/backup.mjs",
     "backup:pull": "node scripts/pull-backup.mjs",
     "build:site": "node scripts/build-site.mjs",
-    "contract-check": "node scripts/contract-check.mjs",
     "audit:api": "node scripts/audit-api.mjs",
     "audit:ui": "node scripts/audit-ui.mjs",
     "audit:i18n": "node scripts/audit-i18n.mjs",
