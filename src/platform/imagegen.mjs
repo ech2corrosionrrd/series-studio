@@ -1,8 +1,7 @@
 /**
  * Image generation for the external APIs (Passport `/gremlin/generate`, Telegram
- * Mini-App). Reproduces Промт `services/ai_service.py` calls exactly — same
- * providers, models, parameters, retries — so partners see identical images,
- * prices and engine labels after the switch.
+ * Mini-App): fixed providers, models, parameters and retries, so partners get
+ * stable images, prices and engine labels.
  *
  *   ENGINE_FLUX      Replicate flux-schnell (txt2img) / flux-kontext-dev (reference)
  *   ENGINE_STABILITY Stability Core (txt2img) / SD3 sd3.5-medium (image-to-image)
@@ -166,7 +165,7 @@ const isRetryable = (e) => {
 };
 
 /**
- * One image with Промт's retry policy. `reference`: {bytes, mime, strength}.
+ * One image with the retry policy. `reference`: {bytes, mime, strength}.
  * → PNG bytes; throws ImageGenError.
  */
 export async function generateImage(engine, prompt, { width = 1024, height = 1024, seed = null, reference = null, env = process.env, fetchImpl = fetch } = {}) {

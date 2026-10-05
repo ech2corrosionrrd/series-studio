@@ -349,7 +349,7 @@ function logRender(entry) {
 /** Runs one paid engine call, logging success/failure to render-log.jsonl. */
 // ── Credits (public mode) ──────────────────────────────────────────────────
 // Every paid engine call is reserved in credits BEFORE it runs and refunded if
-// it fails — the same money path as Промт (debit note "image generation",
+// it fails — the money path (debit note "image generation",
 // refund "refund: generation failed", which Passport quests count).
 const LOCAL_ONLY_ENGINES = new Set(["comfyui", "a1111"]);
 const visionCreditCost = () => Math.max(0, Number.parseInt(process.env.VISION_CREDIT_COST || "1", 10) || 0);
@@ -543,7 +543,7 @@ function loadSeriesContext(archiveName) {
   return { archive, archiveFile: file, preset };
 }
 
-/** Waits (max ~2 min) for a free per-minute slot — batch mode, like Промт wait_for_generation_rate. */
+/** Waits (max ~2 min) for a free per-minute slot — batch mode. */
 async function waitForRateSlot(maxMs = 120_000) {
   if (!PUBLIC_MODE) return;
   const wallet = currentWallet();

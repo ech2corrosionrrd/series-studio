@@ -41,10 +41,9 @@
 | [HOSTING.md](./HOSTING.md) | Перенос процесу майстерні на хост: що задати, що лишається на ПК, що сайт Pages не чіпати |
 | [LEGAL-DRAFT.md](./LEGAL-DRAFT.md) · [LEGAL-DRAFT.en.md](./LEGAL-DRAFT.en.md) | **Чернетка** Умов користування, Політики конфіденційності й Політики повернення (uk / en) для юриста; з переліком питань і технічних прогалин. Не опубліковано, не юридична порада |
 | [ROADMAP.md](./ROADMAP.md) | Хвилі 1–25 ✅ · стабілізація ▶️ · рефакторинг/власний домен ⏸ |
-| [SYNTHESIS.md](./SYNTHESIS.md) | Синтез ідей |
 | [BRAND.md](./BRAND.md) · [BOUNDARIES.md](./BOUNDARIES.md) | Бренд і межі |
 | [DESIGN-AUDIT.md](./DESIGN-AUDIT.md) | Аудит дизайну інтерфейсу |
-| [CONTEXT.md](./CONTEXT.md) · [IDEAS.md](./IDEAS.md) · [PLAN.md](./PLAN.md) · [LAB.md](./LAB.md) | Історичні нотатки |
+| [IDEAS.md](./IDEAS.md) · [PLAN.md](./PLAN.md) · [LAB.md](./LAB.md) | Історичні нотатки |
 
 ---
 

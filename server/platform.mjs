@@ -1,8 +1,7 @@
 /**
- * Public platform HTTP layer — the routes Промт's FastAPI serves today, with the
- * same paths, status codes and JSON shapes ({"detail": …} errors), so Passport,
- * the Telegram Mini-App gateway and existing links keep working unchanged
- * when w3ir.io / ai. / gen. / pay. are switched to Series Lab.
+ * Public platform HTTP layer — the platform routes, with stable
+ * paths, status codes and JSON shapes ({"detail": …} errors) for Passport,
+ * the Telegram Mini-App gateway and existing links.
  *
  * `handlePlatform(req, res, url)` returns true when it answered the request.
  */
@@ -130,14 +129,14 @@ function requireTmaAuth(req) {
     requireB2bClient(req);
     return;
   }
-  if (!tmaKey && !b2b) return; // dev fallback, as in Промт
+  if (!tmaKey && !b2b) return; // dev fallback
   throw new HttpError(401, "Invalid or missing X-TMA-Key or X-W3IR-B2B-Key");
 }
 
 function loginPage() {
   const p = siteFile("login.html");
   if (!existsSync(p)) return null;
-  // Промт redirected to its Streamlit app; Series Lab opens the studio on this origin.
+  // Series Lab opens the studio on this origin.
   return readFileSync(p, "utf8").replace("const APP_URL = 'https://ai.w3ir.io';", `const APP_URL = ${JSON.stringify(process.env.AUTH_APP_URL || "/studio/")};`);
 }
 
@@ -171,7 +170,7 @@ async function routes(req, res, url) {
       return true;
     }
     if (path === "/legal" || path === "/legal/en") {
-      // The old /legal pages were Промт's texts. Series Lab's own Terms and Privacy live on the public site.
+      // Series Lab's own Terms and Privacy live on the public site.
       const base = (process.env.LEGAL_BASE_URL || "https://studio.w3ir.io").replace(/\/$/, "");
       res.writeHead(302, { Location: `${base}${path === "/legal/en" ? "/en/terms/" : "/terms/"}`, "Cache-Control": "no-cache" });
       res.end();
@@ -248,8 +247,7 @@ async function routes(req, res, url) {
       throw new HttpError(403, "Access by invitation only on this server");
     }
     const token = issueSessionToken(address);
-    // Промт gave the welcome grant on the first Streamlit page load; here it
-    // happens right after the verified signature (same rules, same ledger).
+    // The welcome grant happens right after the verified signature.
     const wallet = normalizeWallet(address);
     const signIn = await completeWalletSignIn(wallet);
     const ref = String(body.ref || "").trim();

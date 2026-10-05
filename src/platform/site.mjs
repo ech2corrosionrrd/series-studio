@@ -1,8 +1,7 @@
 /**
  * Public, no-login pages: shareable collections `/c/<slug>`, the landing demo
- * gallery, legal documents. Ports of Промт `services/public_gallery.py` and
- * `services/legal_pages.py` (same file layout `data/public/<slug>/manifest.json
- * + img/<n>.<ext>`, same HTML), so already shared links keep working.
+ * gallery, legal documents. File layout: `data/public/<slug>/manifest.json`
+ * + `img/<n>.<ext>`.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
