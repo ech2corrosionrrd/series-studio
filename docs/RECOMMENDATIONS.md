@@ -526,6 +526,10 @@
 - https://blog.remilia.org/milady-maker/
 - https://replicate.com/docs/reference/http
 
+## Відома вразливість залежності (05.10.2026)
+
+`npm audit --omit=dev` показує high для `bigint-buffer@1.1.5` (переповнення буфера в `toBigIntLE()`, GHSA-3gc7-fjrx-p6mg), виправлення немає. Шлях: `@solana/spl-token` → `@solana/buffer-layout-utils` → `bigint-buffer` (`@irys/upload-solana` теж тягне його). Код репозиторію `toBigIntLE` не викликає (`grep` по `src`, `server`, `bin`, `scripts` порожній), вхідні дані користувачів до цієї функції не доходять: Solana-операції йдуть у CLI на ПК. Ризик для сервера прийнято. Раз на місяць запускати `npm audit` і оновлювати `@irys/*` та `@solana/spl-token`, щойно вийде версія без `bigint-buffer`.
+
 ## Що не вдалося перевірити
 
 - https://howrare.is/faq — HTTP 403 з цього середовища. Формулу «сума 1/rarity% + бали за кількість рис» не перечитували. У R12 вона не є специфікацією.
