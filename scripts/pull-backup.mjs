@@ -2,7 +2,7 @@
 /**
  * Offsite copy of the ledger WITHOUT cloud keys: run on the operator's PC, it pulls the
  * newest hourly snapshot from the VPS over SSH, proves it opens (integrity_check, core
- * tables) and keeps the last N copies. Same idea as Promt's pull_prod_backup.py.
+ * tables) and keeps the last N copies.
  *
  *   npm run backup:pull
  *   node scripts/pull-backup.mjs --host root@HOST_IP --remote /opt/series-lab/backups \

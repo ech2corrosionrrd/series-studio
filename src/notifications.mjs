@@ -6,7 +6,7 @@
 export const PROJECT_TG_NAME = "Series Lab";
 
 /**
- * Prefer Lab-specific Telegram credentials so Promt's bot is never implied.
+ * Prefer Lab-specific Telegram credentials so no other project's bot is implied.
  * SERIES_TELEGRAM_* → TELEGRAM_* → legacy aliases.
  */
 export function getTelegramConfig(env = process.env) {

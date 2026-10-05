@@ -1,7 +1,6 @@
 /**
  * Drop #2 vault: catalog index → mint, guards before a transfer, and the
  * fulfillment runner that calls Sugar's `scripts/transfer-nft.mjs`.
- * Port of Промт `services/vault_registry.py` + `api_server._run_fulfillment`.
  * Fail-closed everywhere: a doubtful catalog or RPC answer means NO transfer.
  */
 import { spawn } from "node:child_process";
@@ -85,8 +84,8 @@ export async function vaultTokenMints(rpcUrl, vaultAddress, { fetchImpl = fetch,
   }
   if (res.status !== 200) throw new VaultError(`vault RPC returned HTTP ${res.status}`);
   const data = await res.json();
-  // Mirrors Промт exactly (fail-closed): only a bare list is accepted. NOTE: the
-  // standard getTokenAccountsByOwner answer is {context, value: [...]}, so Промт's
+  // Fail-closed: only a bare list is accepted. NOTE: the
+  // standard getTokenAccountsByOwner answer is {context, value: [...]}, so this
   // check would reject every real RPC reply (latent: the vault is not configured in
   // production as of 2026-09-24) — see docs/DEPLOY-PLATFORM.md.
   // Accepting `result.value` here would silently ENABLE vault transfers; that is
@@ -135,7 +134,7 @@ export async function runFulfillment(txId, wallet, kind, detail, { log = console
   }
 }
 
-/** Background retry of stale reserved/failed transfers (Промт _fulfillment_reconcile_loop). */
+/** Background retry of stale reserved/failed transfers . */
 export async function reconcileFulfillments({ staleSeconds = Number(process.env.FULFILLMENT_STALE_SECONDS || 300), maxAttempts = Number(process.env.FULFILLMENT_MAX_ATTEMPTS || 5), log = console } = {}) {
   for (const row of pendingFulfillments(staleSeconds, maxAttempts)) {
     const autoRetry = row.status === "failed" || row.kind === "transfer" || process.env.FULFILLMENT_AUTORETRY_RESERVED_MINT === "1";

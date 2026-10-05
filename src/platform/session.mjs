@@ -1,6 +1,6 @@
 /**
  * Sign-in sessions: one-time nonces + HMAC session token.
- * Port of Промт `services/auth_gateway.py`. Token format is byte-identical
+ * Token format:
  * (base64url(sorted compact JSON) + "." + base64url(HMAC-SHA256)).
  * Standalone Lab: use AUTH_SESSION_SECRET from this project's .env.
  */
@@ -50,7 +50,7 @@ export function verifySessionToken(token, { secret, now } = {}) {
   return typeof payload.addr === "string" && payload.addr ? payload.addr : null;
 }
 
-/** In-memory one-time nonce store (single process), same contract as Промт NonceStore. */
+/** In-memory one-time nonce store (single process). */
 export class NonceStore {
   constructor(ttl = NONCE_TTL_SECONDS) {
     this.ttl = ttl;

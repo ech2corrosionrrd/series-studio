@@ -55,7 +55,7 @@ if (!read("CHANGELOG.md").includes("## [Unreleased]")) fail("CHANGELOG.md has no
 
 // 6. removed provider
 const LIVE = ["README.md", ".env.example", "bin/series.mjs", ...docFiles.map((f) => `docs/${f}`)];
-const HISTORY = new Set(["docs/ROADMAP.md", "docs/RECOMMENDATIONS.md", "docs/FROM-PROMT.md", "docs/QUALITY-REVIEW.md"]);
+const HISTORY = new Set(["docs/ROADMAP.md", "docs/RECOMMENDATIONS.md", "docs/QUALITY-REVIEW.md"]);
 for (const f of LIVE) {
   if (HISTORY.has(f)) continue;
   if (/pinata(?!Config)/i.test(read(f))) fail(`${f} still names Pinata (removed from the project)`);
