@@ -1,12 +1,9 @@
-/**
- * Funnel metrics and per-wallet activity. Port of Промт `services/stats.py`
- * (`wallet_activity`, `funnel`, `overview`) — the numbers `ПЛАН_ВИХОДУ.md` measures success by.
- */
+/** Funnel metrics and per-wallet activity (`walletActivity`, `funnel`, `overview`), computed from this service's own users.db. */
 import { DEBIT_NOTE, FAILURE_NOTE, normalizeWallet } from "./billing.mjs";
 import { nowIso, openDb } from "./db.mjs";
 import { scopeSql } from "./ops.mjs";
 
-/** Site-wide KPIs over users.db — port of Промт `stats.overview`. */
+/** Site-wide KPIs over users.db. */
 export function overview(db = openDb()) {
   const usersTotal = Number(db.prepare("SELECT COUNT(*) AS n FROM users").get().n);
   const verified = Number(db.prepare("SELECT COUNT(*) AS n FROM users WHERE verified_at IS NOT NULL").get().n);
@@ -61,7 +58,7 @@ export function walletActivity(wallet, day = null, db = openDb()) {
   else {
     d = String(d).trim();
     const t = Date.parse(`${d}T00:00:00Z`);
-    // JS rolls 2026-02-30 over to March; Python (and Promt) rejects it — so do we.
+    // JS rolls 2026-02-30 over to March; strict calendar dates are required, so we reject it.
     if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Number.isNaN(t) || new Date(t).toISOString().slice(0, 10) !== d) {
       throw new Error("invalid date");
     }
