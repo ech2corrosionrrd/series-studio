@@ -158,7 +158,11 @@ test("the running studio serves creator docs on loopback without a deploy", asyn
       }
     }
   } finally {
-    for (const srv of servers) srv.child.kill();
-    rmSync(dir, { recursive: true, force: true });
+    await Promise.all(servers.map((srv) => new Promise((resolve) => {
+      if (srv.child.exitCode !== null || srv.child.signalCode) return resolve();
+      srv.child.once("exit", resolve);
+      srv.child.kill();
+    })));
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
