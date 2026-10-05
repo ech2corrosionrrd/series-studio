@@ -11,7 +11,7 @@ const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith("--") ? [...acc, [a.slice(2), all[i + 1]]] : acc), []),
 );
 if (!args.old || !args.new) {
-  console.error("usage: contract-check.mjs --old <promt base url> --new <series lab base url> [--gremlin-key K] [--tma-key K] [--wallet W]");
+  console.error("usage: contract-check.mjs --old <old base url> --new <series lab base url> [--gremlin-key K] [--tma-key K] [--wallet W]");
   process.exit(2);
 }
 

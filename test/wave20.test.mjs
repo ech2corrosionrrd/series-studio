@@ -53,7 +53,7 @@ test("Wave 20: getTelegramConfig detects presence of credentials", (t) => {
   const seriesWins = getTelegramConfig({
     SERIES_TELEGRAM_BOT_TOKEN: "lab:TOK",
     SERIES_TELEGRAM_CHAT_ID: "-1001",
-    TELEGRAM_BOT_TOKEN: "promt:TOK",
+    TELEGRAM_BOT_TOKEN: "lab:TOK",
     TELEGRAM_CHAT_ID: "999",
   });
   assert.equal(seriesWins.botToken, "lab:TOK");
