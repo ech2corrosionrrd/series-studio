@@ -1,7 +1,6 @@
 /**
  * Partner API logic: Gremlin Passport avatars, Telegram Mini-App packs, B2B keys,
- * launchpad bundle inspection. Ports of Промт `services/gremlin_generate.py`,
- * `routers/tma.py`, `services/b2b_service.py`, `services/launchpad_service.py`.
+ * launchpad bundle inspection.
  * Pure where possible; HTTP wiring lives in server/platform.mjs.
  */
 import { randomBytes } from "node:crypto";

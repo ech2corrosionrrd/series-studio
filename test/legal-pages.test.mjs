@@ -18,7 +18,7 @@ test("the published beta texts are complete: terms and privacy, both languages, 
     }
   }
   const joined = JSON.stringify(LEGAL_PAGES);
-  assert.doesNotMatch(joined, /Pinata|Helio|ai\.w3ir\.io/, "no leftovers from the Промт texts");
+  assert.doesNotMatch(joined, /Pinata|Helio|ai\.w3ir\.io/, "no leftovers from the old texts");
   for (const lang of ["uk", "en"]) {
     const note = LEGAL_PAGES[0][lang].blocks.find((b) => b.note)?.note || "";
     assert.match(note, /\*\*/, "the beta notice opens the terms");

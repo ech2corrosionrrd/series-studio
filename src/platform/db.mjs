@@ -1,7 +1,6 @@
 /**
- * Platform database — same SQLite *schema* as Промт (`users.db`), but Series Lab
- * keeps its **own** ledger file. Do not point `USERS_DB_PATH` at Промт production
- * data for day-to-day Lab work: this is a new product with a fresh credit history.
+ * Platform database — SQLite (`users.db`): Series Lab's **own** ledger file with
+ * its own credit history.
  *
  * Path: explicit → env `USERS_DB_PATH` → `<SERIES_DATA_DIR>/users.db` → `./data/users.db`.
  */
@@ -96,7 +95,7 @@ function columns(db, table) {
   return new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((r) => r.name));
 }
 
-/** Additive migrations — identical to Промт `_migrate_users_schema`. */
+/** Additive migrations — idempotent. */
 function migrate(db) {
   if (!columns(db, "users").has("verified_at")) {
     db.exec("ALTER TABLE users ADD COLUMN verified_at TEXT");
@@ -164,7 +163,7 @@ export function isConstraintError(e) {
 /**
  * UTC timestamp in the exact shape Python's `datetime.now(timezone.utc).isoformat()`
  * writes (`2026-09-24T10:11:12.123000+00:00`), so string comparisons in SQL order
- * old Промт rows and new Series Lab rows consistently.
+ * all rows consistently.
  */
 export function nowIso(d = new Date()) {
   return d.toISOString().replace(/\.(\d{3})Z$/, ".$1000+00:00");

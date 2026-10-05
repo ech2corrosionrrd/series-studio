@@ -91,7 +91,7 @@ const utcStamp = (d = new Date()) => d.toISOString().replace(/\.\d{3}Z$/, "Z");
 export const SIWE_STATEMENT =
   "Sign in to NFT Prompt Builder. This request will not trigger an on-chain transaction or cost gas.";
 
-/** EIP-4361 message — identical text to Промт `build_siwe_message`. */
+/** EIP-4361 message. */
 export function buildSiweMessage(address, nonce, { domain, uri, chainId, issuedAt } = {}) {
   domain ??= process.env.AUTH_DOMAIN || "ai.w3ir.io";
   uri ??= process.env.AUTH_URI || "https://ai.w3ir.io";
@@ -109,7 +109,7 @@ export function buildSiweMessage(address, nonce, { domain, uri, chainId, issuedA
   );
 }
 
-/** Phantom sign-in message — identical to Промт `build_sign_message`. */
+/** Phantom sign-in message. */
 export function buildSolanaMessage(wallet, nonce, issuedAt) {
   return `NFT Prompt Builder — Sign-In\nWallet: ${wallet}\nNonce: ${nonce}\nIssued: ${issuedAt || utcStamp()}`;
 }
@@ -183,7 +183,7 @@ async function rpc(url, method, params, timeoutMs = 15_000) {
   return res.json();
 }
 
-/** Native Base balance in wei; any error → 0n (fail-closed, as in Промт). */
+/** Native Base balance in wei; any error → 0n (fail-closed). */
 export async function ethBalanceWei(wallet, { fetchImpl } = {}) {
   try {
     const url = process.env.BASE_RPC_URL || BASE_RPC_DEFAULT;

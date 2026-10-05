@@ -1,5 +1,5 @@
 /**
- * Content safety before any paid generation. Port of Промт `services/content_safety.py`.
+ * Content safety before any paid generation.
  *
  * Deliberately narrow: blocks sexualisation of minors and sexual violence only.
  * CSAM needs BOTH a minor marker AND a sexual marker (the word "child" alone is

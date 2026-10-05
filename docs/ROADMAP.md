@@ -7,14 +7,14 @@
 
 Папка на диску може лишатись `series-studio`; основний лендінг та робочий домен: [studio.w3ir.io](https://studio.w3ir.io) · staging: [lab.w3ir.io](https://lab.w3ir.io) (може відставати від `main`). **У разі високого попиту на сервіс (масштабування), для нього буде виділено окреме доменне ім'я та повністю ізольований хостинг.**
 
-Джерела ідей: `C:\Промт` + `C:\Gremlins\gremlin-nft`  
+Джерело ідей: `C:\Gremlins\gremlin-nft`  
 **Не** є форком GFAM; lore / treasury / мінт з головної — поза scope Lab.
 
 ## Принципи
 
 1. **Етапи з власністю полів** — Огляд = ідентичність; Основа = базова картинка(и); Конструктор = промпт+трейти; без дублів форм.
 2. **Оптимально / широко** — на кожному етапі короткий шлях + advanced.
-3. **З Промт** — промпт, якість, шаблони, експорт; плюс перенесена платформа (вхід гаманцем, кредити). **Не** Streamlit і **не** мінт з головної кнопки.
+3. **Запозичене** — промпт, якість, шаблони, експорт; плюс платформа (вхід гаманцем, кредити). **Не** мінт з головної кнопки.
 4. **З health/gremlin** — UX майстерні (рецепти/генерація/відбір); **не** gnft-логін, Legendary boost, AI-critic як обовʼязковий гейт.
 5. DNA/рецепти — **детерміновані** (seed); LLM не є «мозком» серії.
 6. Термін продукту: **базова картинка(и) серії** (primary = головна базова). Ніколи «мати» / mother у UX.
@@ -26,10 +26,10 @@
 | **Lab core** | ✅ | rng · traits · recipes · validate CLI · schemas · demo preset |
 | **Studio UI** | ✅ | вкладки 1–7 + Адмін/Довідка · i18n uk/en · ключі з локального `.env` |
 | **Health-патерн 4–6** | ✅ | рецепти-таблиця+редактор · estimate→generate · keep/redo |
-| **Промт bridge · хвиля 1** | ✅ | паки/шаблони · styleLock · lint · rarity · trait rules · light QA |
-| **Промт bridge · хвиля 2** | ✅ | mint-ready ZIP · upscale · NFT checklist · workspace autosave |
-| **Промт bridge · хвиля 3** | ✅ | редактор опцій рис у Конструкторі (знімок серії) |
-| **Промт bridge · хвиля 4** | ✅ | матеріально різні паки (pfp / mascot / fine-art / abstract) |
+| **Ядро · хвиля 1** | ✅ | паки/шаблони · styleLock · lint · rarity · trait rules · light QA |
+| **Ядро · хвиля 2** | ✅ | mint-ready ZIP · upscale · NFT checklist · workspace autosave |
+| **Ядро · хвиля 3** | ✅ | редактор опцій рис у Конструкторі (знімок серії) |
+| **Ядро · хвиля 4** | ✅ | матеріально різні паки (pfp / mascot / fine-art / abstract) |
 | **Health UX · хвиля 5** | ✅ | порівняння двох наборів у Відборі (side-by-side) |
 | **Студійний UX · хвиля 6** | ✅ | Regenerate Redo · line-specific base · Trait pack library manager |
 | **Vision Assist · хвиля 7** | ✅ | Image-to-Preset / vision-розбір базової картинки (styleLock + traits) |
@@ -209,7 +209,7 @@
 - `src/trash.mjs`: видалення / заміна файлів → `out/trash/`, відновлення в «Ресурсах», автоочищення `SERIES_TRASH_DAYS`.
 - `src/spend.mjs`: журнал `out/render-log.jsonl`, денна межа `SERIES_SPEND_CAP_USD`, витрачене сьогодні в оцінці й «Ресурсах».
 - `failureBreaker` у `src/pool.mjs`: автостоп після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) помилок поспіль.
-- `src/fs-safe.mjs`: атомарний запис JSON. Джерела ідей — gremlin-nft (versions, trash, spend, fs-safe) і Промт (provider_health).
+- `src/fs-safe.mjs`: атомарний запис JSON. Джерело ідей — gremlin-nft (versions, trash, spend, fs-safe).
 
 ## Хвиля 24 (Довідка, підказки, дизайн — реалізовано)
 

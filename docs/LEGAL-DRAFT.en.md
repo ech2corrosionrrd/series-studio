@@ -2,7 +2,7 @@
 
 > **This is a draft for a lawyer, not legal advice and not a binding document.** It describes what the product actually does (code and server as of 2026-10-05). Nothing has been published. Items in `[square brackets]` are decisions for the owner or a lawyer. Ukrainian version: [LEGAL-DRAFT.md](./LEGAL-DRAFT.md). The lawyer checklist is at the end.
 >
-> The structure follows the `LEGAL.md` of the Промт project; everything that differs in Series Lab was changed (direct payments on Solana, Arweave, creator keys stay on the user's PC).
+> Series Lab specifics: direct payments on Solana, Arweave, creator keys stay on the user's PC.
 
 Effective: `[date]` · Contact: `[email]` · Service: https://lab.w3ir.io `[final address]`
 

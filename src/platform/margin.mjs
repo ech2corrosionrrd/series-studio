@@ -1,6 +1,6 @@
 /**
- * Unit economics & gross/net margin — port of Промт `services/margin_report.py`
- * (+ `stats.overview`). Reads the same `users.db` ledger.
+ * Unit economics & gross/net margin
+ * over the `users.db` ledger.
  *
  * API $/op are list-price orientirs (Aug 2026), not invoices. Margin floor in
  * billing: cheapest pack ≈ $0.03/cr must cover 1.5 × provider cost.
@@ -15,7 +15,7 @@ import { scopeSql } from "./ops.mjs";
 import { overview, creditsByKindSince } from "./stats.mjs";
 import { stageLedgerReport, listStagePrices } from "./stage-pricing.mjs";
 
-/** USD per API op by (family, credits charged) — same table as Промт. */
+/** USD per API op by (family, credits charged). */
 export const API_USD_BY_TARIFF = {
   openai: { 4: 0.042, 6: 0.062, 8: 0.167, 10: 0.187 },
   stability: { 1: 0.03, 2: 0.035, 3: 0.035 },

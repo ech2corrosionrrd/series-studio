@@ -1,6 +1,6 @@
 /**
  * Operator notifications and wallet classification.
- * Port of Промт `services/notify.py` + Series Lab branding (own Telegram bot).
+ * Series Lab branding (own Telegram bot).
  */
 import { getTelegramConfig, sendTelegramNotification, brandOperatorText } from "../notifications.mjs";
 import { normalizeAddr } from "./wallet.mjs";
@@ -37,7 +37,7 @@ export const ADMIN_WALLET = "63u6SDZckvzcJhC4V5yJn6bZ15qx1iM8c6iB3Z9xD1tn";
 
 export const DEFAULT_ADMIN_WALLETS = [ADMIN_WALLET];
 
-/** Team wallets that are never "external demand" (same list as Промт wallet_class). */
+/** Team wallets that are never "external demand". */
 export const DEFAULT_TEAM_WALLETS = [
   ADMIN_WALLET,
   "DE1gBEaqA11uYdySmF5LRmN8QsvXvnYJYHDVXeAY15Vh",

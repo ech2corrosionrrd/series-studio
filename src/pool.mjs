@@ -65,7 +65,6 @@ export async function mapConcurrent(items, limit, asyncFn, onProgress, opts = {}
 /**
  * Stops a batch when the engine starts failing en masse (provider outage,
  * revoked key, exhausted balance) instead of burning through the whole queue.
- * Idea from Промт services/provider_health.py.
  *
  * @param {{ maxConsecutive?: number }} [opts]
  * @returns {{ signal: AbortSignal, record: (ok: boolean) => void, readonly reason: string|null }}

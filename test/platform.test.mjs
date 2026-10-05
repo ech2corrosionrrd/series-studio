@@ -34,7 +34,7 @@ after(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe("parity with Промт (Python reference outputs)", () => {
+describe("compatibility snapshot (reference outputs)", () => {
   test("session tokens are byte-identical", () => {
     for (const v of parity.tokens) {
       assert.equal(session.issueSessionToken(v.addr, { secret: "parity-secret", now: v.now }), v.token);

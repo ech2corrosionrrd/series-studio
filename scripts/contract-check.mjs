@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
- * Contract check: sends the same READ-ONLY requests to Промт (live) and to
- * Series Lab (staging) and compares status codes and JSON shapes. Nothing is
+ * Contract check: sends the same READ-ONLY requests to two deployments (--old and --new) and compares status codes and JSON shapes. Nothing is
  * written, generated or paid for. Optional tool: compares two deployments of the same API (see docs/STANDALONE.md).
  *
  *   node scripts/contract-check.mjs --old https://gen.w3ir.io --new https://lab.w3ir.io \
