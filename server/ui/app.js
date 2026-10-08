@@ -751,12 +751,14 @@ function renderOptionsEditor() {
         ${promptWarn ? `<span class="muted small opt-warn">${escapeHtml(t("ctor.options.warn.promptShort"))}</span>` : ""}
       </td>
       <td class="opt-actions">
+        <button type="button" class="btn small${Number(o.exact) === 1 ? " primary" : ""}" data-act="one" data-idx="${idx}"${tipAttr("ctor.options.oneOfOne")}>${escapeHtml(t("ctor.options.oneOfOne"))}</button>
         <button type="button" class="btn small" data-act="dup" data-idx="${idx}"${tipAttr("ctor.options.dup")}>${escapeHtml(t("ctor.options.dup"))}</button>
         <button type="button" class="btn small" data-act="rm" data-idx="${idx}"${tipAttr("ctor.options.rm")}>${escapeHtml(t("ctor.options.rm"))}</button>
       </td>`;
     tbody.appendChild(tr);
   });
 
+  renderTierSummary(trait);
   const check = validateOptionsClient(trait.options);
   if (msg) {
     if (!check.ok) {
@@ -770,6 +772,24 @@ function renderOptionsEditor() {
       msg.className = "small ok-msg";
     }
   }
+}
+
+/** Fixed-count options ("exactly N") are the series' rarity tiers: 1/1 and rare "grails". */
+function renderTierSummary(trait) {
+  const el = $("opt-tier-summary");
+  if (!el) return;
+  const size = Number($("o-size")?.value) || 0;
+  const fixed = (trait.options || []).map((o) => Number(o.exact)).filter((n) => Number.isInteger(n) && n > 0);
+  if (!fixed.length) {
+    el.textContent = t("ctor.tier.none");
+    return;
+  }
+  const one = fixed.filter((n) => n === 1).length;
+  const rare = fixed.filter((n) => n > 1).length;
+  const sum = fixed.reduce((a, b) => a + b, 0);
+  el.textContent = size && sum > size
+    ? t("ctor.tier.over", { fixed: sum, size })
+    : t("ctor.tier.summary", { key: state.selectedTraitKey, one, rare, fixed: sum, size: size || "?", rest: size ? size - sum : "?" });
 }
 
 function updateOptionField(idx, field, value) {
@@ -908,6 +928,10 @@ function setupOptionsEditor() {
     const idx = Number(btn.dataset.idx);
     if (btn.dataset.act === "rm") removeOptionRow(idx);
     if (btn.dataset.act === "dup") duplicateOptionRow(idx);
+    if (btn.dataset.act === "one") {
+      const cur = findTrait(state.selectedTraitKey)?.options?.[idx];
+      if (cur) updateOptionField(idx, "exact", Number(cur.exact) === 1 ? "" : "1");
+    }
   });
 }
 
