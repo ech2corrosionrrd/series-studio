@@ -4,27 +4,76 @@
 Оформлення (типові вимоги): Times New Roman 14 pt, інтервал 1,5, абзацний відступ 1,25 см,
 поля: ліве 30, праве 15, верхнє й нижнє 20 мм, нумерація сторінок знизу по центру,
 кожен заголовок рівня 1 починається з нової сторінки.
-Залежність: pip install python-docx
+Схеми Mermaid підставляються з diploma/figures/ (PNG або JPG), у порядку появи в тексті.
+Залежність: pip install python-docx pillow
 """
 import glob
+import io
 import os
 import re
 
 from docx import Document
-from docx.enum.section import WD_ORIENT  # noqa: F401
+from PIL import Image
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "Dyplom_Series_Lab.docx")
+FIGURES = os.path.join(HERE, "figures")
 FONT = "Times New Roman"
 
-doc = Document()
+# Порядок збігається з появою ```mermaid у файлах 04 → 05 → 06 → 07 → 11.
+MERMAID_FIGURES = [
+    "rys-1-1",
+    "rys-1-2",
+    "rys-1-3",
+    "rys-2-1",
+    "rys-2-2",
+    "rys-2-3",
+    "rys-3-1",
+    "rys-3-2",
+    "rys-3-3",
+    "rys-3-4",
+    "rys-3-5",
+    "rys-3-6",
+    "rys-3-7",
+    "rys-4-1",
+    "rys-4-2",
+    "rys-5-1",
+    "rys-5-2",
+    "dod-b1",
+    "dod-b2",
+    "dod-b3",
+    "dod-b4",
+]
+MERMAID_CAPTIONS = [
+    "Рисунок 1.1 — Контекстна діаграма Series Lab",
+    "Рисунок 1.2 — Схема життєвого циклу створення та ончейн-випуску NFT-колекції",
+    "Рисунок 1.3 — Дерево цілей і критеріїв ефективності Series Lab",
+    "Рисунок 2.1 — Загальна архітектура системи",
+    "Рисунок 2.2 — ER-діаграма основних таблиць бази даних",
+    "Рисунок 2.3 — Блок-схема взаємодії користувача з Series Lab",
+    "Рисунок 3.1 — Головна сторінка сайту Series Lab (опис етапів роботи)",
+    "Рисунок 3.2 — Інтерфейс входу через Web3-гаманець",
+    "Рисунок 3.3 — Етап 1. Огляд: параметри колекції",
+    "Рисунок 3.4 — Етап 5. Генерація зображень",
+    "Рисунок 3.5 — Етап 7. Експорт архіву випуску",
+    "Рисунок 3.6 — Підготовка набору деплою",
+    "Рисунок 3.7 — Діаграма послідовності оплати послуг токенами USDC",
+    "Рисунок 4.1 — Схема конвеєра безперервної інтеграції (CI/CD)",
+    "Рисунок 4.2 — Схема архітектури розгортання сервісу в Docker-контейнері",
+    "Рисунок 5.1 — Структура вартості розробки Series Lab",
+    "Рисунок 5.2 — Постійні витрати та точка беззбитковості",
+    "Рисунок Б.1 — Діаграма варіантів використання",
+    "Рисунок Б.2 — Діаграма активностей: генерація кадру",
+    "Рисунок Б.3 — Стани замовлення на оплату",
+    "Рисунок Б.4 — Шлях випуску",
+]
 
-# ---- сторінка й стилі ----
+doc = Document()
 sec = doc.sections[0]
 sec.left_margin, sec.right_margin = Cm(3), Cm(1.5)
 sec.top_margin, sec.bottom_margin = Cm(2), Cm(2)
@@ -59,7 +108,6 @@ for lvl, size in ((1, 16), (2, 14), (3, 14), (4, 14)):
     st.paragraph_format.keep_with_next = True
 doc.styles["Heading 1"].paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-# номер сторінки
 fp = sec.footer.paragraphs[0]
 fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
 run = fp.add_run()
@@ -74,6 +122,7 @@ for tag, text in (("begin", None), (None, "PAGE"), ("end", None)):
     run._r.append(el)
 
 INLINE = re.compile(r"(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)")
+mermaid_i = 0
 
 
 def add_inline(par, text, size=None, force_bold=False):
@@ -132,13 +181,80 @@ def add_table(rows):
     doc.add_paragraph()
 
 
-def add_code(lines, lang=""):
-    if lang == "mermaid":
+def find_figure(stem):
+    for ext in (".png", ".jpg", ".jpeg"):
+        path = os.path.join(FIGURES, stem + ext)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def figure_png_stream(path):
+    """PNG у пам'яті — стабільніше відкривається в Word, ніж JPEG з mermaid.ink."""
+    im = Image.open(path)
+    im.load()
+    if im.mode in ("RGBA", "LA", "P"):
+        im = im.convert("RGBA")
+    else:
+        im = im.convert("RGB")
+    buf = io.BytesIO()
+    im.save(buf, format="PNG")
+    buf.seek(0)
+    return buf, im.size
+
+
+def picture_size_cm(pixel_w, pixel_h):
+    max_w, max_h = Cm(16), Cm(22)
+    if pixel_w <= 0 or pixel_h <= 0:
+        return max_w
+    w_cm = 16.0
+    h_cm = w_cm * pixel_h / pixel_w
+    if h_cm > 22.0:
+        h_cm = 22.0
+        w_cm = h_cm * pixel_w / pixel_h
+    return Cm(w_cm)
+
+
+def add_mermaid_figure():
+    global mermaid_i
+    if mermaid_i >= len(MERMAID_FIGURES):
         p = doc.add_paragraph()
-        p.paragraph_format.line_spacing = 1.0
-        r = p.add_run("[Схема Mermaid: відрендеріть код нижче (наприклад, на mermaid.live) і вставте зображення замість цього блока]")
+        r = p.add_run("[Немає файлу рисунка для цієї схеми Mermaid]")
+        r.italic = True
+        return
+    stem = MERMAID_FIGURES[mermaid_i]
+    caption = MERMAID_CAPTIONS[mermaid_i]
+    mermaid_i += 1
+    path = find_figure(stem)
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(6)
+    p.paragraph_format.space_after = Pt(3)
+    if path:
+        try:
+            stream, (pw, ph) = figure_png_stream(path)
+            run = p.add_run()
+            run.add_picture(stream, width=picture_size_cm(pw, ph))
+        except OSError as e:
+            r = p.add_run(f"[Помилка рисунка {stem}: {e}]")
+            r.italic = True
+            r.font.size = Pt(11)
+    else:
+        r = p.add_run(f"[Немає файлу figures/{stem}.png|.jpg — згенеруйте з .mmd]")
         r.italic = True
         r.font.size = Pt(11)
+    cp = doc.add_paragraph()
+    cp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cp.paragraph_format.space_after = Pt(8)
+    r = cp.add_run(caption)
+    r.italic = True
+    r.font.size = Pt(12)
+
+
+def add_code(lines, lang=""):
+    if lang == "mermaid":
+        add_mermaid_figure()
+        return
     for ln in lines:
         p = doc.add_paragraph()
         p.paragraph_format.line_spacing = 1.0
@@ -146,7 +262,7 @@ def add_code(lines, lang=""):
         r = p.add_run(ln if ln else " ")
         r.font.name = "Courier New"
         r._element.rPr.rFonts.set(qn("w:eastAsia"), "Courier New")
-        r.font.size = Pt(9 if lang == "mermaid" else 10)
+        r.font.size = Pt(10)
 
 
 def add_md(text, first_file):
@@ -204,24 +320,41 @@ def add_md(text, first_file):
             add_inline(p, m.group(3))
             i += 1
             continue
-        # звичайний абзац (склеюємо рядки до порожнього)
         buf = [s]
         i += 1
-        while i < len(lines) and lines[i].strip() and not re.match(r"^(#|```|\||>|\s*([-*]|\d+\.)\s)", lines[i]):
+        while i < len(lines) and lines[i].strip() and not re.match(
+            r"^(#|```|\||>|\s*([-*]|\d+\.)\s)", lines[i]
+        ):
             buf.append(lines[i].strip())
             i += 1
+        # Підпис під рисунком уже додає збірка — пропускаємо дубль із Markdown.
+        joined = " ".join(buf)
+        if re.match(r"^\*\*Рисунок\s", joined) or re.match(r"^Рисунок\s+\d", joined):
+            continue
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         p.paragraph_format.first_line_indent = Cm(1.25)
-        add_inline(p, " ".join(buf))
+        add_inline(p, joined)
 
 
+# Лише один розрив на розділ: перед кожним Heading 1 (крім першого).
+# Окремий page break між .md-файлами давав порожні сторінки.
 files = sorted(f for f in glob.glob(os.path.join(HERE, "[0-9][0-9]-*.md")))
 for idx, f in enumerate(files):
     with open(f, encoding="utf-8") as fh:
         add_md(fh.read(), first_file=(idx == 0))
-    if idx != len(files) - 1:
-        doc.add_page_break()
 
-doc.save(OUT)
-print("OK:", OUT, f"({len(files)} файлів)")
+try:
+    doc.save(OUT)
+    saved = OUT
+except PermissionError:
+    alt = os.path.join(HERE, "Dyplom_Series_Lab_fresh.docx")
+    doc.save(alt)
+    saved = alt
+    print("УВАГА: закрийте Word і перейменуйте або перезапустіть збірку.")
+missing = [MERMAID_FIGURES[i] for i in range(mermaid_i, len(MERMAID_FIGURES))]
+if mermaid_i != len(MERMAID_FIGURES):
+    print("УВАГА: очікувалось", len(MERMAID_FIGURES), "блоків mermaid, оброблено", mermaid_i)
+if missing:
+    print("Немає файлів figures/ для:", ", ".join(missing))
+print("OK:", saved, f"({len(files)} файлів, {mermaid_i} рисунків)")
