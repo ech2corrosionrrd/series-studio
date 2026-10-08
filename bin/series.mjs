@@ -37,6 +37,7 @@ import {
   sendTelegramNotification,
 } from "../src/index.mjs";
 import { loadKeys } from "../src/keys.mjs";
+import { repairPngFiles } from "../src/png-normalize.mjs";
 import { uploadBundle, planUpload, loadKeypairFile } from "../src/arweave-upload.mjs";
 import { releaseFromArchive, validateRelease, guardUpdateConfig, coreGuardConfig, allowlistOf } from "../src/release-config.mjs";
 import { verifyRelease } from "../src/candy-verify.mjs";
@@ -87,6 +88,7 @@ Usage:
   series engines
   series doctor
   series upscale <images-dir> [options]
+  series repair-png <set-dir> [--dry-run]
   series notify [options]
 
 Options:
@@ -1227,6 +1229,21 @@ async function cmdUpscale(dirPath, opts = {}) {
   console.log(`Done! Successfully upscaled ${count}/${files.length} images to ${outDir}`);
 }
 
+async function cmdRepairPng(dir, opts = {}) {
+  const r = await repairPngFiles(resolve(dir), { dryRun: Boolean(opts.dryRun) });
+  const verb = opts.dryRun ? "would convert" : "converted";
+  console.log(`Scanned ${r.scanned} .png files: ${r.png} already PNG, ${verb} ${r.converted.length}, failed ${r.failed.length}.`);
+  for (const f of r.converted) console.log(`  ${verb}: ${f}`);
+  for (const f of r.failed) console.error(`  failed: ${f}`);
+  if (r.failed.length || (!r.sharp && r.converted.length === 0 && r.scanned > r.png)) {
+    console.error("sharp is not installed: run `npm i sharp`, then repeat.");
+    process.exit(1);
+  }
+  if (!opts.dryRun && r.converted.length) {
+    console.log("Hashes of converted files changed: rebuild any bundle, provenance or upload made from this set before.");
+  }
+}
+
 async function main(argv) {
   const args = argv.slice(2);
   if (!args.length || args.includes("-h") || args.includes("--help")) usage(0);
@@ -1237,6 +1254,12 @@ async function main(argv) {
   }
   if (cmd === "doctor") {
     await cmdDoctor();
+    return;
+  }
+  if (cmd === "repair-png") {
+    if (!args[1]) usage(1);
+    const opts = parseOpts(args.slice(2));
+    await cmdRepairPng(args[1], opts);
     return;
   }
   if (cmd === "upscale") {
