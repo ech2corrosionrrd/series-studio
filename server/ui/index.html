@@ -652,6 +652,15 @@
       <button type="button" id="v-publish" class="btn small public-only" hidden data-i18n="publish.btn">🌐 Опублікувати колекцію</button>
       <span id="v-publish-status" class="small muted"></span>
     </div>
+    <div id="v-quality" class="card quality-card" style="margin: 10px 0; padding: 10px 14px">
+      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px">
+        <b data-i18n="gallery.quality.title">Якість серії</b>
+        <button type="button" id="v-quality-run" class="btn small primary" data-i18n="gallery.quality.run" data-i18n-tip="gallery.quality.run.tip">Перевірити якість</button>
+        <span id="v-quality-status" class="small muted"></span>
+      </div>
+      <p class="muted small" style="margin:6px 0 0" data-i18n="gallery.quality.hint"></p>
+      <div id="v-quality-out" class="small" hidden></div>
+    </div>
     <div class="card triage-bar" style="margin: 10px 0; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px;">
       <b style="color: var(--primary, #6366f1); font-size: 13px;" data-i18n="gallery.triage.title">🤖 AI Auto-Triage &amp; Critic</b>
       <label class="small" style="margin:0; display:flex; align-items:center; gap:4px">

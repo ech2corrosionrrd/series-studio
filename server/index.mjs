@@ -25,6 +25,7 @@ import {
 } from "node:fs";
 import { dirname, extname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import { analyzeSetQuality } from "../src/quality.mjs";
 import {
   buildRecipes,
   drySimulate,
@@ -2484,6 +2485,23 @@ async function handleApi(req, res, url) {
     }
     editions.sort((a, b) => a.edition - b.edition);
     return send(res, 200, { ok: true, method: SIMILARITY_METHOD, offline: true, editions });
+  }
+
+  if (pathname === "/api/quality" && req.method === "GET") {
+    const dirName = safeSetName(url.searchParams.get("dir") || "");
+    const setDir = join(P().out, dirName);
+    if (!dirName || !existsSync(setDir) || !statSync(setDir).isDirectory()) return send(res, 400, { error: "set not found" });
+    const primary = listBases().find((f) => f.primary) || listBases()[0];
+    let baseBuf = null;
+    if (primary) {
+      try {
+        baseBuf = readFileSync(join(P().input, primary.file));
+      } catch {
+        baseBuf = null;
+      }
+    }
+    const report = await analyzeSetQuality({ setDir, baseBuf, marks: readMarks(dirName) });
+    return send(res, 200, { ok: true, dir: dirName, ...report });
   }
 
   if (pathname === "/api/waves" && req.method === "GET") {
