@@ -19,6 +19,7 @@ import {
   DEFAULT_A1111_URL,
 } from "./connectors.mjs";
 import { createMockPng } from "./mock-image.mjs";
+import { withPngOutput } from "./png-normalize.mjs";
 
 const REPLICATE_API = "https://api.replicate.com/v1";
 export const REPLICATE_MAX_WAIT_MS = 5 * 60_000;
@@ -453,6 +454,10 @@ export const TXT2IMG = {
     },
   },
 };
+
+for (const table of [ENGINES, TXT2IMG]) {
+  for (const engine of Object.values(table)) withPngOutput(engine);
+}
 
 export const DEFAULT_ENGINE = "kontext";
 
