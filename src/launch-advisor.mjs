@@ -4,6 +4,8 @@
  * Historical mint prices named in the recommendations stay out of the text.
  */
 
+import { buildHolderLicence, HOLDER_MODELS } from "./holder-licence.mjs";
+
 const SOURCES = {
   drops2024: "https://nftevening.com/state-of-2024-nft-drops/",
   sales2025: "https://chainreport.co/more-nfts-less-money-supply-rose-to-134b-as-sales-fell-37-in-2025/",
@@ -261,7 +263,7 @@ function holderTemplate(uk) {
   ].join("\n");
 }
 
-export function buildLaunchAdvisor({ chain = "solana", locale = "uk" } = {}) {
+export function buildLaunchAdvisor({ chain = "solana", locale = "uk", licence = "statement", name = "", creator = "", cap = "" } = {}) {
   const uk = String(locale || "").toLowerCase().startsWith("uk");
   const id = chainId(chain);
   const sections = [
@@ -270,7 +272,7 @@ export function buildLaunchAdvisor({ chain = "solana", locale = "uk" } = {}) {
     royaltySection(id, uk),
     storageSection(id, uk),
   ];
-  const template = holderTemplate(uk);
+  const template = buildHolderLicence({ model: licence, locale, name, creator, cap }) || holderTemplate(uk);
   const text = [
     uk ? "Порадник запуску (офлайн)" : "Launch advisor (offline)",
     uk
@@ -286,6 +288,7 @@ export function buildLaunchAdvisor({ chain = "solana", locale = "uk" } = {}) {
     exchangePrices: false,
     sections,
     holderTemplate: template,
+    licenceModels: HOLDER_MODELS,
     text,
     sources: SOURCES,
   };

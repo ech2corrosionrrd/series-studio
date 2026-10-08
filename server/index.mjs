@@ -3126,7 +3126,11 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/launch-advisor" && req.method === "GET") {
     const chain = url.searchParams.get("chain") || "solana";
     const locale = url.searchParams.get("locale") || resolveLocale(req, {});
-    return send(res, 200, { ok: true, ...buildLaunchAdvisor({ chain, locale }) });
+    const licence = url.searchParams.get("licence") || "statement";
+    const name = (url.searchParams.get("name") || "").slice(0, 120);
+    const creator = (url.searchParams.get("creator") || "").slice(0, 120);
+    const cap = (url.searchParams.get("cap") || "").slice(0, 20);
+    return send(res, 200, { ok: true, ...buildLaunchAdvisor({ chain, locale, licence, name, creator, cap }) });
   }
 
   if ((pathname === "/api/deploy-kit" || pathname === "/api/marketplace-kit") && req.method === "POST") {
@@ -3172,6 +3176,8 @@ async function handleApi(req, res, url) {
       price: body.price,
       includeHolderLicence: body.includeHolderLicence !== false,
       holderLicence: typeof body.holderLicence === "string" ? body.holderLicence : "",
+      holderModel: typeof body.holderModel === "string" ? body.holderModel : "statement",
+      holderCap: typeof body.holderCap === "string" || typeof body.holderCap === "number" ? String(body.holderCap).slice(0, 20) : "",
       allowlist: typeof body.allowlist === "string" ? body.allowlist : "",
       rehearsal: body.rehearsal === "skip" ? "skip" : "devnet",
     };
