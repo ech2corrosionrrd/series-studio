@@ -150,6 +150,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 | POST | `/api/simulate` | сухий прогін пресету (`file` або `preset`) без витрат |
 | POST | `/api/archive/diff` | різниця двох архівів (`a`, `b`) |
 | POST | `/api/preset/spinoff` | спін-оф пресету (`file`, `suffix`) |
+| GET | `/api/quality?dir=` | звіт якості набору: не-PNG, замалі файли, дублі, схожість до базової; `weakest` — найгірші кадри, `problemEditions` — усі проблемні |
 | GET | `/api/similarity?dir=` | схожість картинок набору з основною базовою (гістограми країв, `method: hog-aligned-1`; ключ `warn` нижче 0,73) |
 | GET | `/api/waves?file=` | хвилі тиражу пресету |
 | POST | `/api/waves/append` | додати хвилю в кінець (`file`, `size`, `seed`, `name`) |

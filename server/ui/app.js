@@ -3606,6 +3606,84 @@ function setupVersions() {
   });
 }
 
+/** Series quality panel: one report for a set (format, duplicates, similarity to the base). */
+const QUALITY_KINDS = ["bad_format", "tiny", "duplicate", "low_similarity"];
+
+function renderQuality(data) {
+  const out = $("v-quality-out");
+  if (!out) return;
+  const kindLabel = (k) => t(`gallery.quality.kind.${k}`);
+  const parts = [];
+  if (!data.problemFrames) {
+    parts.push(`<p><b>${escapeHtml(t("gallery.quality.allGood", { total: data.total }))}</b></p>`);
+  } else {
+    parts.push(`<p><b>${escapeHtml(t("gallery.quality.summary", { problem: data.problemFrames, total: data.total }))}</b></p>`);
+    const chips = QUALITY_KINDS.filter((k) => data.counts[k]).map((k) => `<span class="qa-badge">${escapeHtml(kindLabel(k))}: ${data.counts[k]}</span>`);
+    parts.push(`<p>${chips.join(" ")}</p>`);
+    const todo = QUALITY_KINDS.filter((k) => data.counts[k]).map((k) => `<li>${escapeHtml(t(`gallery.quality.todo.${k}`))}</li>`);
+    parts.push(`<ul class="guide">${todo.join("")}</ul>`);
+    const rows = data.weakest.map((f) => {
+      const issues = f.issues.filter((i) => i.kind !== "marked_redo").map((i) => `${kindLabel(i.kind)}${i.detail ? ` (${escapeHtml(i.detail)})` : ""}`).join(", ");
+      const sim = f.similarity != null ? ` · ${escapeHtml(t("gallery.similarity.value", { n: f.similarity }))}` : "";
+      return `<li><b>#${f.edition}</b>${sim} · ${issues}</li>`;
+    });
+    parts.push(`<ul class="guide">${rows.join("")}</ul>`);
+    if (data.problemFrames > data.weakest.length) {
+      parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.more", { shown: data.weakest.length, total: data.problemFrames }))}</p>`);
+    }
+    parts.push(`<p><button type="button" id="v-quality-mark" class="btn small"${tipAttr("gallery.quality.markAll")}>${escapeHtml(t("gallery.quality.markAll", { n: data.problemFrames }))}</button> <span id="v-quality-marked" class="muted"></span></p>`);
+  }
+  if (data.similarity) {
+    parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.sim", { mean: data.similarity.mean, min: data.similarity.min, warn: data.similarity.warnBelow }))}</p>`);
+  } else if (!data.hasBase) {
+    parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.noBase"))}</p>`);
+  }
+  out.innerHTML = parts.join("");
+  out.hidden = false;
+  $("v-quality-mark")?.addEventListener("click", async () => {
+    const marks = { ...state.galleryMarks };
+    let kept = 0;
+    let n = 0;
+    for (const ed of data.problemEditions) {
+      if (marks[String(ed)] === "keep") {
+        kept++;
+        continue;
+      }
+      marks[String(ed)] = "redo";
+      n++;
+    }
+    try {
+      const res = await api("/api/marks", { method: "POST", body: JSON.stringify({ dir: state.galleryDir, marks }) });
+      state.galleryMarks = res.marks || marks;
+      renderGallery();
+      scheduleWorkspaceSave({ lastSet: state.galleryDir });
+      const note = $("v-quality-marked");
+      if (note) note.textContent = t("gallery.quality.marked", { n, kept });
+    } catch (e) {
+      alert(e.message);
+    }
+  });
+}
+
+function setupQuality() {
+  $("v-quality-run")?.addEventListener("click", async () => {
+    const status = $("v-quality-status");
+    const dir = state.galleryDir;
+    if (!dir) {
+      if (status) status.textContent = t("gallery.quality.noSet");
+      return;
+    }
+    if (status) status.textContent = t("gallery.quality.running");
+    try {
+      const data = await api(`/api/quality?dir=${encodeURIComponent(dir)}`);
+      renderQuality(data);
+      if (status) status.textContent = "";
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    }
+  });
+}
+
 async function toggleMark(edition, kind) {
   if (!state.galleryDir) return;
   const key = String(edition);
@@ -5471,6 +5549,7 @@ async function boot() {
   setupRecipes();
   setupRender();
   setupGallery();
+  setupQuality();
   setupEngineDiagnostics();
   setupVersions();
   setupExport();
