@@ -25,6 +25,9 @@ import {
 } from "node:fs";
 import { dirname, extname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
+import { analyzeSetQuality } from "../src/quality.mjs";
+import { compressSet, COMPRESS_TARGET_BYTES } from "../src/compress.mjs";
+import { loadSharp } from "../src/upscale.mjs";
 import {
   buildRecipes,
   drySimulate,
@@ -80,6 +83,7 @@ import {
   calculateRarityScores,
   calculateCollectionProvenance,
   verifyProvenance,
+  duplicateImages,
   exportDatasetZip,
   dispatchBatchNotification,
   sendTelegramNotification,
@@ -2485,6 +2489,35 @@ async function handleApi(req, res, url) {
     return send(res, 200, { ok: true, method: SIMILARITY_METHOD, offline: true, editions });
   }
 
+  if (pathname === "/api/set/compress" && req.method === "POST") {
+    const body = await readBody(req);
+    const dirName = safeSetName(body.dir || "");
+    const setDir = join(P().out, dirName);
+    if (!dirName || !existsSync(setDir) || !statSync(setDir).isDirectory()) return send(res, 404, { error: "set not found" });
+    const maxBytes = Math.max(100_000, Math.min(20 * 1024 * 1024, Number(body.maxBytes) || COMPRESS_TARGET_BYTES));
+    const dryRun = Boolean(body.dryRun);
+    if (!dryRun && !(await loadSharp())) return send(res, 400, { error: "sharp_not_installed", sharp: false });
+    const report = await compressSet(setDir, { maxBytes, dryRun });
+    return send(res, 200, { ok: true, dir: dirName, dryRun, ...report });
+  }
+
+  if (pathname === "/api/quality" && req.method === "GET") {
+    const dirName = safeSetName(url.searchParams.get("dir") || "");
+    const setDir = join(P().out, dirName);
+    if (!dirName || !existsSync(setDir) || !statSync(setDir).isDirectory()) return send(res, 400, { error: "set not found" });
+    const primary = listBases().find((f) => f.primary) || listBases()[0];
+    let baseBuf = null;
+    if (primary) {
+      try {
+        baseBuf = readFileSync(join(P().input, primary.file));
+      } catch {
+        baseBuf = null;
+      }
+    }
+    const report = await analyzeSetQuality({ setDir, baseBuf, marks: readMarks(dirName) });
+    return send(res, 200, { ok: true, dir: dirName, ...report });
+  }
+
   if (pathname === "/api/waves" && req.method === "GET") {
     const { preset, file } = loadPresetByFile(url.searchParams.get("file") || "demo-series.json");
     return send(res, 200, { file, size: preset.size, waves: describeSupply(preset) });
@@ -3139,6 +3172,7 @@ async function handleApi(req, res, url) {
       includeHolderLicence: body.includeHolderLicence !== false,
       holderLicence: typeof body.holderLicence === "string" ? body.holderLicence : "",
       allowlist: typeof body.allowlist === "string" ? body.allowlist : "",
+      rehearsal: body.rehearsal === "skip" ? "skip" : "devnet",
     };
     const stamp = Date.now().toString(36);
     const file = `${kind === "deploy_kit" ? "deploy" : "market"}-${String(loaded.archive.presetId || "series").replace(/[^a-zA-Z0-9_-]/g, "")}-${stamp}.zip`;
@@ -3293,7 +3327,7 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: `no image files found in set: ${setName}` });
     }
     const prov = calculateCollectionProvenance(images);
-    return send(res, 200, { ok: true, set: setName, provenance: prov });
+    return send(res, 200, { ok: true, set: setName, provenance: prov, duplicates: duplicateImages(prov.records), check: verifyProvenance(prov, setDir) });
   }
 
   if (pathname === "/api/export/dataset" && req.method === "POST") {

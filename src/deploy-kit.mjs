@@ -337,7 +337,7 @@ export function buildDeployKit({
 
   const estimate = estimateDeployCost({ chain, count, totalBytes, profile }, env);
   files["ESTIMATE.txt"] = `${formatCostEstimate(estimate, locale)}\n`;
-  let guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate, legacy: Boolean(opts.legacy) });
+  let guide = buildDeployGuide({ chain, locale, count, name, symbol, creator, estimate, legacy: Boolean(opts.legacy), rehearsal: opts.rehearsal === "skip" ? "skip" : "devnet" });
   if (allowlist) {
     guide += uk
       ? `\nAllowlist: група "${allowlist.label}", merkle root (hex, поле allowList.merkleRoot для mplx):\n${allowlist.merkleRoot}\nГаманці і докази: allowlist.json. Повний guard з оплатою: series guards release.json (ті самі гаманці в release.json → allowlist).\n`
@@ -676,7 +676,96 @@ function sugarGuideSteps(uk) {
   return [banner, "", ...rest];
 }
 
-export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Series", symbol = "LAB", creator = "", estimate, legacy = false } = {}) {
+/**
+ * The user may skip the test-network rehearsal. The guide then has one section,
+ * for the main network, and says plainly that the choice was theirs.
+ * Solana steps are rewritten from the rehearsal steps; Bitcoin and EVM use fixed text.
+ */
+function withoutRehearsal(steps, { uk, chain }) {
+  if (chain === "bitcoin") {
+    return uk
+      ? [
+        "Bitcoin Ordinals",
+        "----------------",
+        "Lab не робить інскрипцію. Файл manifest.csv і теки images/ та metadata/ — те, що ви завантажуєте самі.",
+        "",
+        "1. Mainnet (без пробного прогону)",
+        "   Зберіть гаманець ord / Sparrow на основній мережі.",
+        "   Зробіть інскрипції в порядку з manifest.csv: батьківська інскрипція колекції і дочірні мають збігатися з назвами.",
+        "   Або завантажте manifest.csv у сервіс на кшталт OrdinalsBot і сплатіть комісію там — зі свого рахунку.",
+        "   Адреса отримувача — ваша Taproot (bc1p…), не адреса Lab.",
+        "",
+        "Комісія майнерів — у ESTIMATE.txt, якщо ви задали DEPLOY_ORDINALS_SATS_PER_VBYTE.",
+      ]
+      : [
+        "Bitcoin Ordinals",
+        "----------------",
+        "Lab does not inscribe. manifest.csv plus images/ and metadata/ are what you upload yourself.",
+        "",
+        "1. Mainnet (no rehearsal)",
+        "   Use an ord / Sparrow wallet on mainnet.",
+        "   Inscribe in the order of manifest.csv: the collection parent and the children must match the names.",
+        "   Or upload manifest.csv to a service such as OrdinalsBot and pay there, from your account.",
+        "   The receive address is your Taproot (bc1p…), not a Lab address.",
+        "",
+        "Miner fees are in ESTIMATE.txt when DEPLOY_ORDINALS_SATS_PER_VBYTE is set.",
+      ];
+  }
+  if (chain === "evm") {
+    return uk
+      ? [
+        "EVM · Thirdweb",
+        "---------------",
+        "thirdweb.json — параметри дропу (назва, символ, роялті, отримувач). Картинки й метадані — у images/ і metadata/.",
+        "",
+        "1. Mainnet (без пробного прогону)",
+        "   Відкрийте https://thirdweb.com/dashboard зі свого гаманця і оберіть мережу (Ethereum, Base, Polygon, Arbitrum…).",
+        "   Створіть Drop ERC-721.",
+        "   Перенесіть поля з thirdweb.json (назва, символ, seller_fee_basis_points, fee_recipient). fee_recipient має бути ваш гаманець, не нульова адреса.",
+        "   Пароль delayed reveal вводьте в кабінеті thirdweb. У thirdweb.json його немає — Lab його не зберігає.",
+        "   Завантажте images/ і metadata/ у сховище Thirdweb (або свій IPFS) і вкажіть base URI.",
+        "   Задеплойте контракт. Підпис — у вашому гаманці (MetaMask / Coinbase / інший).",
+        "",
+        "Газ платите ви. Оцінка деплою контракту — у ESTIMATE.txt.",
+      ]
+      : [
+        "EVM · Thirdweb",
+        "--------------",
+        "thirdweb.json holds drop parameters (name, symbol, royalty, recipient). Artwork and metadata are in images/ and metadata/.",
+        "",
+        "1. Mainnet (no rehearsal)",
+        "   Open https://thirdweb.com/dashboard with your wallet and pick the chain (Ethereum, Base, Polygon, Arbitrum…).",
+        "   Create an ERC-721 Drop.",
+        "   Copy fields from thirdweb.json (name, symbol, seller_fee_basis_points, fee_recipient). fee_recipient must be your wallet, not the zero address.",
+        "   Enter the delayed-reveal password in the thirdweb dashboard. It is not in thirdweb.json — Lab does not store it.",
+        "   Upload images/ and metadata/ to Thirdweb storage (or your IPFS) and set the base URI.",
+        "   Deploy the contract. The signature happens in your wallet (MetaMask / Coinbase / another).",
+        "",
+        "You pay gas. The contract-deploy estimate is in ESTIMATE.txt.",
+      ];
+  }
+  // Solana: keep the command list of step 1, point it at mainnet, drop the test-only lines and step 2.
+  const i1 = steps.findIndex((l) => /^1\. /.test(l));
+  const i2 = steps.findIndex((l) => /^2\. /.test(l));
+  if (i1 < 0 || i2 < 0) return steps;
+  const body = steps
+    .slice(i1 + 1, i2)
+    .filter((l) => !/airdrop|devnet-експлорері|devnet explorer/i.test(l))
+    .map((l) => l.replace("api.devnet.solana.com", "api.mainnet-beta.solana.com").replace(/ Ціна в config\.json зараз для прогону\.| The price in config\.json is for this run\./, ""));
+  const rest = steps.slice(steps.findIndex((l, i) => i > i2 && l === "") + 1);
+  const confirm = uk
+    ? "   Переконайтесь, що адреса творця — ваш гаманець, а не заглушка."
+    : "   Confirm the creator address is your wallet, not a placeholder.";
+  return [
+    ...steps.slice(0, i1),
+    uk ? "1. Mainnet (без пробного прогону)" : "1. Mainnet (no rehearsal)",
+    confirm,
+    ...body,
+    ...rest,
+  ];
+}
+
+export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Series", symbol = "LAB", creator = "", estimate, legacy = false, rehearsal = "devnet" } = {}) {
   const uk = String(locale || "").toLowerCase().startsWith("uk");
   const who = creator || (uk ? "<ВАША_ПУБЛІЧНА_АДРЕСА>" : "<YOUR_PUBLIC_ADDRESS>");
   const head = uk
@@ -686,7 +775,9 @@ export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Seri
       `Колекція: ${name} (${symbol}), предметів: ${count}`,
       `Адреса творця (публічна): ${who}`,
       "",
-      "Спочатку тест, потім основна мережа. Це рекомендація, не опція «для когось іншого».",
+      rehearsal === "skip"
+        ? "Ви вирішили пропустити пробний прогін у тестовій мережі. Це ваше рішення: помилки в налаштуваннях тепер коштуватимуть справжніх грошей."
+        : "Спочатку тест, потім основна мережа. Пробний прогін необов'язковий: це ваше рішення.",
       "Ви підписуєте транзакції на своєму комп'ютері. Не надсилайте seed-фразу чи приватний ключ у Series Lab, у чат чи в цей файл.",
       "",
     ]
@@ -696,7 +787,9 @@ export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Seri
       `Collection: ${name} (${symbol}), items: ${count}`,
       `Creator address (public): ${who}`,
       "",
-      "Test first, then mainnet. That is the recommended path.",
+      rehearsal === "skip"
+        ? "You chose to skip the test-network rehearsal. That is your decision: mistakes in the settings will now cost real money."
+        : "Test first, then mainnet. The rehearsal is optional: it is your decision.",
       "You sign on your own computer. Do not send a seed phrase or private key to Series Lab, to a chat, or into this file.",
       "",
     ];
@@ -782,6 +875,7 @@ export function buildDeployGuide({ chain, locale = "en", count = 0, name = "Seri
         "You pay gas. The contract-deploy estimate is in ESTIMATE.txt.",
       ];
   }
+  if (rehearsal === "skip") steps = withoutRehearsal(steps, { uk, chain });
   const tail = estimate ? ["", uk ? "Див. також ESTIMATE.txt." : "See also ESTIMATE.txt."] : [];
   return [...head, ...steps, ...tail, ""].join("\n");
 }
