@@ -823,6 +823,24 @@
         <span style="font-weight:600" data-i18n="export.provenance.hashLabel">Хеш походження (SHA-256)</span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
       </div>
       <div id="x-prov-check" class="small" style="margin-top:8px" hidden></div>
+      <div id="x-auth" class="card small" style="margin-top:10px; display:grid; gap:6px">
+        <b data-i18n="export.auth.title">Людський внесок (за бажанням)</b>
+        <p class="muted" style="margin:4px 0 8px" data-i18n="export.auth.hint"></p>
+        <label class="small"><span data-i18n="export.auth.base">Базова картинка</span>
+          <select id="x-auth-base">
+            <option value="" data-i18n="export.auth.base.none">не вказувати</option>
+            <option value="hand" data-i18n="export.auth.base.hand">намальована мною вручну</option>
+            <option value="photo" data-i18n="export.auth.base.photo">моє фото або колаж</option>
+            <option value="ai_curated" data-i18n="export.auth.base.ai_curated">згенерована ШІ, відібрана й доопрацьована мною</option>
+            <option value="ai_raw" data-i18n="export.auth.base.ai_raw">згенерована ШІ без правок</option>
+          </select>
+        </label>
+        <label class="small row"><input type="checkbox" id="x-auth-edited"> <span data-i18n="export.auth.edited">Я вручну правив або дорисовував кадри</span></label>
+        <label class="small row"><input type="checkbox" id="x-auth-layers"> <span data-i18n="export.auth.layers">Риси намальовано вручну (шари)</span></label>
+        <label class="small"><span data-i18n="export.auth.note">Примітка (необов'язково)</span>
+          <input id="x-auth-note" type="text" maxlength="1000">
+        </label>
+      </div>
       <div id="x-size" class="card small" style="margin-top:10px">
         <b data-i18n="export.size.title">Розмір файлів</b>
         <p class="muted" style="margin:4px 0 8px" data-i18n="export.size.hint"></p>

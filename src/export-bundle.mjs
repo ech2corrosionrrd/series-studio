@@ -26,6 +26,7 @@ import {
   buildReleaseGuide,
 } from "./deploy.mjs";
 import { calculateCollectionProvenance } from "./provenance.mjs";
+import { authorshipDoc, authorshipFacts, normalizeAuthorship } from "./authorship.mjs";
 import { fileURLToPath } from "node:url";
 import { readMeta } from "./versions.mjs";
 import { creationVersion, promptHash } from "./creation.mjs";
@@ -587,6 +588,12 @@ export async function buildBundleZip(params) {
   if (sel.fallback) collection.selectionFallback = sel.fallback;
   if (upscaleSkippedReason) collection.upscaleSkipped = upscaleSkippedReason;
   collection.chain = chain;
+  const authorship = authorshipDoc({
+    declared: normalizeAuthorship(opts.authorship),
+    facts: authorshipFacts({ setDir, editions: includedEditions, marks }),
+  });
+  collection.authorship = authorship;
+  zip.file("authorship.json", JSON.stringify(authorship, null, 2) + "\n");
   collection.description = opts.description || "";
   collection.sellerFeeBasisPoints = royalties.sellerFeeBasisPoints;
   collection.ready = preflight.ready;
