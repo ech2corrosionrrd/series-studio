@@ -3172,6 +3172,7 @@ async function handleApi(req, res, url) {
       includeHolderLicence: body.includeHolderLicence !== false,
       holderLicence: typeof body.holderLicence === "string" ? body.holderLicence : "",
       allowlist: typeof body.allowlist === "string" ? body.allowlist : "",
+      rehearsal: body.rehearsal === "skip" ? "skip" : "devnet",
     };
     const stamp = Date.now().toString(36);
     const file = `${kind === "deploy_kit" ? "deploy" : "market"}-${String(loaded.archive.presetId || "series").replace(/[^a-zA-Z0-9_-]/g, "")}-${stamp}.zip`;
