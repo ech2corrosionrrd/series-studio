@@ -5061,6 +5061,31 @@ async function loadLaunchAdvisor() {
   }
 }
 
+/** Fill the holder-licence field with a draft of the chosen model. The user's own edits are never replaced silently. */
+async function applyLicenceTemplate() {
+  const area = $("d-holder");
+  if (!area) return;
+  const rawChain = $("d-chain")?.value || "solana";
+  const chain = rawChain === "solana-legacy" ? "solana" : rawChain;
+  const model = $("d-licence")?.value || "statement";
+  if (area.dataset.dirty === "1" && area.value.trim() && !window.confirm(t("advisor.licence.confirm"))) return;
+  const q = new URLSearchParams({
+    chain,
+    locale: getLocale(),
+    licence: model,
+    name: $("o-name")?.value || "",
+    creator: $("d-creator")?.value || "",
+    cap: $("d-licence-cap")?.value || "",
+  });
+  try {
+    const data = await api(`/api/launch-advisor?${q}`);
+    area.value = data.holderTemplate || "";
+    area.dataset.dirty = "";
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
 function setupKits() {
   $("d-chain")?.addEventListener("change", () => {
     syncNetwork("deploy");
@@ -5069,6 +5094,11 @@ function setupKits() {
   $("m-chain")?.addEventListener("change", () => syncNetwork("market"));
   // Solana is the default network (Core Candy Machine): align Export and Market with the Deploy default.
   syncNetwork("deploy");
+  $("d-licence")?.addEventListener("change", () => {
+    const wrap = $("d-licence-cap-wrap");
+    if (wrap) wrap.hidden = $("d-licence")?.value !== "commercial_cap";
+  });
+  $("d-licence-apply")?.addEventListener("click", applyLicenceTemplate);
   $("d-holder")?.addEventListener("input", () => {
     if ($("d-holder")) $("d-holder").dataset.dirty = "1";
   });
