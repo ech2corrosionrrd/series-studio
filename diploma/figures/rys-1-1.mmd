@@ -1,0 +1,12 @@
+flowchart LR
+  Env[Середовище:\nAI-рушії, Solana,\nArweave, гаманці]
+  User[Автор колекції]
+  Sys((Series Lab))
+  Op[Оператор сервісу]
+  User -->|пресет, база, оплата USDC| Sys
+  Sys -->|архів, набір деплою, кредити| User
+  Op -->|моніторинг, бекапи| Sys
+  Sys -->|запити генерації| Env
+  Env -->|зображення, RPC, сховище| Sys
+  Sys -->|підготовка без ключів| User
+  User -->|CLI: підпис upload/mint/reveal| Env

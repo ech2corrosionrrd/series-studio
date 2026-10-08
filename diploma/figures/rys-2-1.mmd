@@ -1,0 +1,30 @@
+flowchart LR
+  subgraph Browser["Браузер (SPA, uk/en)"]
+    UI["server/ui: index.html, app.js, i18n"]
+  end
+  subgraph Server["Сервер Node.js"]
+    API["server/index.mjs: HTTP API, SSE"]
+    GUARD["guard.mjs: CSRF, хости"]
+    PLAT["server/platform.mjs: вхід, кредити, оплата"]
+  end
+  subgraph Core["Ядро src/"]
+    RNG["rng, traits, recipes, waves, rules, rarity"]
+    IMG["engines, connectors, versions, trash, spend"]
+    QA["preflight, dupes, imageqa, provenance"]
+    EXP["export-bundle, deploy-kit, marketplace-kit, release-config"]
+  end
+  subgraph Data["Дані"]
+    FS[("Файли: presets, input, out, workspace")]
+    DB[("SQLite users.db: 12 таблиць")]
+  end
+  subgraph CLI["CLI bin/series.mjs (ПК користувача)"]
+    REL["upload, hidden, guards, mint, reveal, verify"]
+  end
+  UI -->|fetch /api/*| GUARD --> API
+  API --> Core
+  API --> PLAT --> DB
+  Core --> FS
+  PLAT -.читає ланцюг.-> SOL["Solana RPC"]
+  REL -->|підпис локальним ключем| SOL
+  REL --> ARW["Arweave через Irys"]
+  API -->|API рушіїв| ENG["fal, Stability, OpenAI, Runware, Replicate, локальні ComfyUI/A1111"]

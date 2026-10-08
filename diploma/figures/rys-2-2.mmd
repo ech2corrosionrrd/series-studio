@@ -1,0 +1,35 @@
+erDiagram
+  users ||--o{ transactions : "wallet_address"
+  users ||--o{ payments : "wallet_address"
+  users ||--o{ sol_orders : "wallet_address"
+  users ||--o| referral_codes : "wallet_address"
+  referral_codes ||--o{ referrals : "referrer"
+  users ||--o{ holder_grants : "wallet_address"
+  users ||--o{ funnel_events : "wallet_address"
+  users {
+    text wallet_address PK
+    int credits_balance
+    text created_at
+    text verified_at
+  }
+  payments {
+    text tx_id PK
+    int credits
+    real amount_usd
+  }
+  transactions {
+    int id PK
+    text kind
+    int credits
+    text engine
+    text note
+  }
+  sol_orders {
+    text id PK
+    text package
+    int credits
+    real price_usd
+    int amount_micro
+    text status
+    text signature
+  }

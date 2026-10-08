@@ -1,0 +1,13 @@
+graph TD
+  User["Клієнтський браузер (Web3-гаманець)"] -->|HTTPS :443| CF["Cloudflare (DNS, SSL, DDoS захист)"]
+  CF -->|Проксі| Caddy["Веб-сервер Caddy (Reverse Proxy)"]
+  Caddy -->|HTTP :5344| App["Процес Series Lab (Node.js ESM)"]
+  
+  subgraph DockerContainer["Docker-контейнер (Hetzner VPS, Ubuntu 24.04)"]
+    App -->|Транзакційний леджер| DB[("База даних SQLite (users.db)")]
+    App -->|Знімки та кеш| Storage[("Том даних /data")]
+  end
+
+  App -->|Завантаження метаданих| Irys["Шлюз Irys Network"] --> Arweave[("Arweave Permaweb")]
+  App -->|Звірка оплат USDC| RPC["Solana Mainnet RPC"]
+  App -->|API генерацій| Engines["Хмарні рушії (fal.ai, Stability, Replicate)"]
