@@ -2975,6 +2975,7 @@ async function handleApi(req, res, url) {
       animationUriPrefix: body.animationUriPrefix || body.animPrefix || "",
       locale,
       upscale: Boolean(body.upscale),
+      authorship: body.authorship && typeof body.authorship === "object" ? body.authorship : null,
     };
     try {
       const result = await buildBundleZip({

@@ -3755,6 +3755,38 @@ function setupSizeTools() {
   $("x-size-run")?.addEventListener("click", () => run(false));
 }
 
+/** Optional human-contribution statement for the export. Remembered per browser only. */
+const AUTH_KEY = "series-lab-authorship";
+
+function authorshipFromForm() {
+  const a = {
+    baseOrigin: $("x-auth-base")?.value || "",
+    handEdited: Boolean($("x-auth-edited")?.checked),
+    handLayers: Boolean($("x-auth-layers")?.checked),
+    note: $("x-auth-note")?.value?.trim() || "",
+  };
+  return a.baseOrigin || a.handEdited || a.handLayers || a.note ? a : null;
+}
+
+function setupAuthorship() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+    if (saved) {
+      if ($("x-auth-base")) $("x-auth-base").value = saved.baseOrigin || "";
+      if ($("x-auth-edited")) $("x-auth-edited").checked = Boolean(saved.handEdited);
+      if ($("x-auth-layers")) $("x-auth-layers").checked = Boolean(saved.handLayers);
+      if ($("x-auth-note")) $("x-auth-note").value = saved.note || "";
+    }
+  } catch { /* a blank form is fine */ }
+  for (const id of ["x-auth-base", "x-auth-edited", "x-auth-layers", "x-auth-note"]) {
+    $(id)?.addEventListener("change", () => {
+      try {
+        localStorage.setItem(AUTH_KEY, JSON.stringify(authorshipFromForm() || {}));
+      } catch { /* storage is optional */ }
+    });
+  }
+}
+
 function setupQuality() {
   $("v-quality-run")?.addEventListener("click", async () => {
     const status = $("v-quality-status");
@@ -4634,6 +4666,7 @@ function setupExport() {
         body: JSON.stringify({
           archive,
           set,
+          authorship: authorshipFromForm(),
           profile: "opensea",
           onlyKeep: true,
           namePrefix: $("x-namePrefix")?.value || "Series #",
@@ -4708,6 +4741,7 @@ function setupExport() {
         body: JSON.stringify({
           archive,
           set,
+          authorship: authorshipFromForm(),
           profile: $("x-profile")?.value || "opensea",
           creatorAddress: $("x-creator-address")?.value?.trim() || "",
           zeroIndexed: Boolean($("x-zero-index")?.checked),
@@ -5654,6 +5688,7 @@ async function boot() {
   setupGallery();
   setupQuality();
   setupSizeTools();
+  setupAuthorship();
   setupEngineDiagnostics();
   setupVersions();
   setupExport();
