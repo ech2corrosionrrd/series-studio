@@ -5042,6 +5042,7 @@ function setupKits() {
           locale: getLocale(),
           includeHolderLicence: Boolean($("d-holder-on")?.checked),
           holderLicence: $("d-holder")?.value || "",
+          rehearsal: document.querySelector('input[name="d-rehearsal"]:checked')?.value === "skip" ? "skip" : "devnet",
         }),
       });
       if (msg) msg.textContent = t("deploy.ok", { chain: data.chain, credits: data.chargedCredits || 0 });

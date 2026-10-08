@@ -8,6 +8,7 @@ import {
   formatCostEstimate,
   chainForProfile,
   deployChainChoice,
+  buildDeployGuide,
 } from "../src/deploy-kit.mjs";
 import uk from "../server/ui/locales/uk.js";
 import en from "../server/ui/locales/en.js";
@@ -209,4 +210,19 @@ test("deploy kit rejects a password or secret inside hidden settings", () => {
       (err) => err.status === 400 && err.code === "secrets",
     );
   }
+});
+
+test("deploy guide: the test-network rehearsal is optional and the choice changes only the text", () => {
+  for (const [chain, legacy] of [["solana", false], ["solana", true], ["bitcoin", false], ["evm", false]]) {
+    for (const locale of ["uk", "en"]) {
+      const withTest = buildDeployGuide({ chain, locale, legacy, count: 3 });
+      const skipped = buildDeployGuide({ chain, locale, legacy, count: 3, rehearsal: "skip" });
+      assert.match(withTest, /evnet|ignet|естнет|estnet/, `${chain} ${locale}: the default guide starts on a test network`);
+      assert.match(skipped, /^1\. Mainnet/m, `${chain} ${locale}`);
+      assert.doesNotMatch(skipped, /^2\. /m, `${chain} ${locale}: one section only`);
+      assert.doesNotMatch(skipped, /devnet|signet|testnet|Sepolia|airdrop|тестнет/i, `${chain} ${locale}: no test-network steps left`);
+    }
+  }
+  assert.match(buildDeployGuide({ chain: "solana", locale: "en", rehearsal: "skip" }), /your decision/);
+  assert.match(buildDeployGuide({ chain: "solana", locale: "uk" }), /необов'язковий/);
 });
