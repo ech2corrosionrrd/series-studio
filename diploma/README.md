@@ -75,7 +75,7 @@ node diploma/build_pptx.mjs        # збірка презентації Dyplom_
 | Таблиць БД | 12 | `src/platform/db.mjs` |
 | Залежностей часу виконання | 6 | `package.json` |
 | Рядків коду | ≈ 39 тис. | підрахунок у документі |
-| Комітів | 113 за 23.09–05.10.2026 | `git rev-list --count HEAD` |
+| Комітів | 117 за 23.09–05.10.2026 | `git rev-list --count HEAD` |
 | Публічний сервіс | https://lab.w3ir.io | бета |
 | Умови / Політика | https://studio.w3ir.io/terms/ | бета, без юриста |
 
