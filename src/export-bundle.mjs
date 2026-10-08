@@ -26,6 +26,7 @@ import {
   buildReleaseGuide,
 } from "./deploy.mjs";
 import { calculateCollectionProvenance } from "./provenance.mjs";
+import { fileURLToPath } from "node:url";
 import { readMeta } from "./versions.mjs";
 import { creationVersion, promptHash } from "./creation.mjs";
 import { runPreflight, formatPreflightReport } from "./preflight.mjs";
@@ -147,6 +148,8 @@ export function buildReadme(locale, collection) {
       "  metadata/N.json  — метадані",
       "  manifest.csv     — зведений CSV маніфест для гуртового імпорту",
       "  collection.json  — підсумок",
+      "  provenance.json  — відбиток колекції (SHA-256 кожної картинки)",
+      "  verify-provenance.mjs — перевірка без Series Lab: node verify-provenance.mjs (з теки ZIP)",
       "  README.txt       — цей файл",
       "",
       collection.upscaled
@@ -178,6 +181,8 @@ export function buildReadme(locale, collection) {
     "  metadata/N.json  — per-token metadata",
     "  manifest.csv     — bulk upload CSV manifest",
     "  collection.json  — summary",
+    "  provenance.json  — collection fingerprint (SHA-256 of every image)",
+    "  verify-provenance.mjs — check without Series Lab: node verify-provenance.mjs (from the ZIP folder)",
     "  README.txt       — this file",
     "",
     collection.upscaled
@@ -491,6 +496,8 @@ export async function buildBundleZip(params) {
     const presetSeed = preset?.seed || archive?.seed || null;
     provenance = calculateCollectionProvenance(imageRecords, { presetSeed });
     zip.file("provenance.json", JSON.stringify(provenance, null, 2) + "\n");
+    // Same checks as `series provenance --verify`, runnable without Series Lab: node verify-provenance.mjs
+    zip.file("verify-provenance.mjs", readFileSync(fileURLToPath(new URL("./provenance-verifier.mjs", import.meta.url)), "utf8"));
     opts.provenanceHash = provenance.provenanceHash;
   }
 

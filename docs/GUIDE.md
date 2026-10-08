@@ -401,7 +401,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 | `node bin/series.mjs notify "Готово"` | тестове сповіщення в Telegram |
 | `node bin/series.mjs manifest out/demo-archive.json --profile opensea` | CSV-маніфест для лаунчпада |
 | `node bin/series.mjs showcase out/demo-archive.json -o out/showcase.html` | HTML-вітрина колекції з рідкістю |
-| `node bin/series.mjs provenance out/fal-s0.45 -o out/provenance.json` | відбиток колекції (SHA-256) і перевірка |
+| `node bin/series.mjs provenance out/fal-s0.45 -o out/provenance.json` | відбиток колекції (SHA-256); попереджає про однакові картинки; `--verify` перевіряє набір за записом (дублі, відсутні файли, підміна) |
 | `node bin/series.mjs dataset out/demo-archive.json --images out/fal-s0.45 --trigger my_hero -o out/dataset.zip` | LoRA-датасет |
 | `node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o out/cm-config.json` | конфіг для деплою (Core Candy Machine; `--legacy` пише Sugar) |
 

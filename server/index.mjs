@@ -80,6 +80,7 @@ import {
   calculateRarityScores,
   calculateCollectionProvenance,
   verifyProvenance,
+  duplicateImages,
   exportDatasetZip,
   dispatchBatchNotification,
   sendTelegramNotification,
@@ -3293,7 +3294,7 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: `no image files found in set: ${setName}` });
     }
     const prov = calculateCollectionProvenance(images);
-    return send(res, 200, { ok: true, set: setName, provenance: prov });
+    return send(res, 200, { ok: true, set: setName, provenance: prov, duplicates: duplicateImages(prov.records) });
   }
 
   if (pathname === "/api/export/dataset" && req.method === "POST") {
