@@ -83,7 +83,7 @@
 |--------|------|------|
 | GET | `/api/export/csv?file=` | CSV промптів |
 | GET | `/api/export/txt?file=` | TXT промптів |
-| POST | `/api/export/bundle` | mint-ready ZIP → `out/bundles/` (ERC-721, Metaplex, Ordinals; опційно `imageUriPrefix`) |
+| POST | `/api/export/bundle` | mint-ready ZIP → `out/bundles/` (ERC-721, Metaplex, Ordinals; опційно `imageUriPrefix`; опційно `authorship`: `{ baseOrigin: hand\|photo\|ai_curated\|ai_raw, handEdited, handLayers, note }` — заява про людський внесок, пишеться в `authorship.json` і README) |
 | POST | `/api/export/preview-meta` | генерація попереднього перегляду метаданих `1.json` |
 | GET | `/api/checklist` | `?archive=&set=` — NFT readiness items |
 | GET | `/api/workspace` | прочитати `workspace/current.json` |

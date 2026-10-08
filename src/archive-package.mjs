@@ -4,6 +4,7 @@
  */
 import { computeRarity, openRarityByEdition } from "./rarity.mjs";
 import { chainForProfile } from "./deploy-kit.mjs";
+import { authorshipText } from "./authorship.mjs";
 
 export function buildRoyalties(opts = {}) {
   const fee = Number(opts.sellerFeeBasisPoints ?? 500);
@@ -134,6 +135,7 @@ export function buildChainReadme(locale, collection = {}) {
     "  README.txt       — цей файл, наступні кроки для вашої мережі",
     "",
     aiDisclosure("uk"),
+    ...(collection.authorship ? ["", authorshipText("uk", collection.authorship)] : []),
     "",
     "Наступні кроки:",
     "  1. Прочитайте preflight.txt. ERROR блокує позначку «готовий».",
@@ -169,6 +171,7 @@ export function buildChainReadme(locale, collection = {}) {
     "  README.txt       — this file, next steps for your chain",
     "",
     aiDisclosure("en"),
+    ...(collection.authorship ? ["", authorshipText("en", collection.authorship)] : []),
     "",
     "Next steps:",
     "  1. Read preflight.txt. An ERROR keeps the archive from being marked ready.",
