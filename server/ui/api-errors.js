@@ -20,6 +20,7 @@ const EXACT = {
   "FLUX.1 [dev] weights need a licence warning before a credit charge.": "api.licenseWarning",
   "no archives — build recipes first": "api.noArchivesRecipes",
   "set not found": "api.setMissing",
+  "sharp_not_installed": "api.sharpMissing",
   "nothing to delete": "api.nothingToDelete",
   "no current image to drop": "api.noCurrentDrop",
   "version file already exists": "api.versionExists",

@@ -1,7 +1,10 @@
 /**
  * One look at a set before it is exported: what is wrong, where, and what to do.
- * Gathers checks that already exist (file format, tiny files, near-duplicate
- * frames, similarity to the base image) into a single per-frame list.
+ * Gathers checks (file format, tiny files, exact copies, similarity to the base
+ * image) into a single per-frame list. Copies are matched by SHA-256 of the file:
+ * frames of one series share a composition, so a fuzzy hash flags nearly every
+ * pair (tried on a real series: 7 of 8 frames). Fuzzy matching stays a separate
+ * button ("Find similar").
  * Offline, no paid calls. It does not judge whether a requested trait (a
  * "Teal" background, a scarf colour) is actually visible: that needs the AI
  * triage, which stays a separate button.
@@ -9,7 +12,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { findDupes } from "./dupes.mjs";
 import { similarityToBase, SIMILARITY_WARN_BELOW, SIMILARITY_METHOD } from "./similarity.mjs";
 import { imageFormat } from "./png-normalize.mjs";
 import { writeJsonAtomic } from "./fs-safe.mjs";
@@ -31,9 +33,9 @@ function readCache(setDir) {
 }
 
 /**
- * @param {{ setDir: string, baseBuf?: Buffer|null, marks?: Record<string,string>, maxDistance?: number, limit?: number }} args
+ * @param {{ setDir: string, baseBuf?: Buffer|null, marks?: Record<string,string>, limit?: number }} args
  */
-export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, maxDistance = 8, limit = 24 }) {
+export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, limit = 24 }) {
   if (!existsSync(setDir) || !statSync(setDir).isDirectory()) throw new Error(`not a folder: ${setDir}`);
   const files = readdirSync(setDir)
     .filter((f) => /^\d+\.png$/i.test(f))
@@ -45,6 +47,7 @@ export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, ma
   let cacheDirty = false;
 
   const frames = new Map();
+  const byHash = new Map();
   const frame = (edition) => {
     if (!frames.has(edition)) frames.set(edition, { edition, issues: [], similarity: null });
     return frames.get(edition);
@@ -57,6 +60,8 @@ export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, ma
     const st = statSync(path);
     if (st.size < MIN_BYTES) f.issues.push({ kind: "tiny", detail: `${st.size} B` });
     const buf = readFileSync(path);
+    const sha = createHash("sha256").update(buf).digest("hex");
+    byHash.set(sha, [...(byHash.get(sha) || []), edition]);
     const format = imageFormat(buf);
     if (format !== "png") {
       f.issues.push({ kind: "bad_format", detail: format === "unknown" ? "not an image" : format });
@@ -90,18 +95,11 @@ export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, ma
     }
   }
 
-  let dupePairs = [];
-  try {
-    dupePairs = findDupes(setDir, { maxDistance }).pairs || [];
-  } catch {
-    dupePairs = [];
-  }
-  for (const p of dupePairs) {
-    const a = parseInt(p.a, 10);
-    const b = parseInt(p.b, 10);
-    if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) continue;
-    frame(a).issues.push({ kind: "duplicate", detail: `#${b} (${p.distance})` });
-    frame(b).issues.push({ kind: "duplicate", detail: `#${a} (${p.distance})` });
+  for (const group of byHash.values()) {
+    if (group.length < 2) continue;
+    for (const ed of group) {
+      frame(ed).issues.push({ kind: "duplicate", detail: group.filter((e) => e !== ed).map((e) => `#${e}`).join(", ") });
+    }
   }
 
   for (const [key, val] of Object.entries(marks || {})) {

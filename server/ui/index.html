@@ -817,6 +817,16 @@
       <div id="x-prov-result" class="card small" style="margin-top:10px; display:none; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2)">
         <span style="font-weight:600" data-i18n="export.provenance.hashLabel">Хеш походження (SHA-256)</span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
       </div>
+      <div id="x-prov-check" class="small" style="margin-top:8px" hidden></div>
+      <div id="x-size" class="card small" style="margin-top:10px">
+        <b data-i18n="export.size.title">Розмір файлів</b>
+        <p class="muted" style="margin:4px 0 8px" data-i18n="export.size.hint"></p>
+        <div class="actions" style="gap:8px; flex-wrap:wrap; align-items:center">
+          <button type="button" id="x-size-scan" class="btn small" data-i18n="export.size.scan" data-i18n-tip="export.size.scan.tip">Знайти завеликі</button>
+          <button type="button" id="x-size-run" class="btn small" data-i18n="export.size.run" data-i18n-tip="export.size.run.tip">Стиснути до 1 МБ</button>
+          <span id="x-size-msg" class="small" role="status"></span>
+        </div>
+      </div>
     </div>
 
     <div class="card" style="margin-top:16px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.03);">

@@ -26,6 +26,8 @@ import {
 import { dirname, extname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeSetQuality } from "../src/quality.mjs";
+import { compressSet, COMPRESS_TARGET_BYTES } from "../src/compress.mjs";
+import { loadSharp } from "../src/upscale.mjs";
 import {
   buildRecipes,
   drySimulate,
@@ -2487,6 +2489,18 @@ async function handleApi(req, res, url) {
     return send(res, 200, { ok: true, method: SIMILARITY_METHOD, offline: true, editions });
   }
 
+  if (pathname === "/api/set/compress" && req.method === "POST") {
+    const body = await readBody(req);
+    const dirName = safeSetName(body.dir || "");
+    const setDir = join(P().out, dirName);
+    if (!dirName || !existsSync(setDir) || !statSync(setDir).isDirectory()) return send(res, 404, { error: "set not found" });
+    const maxBytes = Math.max(100_000, Math.min(20 * 1024 * 1024, Number(body.maxBytes) || COMPRESS_TARGET_BYTES));
+    const dryRun = Boolean(body.dryRun);
+    if (!dryRun && !(await loadSharp())) return send(res, 400, { error: "sharp_not_installed", sharp: false });
+    const report = await compressSet(setDir, { maxBytes, dryRun });
+    return send(res, 200, { ok: true, dir: dirName, dryRun, ...report });
+  }
+
   if (pathname === "/api/quality" && req.method === "GET") {
     const dirName = safeSetName(url.searchParams.get("dir") || "");
     const setDir = join(P().out, dirName);
@@ -3312,7 +3326,7 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: `no image files found in set: ${setName}` });
     }
     const prov = calculateCollectionProvenance(images);
-    return send(res, 200, { ok: true, set: setName, provenance: prov, duplicates: duplicateImages(prov.records) });
+    return send(res, 200, { ok: true, set: setName, provenance: prov, duplicates: duplicateImages(prov.records), check: verifyProvenance(prov, setDir) });
   }
 
   if (pathname === "/api/export/dataset" && req.method === "POST") {

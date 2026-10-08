@@ -3665,6 +3665,72 @@ function renderQuality(data) {
   });
 }
 
+/** The verifier speaks English so the standalone script needs no locale files; show it in the UI language. */
+function provMessage(text) {
+  const rules = [
+    [/^Editions #(\d+) and #(\d+) are the same image/, "same", (m) => ({ a: m[1], b: m[2] })],
+    [/^Hash mismatch for edition #(\d+)/, "mismatch", (m) => ({ ed: m[1] })],
+    [/^File missing: (.+)$/, "missing", (m) => ({ file: m[1] })],
+    [/^The record is inconsistent/, "inconsistent", () => ({})],
+    [/^Unsafe or empty file name for edition #(\d+)/, "unsafe", (m) => ({ ed: m[1] })],
+    [/^Edition #(\d+) is listed twice/, "dupEdition", (m) => ({ ed: m[1] })],
+    [/^count says/, "count", () => ({})],
+    [/^Provenance hash mismatch/, "total", () => ({})],
+    [/^(.+) is named \.png but the bytes are not a PNG/, "notPng", (m) => ({ file: m[1] })],
+    [/^Edition numbers skip (\d+) value/, "gaps", (m) => ({ n: m[1] })],
+    [/^(\d+) image file\(s\) in the folder are not in the record/, "extra", (m) => ({ n: m[1] })],
+  ];
+  for (const [re, key, params] of rules) {
+    const m = re.exec(text);
+    if (m) return t(`export.provenance.m.${key}`, params(m));
+  }
+  return text;
+}
+
+function fmtBytes(n) {
+  const v = Number(n) || 0;
+  return v >= 1048576 ? `${(v / 1048576).toFixed(2)} ${t("export.size.mb")}` : `${Math.round(v / 1024)} ${t("export.size.kb")}`;
+}
+
+function setupSizeTools() {
+  const msg = $("x-size-msg");
+  const run = async (dryRun) => {
+    const set = $("x-set")?.value;
+    if (!set) {
+      if (msg) {
+        msg.textContent = t("export.bundle.noSets");
+        msg.className = "small err-msg";
+      }
+      return;
+    }
+    if (msg) {
+      msg.textContent = t(dryRun ? "export.size.scanning" : "export.size.running");
+      msg.className = "small muted";
+    }
+    try {
+      const r = await api("/api/set/compress", { method: "POST", body: JSON.stringify({ dir: set, dryRun }) });
+      if (dryRun) {
+        if (!r.over.length) {
+          msg.textContent = t("export.size.none", { n: r.scanned });
+          msg.className = "small ok-msg";
+        } else {
+          const max = Math.max(...r.over.map((o) => o.bytes));
+          msg.textContent = t("export.size.found", { over: r.over.length, n: r.scanned, max: fmtBytes(max) });
+          msg.className = "small";
+        }
+      } else {
+        msg.textContent = t("export.size.done", { done: r.compressed.length, saved: fmtBytes(r.savedBytes), failed: r.failed.length });
+        msg.className = r.failed.length ? "small err-msg" : "small ok-msg";
+      }
+    } catch (e) {
+      msg.textContent = e.message;
+      msg.className = "small err-msg";
+    }
+  };
+  $("x-size-scan")?.addEventListener("click", () => run(true));
+  $("x-size-run")?.addEventListener("click", () => run(false));
+}
+
 function setupQuality() {
   $("v-quality-run")?.addEventListener("click", async () => {
     const status = $("v-quality-status");
@@ -4684,6 +4750,18 @@ function setupExport() {
           provCode.textContent = hash;
           provBox.style.display = "block";
         }
+        const checkBox = $("x-prov-check");
+        if (checkBox) {
+          const c = res.check || { valid: true, errors: [], warnings: [] };
+          const li = (a) => a.map((x) => `<li>${escapeHtml(provMessage(x))}</li>`).join("");
+          let h = "";
+          if (c.valid && !c.warnings.length) h += `<p class="ok-msg">${escapeHtml(t("export.provenance.ok"))}</p>`;
+          if (c.errors.length) h += `<p class="err-msg"><b>${escapeHtml(t("export.provenance.problems"))}</b></p><ul class="guide">${li(c.errors)}</ul>`;
+          if (c.warnings.length) h += `<p><b>${escapeHtml(t("export.provenance.warnings"))}</b></p><ul class="guide">${li(c.warnings)}</ul>`;
+          h += `<p class="muted">${escapeHtml(t("export.provenance.verifyHint"))}</p>`;
+          checkBox.innerHTML = h;
+          checkBox.hidden = false;
+        }
         if (msg) {
           msg.textContent = t("export.provenance.done", { n: res.provenance.count, hash: hash.slice(0, 16) + "..." });
           msg.className = "small ok-msg";
@@ -5550,6 +5628,7 @@ async function boot() {
   setupRender();
   setupGallery();
   setupQuality();
+  setupSizeTools();
   setupEngineDiagnostics();
   setupVersions();
   setupExport();
