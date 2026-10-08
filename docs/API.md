@@ -156,7 +156,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 | POST | `/api/gallery/dupes` | пошук дублів у наборі (`dir`, `maxDistance`) |
 | GET | `/api/stages/quotes` | ціни етапів за раз (`count`, `engine`, `provider`) |
 | GET | `/api/stages/quote` | ціна одного етапу (`stage`, `engine`, `count`, `storage`, `zip`; `storage=1` — із завантаженням в Arweave, старий `ipfs=1` теж діє) |
-| GET | `/api/export/provenance?set=` | відбиток колекції (SHA-256) |
+| GET | `/api/export/provenance?set=` | відбиток колекції (SHA-256); у відповіді `duplicates` — групи видань з однаковою картинкою |
 | POST | `/api/export/dataset` | LoRA-датасет (`archive`, `set`) |
 | POST | `/api/matrix/preview` | промпт під рушій (`recipe`, `engine`, `preset`) |
 | GET | `/api/traits/matrix?archive=` | співвиникнення рис |

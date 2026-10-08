@@ -32,6 +32,7 @@ import {
   calculateRarityScores,
   calculateCollectionProvenance,
   verifyProvenance,
+  duplicateImages,
   exportDatasetZip,
   dispatchBatchNotification,
   sendTelegramNotification,
@@ -1007,6 +1008,7 @@ function cmdProvenance(targetDir, opts = {}) {
     }
     const provData = JSON.parse(readFileSync(provPath, "utf8"));
     const result = verifyProvenance(provData, dir);
+    for (const w of result.warnings || []) console.warn(`  warning: ${w}`);
     if (result.valid) {
       console.log(`✅ Provenance Verification PASSED: ${provData.provenanceHash} (${provData.count} items)`);
       process.exit(0);
@@ -1037,6 +1039,8 @@ function cmdProvenance(targetDir, opts = {}) {
   }
 
   const prov = calculateCollectionProvenance(images);
+  const dupes = duplicateImages(prov.records);
+  for (const group of dupes) console.warn(`  warning: editions ${group.map((e) => "#" + e).join(", ")} are the same image`);
   console.log(`Generated Provenance Hash for ${prov.count} images:`);
   console.log(`  Provenance Hash : ${prov.provenanceHash}`);
   console.log(`  Algorithm       : ${prov.algorithm}`);
