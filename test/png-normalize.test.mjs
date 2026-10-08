@@ -44,3 +44,41 @@ test("pollinations edit returns png even when the service sends jpeg", { skip: !
   );
   assert.equal(imageFormat(out), "png");
 });
+
+test("repairPngFiles converts jpeg bytes under .png names, versions included, and is repeatable", { skip: !sharp }, async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { repairPngFiles } = await import("../src/png-normalize.mjs");
+  const dir = mkdtempSync(join(tmpdir(), "repair-png-"));
+  try {
+    const png = createMockPng({ seed: 4, title: "keep" });
+    mkdirSync(join(dir, "versions", "1"), { recursive: true });
+    writeFileSync(join(dir, "1.png"), await jpegBytes());
+    writeFileSync(join(dir, "2.png"), png);
+    writeFileSync(join(dir, "versions", "1", "v1.png"), await jpegBytes());
+    writeFileSync(join(dir, "notes.txt"), "not an image");
+
+    const dry = await repairPngFiles(dir, { dryRun: true });
+    assert.equal(dry.converted.length, 2);
+    assert.equal(imageFormat(readFileSync(join(dir, "1.png"))), "jpeg");
+
+    const r = await repairPngFiles(dir);
+    assert.equal(r.scanned, 3);
+    assert.equal(r.converted.length, 2);
+    assert.equal(r.failed.length, 0);
+    assert.equal(imageFormat(readFileSync(join(dir, "1.png"))), "png");
+    assert.equal(imageFormat(readFileSync(join(dir, "versions", "1", "v1.png"))), "png");
+    assert.deepEqual(readFileSync(join(dir, "2.png")), png);
+
+    const again = await repairPngFiles(dir);
+    assert.equal(again.converted.length, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("repairPngFiles rejects a missing folder", async () => {
+  const { repairPngFiles } = await import("../src/png-normalize.mjs");
+  await assert.rejects(() => repairPngFiles("no-such-folder-xyz"), /not a folder/);
+});

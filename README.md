@@ -109,6 +109,7 @@ node bin/series.mjs triage out/mock-s0.45 --provider heuristic --apply
 node bin/series.mjs provenance out/fal-s0.45 -o out/provenance.json
 node bin/series.mjs dataset out/demo-archive.json --images out/fal-s0.45 --trigger my_hero -o out/dataset.zip
 node bin/series.mjs upscale out/fal-s0.45
+node bin/series.mjs repair-png out/pollinations-s0.45 --dry-run
 node bin/series.mjs pin out/fal-s0.45 --dry-run
 node bin/series.mjs release-init out/demo-archive.json -o release.json --creator <адреса> --price 0.2
 node bin/series.mjs upload <тека-набору> --keypair deployer.json --max-price 1
