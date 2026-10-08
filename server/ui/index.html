@@ -933,6 +933,22 @@
           <input type="checkbox" id="d-holder-on" checked>
           <span data-i18n="advisor.holder.include">Додати заяву для власників у набір</span>
         </label>
+        <div class="actions" style="gap:8px; flex-wrap:wrap; align-items:end">
+          <label class="small"><span data-i18n="advisor.licence.label">Модель ліцензії на зображення</span>
+            <select id="d-licence">
+              <option value="statement" data-i18n="advisor.licence.statement">Коротка заява (за замовчуванням)</option>
+              <option value="personal" data-i18n="advisor.licence.personal">Лише особисте використання</option>
+              <option value="commercial" data-i18n="advisor.licence.commercial">Особисте й комерційне використання власником</option>
+              <option value="commercial_cap" data-i18n="advisor.licence.commercial_cap">Комерційне до річного ліміту доходу</option>
+              <option value="cc0" data-i18n="advisor.licence.cc0">Відмова від прав (за зразком CC0)</option>
+            </select>
+          </label>
+          <label class="small" id="d-licence-cap-wrap" hidden><span data-i18n="advisor.licence.cap">Ліміт доходу, USD на рік</span>
+            <input id="d-licence-cap" type="number" min="1" step="1" style="width:130px">
+          </label>
+          <button type="button" id="d-licence-apply" class="btn small" data-i18n="advisor.licence.apply" data-i18n-tip="advisor.licence.apply.tip">Підставити шаблон</button>
+        </div>
+        <p class="muted small" style="margin:4px 0" data-i18n="advisor.licence.note"></p>
         <label class="small"><span data-i18n="advisor.holder.label">Заява для власників (заповніть пропуски)</span>
           <textarea id="d-holder" rows="8"></textarea>
         </label>

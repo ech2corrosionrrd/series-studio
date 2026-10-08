@@ -344,7 +344,7 @@ export function buildDeployKit({
       : `\nAllowlist: group "${allowlist.label}", merkle root (hex, the mplx allowList.merkleRoot field):\n${allowlist.merkleRoot}\nWallets and proofs: allowlist.json. The full guard, including payment: series guards release.json (the same wallets in release.json → allowlist).\n`;
   }
   files["DEPLOY.txt"] = guide;
-  const advisor = buildLaunchAdvisor({ chain, locale });
+  const advisor = buildLaunchAdvisor({ chain, locale, licence: opts.holderModel, name, creator, cap: opts.holderCap });
   files["ADVISOR.txt"] = `${advisor.text}\n`;
   if (opts.includeHolderLicence !== false) {
     const custom = typeof opts.holderLicence === "string" ? opts.holderLicence.trim() : "";
