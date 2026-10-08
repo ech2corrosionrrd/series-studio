@@ -1,0 +1,6 @@
+stateDiagram-v2
+  [*] --> pending: createSolOrder (унікальна сума)
+  pending --> paid: знайдено переказ USDC із точною сумою
+  pending --> expired: минув строк SOLANA_PAY_ORDER_DAYS
+  paid --> [*]
+  expired --> [*]
