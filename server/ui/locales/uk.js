@@ -1018,6 +1018,7 @@ export default {
   "help.cli.render": "пакетна генерація без браузера (з версіями, журналом витрат і денною межею)",
   "help.cli.triage": "автоматична оцінка якості набору",
   "help.cli.upscale": "збільшити картинки вдвічі",
+  "help.cli.repairPng": "перетворити JPEG під іменем .png на справжній PNG (потрібен sharp)",
   "help.cli.pin": "завантажити набір у Arweave (Irys)",
   "help.cli.manifest": "CSV-маніфест для лаунчпада",
   "help.cli.showcase": "HTML-вітрина колекції з рідкістю",

@@ -1018,6 +1018,7 @@ export default {
   "help.cli.render": "batch generation without a browser (with versions, spend log and daily cap)",
   "help.cli.triage": "automatic quality scoring of a set",
   "help.cli.upscale": "double image size",
+  "help.cli.repairPng": "turn JPEG saved under a .png name into real PNG (needs sharp)",
   "help.cli.pin": "upload a set to Arweave (Irys)",
   "help.cli.manifest": "CSV manifest for a launchpad",
   "help.cli.showcase": "HTML showcase with rarity",
