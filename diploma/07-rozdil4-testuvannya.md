@@ -45,6 +45,15 @@
 
 Процес роботи з кодом: гілка від `main`, коміти українською у стилі `fix:`/`feat:`/`docs:`, злиття через pull request лише після зелених перевірок. Хук `.githooks/pre-commit` вимагає, щоб коміт із змінами в `src/`, `server/`, `bin/`, `scripts/` чи `package.json` містив також оновлені документи й `CHANGELOG.md`.
 
+Схему конвеєра безперервної інтеграції (CI/CD) на базі GitHub Actions представлено на рис. 4.1.
+
+```mermaid
+flowchart TD
+  Push[Коміт / PR] --> Test[Тести Node 22 & 24]
+  Test --> Audit[Docs & i18n аудит]
+  Audit --> Deploy[Deploy Staging]
+```
+
 ## 4.3 Контейнеризація й розгортання
 
 **Образ** (`Dockerfile`): основа `node:24-alpine`; `npm ci --omit=dev`; копіюються лише потрібні каталоги (`bin`, `src`, `server`, `schemas`, `presets`, `templates`, `scripts` частково). Контейнер працює від користувача з uid 1000. Хост, домен входу й перелік дозволених хостів **не вшиваються в образ**: без `SERIES_ALLOWED_HOSTS` і `AUTH_DOMAIN` процес завершується з поясненням.
@@ -56,6 +65,15 @@
 **Режими:** `SERIES_MODE=public` (образ задає також `HOST=0.0.0.0`, `PORT=5344`, `SERIES_DATA_DIR=/data`) для хоста; `SERIES_MODE=local` лише для ПК.
 
 **Скрипти розгортання:** `phase3.sh` (початкове розгортання staging, ім'я сервісу задається `SERVICE_HOST`), `phase3-rollback.sh` (відкат), `reset-staging.sh`, `upload.sh`.
+
+Схему архітектури розгортання веб-сервісу та проксування трафіку в Docker-середовищі наведено на рис. 4.2.
+
+```mermaid
+flowchart TD
+  Client[Клієнт] --> Caddy[Caddy Reverse Proxy]
+  Caddy --> App[Node.js Series Lab]
+  App --> Volume[(Volume /data)]
+```
 
 ## 4.4 Резервне копіювання й відновлення
 
