@@ -33,6 +33,7 @@ import {
   describeSupply,
   findDupes,
   similarityToBase,
+  SIMILARITY_METHOD,
   dna,
   duplicates,
   duplicateGroups,
@@ -2481,7 +2482,7 @@ async function handleApi(req, res, url) {
       }
     }
     editions.sort((a, b) => a.edition - b.edition);
-    return send(res, 200, { ok: true, method: "ahash-64", offline: true, editions });
+    return send(res, 200, { ok: true, method: SIMILARITY_METHOD, offline: true, editions });
   }
 
   if (pathname === "/api/waves" && req.method === "GET") {
