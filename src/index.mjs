@@ -36,9 +36,12 @@ export {
   hamming,
   aHashPng,
   aHashFromGray,
+} from "./dupes.mjs";
+export {
   similarityToBase,
   SIMILARITY_WARN_BELOW,
-} from "./dupes.mjs";
+  SIMILARITY_METHOD,
+} from "./similarity.mjs";
 export {
   validatePreset,
   validateArchive,
