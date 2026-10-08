@@ -360,6 +360,11 @@
           <button type="button" id="opt-add" class="btn small" data-i18n="ctor.options.add">Додати опцію</button>
         </div>
         <p id="opt-msg" class="small" style="margin-top:8px"></p>
+        <p id="opt-tier-summary" class="small muted" style="margin-top:4px"></p>
+        <details class="small" style="margin-top:4px">
+          <summary data-i18n="ctor.tier.hint.title">Як зробити «грааль» і 1/1</summary>
+          <p class="muted" data-i18n="ctor.tier.hint.body"></p>
+        </details>
       </div>
       <p id="opt-empty" class="muted small" data-i18n="ctor.options.empty"></p>
     </div>
@@ -652,6 +657,15 @@
       <button type="button" id="v-publish" class="btn small public-only" hidden data-i18n="publish.btn">🌐 Опублікувати колекцію</button>
       <span id="v-publish-status" class="small muted"></span>
     </div>
+    <div id="v-quality" class="card quality-card" style="margin: 10px 0; padding: 10px 14px">
+      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px">
+        <b data-i18n="gallery.quality.title">Якість серії</b>
+        <button type="button" id="v-quality-run" class="btn small primary" data-i18n="gallery.quality.run" data-i18n-tip="gallery.quality.run.tip">Перевірити якість</button>
+        <span id="v-quality-status" class="small muted"></span>
+      </div>
+      <p class="muted small" style="margin:6px 0 0" data-i18n="gallery.quality.hint"></p>
+      <div id="v-quality-out" class="small" hidden></div>
+    </div>
     <div class="card triage-bar" style="margin: 10px 0; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px;">
       <b style="color: var(--primary, #6366f1); font-size: 13px;" data-i18n="gallery.triage.title">🤖 AI Auto-Triage &amp; Critic</b>
       <label class="small" style="margin:0; display:flex; align-items:center; gap:4px">
@@ -808,6 +822,16 @@
       <div id="x-prov-result" class="card small" style="margin-top:10px; display:none; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2)">
         <span style="font-weight:600" data-i18n="export.provenance.hashLabel">Хеш походження (SHA-256)</span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
       </div>
+      <div id="x-prov-check" class="small" style="margin-top:8px" hidden></div>
+      <div id="x-size" class="card small" style="margin-top:10px">
+        <b data-i18n="export.size.title">Розмір файлів</b>
+        <p class="muted" style="margin:4px 0 8px" data-i18n="export.size.hint"></p>
+        <div class="actions" style="gap:8px; flex-wrap:wrap; align-items:center">
+          <button type="button" id="x-size-scan" class="btn small" data-i18n="export.size.scan" data-i18n-tip="export.size.scan.tip">Знайти завеликі</button>
+          <button type="button" id="x-size-run" class="btn small" data-i18n="export.size.run" data-i18n-tip="export.size.run.tip">Стиснути до 1 МБ</button>
+          <span id="x-size-msg" class="small" role="status"></span>
+        </div>
+      </div>
     </div>
 
     <div class="card" style="margin-top:16px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.03);">
@@ -870,6 +894,18 @@
           <textarea id="d-allowlist" rows="4" data-i18n-placeholder="deploy.allowlist.ph"></textarea>
           <span class="muted" data-i18n="deploy.allowlist.help"></span>
         </label>
+      </div>
+      <div id="d-rehearsal" class="card small" style="margin-top:10px">
+        <b data-i18n="deploy.rehearsal.title">Пробний прогін у тестовій мережі (необов'язково)</b>
+        <p class="muted" style="margin:4px 0" data-i18n="deploy.rehearsal.intro"></p>
+        <ul class="guide">
+          <li data-i18n="deploy.rehearsal.why"></li>
+          <li data-i18n="deploy.rehearsal.cost"></li>
+          <li data-i18n="deploy.rehearsal.skip"></li>
+        </ul>
+        <label class="row"><input type="radio" name="d-rehearsal" id="d-rehearsal-do" value="devnet" checked> <span data-i18n="deploy.rehearsal.do"></span></label>
+        <label class="row"><input type="radio" name="d-rehearsal" id="d-rehearsal-no" value="skip"> <span data-i18n="deploy.rehearsal.no"></span></label>
+        <p class="muted" style="margin:4px 0 0" data-i18n="deploy.rehearsal.note"></p>
       </div>
       <div id="d-advisor-card" class="advisor-card">
         <h2 data-i18n="advisor.h2">Порадник запуску</h2>

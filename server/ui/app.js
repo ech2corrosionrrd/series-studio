@@ -751,12 +751,14 @@ function renderOptionsEditor() {
         ${promptWarn ? `<span class="muted small opt-warn">${escapeHtml(t("ctor.options.warn.promptShort"))}</span>` : ""}
       </td>
       <td class="opt-actions">
+        <button type="button" class="btn small${Number(o.exact) === 1 ? " primary" : ""}" data-act="one" data-idx="${idx}"${tipAttr("ctor.options.oneOfOne")}>${escapeHtml(t("ctor.options.oneOfOne"))}</button>
         <button type="button" class="btn small" data-act="dup" data-idx="${idx}"${tipAttr("ctor.options.dup")}>${escapeHtml(t("ctor.options.dup"))}</button>
         <button type="button" class="btn small" data-act="rm" data-idx="${idx}"${tipAttr("ctor.options.rm")}>${escapeHtml(t("ctor.options.rm"))}</button>
       </td>`;
     tbody.appendChild(tr);
   });
 
+  renderTierSummary(trait);
   const check = validateOptionsClient(trait.options);
   if (msg) {
     if (!check.ok) {
@@ -770,6 +772,24 @@ function renderOptionsEditor() {
       msg.className = "small ok-msg";
     }
   }
+}
+
+/** Fixed-count options ("exactly N") are the series' rarity tiers: 1/1 and rare "grails". */
+function renderTierSummary(trait) {
+  const el = $("opt-tier-summary");
+  if (!el) return;
+  const size = Number($("o-size")?.value) || 0;
+  const fixed = (trait.options || []).map((o) => Number(o.exact)).filter((n) => Number.isInteger(n) && n > 0);
+  if (!fixed.length) {
+    el.textContent = t("ctor.tier.none");
+    return;
+  }
+  const one = fixed.filter((n) => n === 1).length;
+  const rare = fixed.filter((n) => n > 1).length;
+  const sum = fixed.reduce((a, b) => a + b, 0);
+  el.textContent = size && sum > size
+    ? t("ctor.tier.over", { fixed: sum, size })
+    : t("ctor.tier.summary", { key: state.selectedTraitKey, one, rare, fixed: sum, size: size || "?", rest: size ? size - sum : "?" });
 }
 
 function updateOptionField(idx, field, value) {
@@ -908,6 +928,10 @@ function setupOptionsEditor() {
     const idx = Number(btn.dataset.idx);
     if (btn.dataset.act === "rm") removeOptionRow(idx);
     if (btn.dataset.act === "dup") duplicateOptionRow(idx);
+    if (btn.dataset.act === "one") {
+      const cur = findTrait(state.selectedTraitKey)?.options?.[idx];
+      if (cur) updateOptionField(idx, "exact", Number(cur.exact) === 1 ? "" : "1");
+    }
   });
 }
 
@@ -3606,6 +3630,150 @@ function setupVersions() {
   });
 }
 
+/** Series quality panel: one report for a set (format, duplicates, similarity to the base). */
+const QUALITY_KINDS = ["bad_format", "tiny", "duplicate", "low_similarity"];
+
+function renderQuality(data) {
+  const out = $("v-quality-out");
+  if (!out) return;
+  const kindLabel = (k) => t(`gallery.quality.kind.${k}`);
+  const parts = [];
+  if (!data.problemFrames) {
+    parts.push(`<p><b>${escapeHtml(t("gallery.quality.allGood", { total: data.total }))}</b></p>`);
+  } else {
+    parts.push(`<p><b>${escapeHtml(t("gallery.quality.summary", { problem: data.problemFrames, total: data.total }))}</b></p>`);
+    const chips = QUALITY_KINDS.filter((k) => data.counts[k]).map((k) => `<span class="qa-badge">${escapeHtml(kindLabel(k))}: ${data.counts[k]}</span>`);
+    parts.push(`<p>${chips.join(" ")}</p>`);
+    const todo = QUALITY_KINDS.filter((k) => data.counts[k]).map((k) => `<li>${escapeHtml(t(`gallery.quality.todo.${k}`))}</li>`);
+    parts.push(`<ul class="guide">${todo.join("")}</ul>`);
+    const rows = data.weakest.map((f) => {
+      const issues = f.issues.filter((i) => i.kind !== "marked_redo").map((i) => `${kindLabel(i.kind)}${i.detail ? ` (${escapeHtml(i.detail)})` : ""}`).join(", ");
+      const sim = f.similarity != null ? ` · ${escapeHtml(t("gallery.similarity.value", { n: f.similarity }))}` : "";
+      return `<li><b>#${f.edition}</b>${sim} · ${issues}</li>`;
+    });
+    parts.push(`<ul class="guide">${rows.join("")}</ul>`);
+    if (data.problemFrames > data.weakest.length) {
+      parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.more", { shown: data.weakest.length, total: data.problemFrames }))}</p>`);
+    }
+    parts.push(`<p><button type="button" id="v-quality-mark" class="btn small"${tipAttr("gallery.quality.markAll")}>${escapeHtml(t("gallery.quality.markAll", { n: data.problemFrames }))}</button> <span id="v-quality-marked" class="muted"></span></p>`);
+  }
+  if (data.similarity) {
+    parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.sim", { mean: data.similarity.mean, min: data.similarity.min, warn: data.similarity.warnBelow }))}</p>`);
+  } else if (!data.hasBase) {
+    parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.noBase"))}</p>`);
+  }
+  out.innerHTML = parts.join("");
+  out.hidden = false;
+  $("v-quality-mark")?.addEventListener("click", async () => {
+    const marks = { ...state.galleryMarks };
+    let kept = 0;
+    let n = 0;
+    for (const ed of data.problemEditions) {
+      if (marks[String(ed)] === "keep") {
+        kept++;
+        continue;
+      }
+      marks[String(ed)] = "redo";
+      n++;
+    }
+    try {
+      const res = await api("/api/marks", { method: "POST", body: JSON.stringify({ dir: state.galleryDir, marks }) });
+      state.galleryMarks = res.marks || marks;
+      renderGallery();
+      scheduleWorkspaceSave({ lastSet: state.galleryDir });
+      const note = $("v-quality-marked");
+      if (note) note.textContent = t("gallery.quality.marked", { n, kept });
+    } catch (e) {
+      alert(e.message);
+    }
+  });
+}
+
+/** The verifier speaks English so the standalone script needs no locale files; show it in the UI language. */
+function provMessage(text) {
+  const rules = [
+    [/^Editions #(\d+) and #(\d+) are the same image/, "same", (m) => ({ a: m[1], b: m[2] })],
+    [/^Hash mismatch for edition #(\d+)/, "mismatch", (m) => ({ ed: m[1] })],
+    [/^File missing: (.+)$/, "missing", (m) => ({ file: m[1] })],
+    [/^The record is inconsistent/, "inconsistent", () => ({})],
+    [/^Unsafe or empty file name for edition #(\d+)/, "unsafe", (m) => ({ ed: m[1] })],
+    [/^Edition #(\d+) is listed twice/, "dupEdition", (m) => ({ ed: m[1] })],
+    [/^count says/, "count", () => ({})],
+    [/^Provenance hash mismatch/, "total", () => ({})],
+    [/^(.+) is named \.png but the bytes are not a PNG/, "notPng", (m) => ({ file: m[1] })],
+    [/^Edition numbers skip (\d+) value/, "gaps", (m) => ({ n: m[1] })],
+    [/^(\d+) image file\(s\) in the folder are not in the record/, "extra", (m) => ({ n: m[1] })],
+  ];
+  for (const [re, key, params] of rules) {
+    const m = re.exec(text);
+    if (m) return t(`export.provenance.m.${key}`, params(m));
+  }
+  return text;
+}
+
+function fmtBytes(n) {
+  const v = Number(n) || 0;
+  return v >= 1048576 ? `${(v / 1048576).toFixed(2)} ${t("export.size.mb")}` : `${Math.round(v / 1024)} ${t("export.size.kb")}`;
+}
+
+function setupSizeTools() {
+  const msg = $("x-size-msg");
+  const run = async (dryRun) => {
+    const set = $("x-set")?.value;
+    if (!set) {
+      if (msg) {
+        msg.textContent = t("export.bundle.noSets");
+        msg.className = "small err-msg";
+      }
+      return;
+    }
+    if (msg) {
+      msg.textContent = t(dryRun ? "export.size.scanning" : "export.size.running");
+      msg.className = "small muted";
+    }
+    try {
+      const r = await api("/api/set/compress", { method: "POST", body: JSON.stringify({ dir: set, dryRun }) });
+      if (dryRun) {
+        if (!r.over.length) {
+          msg.textContent = t("export.size.none", { n: r.scanned });
+          msg.className = "small ok-msg";
+        } else {
+          const max = Math.max(...r.over.map((o) => o.bytes));
+          msg.textContent = t("export.size.found", { over: r.over.length, n: r.scanned, max: fmtBytes(max) });
+          msg.className = "small";
+        }
+      } else {
+        msg.textContent = t("export.size.done", { done: r.compressed.length, saved: fmtBytes(r.savedBytes), failed: r.failed.length });
+        msg.className = r.failed.length ? "small err-msg" : "small ok-msg";
+      }
+    } catch (e) {
+      msg.textContent = e.message;
+      msg.className = "small err-msg";
+    }
+  };
+  $("x-size-scan")?.addEventListener("click", () => run(true));
+  $("x-size-run")?.addEventListener("click", () => run(false));
+}
+
+function setupQuality() {
+  $("v-quality-run")?.addEventListener("click", async () => {
+    const status = $("v-quality-status");
+    const dir = state.galleryDir;
+    if (!dir) {
+      if (status) status.textContent = t("gallery.quality.noSet");
+      return;
+    }
+    if (status) status.textContent = t("gallery.quality.running");
+    try {
+      const data = await api(`/api/quality?dir=${encodeURIComponent(dir)}`);
+      renderQuality(data);
+      if (status) status.textContent = "";
+    } catch (e) {
+      if (status) status.textContent = e.message;
+    }
+  });
+}
+
 async function toggleMark(edition, kind) {
   if (!state.galleryDir) return;
   const key = String(edition);
@@ -4606,6 +4774,18 @@ function setupExport() {
           provCode.textContent = hash;
           provBox.style.display = "block";
         }
+        const checkBox = $("x-prov-check");
+        if (checkBox) {
+          const c = res.check || { valid: true, errors: [], warnings: [] };
+          const li = (a) => a.map((x) => `<li>${escapeHtml(provMessage(x))}</li>`).join("");
+          let h = "";
+          if (c.valid && !c.warnings.length) h += `<p class="ok-msg">${escapeHtml(t("export.provenance.ok"))}</p>`;
+          if (c.errors.length) h += `<p class="err-msg"><b>${escapeHtml(t("export.provenance.problems"))}</b></p><ul class="guide">${li(c.errors)}</ul>`;
+          if (c.warnings.length) h += `<p><b>${escapeHtml(t("export.provenance.warnings"))}</b></p><ul class="guide">${li(c.warnings)}</ul>`;
+          h += `<p class="muted">${escapeHtml(t("export.provenance.verifyHint"))}</p>`;
+          checkBox.innerHTML = h;
+          checkBox.hidden = false;
+        }
         if (msg) {
           msg.textContent = t("export.provenance.done", { n: res.provenance.count, hash: hash.slice(0, 16) + "..." });
           msg.className = "small ok-msg";
@@ -4886,6 +5066,7 @@ function setupKits() {
           locale: getLocale(),
           includeHolderLicence: Boolean($("d-holder-on")?.checked),
           holderLicence: $("d-holder")?.value || "",
+          rehearsal: document.querySelector('input[name="d-rehearsal"]:checked')?.value === "skip" ? "skip" : "devnet",
         }),
       });
       if (msg) msg.textContent = t("deploy.ok", { chain: data.chain, credits: data.chargedCredits || 0 });
@@ -5471,6 +5652,8 @@ async function boot() {
   setupRecipes();
   setupRender();
   setupGallery();
+  setupQuality();
+  setupSizeTools();
   setupEngineDiagnostics();
   setupVersions();
   setupExport();

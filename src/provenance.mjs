@@ -1,6 +1,9 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { checkProvenance, folderSource, duplicateImages } from "./provenance-verifier.mjs";
+
+export { duplicateImages };
 
 /**
  * Calculates SHA-256 hash of a file or buffer.
@@ -88,65 +91,23 @@ export function calculateCollectionProvenance(images = [], extra = {}) {
 }
 
 /**
- * Verifies that the files in `targetDir` or provided file list match the recorded provenance.
+ * Verifies that the files in a folder (or a Map of filename -> Buffer) match the recorded provenance.
+ * Runs the same checks as the standalone verify-provenance.mjs shipped in every ZIP
+ * (src/provenance-verifier.mjs), so the two cannot disagree.
  *
  * @param {{ provenanceHash: string, records: Array<{ edition: number, file: string, sha256: string }> }} provenanceData
  * @param {string | Map<string, Buffer>} targetDirOrBuffers - Directory path containing images or Map of filename -> Buffer
- * @returns {{ valid: boolean, errors: string[] }}
+ * @returns {{ valid: boolean, errors: string[], warnings: string[] }}
  */
 export function verifyProvenance(provenanceData, targetDirOrBuffers) {
-  const errors = [];
-
-  if (!provenanceData || !provenanceData.provenanceHash || !Array.isArray(provenanceData.records)) {
-    return { valid: false, errors: ["Invalid provenance data structure"] };
+  let source;
+  if (typeof targetDirOrBuffers === "string") {
+    source = folderSource(targetDirOrBuffers);
+  } else if (targetDirOrBuffers instanceof Map) {
+    source = { read: (file) => targetDirOrBuffers.get(file) || null };
+  } else {
+    return { valid: false, errors: ["Invalid targetDirOrBuffers argument"], warnings: [] };
   }
-
-  let concatenated = "";
-
-  for (const record of provenanceData.records) {
-    const fileName = record.file;
-    let actualHash = "";
-
-    try {
-      if (typeof targetDirOrBuffers === "string") {
-        const filePath = path.join(targetDirOrBuffers, fileName);
-        if (!fs.existsSync(filePath)) {
-          errors.push(`File missing: ${fileName}`);
-          continue;
-        }
-        actualHash = calculateImageSha256(filePath);
-      } else if (targetDirOrBuffers instanceof Map) {
-        const buf = targetDirOrBuffers.get(fileName);
-        if (!buf) {
-          errors.push(`Buffer missing for: ${fileName}`);
-          continue;
-        }
-        actualHash = calculateImageSha256(buf);
-      } else {
-        errors.push("Invalid targetDirOrBuffers argument");
-        break;
-      }
-
-      if (actualHash !== record.sha256) {
-        errors.push(
-          `Hash mismatch for edition #${record.edition} (${fileName}): expected ${record.sha256}, got ${actualHash}`
-        );
-      }
-      concatenated += actualHash;
-    } catch (err) {
-      errors.push(`Error checking ${fileName}: ${err.message}`);
-    }
-  }
-
-  const finalHash = crypto.createHash("sha256").update(concatenated).digest("hex");
-  if (finalHash !== provenanceData.provenanceHash) {
-    errors.push(
-      `Provenance hash mismatch: expected ${provenanceData.provenanceHash}, recomputed ${finalHash}`
-    );
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
+  const { valid, errors, warnings } = checkProvenance(provenanceData, source);
+  return { valid, errors, warnings };
 }

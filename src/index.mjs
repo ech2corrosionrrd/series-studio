@@ -154,6 +154,7 @@ export {
   calculateImageSha256,
   calculateCollectionProvenance,
   verifyProvenance,
+  duplicateImages,
 } from "./provenance.mjs";
 export {
   buildDatasetCaptions,
