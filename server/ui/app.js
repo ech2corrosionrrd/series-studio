@@ -2574,6 +2574,7 @@ const HELP_CLI = [
   ["render", "render presets/demo-series.json --engine mock --limit 5"],
   ["triage", "triage out/mock-s0.45 --provider heuristic --apply"],
   ["upscale", "upscale out/fal-s0.45"],
+  ["repairPng", "repair-png out/pollinations-s0.45 --dry-run"],
   ["pin", "pin out/fal-s0.45 --name my-series"],
   ["manifest", "manifest out/demo-archive.json --profile opensea"],
   ["showcase", "showcase out/demo-archive.json -o out/showcase.html"],
