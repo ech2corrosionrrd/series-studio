@@ -150,6 +150,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 | POST | `/api/simulate` | сухий прогін пресету (`file` або `preset`) без витрат |
 | POST | `/api/archive/diff` | різниця двох архівів (`a`, `b`) |
 | POST | `/api/preset/spinoff` | спін-оф пресету (`file`, `suffix`) |
+| POST | `/api/set/compress` | стиснути кадри понад `maxBytes` (типово 1 МБ; `dryRun` лише перелічує); оригінал лишається версією кадру; потрібен `sharp` |
 | GET | `/api/quality?dir=` | звіт якості набору: не-PNG, замалі файли, дублі, схожість до базової; `weakest` — найгірші кадри, `problemEditions` — усі проблемні |
 | GET | `/api/similarity?dir=` | схожість картинок набору з основною базовою (гістограми країв, `method: hog-aligned-1`; ключ `warn` нижче 0,73) |
 | GET | `/api/waves?file=` | хвилі тиражу пресету |
@@ -157,7 +158,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 | POST | `/api/gallery/dupes` | пошук дублів у наборі (`dir`, `maxDistance`) |
 | GET | `/api/stages/quotes` | ціни етапів за раз (`count`, `engine`, `provider`) |
 | GET | `/api/stages/quote` | ціна одного етапу (`stage`, `engine`, `count`, `storage`, `zip`; `storage=1` — із завантаженням в Arweave, старий `ipfs=1` теж діє) |
-| GET | `/api/export/provenance?set=` | відбиток колекції (SHA-256); у відповіді `duplicates` — групи видань з однаковою картинкою |
+| GET | `/api/export/provenance?set=` | відбиток колекції (SHA-256); у відповіді `duplicates` — групи видань з однаковою картинкою, `check` — результат перевірки набору (`valid`, `errors`, `warnings`) |
 | POST | `/api/export/dataset` | LoRA-датасет (`archive`, `set`) |
 | POST | `/api/matrix/preview` | промпт під рушій (`recipe`, `engine`, `preset`) |
 | GET | `/api/traits/matrix?archive=` | співвиникнення рис |
