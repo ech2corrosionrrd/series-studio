@@ -177,7 +177,7 @@ flowchart LR
 | GET | `/api/release/portals` | отримання посилань на лаунчпади та покрокових порад (`?profile=&archive=`) |
 | GET | `/api/release/config` | конфіг деплою: типово `cm-config.json` (Core Candy Machine); `sugar.json` лише якщо `?legacy=1`; для EVM — `thirdweb.json` |
 | POST | `/api/preflight` | перевірка архіву перед ZIP: помилки блокують, попередження ні |
-| POST | `/api/deploy-kit` | ZIP набору деплою. `chain` типово `solana` (Core). `solana-legacy` або `legacy: true` — застарілий Sugar. Поле `allowlist` (текст, один адрес Solana на рядок) пише `allowlist.json` з merkle root; невалідна адреса — 400. Тіло з приватним ключем — 400 `secrets` |
+| POST | `/api/deploy-kit` | ZIP набору деплою. `chain` типово `solana` (Core). `solana-legacy` або `legacy: true` — застарілий Sugar. Поле `rehearsal` (`devnet` типово, `skip`) лише змінює інструкцію в наборі: при `skip` вона має один розділ для основної мережі, нічого не блокується. Поле `allowlist` (текст, один адрес Solana на рядок) пише `allowlist.json` з merkle root; невалідна адреса — 400. Тіло з приватним ключем — 400 `secrets` |
 | GET | `/api/layers/status` | Що лежить у теці шарів гаманця (`layers/`): `{ exists, files, bytes, keys: [{ key, count }], coverage, limits }`. З `?archive=<файл>` додає `coverage` `{ expected, present, missing[≤40], missingCount }`: скільки значень рис серії мають PNG (значення `None` файлу не потребує). |
 | POST | `/api/layers/upload` | ZIP із шарами в тілі, `Content-Type: application/zip` (єдиний маршрут, де JSON не обов'язковий). Структура `<риса>/<значення>.png` (до 3 рівнів, обгортка `layers/` знімається). `?clear=1` — спершу замінити все (старі файли йдуть у кошик), `?archive=` — повернути покриття. Перевірки: небезпечні шляхи (`..`, абсолютні, зарезервовані імена) відхиляють весь ZIP, лише справжні PNG (підпис і IHDR, до 8192 px і 40 Мпікс), до 40 МБ ZIP, 1500 файлів, 8 МБ файл, 120 МБ за раз, 200 МБ у теці. Усе або нічого: невдалий ZIP нічого не лишає. Відповідь `{ files, bytes, keys, skipped[], cleared, status }`; помилки з `code: "layers_<причина>"`. |
 | POST | `/api/layers/clear` | Переносить усі шари гаманця в кошик (`out/trash`, відновлення в «Ресурсах»): `{ removed, trashId }`. |
@@ -224,13 +224,15 @@ flowchart LR
 | POST | `/api/simulate` | сухий прогін пресету (`file` або `preset`) без витрат |
 | POST | `/api/archive/diff` | різниця двох архівів (`a`, `b`) |
 | POST | `/api/preset/spinoff` | спін-оф пресету (`file`, `suffix`) |
-| GET | `/api/similarity?dir=` | схожість картинок набору з основною базовою |
+| GET | `/api/quality?dir=` | звіт якості набору: не-PNG, замалі файли, точні копії, схожість до базової; `weakest` — найгірші кадри, `problemEditions` — усі проблемні |
+| POST | `/api/set/compress` | стиснути кадри понад `maxBytes` (типово 1 МБ; `dryRun` лише перелічує); оригінал лишається версією кадру; потрібен `sharp` |
+| GET | `/api/similarity?dir=` | схожість картинок набору з основною базовою (гістограми країв, `method: hog-aligned-1`; ключ `warn` нижче 0,73) |
 | GET | `/api/waves?file=` | хвилі тиражу пресету |
 | POST | `/api/waves/append` | додати хвилю в кінець (`file`, `size`, `seed`, `name`) |
 | POST | `/api/gallery/dupes` | пошук дублів у наборі (`dir`, `maxDistance`) |
 | GET | `/api/stages/quotes` | ціни етапів за раз (`count`, `engine`, `provider`) |
 | GET | `/api/stages/quote` | ціна одного етапу (`stage`, `engine`, `count`, `storage`, `zip`; `storage=1` — із завантаженням в Arweave, старий `ipfs=1` теж діє) |
-| GET | `/api/export/provenance?set=` | відбиток колекції (SHA-256) |
+| GET | `/api/export/provenance?set=` | відбиток колекції (SHA-256); у відповіді `duplicates` — групи видань з однаковою картинкою, `check` — результат перевірки набору (`valid`, `errors`, `warnings`) |
 | POST | `/api/export/dataset` | LoRA-датасет (`archive`, `set`) |
 | POST | `/api/matrix/preview` | промпт під рушій (`recipe`, `engine`, `preset`) |
 | GET | `/api/traits/matrix?archive=` | співвиникнення рис |
@@ -277,6 +279,7 @@ series validate <preset.json>
   series engines
   series doctor
   series upscale <images-dir> [options]
+  series repair-png <set-dir> [--dry-run]
   series notify [options]
 ```
 
@@ -445,9 +448,9 @@ export function assertNoSecrets(value) {
 }
 ```
 
-## Додаток Є. Перелік файлів тестів (67 файлів)
+## Додаток Є. Перелік файлів тестів (72 файли)
 
-`admin-economy.test.mjs`, `admin-wallet.test.mjs`, `backup-db.test.mjs`, `backup.test.mjs`, `core-flow.test.mjs`, `delete-data.test.mjs`, `deploy-kit.test.mjs`, `dockerfile.test.mjs`, `docs.test.mjs`, `erase.test.mjs`, `fs-safe-inside.test.mjs`, `genesis.test.mjs`, `guard.test.mjs`, `i18n-audit.test.mjs`, `keys.test.mjs`, `launch-advisor.test.mjs`, `layers-zip.test.mjs`, `legal-pages.test.mjs`, `margin.test.mjs`, `marketplace-kit.test.mjs`, `pfp-production.test.mjs`, `phase-b.test.mjs`, `phase-c.test.mjs`, `platform-server.test.mjs`, `platform.test.mjs`, `preflight.test.mjs`, `providers.test.mjs`, `pull-backup.test.mjs`, `recipes.test.mjs`, `release-flow.test.mjs`, `render-stream.test.mjs`, `require-node.test.mjs`, `rng.test.mjs`, `safety.test.mjs`, `site.test.mjs`, `solpay.test.mjs`, `stability.test.mjs`, `stage-pricing.test.mjs`, `strength.test.mjs`, `studio-docs.test.mjs`, `upscale.test.mjs`, `user-path.test.mjs`, `verify-backup.test.mjs`, `wallet-rpc.test.mjs`, `wave1.test.mjs`, `wave10.test.mjs`, `wave11.test.mjs`, `wave12.test.mjs`, `wave13.test.mjs`, `wave14.test.mjs`, `wave15.test.mjs`, `wave16.test.mjs`, `wave17.test.mjs`, `wave18.test.mjs`, `wave19.test.mjs`, `wave2.test.mjs`, `wave20.test.mjs`, `wave21.test.mjs`, `wave22.test.mjs`, `wave3.test.mjs`, `wave4.test.mjs`, `wave5.test.mjs`, `wave6.test.mjs`, `wave7.test.mjs`, `wave8.test.mjs`, `wave9.test.mjs`, `waves-dupes.test.mjs`
+`admin-economy.test.mjs`, `admin-wallet.test.mjs`, `backup-db.test.mjs`, `backup.test.mjs`, `core-flow.test.mjs`, `delete-data.test.mjs`, `deploy-kit.test.mjs`, `dockerfile.test.mjs`, `docs.test.mjs`, `erase.test.mjs`, `fs-safe-inside.test.mjs`, `genesis.test.mjs`, `guard.test.mjs`, `i18n-audit.test.mjs`, `keys.test.mjs`, `launch-advisor.test.mjs`, `layers-zip.test.mjs`, `legal-pages.test.mjs`, `margin.test.mjs`, `marketplace-kit.test.mjs`, `pfp-production.test.mjs`, `phase-b.test.mjs`, `phase-c.test.mjs`, `platform-server.test.mjs`, `platform.test.mjs`, `preflight.test.mjs`, `providers.test.mjs`, `pull-backup.test.mjs`, `recipes.test.mjs`, `release-flow.test.mjs`, `render-stream.test.mjs`, `require-node.test.mjs`, `rng.test.mjs`, `safety.test.mjs`, `site.test.mjs`, `solpay.test.mjs`, `stability.test.mjs`, `stage-pricing.test.mjs`, `strength.test.mjs`, `studio-docs.test.mjs`, `upscale.test.mjs`, `user-path.test.mjs`, `verify-backup.test.mjs`, `wallet-rpc.test.mjs`, `wave1.test.mjs`, `wave10.test.mjs`, `wave11.test.mjs`, `wave12.test.mjs`, `wave13.test.mjs`, `wave14.test.mjs`, `wave15.test.mjs`, `wave16.test.mjs`, `wave17.test.mjs`, `wave18.test.mjs`, `wave19.test.mjs`, `wave2.test.mjs`, `wave20.test.mjs`, `wave21.test.mjs`, `wave22.test.mjs`, `wave3.test.mjs`, `wave4.test.mjs`, `wave5.test.mjs`, `wave6.test.mjs`, `wave7.test.mjs`, `wave8.test.mjs`, `wave9.test.mjs`, `waves-dupes.test.mjs`, `compress.test.mjs`, `png-normalize.test.mjs`, `provenance-verify.test.mjs`, `quality.test.mjs`, `similarity.test.mjs`
 
 ## Додаток Ж. Змінні середовища (`.env.example`)
 

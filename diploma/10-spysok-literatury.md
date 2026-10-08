@@ -28,3 +28,4 @@
 26. Series Lab (series-studio): вихідний код і документація, версія 1.8.0 [Електронний ресурс]. — Репозиторій: https://github.com/ech2corrosionrrd/series-studio. Використано: `docs/ECONOMY.md`, `docs/RELEASE.md`, `docs/STAGES.md`, `docs/API.md`, `docs/HOSTING.md`, `docs/DEPLOY-PLATFORM.md`, `docs/RECOMMENDATIONS.md`, `CHANGELOG.md`. Дата звернення: 05.10.2026.
 27. Brodan. Learning NFT Provenance by Example: A Bored Ape Investigation [Електронний ресурс]. — Режим доступу: https://dev.to/brodan/learning-nft-provenance-by-example-a-bored-ape-investigation-hfe
 28. ДСанПіН 3.3.2.007-98. Державні санітарні правила і норми роботи з візуальними дисплейними терміналами електронно-обчислювальних машин [Електронний ресурс]. — Режим доступу: https://mozdocs.kiev.ua/view.php?id=2445. Дата звернення: 05.10.2026.
+29. CryptoPunks [Електронний ресурс]. — Вікіпедія. — Режим доступу: https://en.wikipedia.org/wiki/CryptoPunks. Дата звернення: 08.10.2026.
