@@ -68,7 +68,7 @@ node diploma/build_pptx.mjs        # збірка презентації Dyplom_
 |---|---|---|
 | Версія | 1.8.0 | `package.json` |
 | Тести | 402 (усі проходять; прогін 09.10.2026) | `npm test` |
-| CLI-команд | 23 | `npm run docs:check` |
+| CLI-команд | 24 | `npm run docs:check` |
 | HTTP-маршрутів | 92 | `npm run docs:check` |
 | Змінних `.env` | 102 | `npm run docs:check` |
 | Ключів інтерфейсу | 1618 (uk/en збігаються) | `npm run audit:i18n` |
