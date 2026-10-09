@@ -60,7 +60,7 @@ async function main() {
 
   titleSlide(
     "Розробка веб-сайту зі створення\nNFT-зображень для блокчейну",
-    "Титаренко Володимир · група 441 · спец. 124 «Системний аналіз»\nКерівник: ст. викл. Яресько Д. І. · ХАІ, каф. 404\nSeries Lab v1.9.0 · lab.w3ir.io"
+    "Титаренко Володимир · група 441 · спец. 124 «Системний аналіз»\nКерівник: ст. викл. Яресько Д. І. · ХАІ, каф. 404\nSeries Lab v1.10.0 · lab.w3ir.io"
   );
 
   {
@@ -152,7 +152,7 @@ async function main() {
   }
 
   {
-    const s = contentSlide("Якість: 439 тестів, npm run ci, Docker");
+    const s = contentSlide("Якість: 457 тестів, npm run ci, Docker");
     s.addImage({ path: path.join(FIG, "rys-4-1.png"), x: 0.3, y: 1.3, w: 6.3, h: 5.2 });
     s.addImage({ path: path.join(FIG, "rys-4-2.png"), x: 6.8, y: 1.3, w: 6.1, h: 5.2 });
   }
@@ -175,7 +175,7 @@ async function main() {
 
   titleSlide(
     "Висновки",
-    "Створено Series Lab v1.9.0: майстерня, 25 CLI, 94 API, 439 тестів.\nКлючі не на сервері · USDC напряму · preflight · відтворюваність.\nДякую за увагу!"
+    "Створено Series Lab v1.10.0: майстерня, 25 CLI, 95 API, 457 тестів.\nКлючі не на сервері · USDC напряму · preflight · відтворюваність.\nДякую за увагу!"
   );
 
   await pres.writeFile({ fileName: OUT });

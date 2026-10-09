@@ -14,7 +14,7 @@
 
 ## Що вміє
 
-**пресет + seed** → унікальні детерміновані рецепти (DNA + промпти) → **базова картинка серії** (+ Vision Assist) → рендер у кілька потоків з живим прогресом або складання шарів PNG → **відбір** (keep/redo, AI Triage, версії) → **експорт** (перевірений архів, ERC-721 / Metaplex / Ordinals ZIP, CSV, Arweave через Irys, хеш походження, вітрина, датасет LoRA) → **набір деплою** (типово Core Candy Machine; Sugar — застарілий; EVM: Thirdweb; Ordinals: інструкція) → на цьому ПК `release-init`, `upload`, `hidden`, `guards`, `mplx cm create`, `verify`, `series mint --keypair`, `series reveal --keypair` → **набір маркетплейсу** (продаж: Solana — Magic Eden і Tensor; EVM — OpenSea; Bitcoin — Ordinals). Майстерня ключ не бере. Розкриття EVM лишається в кабінеті Thirdweb.
+**пресет + seed** → унікальні детерміновані рецепти (DNA + промпти) → **базова картинка серії** (+ Vision Assist) → рендер у кілька потоків з живим прогресом або складання шарів PNG (на базу чи гібридно поверх кадрів ШІ) → **відбір** (keep/redo, AI Triage, версії) → **експорт** (перевірений архів, ERC-721 / Metaplex / Ordinals ZIP, CSV, Arweave через Irys, хеш походження, позначка «створено ШІ» в метаданих, вітрина, датасет LoRA) → **набір деплою** (типово Core Candy Machine; Sugar — застарілий; EVM: Thirdweb; Ordinals: інструкція) → на цьому ПК `release-init`, `upload`, `hidden`, `guards`, `mplx cm create`, `verify`, `series mint --keypair`, `series reveal --keypair` → **набір маркетплейсу** (продаж: Solana — Magic Eden і Tensor; EVM — OpenSea; Bitcoin — Ordinals). Майстерня ключ не бере. Розкриття EVM лишається в кабінеті Thirdweb.
 
 **Страховка для грошей і файлів** (працює автоматично):
 
@@ -27,6 +27,8 @@
 | Автостоп batch | Після 5 помилок рушія поспіль решта черги не запускається. |
 | DNA / оцінка | Пакетна генерація блокується при збіжній DNA; «Згенерувати» — лише після безкоштовної оцінки. |
 | Захист API | Сервер відхиляє запити з інших сайтів (CSRF) і чужі `Host` (DNS rebinding). |
+| Заголовки безпеки й CSP | Кожна відповідь має `nosniff`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, а по HTTPS `Strict-Transport-Security`. `Content-Security-Policy` типово лише в режимі звітів (`SERIES_CSP`, [docs/HOSTING.md](docs/HOSTING.md)). Код сторінок оплати й входу не береться зі сторонніх CDN. |
+| Позначка «створено ШІ» | Експорт записує її в метадані PNG (`ai-disclosure.json` у ZIP); необов'язковий підпис C2PA робить `series c2pa` на вашому ПК ([docs/C2PA.md](docs/C2PA.md)). |
 
 ---
 
@@ -90,7 +92,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | 7 | **Експорт** | Архів випуску → портал; інші ZIP / CSV / Arweave / вітрина / хаб. Спершу «Перевірити чекліст», потім «Зібрати ZIP». |
 | — | **Деплой** | «Зібрати набір деплою». Типово Solana (Core Candy Machine, спочатку devnet). Sugar — пункт «застарілий». |
 | — | **Маркет** | «Зібрати набір маркетплейсу». Solana: Magic Eden і Tensor. EVM: OpenSea. Bitcoin: Ordinals. |
-| — | **Адмін** | Ресурси, **Економіка**, статистика, помилки — лише адмін-гаманець. |
+| — | **Адмін** | **Система** (тривоги, пам'ять, диск, бекапи, запити), Ресурси, **Економіка**, статистика, помилки — лише адмін-гаманець. |
 | — | **Довідка** | Путівник, швидкий старт, словник, FAQ. |
 
 На опціях — підказки при наведенні. Інтерфейс uk / en.
@@ -148,6 +150,11 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 | `deploy/series-lab/` | Staging / бекап (за командою хостингу) |
 | `.github/workflows/` | `health.yml`, `deploy-site.yml` (тестів у GitHub немає: `npm run ci`) |
 | `bin/series.mjs` | CLI |
+| `scripts/` | Перевірки документів, збір сайту, `build-vendor.mjs` (бібліотеки для браузера) |
+| `server/ui/vendor/` | Зібрані з наших залежностей `solana-tx.js` і `evm-address.js` (`npm run vendor`) |
+| `test/` | Автотести (`npm test`) |
+| `docs/` | Документація, індекс [docs/README.md](docs/README.md) |
+| `diploma/` | Пакет документів дипломної роботи (не входить до npm-пакета й Docker) |
 
 ---
 
@@ -157,6 +164,8 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 - [docs/QUALITY-REVIEW.md](docs/QUALITY-REVIEW.md) — огляд якості після запитів #1–#9
 - [docs/RECOMMENDATIONS.md](docs/RECOMMENDATIONS.md) — план і поточний статус пунктів R1–R21
 - [docs/GUIDE.md](docs/GUIDE.md) — початківцям
+- [docs/ENGINES.md](docs/ENGINES.md) — вибір рушія, сили референсу й бази за живими тестами
+- [docs/C2PA.md](docs/C2PA.md) — маркування ШІ-зображень (ст. 50 AI Act): що зроблено, що ні
 - [docs/README.md](docs/README.md) — індекс
 - [docs/ECONOMY.md](docs/ECONOMY.md) — кредити, маржа, хостинг, обмін crypto→USD
 - [docs/ROADMAP.md](docs/ROADMAP.md) · [CHANGELOG.md](CHANGELOG.md)
