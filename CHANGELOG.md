@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Workflow на фіксованому образі
+- `deploy-site.yml` і `health.yml` використовують `runs-on: ubuntu-24.04` замість `ubuntu-latest`, щоб міграція мітки на Ubuntu 26 (з 19.10.2026) не змінила середовище без нашого рішення.
+
 ### Деплой сайту без тестів у GitHub
 - `deploy-site.yml` більше не запускає `npm test`: job `test` прибрано, `deploy` біжить сам. Перевірка перед викладанням — локальна (`npm run ci`, хук `pre-push`).
 
