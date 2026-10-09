@@ -875,7 +875,7 @@ export default {
   "help.s5.oops1": "The whole series straight away without a pilot — you risk paying for hundreds of bad images.",
   "help.s5.oops2": "The chosen cloud engine is unavailable — try another or contact support.",
   "help.s5.oops3": "No base image or no layers (ZIP) — \"Compose layers\" stops. The card shows what is missing. The prompts stay either way.",
-  "help.s5.oops4": "Scarf colour or background does not change — lower strength to 0.30–0.35 (fal) or switch to a neutral base. Expression and sunsets obey better than the colour of large details.",
+  "help.s5.oops4": "Scarf colour or background does not change — try the Kontext Pro engine (in the 2026-10-10 test it followed scarf, background and expression on 18 of 18 frames and on the 12 frames of the new base), lower strength to 0.30–0.35 (fal) or switch to a neutral base.",
   "help.s6.title": "6 · Review — picking the best",
   "help.s6.why": "Not every image works out. Here you decide what goes into the collection.",
   "help.s6.do1": "Pick a set, go through every image and mark ✓ or ↻.",
