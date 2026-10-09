@@ -10,6 +10,8 @@
  * - сторінка входу (`/login`) має вбудований скрипт-модуль, імпорт з esm.sh і шрифти Google,
  *   тому для неї дозволено `'unsafe-inline'` у script-src (відомий недолік, див. документ);
  * - решта: скрипти лише свої та esm.sh (динамічний імпорт @solana/web3.js у студії).
+ * Обидві дозволяють Cloudflare Web Analytics (скрипт вставляє сам Cloudflare на проксі-сторінки;
+ * перший живий звіт 10.10.2026), інакше `enforce` його б блокував.
  */
 
 export const CSP_REPORT_PATH = "/api/csp-report";
@@ -32,21 +34,21 @@ export function buildCsp(pathname = "/") {
   if (pathname === "/login" || pathname === "/login/") {
     return [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://esm.sh",
+      "script-src 'self' 'unsafe-inline' https://esm.sh https://static.cloudflareinsights.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self'",
+      "connect-src 'self' https://cloudflareinsights.com",
       ...COMMON,
     ].join("; ");
   }
   return [
     "default-src 'self'",
-    "script-src 'self' https://esm.sh",
+    "script-src 'self' https://esm.sh https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
     "img-src 'self' data: blob: https:",
-    "connect-src 'self'",
+    "connect-src 'self' https://cloudflareinsights.com",
     ...COMMON,
   ].join("; ");
 }
