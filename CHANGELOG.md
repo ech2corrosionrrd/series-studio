@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Деплой сайту без тестів у GitHub
+- `deploy-site.yml` більше не запускає `npm test`: job `test` прибрано, `deploy` біжить сам. Перевірка перед викладанням — локальна (`npm run ci`, хук `pre-push`).
+
 ### CI: власний скрипт замість GitHub Actions
 - Прибрано `.github/workflows/test.yml`: тести більше не біжать на GitHub. Натомість `npm run ci` (`scripts/ci.mjs`) послідовно запускає `npm test`, `docs:check`, `audit:i18n`, `audit:ui`, `audit:api` і друкує підсумок; `npm run ci -- --audit` додає `npm audit` (лише попередження). Хук `.githooks/pre-push` запускає це перед кожним push (`SKIP_CI=1` пропускає). `deploy-site.yml` і `health.yml` лишились.
 
