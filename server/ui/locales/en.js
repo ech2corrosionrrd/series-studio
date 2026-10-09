@@ -846,7 +846,7 @@ export default {
   "help.s2.get": "The file input/primary.png — the main base image and the bottom layer for PNG compose.",
   "help.s2.oops1": "An image with text, logos or a busy background — the AI will copy those flaws.",
   "help.s2.oops2": "Several people in the frame — the series becomes inconsistent.",
-  "help.s2.oops3": "A bright scarf or background in the base resists change: a «scarf colour» or «background» trait barely moves at any strength. Pick a base with a neutral background and without bright details you plan to vary.",
+  "help.s2.oops3": "A bright scarf or background in the base resists change: a «scarf colour» or «background» trait barely moves at any strength. Pick a base with a neutral background and without bright details you plan to vary. On a neutral base scarf colour obeys (green and red), but a strong background change does not.",
   "help.s3.title": "3 · Constructor — the description formula",
   "help.s3.why": "Defines what stays the same in the images (keep, style) and what changes (traits).",
   "help.s3.do1": "Apply a ready trait pack or load a preset.",
