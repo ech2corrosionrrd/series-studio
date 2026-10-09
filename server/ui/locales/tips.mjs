@@ -18,7 +18,7 @@ export default {
     "home.field.size.tip": "Скільки унікальних рецептів (планів NFT) збудує майстерня. Для старту 12–24.",
     "home.field.seed.tip": "Зерно випадковості: те саме зерно → той самий набір DNA; інше зерно → нова серія.",
     "home.field.engine.tip": "Який рушій малюватиме на етапі 5. У списку — кредити за кадр. mock — 0 кр.",
-    "home.field.strength.tip": "Наскільки триматись базової картинки: 0.1 — більше фантазії, 0.95 — майже копія. 0.45 — добрий старт.",
+    "home.field.strength.tip": "Наскільки триматись базової картинки: 0.1 — більше фантазії, 0.95 — майже копія. 0.45 — добрий старт. Яскравий фон чи шарф у базі опираються змінам.",
 
     "base.role.tip": "Роль файлу в input/: «Головна базова» — обличчя серії; лінія / стиль / додатково — для складніших колекцій.",
     "base.lineId.tip": "Короткий ID лінії (a, b…), якщо роль «Лінія».",
@@ -221,7 +221,7 @@ export default {
     "home.field.size.tip": "How many unique recipes (NFT plans) to build. Start with 12–24.",
     "home.field.seed.tip": "Randomness seed: same seed → same DNA set; change seed → new series.",
     "home.field.engine.tip": "Which engine will draw at stage 5. The list shows credits per frame. mock is 0 cr.",
-    "home.field.strength.tip": "How tightly to follow the base: 0.1 = freer, 0.95 ≈ copy. 0.45 is a good start.",
+    "home.field.strength.tip": "How tightly to follow the base: 0.1 = freer, 0.95 ≈ copy. 0.45 is a good start. A bright background or scarf in the base resists change.",
 
     "base.role.tip": "File role in input/: Main base is the series face; line / style / extra are for advanced setups.",
     "base.lineId.tip": "Short line id (a, b…) when role is Line.",
