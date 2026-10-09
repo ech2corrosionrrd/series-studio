@@ -943,3 +943,33 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 /* картки «Позначка ШІ» і «Людський внесок»: сітка не ширша за картку, довгі списки не виштовхують сторінку вбік */
 #x-aimark, #x-auth { grid-template-columns: minmax(0, 1fr); }
 #x-auth select, #x-auth input[type="text"] { width: 100%; max-width: 100%; box-sizing: border-box; }
+
+/* Адмінка · вкладка «Система» */
+.sys-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.sys-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.sys-alerts { display: grid; gap: 6px; margin: 10px 0 14px; }
+.sys-alert { display: flex; gap: 8px; align-items: baseline; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); font-size: 13px; }
+.sys-alert.bad { background: #3a1620; color: #ffb3bf; border-color: #6b2a39; }
+.sys-alert.warn { background: #3a2e12; color: #f2d38a; border-color: #6b5a22; }
+.sys-alert.info { background: #162434; color: #a9d3ff; border-color: #2a4663; }
+.sys-alert.ok { background: #14301c; color: #b6f0c2; border-color: #285a37; }
+.sys-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.sys-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel2); min-width: 0; }
+.sys-card.wide { grid-column: 1 / -1; }
+.sys-card h3 { margin: 0 0 8px; font-size: 14px; }
+.sys-kv { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }
+.sys-kv:last-child { border-bottom: none; }
+.sys-kv span:first-child { color: var(--muted); }
+.sys-kv span:last-child { text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.sys-bar { height: 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin: 6px 0 4px; }
+.sys-bar > i { display: block; height: 100%; background: #4ade80; }
+.sys-bar.warn > i { background: #f2c14e; }
+.sys-bar.bad > i { background: #f87171; }
+.sys-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.sys-pill.ok { background: #14301c; color: #b6f0c2; }
+.sys-pill.off { background: rgba(255, 255, 255, 0.08); color: var(--muted); }
+.sys-pill.bad { background: #3a1620; color: #ffb3bf; }
+.sys-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.sys-table th, .sys-table td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.sys-table th:first-child, .sys-table td:first-child { text-align: left; overflow-wrap: anywhere; }
+.sys-table th { color: var(--muted); font-weight: 600; }
