@@ -26,7 +26,24 @@ fi
 
 mkdir -p "$DEST/hourly" "$DEST/daily" "$DEST/weekly" "$BASE/logs"
 WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
+note_status() {
+  # Статус для адмін-панелі: файл у каталозі даних, який бачить контейнер (read-only для застосунку).
+  local ok=$1 kind=$2 offsite=$3 h d w bytes
+  h=$(ls -1d "$DEST"/hourly/*/ 2>/dev/null | wc -l)
+  d=$(ls -1d "$DEST"/daily/*/ 2>/dev/null | wc -l)
+  w=$(ls -1d "$DEST"/weekly/*/ 2>/dev/null | wc -l)
+  bytes=$(du -sb "$DEST" 2>/dev/null | cut -f1)
+  printf '{"at":"%s","ok":%s,"kind":"%s","offsite":%s,"hourly":%s,"daily":%s,"weekly":%s,"bytes":%s}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$ok" "$kind" "$offsite" "${h:-0}" "${d:-0}" "${w:-0}" "${bytes:-0}" \
+    > "$DATA/backup-status.json.tmp" 2>/dev/null && chmod 644 "$DATA/backup-status.json.tmp" \
+    && mv -f "$DATA/backup-status.json.tmp" "$DATA/backup-status.json" || true
+}
+on_exit() {
+  local rc=$?
+  rm -rf "$WORK"
+  [ "$rc" -eq 0 ] || note_status false "${BACKUP_MODE:-full}" false
+}
+trap on_exit EXIT
 
 note() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 
@@ -66,6 +83,7 @@ if [ "${BACKUP_MODE:-full}" = hourly ]; then
   chmod 700 "$DEST/hourly" "$hslot"
   note "hourly ledger snapshot $hslot"
   prune "$DEST/hourly" 48
+  note_status true hourly false
   exit 0
 fi
 
@@ -97,6 +115,7 @@ prune "$DEST/weekly" 4
 remote=${BACKUP_RCLONE_REMOTE:-}
 if [ -z "$remote" ]; then
   note "offsite skipped (BACKUP_RCLONE_REMOTE empty) — copies are on this disk only"
+  note_status true full false
   exit 0
 fi
 if [ -z "${BACKUP_PASSPHRASE:-}" ]; then
@@ -115,3 +134,4 @@ archive="$WORK/users-$STAMP.tar.gz.enc"
 tar -C "$slot" -czf - . | openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:BACKUP_PASSPHRASE -out "$archive"
 "$rclone_bin" copy "$archive" "$remote" --retries 3
 note "offsite uploaded $(basename "$archive") -> $remote"
+note_status true full true

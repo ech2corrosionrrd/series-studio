@@ -1020,13 +1020,28 @@
     <h1 data-i18n="admin.h1">Адмін-панель</h1>
     <div class="hint"><p data-i18n="admin.hint"></p></div>
     <div class="admin-nav" role="navigation" data-i18n-aria="a11y.adminNav" aria-label="Розділи адміна">
-      <button type="button" data-admin="res" class="on" data-i18n="admin.tab.res">Ресурси</button>
+      <button type="button" data-admin="sys" class="on" data-i18n="admin.tab.sys">Система</button>
+      <button type="button" data-admin="res" data-i18n="admin.tab.res">Ресурси</button>
       <button type="button" data-admin="econ" data-i18n="admin.tab.econ">Економіка</button>
       <button type="button" data-admin="stats" data-i18n="admin.tab.stats">Статистика</button>
       <button type="button" data-admin="errors" data-i18n="admin.tab.errors">Помилки</button>
     </div>
 
-    <div id="admin-res" class="admin-pane on">
+    <div id="admin-sys" class="admin-pane on">
+      <div class="sys-toolbar">
+        <h2 data-i18n="sys.h">Стан системи</h2>
+        <div class="sys-tools">
+          <span id="sys-updated" class="muted small" role="status"></span>
+          <label class="small row"><input type="checkbox" id="sys-auto" checked> <span data-i18n="sys.auto">Авто, 30 с</span></label>
+          <button type="button" id="sys-refresh" class="btn small primary" data-i18n="sys.refresh">Оновити</button>
+        </div>
+      </div>
+      <p class="muted small" data-i18n="sys.hint"></p>
+      <div id="sys-alerts" class="sys-alerts" role="status"></div>
+      <div id="sys-grid" class="sys-grid"></div>
+    </div>
+
+    <div id="admin-res" class="admin-pane">
       <h2 data-i18n="res.h1">Ресурси й ключі</h2>
       <div class="hint"><p data-i18n="res.hint"></p><details open>
           <summary data-i18n="res.hint.more"></summary>
