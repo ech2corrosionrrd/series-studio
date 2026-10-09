@@ -6,6 +6,15 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Series Lab</title>
   <link rel="stylesheet" href="style.css">
+  <!-- модулі вантажаться паралельно з app.js, а не по ланцюжку імпортів (app.js → i18n.js → переклади) -->
+  <link rel="modulepreload" href="app.js">
+  <link rel="modulepreload" href="i18n.js">
+  <link rel="modulepreload" href="locales/uk.js">
+  <link rel="modulepreload" href="locales/en.js">
+  <link rel="modulepreload" href="locales/tips.mjs">
+  <link rel="modulepreload" href="render-stream.js">
+  <link rel="modulepreload" href="api-errors.js">
+  <link rel="modulepreload" href="format.js">
 </head>
 <body>
 <a class="skip-link" href="#content" data-i18n="a11y.skip">Перейти до вмісту</a>
