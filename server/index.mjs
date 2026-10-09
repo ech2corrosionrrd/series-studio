@@ -94,7 +94,7 @@ import {
 } from "../src/index.mjs";
 import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
 import { buildDeployKit, deployChainChoice } from "../src/deploy-kit.mjs";
-import { composeArchive } from "../src/layers.mjs";
+import { composeArchive, overlaySet } from "../src/layers.mjs";
 import { buildLaunchAdvisor } from "../src/launch-advisor.mjs";
 import { buildMarketplaceKit } from "../src/marketplace-kit.mjs";
 import { writeFilesZip } from "../src/kit-zip.mjs";
@@ -3312,6 +3312,37 @@ async function handleApi(req, res, url) {
     }
     if (!existsSync(layerDir)) {
       return send(res, 400, { error: `layers directory not found: ${layerDir}` });
+    }
+    // Гібрид: ручні шари поверх кадрів, які вже намалювала модель (набір `out/<over>`).
+    if (body.over) {
+      let setName;
+      try {
+        setName = safeSetName(body.over);
+      } catch {
+        return send(res, 400, { error: "bad set name" });
+      }
+      const setDir = join(P().out, setName);
+      if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
+        return send(res, 404, { error: `set directory not found: ${setName}` });
+      }
+      const only = Array.isArray(body.only) ? body.only.map((k) => String(k)).filter((k) => items.some((i) => i.key === k)) : null;
+      const outName = `${setName}-layers`;
+      try {
+        const report = overlaySet({ archive: loaded.archive, items, setDir, layerDir, outDir: join(P().out, outName), only, limit: body.limit });
+        return send(res, 200, {
+          ok: true,
+          mode: "overlay",
+          count: report.count,
+          painted: report.painted,
+          unpainted: report.unpainted,
+          missingFrames: report.missingFrames.slice(0, 20),
+          missingFramesCount: report.missingFrames.length,
+          dir: `out/${outName}`,
+          set: outName,
+        });
+      } catch (e) {
+        return send(res, 400, { error: String(e.message || e), code: "compose" });
+      }
     }
     const base = baseStatus();
     const baseName = body.base ? basename(String(body.base)) : base.file;
