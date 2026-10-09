@@ -2467,6 +2467,11 @@ function renderGallery() {
   const images = state.galleryImages || [];
   const images2 = state.galleryImages2 || [];
   const marks = state.galleryMarks || {};
+  const redoBtn = $("v-quick-redo");
+  if (redoBtn) {
+    redoBtn.removeAttribute("data-i18n");
+    redoBtn.textContent = t("gallery.redo.btn", { count: Object.values(marks).filter((v) => v === "redo").length });
+  }
   const dir = state.galleryDir || "";
   const dir2 = state.galleryDir2 || "";
   const comparing = Boolean(dir2 && dir2 !== dir);
