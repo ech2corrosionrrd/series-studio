@@ -30,9 +30,11 @@ test("report mode sends Report-Only, enforce sends the real header, off sends no
 
 test("the studio policy is strict on scripts; only the login page allows inline scripts", () => {
   const studio = buildCsp("/studio/");
-  assert.match(studio, /script-src 'self' https:\/\/esm\.sh(;|$)/);
+  assert.match(studio, /script-src 'self' https:\/\/esm\.sh https:\/\/static\.cloudflareinsights\.com(;|$)/);
   assert.doesNotMatch(studio, /script-src[^;]*unsafe-inline/);
   assert.match(studio, /object-src 'none'/);
+  assert.match(studio, /static\.cloudflareinsights\.com/);
+  assert.match(studio, /connect-src 'self' https:\/\/cloudflareinsights\.com/);
   assert.match(studio, /frame-ancestors 'self'/);
   assert.match(studio, new RegExp(`report-uri ${CSP_REPORT_PATH.replace(/\//g, "\/")}`));
   const login = buildCsp("/login");
