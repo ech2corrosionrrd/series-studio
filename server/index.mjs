@@ -195,6 +195,7 @@ import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
 import { anonymizeRenderLog, appendRenderLog, capError, engineStatsToday, recentEngineErrors, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
 import { failureBreaker } from "../src/pool.mjs";
+import { applySecurityHeaders } from "../src/security-headers.mjs";
 
 const RESOURCE_KEYS = [
   { name: "OPENAI_API_KEY", env: "OPENAI_API_KEY", note: "OpenAI Images / GPT image" },
@@ -3585,6 +3586,7 @@ function userPaths(wallet) {
 const isPageRequest = (pathname) => pathname === "/" || pathname === "/studio" || pathname === "/studio/" || pathname.endsWith(".html");
 
 const server = createServer(async (req, res) => {
+  applySecurityHeaders(req, res);
   try {
     const url = new URL(req.url || "/", `http://${HOST}:${PORT}`);
     if (PLATFORM_ON && (await handlePlatform(req, res, url))) return;
