@@ -344,7 +344,7 @@ function creatorPage(page, u, { nav = true } = {}) {
     `<section class="card">${s.title ? `<h2>${inline(s.title)}</h2>` : ""}${renderBlocks(s.blocks)}</section>`).join("");
   const body = `
 <h1>${esc(t.title)}</h1>
-<p class="lead">${esc(t.desc)}</p>
+<p class="lead">${richText(t.desc)}</p>
 ${nav ? docNav(u, page.slug) : ""}
 ${sections}`;
   const path = `${u.base}${page.slug}/`;
