@@ -79,6 +79,7 @@ const EXACT = {
   "onlyKeep is set but no keep-marked editions match the archive — mark keep in Review": "api.onlyKeepMiss",
   "preset traits are required to compose layers": "api.composeTraits",
   "layers directory must stay inside the project": "api.composeLayersEscape",
+  "bad set name": "api.badSetName",
 };
 
 const PATTERNS = [

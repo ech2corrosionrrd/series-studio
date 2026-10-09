@@ -4,10 +4,14 @@
  *
  * Files: `<layers>/<trait key>/<value>.png`, or `option.layer` relative to that directory.
  * `None` paints nothing. `skipDna` still paints; it only stays out of the DNA string.
+ *
+ * Two modes: `composeArchive` stacks every trait from layers on the base image (all layers must
+ * exist); `overlaySet` is the hybrid: frames the model already drew are the bottom, and only the
+ * traits that have a layer file are painted over them (the rest stay as the model drew them).
  */
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve, relative } from "node:path";
+import { basename, join, resolve, relative } from "node:path";
 import { decodePngRgba } from "./dupes.mjs";
 import { encodeRgbaPng, resizePng } from "./png-fit.mjs";
 import { dna, dnaKeysFromItems } from "./recipes.mjs";
@@ -90,23 +94,32 @@ function assertInside(root, file) {
  * Stack base + trait PNGs for one recipe.
  * @returns {{ png: Buffer, dna: string, prompt: string, edition: number, sha256: string, layers: string[] }}
  */
-export function composeEdition({ recipe, items, basePng, layerDir, readFile = readFileSync }) {
+export function composeEdition({ recipe, items, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false }) {
   if (!items?.length) throw new Error("compose: preset has no traits");
   const base = decodePngRgba(basePng);
   let canvas = Buffer.from(base.rgba);
   const used = ["base"];
+  const skipped = [];
+  const onlySet = Array.isArray(only) && only.length ? new Set(only.map(String)) : null;
   for (const trait of items) {
+    if (onlySet && !onlySet.has(trait.key)) continue;
     const value = recipe?.traits?.[trait.key] ?? NONE;
     if (!value || value === NONE) continue;
     const opt = option(items, trait.key, value);
     const file = assertInside(layerDir, layerFileFor(layerDir, trait, value, opt));
-    let buf;
+    let buf = null;
     try {
       buf = readFile(file);
     } catch {
+      buf = null;
+    }
+    if (!buf) {
+      if (skipMissing) {
+        skipped.push(`${trait.key}/${value}`);
+        continue;
+      }
       throw new Error(`missing layer ${trait.key}=${value} (${file})`);
     }
-    if (!buf) throw new Error(`missing layer ${trait.key}=${value} (${file})`);
     const rgba = decodeLayer(buf, base.width, base.height, `${trait.key}=${value}`);
     canvas = compositeOver(canvas, rgba);
     used.push(`${trait.key}/${value}`);
@@ -124,6 +137,7 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
     prompt: recipe?.prompt || "",
     sha256: sha256(png),
     layers: used,
+    skipped,
   };
 }
 
@@ -163,6 +177,65 @@ export function composeArchive({
     source: "layers",
     note: "PNG layers stacked on the base image. Prompt generation is unchanged; each row still carries its prompt.",
     count: editions.length,
+    editions,
+  };
+  writeFile(join(outDir, "dna.json"), `${JSON.stringify(report, null, 2)}\n`);
+  return report;
+}
+
+/**
+ * Hybrid mode: paint hand layers over frames the model already drew (`<setDir>/<edition>.png`).
+ * Only traits that have a layer file are painted (or only the keys in `only`); a trait without a file
+ * stays as the model drew it. Writes `<outDir>/<edition>.png` and `dna.json`; never touches `setDir`.
+ */
+export function overlaySet({
+  archive,
+  items,
+  setDir,
+  layerDir,
+  outDir,
+  only = null,
+  limit,
+  readFile = readFileSync,
+  writeFile = writeFileSync,
+} = {}) {
+  const recipes = archive?.recipes || [];
+  if (!recipes.length) throw new Error("overlay: archive has no recipes");
+  if (resolve(setDir) === resolve(outDir)) throw new Error("overlay: the output folder must differ from the set folder");
+  const take = limit ? recipes.slice(0, Number(limit)) : recipes;
+  mkdirSync(outDir, { recursive: true });
+  const editions = [];
+  const missingFrames = [];
+  for (const recipe of take) {
+    const frameFile = join(setDir, `${recipe.edition}.png`);
+    if (!existsSync(frameFile)) {
+      missingFrames.push(recipe.edition);
+      continue;
+    }
+    const frame = composeEdition({ recipe, items, basePng: readFile(frameFile), layerDir, readFile, only, skipMissing: true });
+    writeFile(join(outDir, `${recipe.edition}.png`), frame.png);
+    editions.push({
+      edition: recipe.edition,
+      line: recipe.line || "",
+      dna: frame.dna,
+      prompt: frame.prompt,
+      sha256: frame.sha256,
+      layers: frame.layers.filter((l) => l !== "base"),
+      skipped: frame.skipped,
+      file: `${recipe.edition}.png`,
+    });
+  }
+  if (!editions.length) throw new Error(`overlay: no frames ${basename(setDir)}/<edition>.png found for this archive`);
+  const painted = editions.filter((e) => e.layers.length).length;
+  const report = {
+    source: "layers-over-set",
+    over: basename(setDir),
+    note: "Hand PNG layers painted over model-drawn frames. Traits without a layer file stay as the model drew them. The source set is untouched.",
+    only: Array.isArray(only) && only.length ? only : null,
+    count: editions.length,
+    painted,
+    unpainted: editions.length - painted,
+    missingFrames,
     editions,
   };
   writeFile(join(outDir, "dna.json"), `${JSON.stringify(report, null, 2)}\n`);

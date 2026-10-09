@@ -57,7 +57,7 @@ import {
   selectMintGroup,
   sendInstructions,
 } from "../src/core-flow.mjs";
-import { composeArchive } from "../src/layers.mjs";
+import { composeArchive, overlaySet } from "../src/layers.mjs";
 import { ENGINES, TXT2IMG, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 import { loadC2pa, signSet } from "../src/c2pa-sign.mjs";
@@ -85,7 +85,7 @@ Usage:
   series hidden <bundle-dir> --uri <hidden.json-link> [--uri-prefix <prefix>] [--name <text>]
   series mint <release.json> --keypair <file> [--group <label>] [--public] [--dry-run]
   series reveal <bundle-dir> [--keypair <file>] [--check <revealed.json>] [--dry-run]
-  series compose <archive.json> --layers <dir> --base <png> [-o out/layers]
+  series compose <archive.json> --layers <dir> (--base <png> | --over <set-dir> [--only a,b]) [-o out/layers]
   series verify <release.json> [--rpc <url>]
   series engines
   series doctor
@@ -814,11 +814,30 @@ function cmdCompose(archivePath, opts = {}) {
     console.error("[ERROR] preset traits are required (pass --preset)");
     process.exit(1);
   }
-  if (!opts.layers || !opts.base) {
-    console.error("[ERROR] --layers <dir> and --base <png> are required");
+  if (!opts.layers || (!opts.base && !opts.over)) {
+    console.error("[ERROR] --layers <dir> and --base <png> (or --over <set-dir>) are required");
     process.exit(1);
   }
   const layerDir = resolve(opts.layers);
+  if (opts.over) {
+    // Гібрид: шари поверх кадрів набору, що їх намалювала модель.
+    const setDir = resolve(opts.over);
+    if (!existsSync(layerDir) || !existsSync(setDir)) {
+      console.error("[ERROR] layers directory or set folder is missing");
+      process.exit(1);
+    }
+    const hybridOut = resolve(opts.out || `${setDir.replace(/[\\/]+$/, "")}-layers`);
+    try {
+      const report = overlaySet({ archive, items, setDir, layerDir, outDir: hybridOut, only: opts.only, limit: opts.limit });
+      console.log(`Painted layers over ${report.count} frames (${report.painted} changed, ${report.unpainted} left as drawn) → ${hybridOut}`);
+      if (report.missingFrames.length) console.log(`No frame for editions: ${report.missingFrames.slice(0, 20).join(", ")}`);
+      console.log("Traits without a layer file stay as the model drew them. The source set is untouched; details are in dna.json.");
+    } catch (e) {
+      console.error(`[ERROR] ${e.message}`);
+      process.exit(1);
+    }
+    return;
+  }
   const baseFile = resolve(opts.base);
   if (!existsSync(layerDir) || !existsSync(baseFile)) {
     console.error("[ERROR] layers directory or base image is missing");
@@ -1150,6 +1169,8 @@ function parseOpts(args) {
     else if (a === "--uri-prefix") opts.uriPrefix = args[++i];
     else if (a === "--layers") opts.layers = args[++i];
     else if (a === "--base") opts.base = args[++i];
+    else if (a === "--over") opts.over = args[++i];
+    else if (a === "--only") opts.only = String(args[++i] || "").split(",").map((k) => k.trim()).filter(Boolean);
     else if (a === "--check") opts.check = args[++i];
     else if (a === "--group") opts.group = args[++i];
     else if (a === "--public") opts.public = true;
