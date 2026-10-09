@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Сайт: пошта на юридичних сторінках
+- На `/terms/` і `/privacy/` Cloudflare (Email Address Obfuscation) підміняв `w3ir@pm.me` на «[email protected]», а скрипт розшифрування блокувала CSP. Збірка обгортає адреси й посилання `mailto:` у `<!--email_off-->…<!--/email_off-->`, і Cloudflare їх не чіпає (`scripts/inline-md.mjs`).
+
 ### Workflow на фіксованому образі
 - `deploy-site.yml` і `health.yml` використовують `runs-on: ubuntu-24.04` замість `ubuntu-latest`, щоб міграція мітки на Ubuntu 26 (з 19.10.2026) не змінила середовище без нашого рішення.
 
