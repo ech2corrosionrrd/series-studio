@@ -197,7 +197,9 @@ import { anonymizeRenderLog, appendRenderLog, capError, engineStatsToday, recent
 import { failureBreaker } from "../src/pool.mjs";
 import { applySecurityHeaders } from "../src/security-headers.mjs";
 import { staticResponse } from "../src/static-cache.mjs";
-import { CSP_REPORT_PATH, applyCsp, createCspLog, summarizeReport } from "../src/csp.mjs";
+import { openDb } from "../src/platform/db.mjs";
+import { backupStatus, buildAlerts, createRequestMetrics, diskSnapshot, fileMb, platformCounts, processSnapshot, treeBytesCached } from "../src/sysinfo.mjs";
+import { CSP_REPORT_PATH, applyCsp, createCspLog, cspMode, summarizeReport } from "../src/csp.mjs";
 
 const RESOURCE_KEYS = [
   { name: "OPENAI_API_KEY", env: "OPENAI_API_KEY", note: "OpenAI Images / GPT image" },
@@ -788,7 +790,7 @@ function loadArchiveFile(file) {
 
 function loadPresetForArchive(archive) {
   const id = String(archive.presetId || "").replace(/[/\\]/g, "");
-  if (!id) throw new Error("archive.presetId missing");
+  if (!id) throw Object.assign(new Error("archive.presetId missing"), { status: 400 });
   const candidates = [
     join(P().presets, `${id}.json`),
     join(P().presets, id.endsWith(".json") ? id : `${id}.json`),
@@ -798,7 +800,8 @@ function loadPresetForArchive(archive) {
       return { path, file: basename(path), preset: JSON.parse(readFileSync(path, "utf8")) };
     }
   }
-  throw new Error(`preset not found for archive.presetId=${id}`);
+  // 404, а не 500: це стан даних користувача, а не збій сервера
+  throw Object.assign(new Error(`preset not found for archive.presetId=${id}`), { status: 404 });
 }
 
 function traitsEqual(a, b) {
@@ -1486,6 +1489,11 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/credits/history" && req.method === "GET") {
     if (!PUBLIC_MODE) return send(res, 200, { transactions: [] });
     return send(res, 200, { transactions: listTransactions(currentWallet(), 50) });
+  }
+
+  if (pathname === "/api/admin/system" && req.method === "GET") {
+    if (PUBLIC_MODE && !isAdmin(currentWallet())) return send(res, 403, { error: "admin only" });
+    return send(res, 200, systemPayload());
   }
 
   if (pathname === "/api/admin/economy" && req.method === "GET") {
@@ -3634,6 +3642,78 @@ function userPaths(wallet) {
 const isPageRequest = (pathname) => pathname === "/" || pathname === "/studio" || pathname === "/studio/" || pathname.endsWith(".html");
 
 const cspLog = createCspLog();
+const requestMetrics = createRequestMetrics();
+const SERVER_STARTED = Date.now();
+const APP_VERSION = (() => {
+  try {
+    return JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).version || "";
+  } catch {
+    return "";
+  }
+})();
+const APP_REVISION = (() => {
+  try {
+    return readFileSync(join(ROOT, "REVISION"), "utf8").trim().slice(0, 40);
+  } catch {
+    return "";
+  }
+})();
+
+/** Усе, що показує вкладка адмінки «Система»: без секретів, прапорці булеві. */
+function systemPayload() {
+  const proc = processSnapshot(SERVER_STARTED);
+  const disk = diskSnapshot(DATA_DIR);
+  const backup = backupStatus(DATA_DIR);
+  const requests = requestMetrics.snapshot();
+  const csp = cspLog.counts();
+  const cspTotal = Object.values(csp).reduce((a, b) => a + b, 0);
+  let platform = null;
+  if (PLATFORM_ON) {
+    try {
+      platform = platformCounts(openDb());
+    } catch {
+      platform = null;
+    }
+  }
+  const dbFile = process.env.USERS_DB_PATH || join(DATA_DIR, "users.db");
+  const usersDir = join(DATA_DIR, "users");
+  let wallets = null;
+  try {
+    wallets = readdirSync(usersDir).length;
+  } catch {
+    wallets = null;
+  }
+  const tg = getTelegramConfig();
+  return {
+    generatedAt: new Date().toISOString(),
+    app: {
+      version: APP_VERSION,
+      revision: APP_REVISION,
+      mode: PUBLIC_MODE ? "public" : "local",
+      node: process.version,
+      flags: {
+        platform: PLATFORM_ON,
+        payments: Boolean(solPayInfo().enabled),
+        telegram: Boolean(tg.configured),
+        csp: cspMode(),
+        spendCapUsd: spendCap(process.env.SERIES_SPEND_CAP_USD),
+      },
+    },
+    process: proc,
+    disk,
+    data: {
+      dbMb: fileMb(dbFile),
+      walMb: fileMb(`${dbFile}-wal`),
+      wallets,
+      tree: treeBytesCached(DATA_DIR),
+    },
+    backup,
+    platform,
+    requests,
+    csp: { total: cspTotal, top: Object.entries(csp).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([key, count]) => ({ key, count })) },
+    alerts: buildAlerts({ disk, process: proc, backup, requests, cspTotal }),
+  };
+}
 
 /** Приймач звітів CSP: без авторизації (сторінка входу теж шле), тіло до 8 КБ, завжди 204. */
 async function handleCspReport(req, res) {
@@ -3647,6 +3727,19 @@ async function handleCspReport(req, res) {
 const server = createServer(async (req, res) => {
   applySecurityHeaders(req, res);
   applyCsp(req, res);
+  const startedHr = process.hrtime.bigint();
+  res.on("finish", () => {
+    try {
+      const type = String(res.getHeader("content-type") || "");
+      requestMetrics.record({
+        method: req.method,
+        pathname: String(req.url || "/").split("?")[0],
+        status: res.statusCode,
+        ms: Number(process.hrtime.bigint() - startedHr) / 1e6,
+        stream: type.includes("text/event-stream"),
+      });
+    } catch { /* метрики не мають ламати відповідь */ }
+  });
   if (req.method === "POST" && String(req.url || "").split("?")[0] === CSP_REPORT_PATH) return handleCspReport(req, res);
   try {
     const url = new URL(req.url || "/", `http://${HOST}:${PORT}`);
