@@ -3153,7 +3153,8 @@ async function ensureSolanaPayer() {
 
 async function loadSolanaWeb3() {
   if (window.__seriesWeb3) return window.__seriesWeb3;
-  const mod = await import("https://esm.sh/@solana/web3.js@1.98.4");
+  // Власний збір (scripts/build-vendor.mjs), не стороння CDN: код на сторінці оплати.
+  const mod = await import("./vendor/solana-tx.js");
   window.__seriesWeb3 = mod;
   return mod;
 }

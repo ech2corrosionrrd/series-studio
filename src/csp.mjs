@@ -7,9 +7,10 @@
  * і лише коли вони чисті кілька днів, вмикаємо `enforce`.
  *
  * Дві політики:
- * - сторінка входу (`/login`) має вбудований скрипт-модуль, імпорт з esm.sh і шрифти Google,
+ * - сторінка входу (`/login`) має вбудований скрипт-модуль і шрифти Google,
  *   тому для неї дозволено `'unsafe-inline'` у script-src (відомий недолік, див. документ);
- * - решта: скрипти лише свої та esm.sh (динамічний імпорт @solana/web3.js у студії).
+ * - решта: скрипти лише свої. Сторонніх CDN бібліотек більше немає: web3.js і перевірка адреси EVM
+ * збираються в server/ui/vendor/ (npm run vendor).
  * Обидві дозволяють Cloudflare Web Analytics (скрипт вставляє сам Cloudflare на проксі-сторінки;
  * перший живий звіт 10.10.2026), інакше `enforce` його б блокував.
  */
@@ -34,7 +35,7 @@ export function buildCsp(pathname = "/") {
   if (pathname === "/login" || pathname === "/login/") {
     return [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://esm.sh https://static.cloudflareinsights.com",
+      "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https:",
@@ -44,7 +45,7 @@ export function buildCsp(pathname = "/") {
   }
   return [
     "default-src 'self'",
-    "script-src 'self' https://esm.sh https://static.cloudflareinsights.com",
+    "script-src 'self' https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
     "img-src 'self' data: blob: https:",
