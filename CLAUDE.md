@@ -17,6 +17,9 @@
 | Шлях випуску, сховище, деплої | `docs/RELEASE.md`, `docs/EXPORT.md`, `docs/ROADMAP.md` |
 | Будь-що видиме користувачу | рядок під `## [Unreleased]` у `CHANGELOG.md` |
 | Новий файл у `docs/` | рядок в індексі `docs/README.md` |
+| Модуль у `server/ui/`, який `app.js` чи `i18n.js` імпортують статично | `<link rel="modulepreload">` у `server/ui/index.html` (страхує `test/ui-preload.test.mjs`) |
+| Оновили `@solana/web3.js` чи `@noble/hashes` | `npm run vendor` і комміт `server/ui/vendor/` (сторінки не беруть код зі сторонніх CDN) |
+| Заголовки відповідей, CSP, кешування статики | `docs/HOSTING.md` (розділ «Безпека відповідей і залежностей»); Cloudflare підміняє `Cache-Control` без `private` |
 | Версію в `package.json` | рядок «Стан: vX.Y.Z» у `docs/README.md` |
 
 Видалений постачальник (Pinata) не має лишатись у живих документах і коді. Історичні згадки дозволені лише в `CHANGELOG.md`, `docs/ROADMAP.md`, `docs/RECOMMENDATIONS.md`, `docs/QUALITY-REVIEW.md`.
