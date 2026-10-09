@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Документація: маркування ШІ (C2PA)
+- Новий `docs/C2PA.md`: що вимагає ст. 50 AI Act, що вже є в проєкті, три варіанти (метадані, власний підпис, довіряний сертифікат), рекомендований порядок кроків і два рішення власника. Код не змінювався.
+
 ### Безпека: заголовки відповідей сервера
 - Кожна відповідь Lab тепер має `X-Content-Type-Options`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy` і `Permissions-Policy`; по HTTPS додається ще `Strict-Transport-Security`. До цього їх не було зовсім. Content-Security-Policy свідомо не додано (може зламати вхід гаманцем). Відомі попередження `npm audit` у ланцюжку Solana / Irys описано в `docs/HOSTING.md`.
 
