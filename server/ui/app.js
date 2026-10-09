@@ -2128,8 +2128,26 @@ function setupLayersUpload() {
   });
 }
 
+/** Список наборів для гібридного накладання шарів («база» або кадри вже згенерованого набору). */
+async function fillComposeOver() {
+  const sel = $("g-compose-over");
+  if (!sel) return;
+  const keep = sel.value;
+  try {
+    const data = await api("/api/sets");
+    const sets = (data.sets || []).filter((x) => !String(x.dir).endsWith("-layers") && x.dir !== "layers");
+    sel.innerHTML = [`<option value="">${escapeHtml(t("render.layers.overBase"))}</option>`]
+      .concat(sets.map((x) => `<option value="${escapeHtml(x.dir)}">${escapeHtml(t("render.layers.overSet", { dir: x.dir, count: x.count }))}</option>`))
+      .join("");
+    if (keep && [...sel.options].some((o) => o.value === keep)) sel.value = keep;
+  } catch {
+    sel.innerHTML = `<option value="">${escapeHtml(t("render.layers.overBase"))}</option>`;
+  }
+}
+
 function setupRender() {
   setupLayersUpload();
+  fillComposeOver();
   $("g-compose")?.addEventListener("click", async () => {
     const msg = $("g-compose-msg");
     const btn = $("g-compose");
@@ -2138,11 +2156,17 @@ function setupRender() {
       if (!archive) throw new Error(t("export.none"));
       setBusy(btn, true);
       if (msg) msg.textContent = t("ui.working");
+      const over = $("g-compose-over")?.value || "";
       const data = await api("/api/compose", {
         method: "POST",
-        body: JSON.stringify({ archive }),
+        body: JSON.stringify({ archive, ...(over ? { over } : {}) }),
       });
-      if (msg) msg.textContent = t("render.layers.ok", { count: data.count, dir: data.dir });
+      if (msg) {
+        msg.textContent = data.mode === "overlay"
+          ? t("render.layers.okOver", { count: data.count, painted: data.painted, left: data.unpainted, dir: data.dir })
+          : t("render.layers.ok", { count: data.count, dir: data.dir });
+      }
+      if (data.mode === "overlay") fillComposeOver();
     } catch (e) {
       if (msg) msg.textContent = e.message;
     } finally {
