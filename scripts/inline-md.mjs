@@ -9,7 +9,8 @@ const TOKEN = /(\*\*[^*]+\*\*|\[[^\]]+\]\((?:https?:\/\/|mailto:)[^)\s]+\))/g;
 // Cloudflare's Email Address Obfuscation rewrites addresses into "[email protected]" and needs a
 // script that our CSP blocks. These comments make it skip the address (docs/DEPLOY.md).
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-const keep = (html) => `<!--email_off-->${html}<!--/email_off-->`;
+// "@" as &#64; keeps the scanner from matching an address that email_off alone did not protect.
+const keep = (html) => `<!--email_off-->${html.replace(/@/g, "&#64;")}<!--/email_off-->`;
 
 export function richText(text) {
   return String(text).split(TOKEN).map((seg) => {
