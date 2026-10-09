@@ -1,6 +1,6 @@
 # Документація Series Lab
 
-Стан: **v1.9.0** ([CHANGELOG](../CHANGELOG.md)) — хост lab.w3ir.io у публічному режимі (вхід гаманцем, оплата USDC), бекапи й моніторинг; раніше (v1.7.0): Arweave (Irys), шлях випуску upload → guards → verify (Core і v3), підказки й мережа за вибором; раніше (v1.6.1) запити #1–#9: перевірений архів, Core Candy Machine, маркет, порадник, огляд якості ([PRODUCT.md](./PRODUCT.md), [RECOMMENDATIONS.md](./RECOMMENDATIONS.md), [QUALITY-REVIEW.md](./QUALITY-REVIEW.md)). Ядро майстерні (хвилі 1–25) закрито раніше.
+Стан: **v1.10.0** ([CHANGELOG](../CHANGELOG.md)) — позначка «створено ШІ» й підпис C2PA, CSP, власні бібліотеки замість CDN, гібридні шари, вкладка адмінки «Система»; раніше (v1.9.0, v1.8.0): хост lab.w3ir.io у публічному режимі (вхід гаманцем, оплата USDC), бекапи й моніторинг; раніше (v1.7.0): Arweave (Irys), шлях випуску upload → guards → verify (Core і v3), підказки й мережа за вибором; раніше (v1.6.1) запити #1–#9: перевірений архів, Core Candy Machine, маркет, порадник, огляд якості ([PRODUCT.md](./PRODUCT.md), [RECOMMENDATIONS.md](./RECOMMENDATIONS.md), [QUALITY-REVIEW.md](./QUALITY-REVIEW.md)). Ядро майстерні (хвилі 1–25) закрито раніше.
 
 Запуск: `start-lab.bat` або `npm start` → http://127.0.0.1:5344/studio/ (у `public` — спочатку `/login`).
 
