@@ -2,7 +2,7 @@
 # Builds dist/site from the locale texts and uploads it to the existing
 # Direct Upload project "series-lab". See docs/DEPLOY.md.
 #
-# Tests run first (same Node matrix as test.yml). A red suite does not deploy.
+# Tests are not run here: the check is local (`npm run ci`, pre-push hook).
 #
 # Required repository settings:
 #   secret   CLOUDFLARE_API_TOKEN  — token with "Account · Cloudflare Pages · Edit"
@@ -32,25 +32,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22, 24]
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-
-      - run: npm ci
-      - run: npm test
-
   deploy:
-    needs: test
     runs-on: ubuntu-latest
     env:
       HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
