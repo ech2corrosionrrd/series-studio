@@ -79,7 +79,8 @@ test("parseMarkdownBlocks: title, headings, paragraphs, lists, notes, tables, co
 test("richText: bold and safe links only; everything else is escaped", () => {
   assert.equal(richText("a **b** c"), "a <strong>b</strong> c");
   assert.equal(richText("[сайт](https://example.com/x)"), '<a href="https://example.com/x" rel="noopener">сайт</a>');
-  assert.equal(richText("[пошта](mailto:a@b.co)"), '<a href="mailto:a@b.co" rel="noopener">пошта</a>');
+  assert.equal(richText("лист на w3ir@pm.me"), "лист на <!--email_off-->w3ir@pm.me<!--/email_off-->");
+  assert.equal(richText("[пошта](mailto:a@b.co)"), '<!--email_off--><a href="mailto:a@b.co" rel="noopener">пошта</a><!--/email_off-->');
   assert.equal(richText("[x](javascript:alert(1))"), "[x](javascript:alert(1))", "javascript: is never a link");
   assert.equal(richText("<script>alert(1)</script> & \"q\""), "&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;q&quot;");
 });
