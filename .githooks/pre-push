@@ -1,0 +1,4 @@
+#!/bin/sh
+# Повна перевірка перед push (замість GitHub CI). Пропустити: SKIP_CI=1 git push ...
+[ -n "$SKIP_CI" ] && exit 0
+node scripts/ci.mjs

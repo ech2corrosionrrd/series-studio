@@ -143,7 +143,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 | `src/` | Ядро + `platform/` (вхід, кредити) |
 | `server/` | HTTP, `/login`, Studio UI, guard |
 | `deploy/series-lab/` | Staging / бекап (за командою хостингу) |
-| `.github/workflows/` | `test.yml`, `health.yml`, `deploy-site.yml` |
+| `.github/workflows/` | `health.yml`, `deploy-site.yml` (тестів у GitHub немає: `npm run ci`) |
 | `bin/series.mjs` | CLI |
 
 ---
