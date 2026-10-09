@@ -133,11 +133,18 @@ function requireTmaAuth(req) {
   throw new HttpError(401, "Invalid or missing X-TMA-Key or X-W3IR-B2B-Key");
 }
 
+/** Імпорт перевірки адреси EVM зі сторонньої CDN підміняємо нашим файлом (scripts/build-vendor.mjs). */
+export function selfHostLoginImports(html) {
+  return String(html).replace("https://esm.sh/viem@2", "/studio/vendor/evm-address.js");
+}
+
 function loginPage() {
   const p = siteFile("login.html");
   if (!existsSync(p)) return null;
   // Series Lab opens the studio on this origin.
-  return readFileSync(p, "utf8").replace("const APP_URL = 'https://ai.w3ir.io';", `const APP_URL = ${JSON.stringify(process.env.AUTH_APP_URL || "/studio/")};`);
+  return selfHostLoginImports(
+    readFileSync(p, "utf8").replace("const APP_URL = 'https://ai.w3ir.io';", `const APP_URL = ${JSON.stringify(process.env.AUTH_APP_URL || "/studio/")};`),
+  );
 }
 
 async function routes(req, res, url) {
