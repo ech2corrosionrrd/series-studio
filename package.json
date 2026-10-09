@@ -33,7 +33,8 @@
     "audit:ui": "node scripts/audit-ui.mjs",
     "audit:i18n": "node scripts/audit-i18n.mjs",
     "smoke:stage": "node scripts/stage-smoke.mjs",
-    "docs:check": "node scripts/check-docs.mjs"
+    "docs:check": "node scripts/check-docs.mjs",
+    "ci": "node scripts/ci.mjs"
   },
   "keywords": [
     "nft",
