@@ -130,6 +130,8 @@ function showTab(name) {
   document.querySelectorAll(".tab").forEach((el) => el.classList.toggle("on", el.id === `tab-${name}`));
   document.querySelectorAll("#tabs button").forEach((btn) => {
     btn.classList.toggle("on", btn.dataset.tab === name);
+    if (btn.dataset.tab === name) btn.setAttribute("aria-current", "page");
+    else btn.removeAttribute("aria-current");
   });
   if (name === "export") {
     fillExportSets();
@@ -740,14 +742,14 @@ function renderOptionsEditor() {
     const tr = document.createElement("tr");
     const promptWarn = !String(o.prompt || "").trim();
     tr.innerHTML = `
-      <td><input type="text" data-field="value" data-idx="${idx}" value="${escapeHtml(o.value)}" autocomplete="off"></td>
+      <td><input type="text" data-field="value" data-idx="${idx}" value="${escapeHtml(o.value)}" autocomplete="off" aria-label="${escapeHtml(`${t("ctor.options.colValue")} ${idx + 1}`)}"></td>
       <td class="opt-weight-cell">
-        <input class="opt-weight" type="number" min="0.01" step="any" data-field="weight" data-idx="${idx}" value="${escapeHtml(String(o.weight))}">
+        <input class="opt-weight" type="number" min="0.01" step="any" data-field="weight" data-idx="${idx}" value="${escapeHtml(String(o.weight))}" aria-label="${escapeHtml(`${t("ctor.options.colWeight")}: ${o.value}`)}">
         <span class="opt-pct" data-idx="${idx}">${escapeHtml(t("ctor.options.pct", { pct: optionPct(o.weight, trait.options) }))}</span>
       </td>
-      <td><input class="opt-exact" type="number" min="0" step="1" data-field="exact" data-idx="${idx}" value="${o.exact == null ? "" : escapeHtml(String(o.exact))}"></td>
+      <td><input class="opt-exact" type="number" min="0" step="1" data-field="exact" data-idx="${idx}" value="${o.exact == null ? "" : escapeHtml(String(o.exact))}" aria-label="${escapeHtml(`${t("ctor.options.colExact")}: ${o.value}`)}"></td>
       <td>
-        <textarea data-field="prompt" data-idx="${idx}" rows="2">${escapeHtml(o.prompt)}</textarea>
+        <textarea data-field="prompt" data-idx="${idx}" rows="2" aria-label="${escapeHtml(`${t("ctor.options.colPrompt")}: ${o.value}`)}">${escapeHtml(o.prompt)}</textarea>
         ${promptWarn ? `<span class="muted small opt-warn">${escapeHtml(t("ctor.options.warn.promptShort"))}</span>` : ""}
       </td>
       <td class="opt-actions">
