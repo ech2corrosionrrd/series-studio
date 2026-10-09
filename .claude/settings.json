@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run ci*)",
+      "Bash(npm test*)",
+      "Bash(npm run docs:check*)",
+      "Bash(npm run audit:*)",
+      "Bash(node scripts/ci.mjs*)",
+      "Bash(node scripts/build-site.mjs*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git pull*)",
+      "Bash(git push origin main*)",
+      "Bash(git checkout*)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr create*)",
+      "Bash(gh run list*)",
+      "Bash(gh run view*)",
+      "Bash(gh run watch*)",
+      "Bash(curl -s*https://studio.w3ir.io*)",
+      "Bash(curl -sS*https://studio.w3ir.io*)",
+      "Edit(CLAUDE.md)",
+      "Edit(CHANGELOG.md)"
+    ]
+  }
+}
