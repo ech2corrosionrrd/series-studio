@@ -34,7 +34,8 @@
     "audit:i18n": "node scripts/audit-i18n.mjs",
     "smoke:stage": "node scripts/stage-smoke.mjs",
     "docs:check": "node scripts/check-docs.mjs",
-    "ci": "node scripts/ci.mjs"
+    "ci": "node scripts/ci.mjs",
+    "vendor": "node scripts/build-vendor.mjs"
   },
   "keywords": [
     "nft",
@@ -68,5 +69,8 @@
     "@irys/upload": "^0.0.15",
     "@irys/upload-solana": "^0.1.8",
     "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }
