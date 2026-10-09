@@ -23,7 +23,7 @@ test("staticResponse revalidates instead of caching blindly, and answers 304 on 
   const body = Buffer.from("console.log(1)");
   const first = staticResponse(body, {});
   assert.equal(first.status, 200);
-  assert.equal(first.headers["Cache-Control"], "no-cache");
+  assert.equal(first.headers["Cache-Control"], "private, no-cache", "private: Cloudflare must not cache it");
   const again = staticResponse(body, { "if-none-match": first.headers.ETag });
   assert.equal(again.status, 304);
   const changed = staticResponse(Buffer.from("console.log(2)"), { "if-none-match": first.headers.ETag });
