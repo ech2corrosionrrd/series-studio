@@ -83,6 +83,7 @@
 |--------|------|------|
 | GET | `/api/export/csv?file=` | CSV промптів |
 | GET | `/api/export/txt?file=` | TXT промптів |
+| POST | `/api/csp-report` | приймач звітів про порушення Content-Security-Policy від браузера (без авторизації, тіло до 8 КБ, відповідь 204; у журнал потрапляє перше входження кожного порушення) |
 | POST | `/api/export/bundle` | mint-ready ZIP → `out/bundles/` (ERC-721, Metaplex, Ordinals; опційно `imageUriPrefix`; опційно `aiMark` (типово `true`; `false` вимикає позначку «створено ШІ» в метаданих PNG і файл `ai-disclosure.json`); опційно `authorship`: `{ baseOrigin: hand\|photo\|ai_curated\|ai_raw, handEdited, handLayers, note }` — заява про людський внесок, пишеться в `authorship.json` і README) |
 | POST | `/api/export/preview-meta` | генерація попереднього перегляду метаданих `1.json` |
 | GET | `/api/checklist` | `?archive=&set=` — NFT readiness items |
