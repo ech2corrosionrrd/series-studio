@@ -32,6 +32,7 @@
 | [EXPORT.md](./EXPORT.md) | ZIP, маніфест, Arweave, Showcase, конфіги; поля Експорту залежать від профілю |
 | [RELEASE.md](./RELEASE.md) | Шлях випуску: `release.json` → `series upload` → `series hidden` → deploy → `series guards` → `series verify` → `series mint` → `series reveal --keypair`; шари — `series compose` |
 | [BASE.md](./BASE.md) | Базові картинки, Vision Assist |
+| [ENGINES.md](./ENGINES.md) | Вибір рушія, сили референсу й бази: що показали живі тести |
 | [TRAITS.md](./TRAITS.md) | Паки рис, редактор опцій |
 | [PRESET.md](./PRESET.md) | Формат пресету |
 | [VISION.md](./VISION.md) | Vision Assist |
