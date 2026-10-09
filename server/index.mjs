@@ -2976,6 +2976,7 @@ async function handleApi(req, res, url) {
       animationUriPrefix: body.animationUriPrefix || body.animPrefix || "",
       locale,
       upscale: Boolean(body.upscale),
+      aiMark: body.aiMark !== false,
       authorship: body.authorship && typeof body.authorship === "object" ? body.authorship : null,
     };
     try {

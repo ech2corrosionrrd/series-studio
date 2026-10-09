@@ -224,7 +224,7 @@ metaplex phantom metamask solflare tensor thirdweb launchmynft kohya replicate c
 automatic1111 a1111 flux kontext schnell openai stability pollinations runware telegram
 gremlin midjourney claude sdxl sugar candy machine core mplx fal vision mock nft gpt bfl
 unisat okx gamma satflow ordzaar hashlips w3ir zip png json csv html txt jpg jpeg webp
-gif svg mp4 pdf yaml yml toml sha cid uri url http https api gpu faq dna usdc sol eth
+gif svg mp4 pdf yaml yml toml sha cid uri url http https api gpu faq dna usdc sol eth c2pa xmp
 btc evm erc eip cli rpc env css wav webm utf ascii llm tma b2b csrf wasm rgb hsl pfp qa
 bps devnet mainnet signet sepolia img2img txt2img lora coinbase rainbow ordinalsbot sharp
 pro dev comfy genesis sybil deeplink english usd nftstorage irys studio creator hub wallet taproot discord

@@ -29,7 +29,7 @@ const allDocs = [read("README.md"), ...docFiles.map((f) => read(`docs/${f}`))].j
 // 1. CLI commands
 const usage = execFileSync(process.execPath, [join(root, "bin/series.mjs"), "--help"], { encoding: "utf8" });
 const cliDocs = read("README.md") + read("docs/GUIDE.md");
-const commands = [...new Set([...usage.matchAll(/^\s{2}series ([a-z][a-z-]*)\b/gm)].map((m) => m[1]))];
+const commands = [...new Set([...usage.matchAll(/^\s{2}series ([a-z][a-z0-9-]*)\b/gm)].map((m) => m[1]))];
 for (const c of commands) {
   if (!new RegExp(`series(?:\\.mjs)? ${c}\\b|\`${c}\``).test(cliDocs)) fail(`CLI command "series ${c}" is not documented in README.md or docs/GUIDE.md`);
 }

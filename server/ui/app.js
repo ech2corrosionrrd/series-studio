@@ -2604,6 +2604,7 @@ const HELP_CLI = [
   ["triage", "triage out/mock-s0.45 --provider heuristic --apply"],
   ["upscale", "upscale out/fal-s0.45"],
   ["repairPng", "repair-png out/pollinations-s0.45 --dry-run"],
+  ["c2pa", "c2pa out/fal-s0.45 --cert signer-chain.pem --key signer-key.pem"],
   ["pin", "pin out/fal-s0.45 --name my-series"],
   ["manifest", "manifest out/demo-archive.json --profile opensea"],
   ["showcase", "showcase out/demo-archive.json -o out/showcase.html"],
@@ -3762,6 +3763,7 @@ function setupSizeTools() {
 
 /** Optional human-contribution statement for the export. Remembered per browser only. */
 const AUTH_KEY = "series-lab-authorship";
+const AIMARK_KEY = "series-lab-aimark";
 
 function authorshipFromForm() {
   const a = {
@@ -3771,6 +3773,19 @@ function authorshipFromForm() {
     note: $("x-auth-note")?.value?.trim() || "",
   };
   return a.baseOrigin || a.handEdited || a.handLayers || a.note ? a : null;
+}
+
+function setupAiMark() {
+  const box = $("x-ai-mark");
+  if (!box) return;
+  try {
+    if (localStorage.getItem(AIMARK_KEY) === "off") box.checked = false;
+  } catch { /* default is on */ }
+  box.addEventListener("change", () => {
+    try {
+      localStorage.setItem(AIMARK_KEY, box.checked ? "on" : "off");
+    } catch { /* storage is optional */ }
+  });
 }
 
 function setupAuthorship() {
@@ -4672,6 +4687,7 @@ function setupExport() {
           archive,
           set,
           authorship: authorshipFromForm(),
+          aiMark: $("x-ai-mark")?.checked !== false,
           profile: "opensea",
           onlyKeep: true,
           namePrefix: $("x-namePrefix")?.value || "Series #",
@@ -4747,6 +4763,7 @@ function setupExport() {
           archive,
           set,
           authorship: authorshipFromForm(),
+          aiMark: $("x-ai-mark")?.checked !== false,
           profile: $("x-profile")?.value || "opensea",
           creatorAddress: $("x-creator-address")?.value?.trim() || "",
           zeroIndexed: Boolean($("x-zero-index")?.checked),
@@ -5724,6 +5741,7 @@ async function boot() {
   setupQuality();
   setupSizeTools();
   setupAuthorship();
+  setupAiMark();
   setupEngineDiagnostics();
   setupVersions();
   setupExport();

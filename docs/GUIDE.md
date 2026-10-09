@@ -391,6 +391,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 | `node bin/series.mjs triage out/mock-s0.45 --provider heuristic --apply` | автоматична оцінка якості набору |
 | `node bin/series.mjs upscale out/fal-s0.45` | збільшити картинки вдвічі |
 | `node bin/series.mjs repair-png out/pollinations-s0.45 --dry-run` | перетворити на справжній PNG кадри, що були збережені як JPEG під іменем `.png` (потрібен `sharp`; без `--dry-run` файли перезаписуються, хеші змінюються) |
+| `node bin/series.mjs c2pa out/fal-s0.45 --cert signer-chain.pem --key signer-key.pem` | підписати кадри набору C2PA (тип джерела «створено ШІ») на вашому ПК, у новий набір `out/fal-s0.45-c2pa`; потрібна окрема бібліотека, див. [C2PA.md](./C2PA.md) |
 | `node bin/series.mjs upload <тека-набору> --keypair deployer.json` | відновлюване завантаження набору деплою в Arweave (див. RELEASE.md) |
 | `node bin/series.mjs pin out/fal-s0.45 --dry-run` | швидка перевірка набору перед завантаженням в Arweave (без ключа) |
 | `node bin/series.mjs release-init out/demo-archive.json -o release.json` | скелет `release.json` (роялті, творці, ціна, правила мінту) |
