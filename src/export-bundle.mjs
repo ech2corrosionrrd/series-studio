@@ -27,6 +27,7 @@ import {
 } from "./deploy.mjs";
 import { calculateCollectionProvenance } from "./provenance.mjs";
 import { authorshipDoc, authorshipFacts, normalizeAuthorship } from "./authorship.mjs";
+import { aiDisclosureDoc, hasC2pa, markPngAsAi } from "./ai-mark.mjs";
 import { fileURLToPath } from "node:url";
 import { readMeta } from "./versions.mjs";
 import { creationVersion, promptHash } from "./creation.mjs";
@@ -151,6 +152,7 @@ export function buildReadme(locale, collection) {
       "  collection.json  — підсумок",
       "  provenance.json  — відбиток колекції (SHA-256 кожної картинки)",
       "  verify-provenance.mjs — перевірка без Series Lab: node verify-provenance.mjs (з теки ZIP)",
+      ...((collection.aiMarked?.images || collection.aiMarked?.signed) ? ["  ai-disclosure.json — позначка «створено ШІ» в метаданих PNG (XMP) і кадри з підписом C2PA; XMP не є підписом, його можна стерти"] : []),
       "  README.txt       — цей файл",
       "",
       collection.upscaled
@@ -184,6 +186,7 @@ export function buildReadme(locale, collection) {
     "  collection.json  — summary",
     "  provenance.json  — collection fingerprint (SHA-256 of every image)",
     "  verify-provenance.mjs — check without Series Lab: node verify-provenance.mjs (from the ZIP folder)",
+    ...((collection.aiMarked?.images || collection.aiMarked?.signed) ? ["  ai-disclosure.json — \"AI-generated\" mark in PNG metadata (XMP) and frames with a C2PA signature; XMP is not a signature, it can be stripped"] : []),
     "  README.txt       — this file",
     "",
     collection.upscaled
@@ -419,6 +422,11 @@ export async function buildBundleZip(params) {
 
   const imageRecords = [];
   const packed = [];
+  // Позначка «створено ШІ» в метаданих PNG (docs/C2PA.md, крок 1); вимкнути можна `aiMark: false`.
+  const aiMarkOn = opts.aiMark !== false;
+  const aiMarked = [];
+  const aiSigned = [];
+  let aiSkipped = 0;
 
   for (const recipe of sel.recipes) {
     const ed = recipe.edition;
@@ -433,7 +441,8 @@ export async function buildBundleZip(params) {
     // Handle primary image
     if (media.imagePath) {
       let buf = readFileSync(media.imagePath);
-      if (doUpscale) {
+      // Підписаний C2PA кадр не чіпаємо: перекодування стерло б маніфест.
+      if (doUpscale && !hasC2pa(buf)) {
         const up = await upscale2x(buf);
         if (up.ok) {
           buf = up.buffer;
@@ -444,6 +453,17 @@ export async function buildBundleZip(params) {
       }
       const imgExt = extname(media.imagePath).slice(1) || "png";
       const imgFileName = `${displayEd}.${imgExt}`;
+      if (aiMarkOn) {
+        const m = markPngAsAi(buf);
+        if (m.marked) {
+          buf = m.buffer;
+          aiMarked.push(imgFileName);
+        } else if (m.signed) {
+          aiSigned.push(imgFileName);
+        } else {
+          aiSkipped += 1;
+        }
+      }
       imagesFolder.file(imgFileName, buf);
       imageRecords.push({ edition: ed, file: imgFileName, buffer: buf });
     }
@@ -500,6 +520,10 @@ export async function buildBundleZip(params) {
     // Same checks as `series provenance --verify`, runnable without Series Lab: node verify-provenance.mjs
     zip.file("verify-provenance.mjs", readFileSync(fileURLToPath(new URL("./provenance-verifier.mjs", import.meta.url)), "utf8"));
     opts.provenanceHash = provenance.provenanceHash;
+  }
+
+  if (aiMarkOn && (aiMarked.length || aiSigned.length || aiSkipped)) {
+    zip.file("ai-disclosure.json", JSON.stringify(aiDisclosureDoc({ marked: aiMarked.length, skipped: aiSkipped, signed: aiSigned.length, files: aiMarked, signedFiles: aiSigned }), null, 2) + "\n");
   }
 
   // Generate CSV Manifest in ZIP root
@@ -585,6 +609,7 @@ export async function buildBundleZip(params) {
     upscaled: anyUpscaled,
   });
   if (provenance) collection.provenanceHash = provenance.provenanceHash;
+  if (aiMarkOn) collection.aiMarked = { images: aiMarked.length, signed: aiSigned.length, skipped: aiSkipped };
   if (sel.fallback) collection.selectionFallback = sel.fallback;
   if (upscaleSkippedReason) collection.upscaleSkipped = upscaleSkippedReason;
   collection.chain = chain;

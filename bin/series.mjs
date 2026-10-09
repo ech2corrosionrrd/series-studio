@@ -60,6 +60,7 @@ import {
 import { composeArchive } from "../src/layers.mjs";
 import { ENGINES, TXT2IMG, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
+import { loadC2pa, signSet } from "../src/c2pa-sign.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -90,6 +91,7 @@ Usage:
   series doctor
   series upscale <images-dir> [options]
   series repair-png <set-dir> [--dry-run]
+  series c2pa <set-dir> --cert <chain.pem> --key <key.pem> [-o <out-dir>] [--alg es256] [--tsa <url>] [--dry-run]
   series notify [options]
 
 Options:
@@ -1136,6 +1138,10 @@ function parseOpts(args) {
     else if (a === "--limit" || a === "--sample") opts.limit = Number(args[++i]);
     else if (a === "--dry-run") opts.dryRun = true;
     else if (a === "--keypair") opts.keypair = args[++i];
+    else if (a === "--cert") opts.cert = args[++i];
+    else if (a === "--key") opts.key = args[++i];
+    else if (a === "--alg") opts.alg = args[++i];
+    else if (a === "--tsa") opts.tsa = args[++i];
     else if (a === "--max-price") opts.maxPrice = Number(args[++i]);
     else if (a === "--no-fund") opts.noFund = true;
     else if (a === "--rpc") opts.rpc = args[++i];
@@ -1248,6 +1254,37 @@ async function cmdRepairPng(dir, opts = {}) {
   }
 }
 
+function pkgVersion() {
+  try {
+    return JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version || "";
+  } catch {
+    return "";
+  }
+}
+
+async function cmdC2pa(dir, opts = {}) {
+  const outDir = opts.out || `${resolve(dir).replace(/[\\/]+$/, "")}-c2pa`;
+  const base = { setDir: dir, outDir, certPath: opts.cert, keyPath: opts.key, alg: (opts.alg || "es256").toLowerCase(), tsaUrl: opts.tsa || "", version: pkgVersion() };
+  try {
+    if (opts.dryRun) {
+      const r = await signSet({ ...base, dryRun: true });
+      console.log(`Would sign ${r.files.length} frames from ${resolve(dir)} into ${r.outDir}.`);
+      return;
+    }
+    const c2pa = await loadC2pa();
+    const r = await signSet({ ...base, c2pa });
+    console.log(`Signed ${r.signed} frames, failed ${r.failed}. Output: ${r.outDir}`);
+    console.log(`Signer: ${r.signer || "?"} (${r.alg || base.alg}); trust: ${r.trust}.`);
+    for (const e of r.errors) console.error(`  failed: ${e.file}: ${e.error}`);
+    if (r.trust === "untrusted") console.log("The certificate is not on the C2PA trust list, so validators show the signature as untrusted (docs/C2PA.md).");
+    console.log("Export from the signed set: its frames keep the C2PA manifest (the PNG metadata mark is skipped for them). Hashes of signed files differ from the originals: rebuild any bundle or provenance made before.");
+    if (r.failed) process.exit(1);
+  } catch (e) {
+    console.error(`[ERROR] ${e.message}`);
+    process.exit(1);
+  }
+}
+
 async function main(argv) {
   const args = argv.slice(2);
   if (!args.length || args.includes("-h") || args.includes("--help")) usage(0);
@@ -1264,6 +1301,11 @@ async function main(argv) {
     if (!args[1]) usage(1);
     const opts = parseOpts(args.slice(2));
     await cmdRepairPng(args[1], opts);
+    return;
+  }
+  if (cmd === "c2pa") {
+    if (!args[1]) usage(1);
+    await cmdC2pa(args[1], parseOpts(args.slice(2)));
     return;
   }
   if (cmd === "upscale") {
