@@ -73,4 +73,4 @@ npm run diff-seed:demo
 
 ## GitHub
 
-Репозиторій: `series-studio` · CI: `test.yml` (push/PR), `health.yml` (staging), `deploy-site.yml` (Pages лендінг).
+Репозиторій: `series-studio` · перевірка: локальний `npm run ci` (`scripts/ci.mjs`, хук `pre-push`), GitHub CI вимкнено · `health.yml` (staging), `deploy-site.yml` (Pages лендінг).
