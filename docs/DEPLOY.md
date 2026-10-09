@@ -38,6 +38,8 @@
 
 **Автоматично (основний спосіб).** Workflow `.github/workflows/deploy-site.yml` запускається при push у `main`, якщо змінились тексти (`server/ui/locales/**`), `scripts/build-site.mjs`, `scripts/site-pages.mjs`, `package.json` або сам workflow. Він збирає `dist/site`, перевіряє, що всі сторінки на місці, і викладає сайт у проєкт `series-lab` через `wrangler pages deploy`. Запустити вручну: GitHub → Actions → **Deploy site** → *Run workflow*.
 
+**Пошта на сторінках.** Cloudflare Email Address Obfuscation замінює адреси на «[email protected]», а CSP сайту не дозволяє скрипт розшифрування. Тому `richText` (`scripts/inline-md.mjs`) обгортає адреси й `mailto:` у `<!--email_off-->`; налаштування в панелі Cloudflare міняти не потрібно.
+
 Налаштування репозиторію (GitHub → Settings → Secrets and variables → Actions):
 
 | Назва | Тип | Значення |
