@@ -409,9 +409,14 @@ tr.edited td:first-child::after { content: " ✎"; color: var(--accent); font-we
   font: inherit;
 }
 .opt-table textarea { min-height: 52px; resize: vertical; }
-.opt-table .opt-weight { width: 88px; }
+.opt-table .opt-weight { width: 88px; flex: 0 0 72px; min-width: 72px; }
+.opt-table input.opt-exact { min-width: 64px; }
+/* вузький екран: таблиця гортається вбік, але поля лишаються придатними для вводу */
+.opt-table td:nth-child(1) { min-width: 120px; }
+.opt-table td:nth-child(4) { min-width: 200px; }
 .opt-table .opt-actions { white-space: nowrap; width: 1%; }
 .opt-table .opt-actions .btn { margin: 0 2px 2px 0; }
+@media (max-width: 720px) { .opt-table .opt-actions .btn { min-height: 38px; } }
 .opt-warn { color: #e6b35a; }
 .pack-key.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .pack-key .pack-key-edit {
@@ -934,3 +939,7 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .advisor-sources { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
 .advisor-sources a { color: var(--accent2); text-decoration: underline; text-underline-offset: 2px; }
 .advisor-sources a:hover { color: var(--text); }
+
+/* картки «Позначка ШІ» і «Людський внесок»: сітка не ширша за картку, довгі списки не виштовхують сторінку вбік */
+#x-aimark, #x-auth { grid-template-columns: minmax(0, 1fr); }
+#x-auth select, #x-auth input[type="text"] { width: 100%; max-width: 100%; box-sizing: border-box; }
