@@ -196,6 +196,7 @@ import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../
 import { anonymizeRenderLog, appendRenderLog, capError, engineStatsToday, recentEngineErrors, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
 import { failureBreaker } from "../src/pool.mjs";
 import { applySecurityHeaders } from "../src/security-headers.mjs";
+import { staticResponse } from "../src/static-cache.mjs";
 import { CSP_REPORT_PATH, applyCsp, createCspLog, summarizeReport } from "../src/csp.mjs";
 
 const RESOURCE_KEYS = [
@@ -1189,7 +1190,21 @@ function serveStudioDocs(res, urlPath) {
   return true;
 }
 
-function serveUi(res, urlPath) {
+/** Файл інтерфейсу з ETag: браузер перепитує, а не качає заново (src/static-cache.mjs). */
+function sendUiFile(req, res, filePath) {
+  if (!existsSync(filePath) || !statSync(filePath).isFile()) return false;
+  const buf = readFileSync(filePath);
+  const { status, headers } = staticResponse(buf, req.headers);
+  if (status === 304) {
+    res.writeHead(304, headers);
+    res.end();
+    return true;
+  }
+  send(res, 200, buf, MIME[extname(filePath).toLowerCase()] || "application/octet-stream", headers);
+  return true;
+}
+
+function serveUi(req, res, urlPath) {
   let rel = urlPath;
   if (rel === "/studio") {
     send(res, 302, "", "text/plain", { Location: "/studio/" });
@@ -1218,7 +1233,7 @@ function serveUi(res, urlPath) {
     send(res, 400, { error: "bad path" });
     return true;
   }
-  if (sendFile(res, file)) return true;
+  if (sendUiFile(req, res, file)) return true;
   return false;
 }
 
@@ -3634,7 +3649,7 @@ async function handleRequest(req, res, url) {
     if (serveInput(res, url.pathname)) return;
     if (serveOut(res, url.pathname)) return;
     if (serveStudioDocs(res, url.pathname)) return;
-    if (serveUi(res, url.pathname)) return;
+    if (serveUi(req, res, url.pathname)) return;
     // legacy public redirect page
     if (url.pathname === "/old" || url.pathname.startsWith("/public/")) {
       const rel = url.pathname.replace(/^\/public/, "") || "/index.html";
