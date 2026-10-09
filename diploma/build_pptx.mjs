@@ -152,7 +152,7 @@ async function main() {
   }
 
   {
-    const s = contentSlide("Якість: 414 тестів, CI, Docker");
+    const s = contentSlide("Якість: 439 тестів, npm run ci, Docker");
     s.addImage({ path: path.join(FIG, "rys-4-1.png"), x: 0.3, y: 1.3, w: 6.3, h: 5.2 });
     s.addImage({ path: path.join(FIG, "rys-4-2.png"), x: 6.8, y: 1.3, w: 6.1, h: 5.2 });
   }
@@ -175,7 +175,7 @@ async function main() {
 
   titleSlide(
     "Висновки",
-    "Створено Series Lab v1.9.0: майстерня, 24 CLI, 94 API, 414 тестів.\nКлючі не на сервері · USDC напряму · preflight · відтворюваність.\nДякую за увагу!"
+    "Створено Series Lab v1.9.0: майстерня, 25 CLI, 94 API, 439 тестів.\nКлючі не на сервері · USDC напряму · preflight · відтворюваність.\nДякую за увагу!"
   );
 
   await pres.writeFile({ fileName: OUT });
