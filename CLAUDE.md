@@ -24,13 +24,15 @@
 ### Як це перевіряється
 
 - `npm run docs:check` — офлайн-перевірка розбіжностей: команди CLI, маршрути API, змінні `.env.example`, індекс документів, версія, видалені постачальники.
-- `test/docs.test.mjs` запускає ту саму перевірку в `npm test` і в CI.
+- `test/docs.test.mjs` запускає ту саму перевірку в `npm test` і в `npm run ci`.
 - Хук `.githooks/pre-commit` додатково вимагає, щоб у коміті з правками `src/`, `server/`, `bin/`, `scripts/` чи `package.json` були й документи та `CHANGELOG.md`.
-  Увімкнути в новому клоні: `git config core.hooksPath .githooks`.
+  Увімкнути в новому клоні: `git config core.hooksPath .githooks` (вмикає й `pre-push`).
   Чистий рефакторинг без видимих змін: `SKIP_DOCS_CHECK=1 git commit …` (використовувати свідомо).
 - Скрипт не оцінює зміст. Дотримання змісту (що текст правдивий) — відповідальність автора коміту.
 
 ## Тести й перевірки перед комітом
+
+Швидко: `npm run ci` — одна команда для 1–3 нижче і `audit:api` (замінила GitHub CI; хук `.githooks/pre-push` запускає її перед push, пропуск: `SKIP_CI=1`). Окремо:
 
 1. `npm test` — усе має бути зеленим.
 2. `npm run audit:i18n` — ключі uk і en збігаються.
