@@ -27,5 +27,29 @@
       "Edit(CLAUDE.md)",
       "Edit(CHANGELOG.md)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/i18n-audit.mjs",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/deploy-watch.mjs",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
   }
 }
