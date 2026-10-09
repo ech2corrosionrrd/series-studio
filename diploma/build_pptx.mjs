@@ -175,7 +175,7 @@ async function main() {
 
   titleSlide(
     "Висновки",
-    "Створено Series Lab v1.9.0: майстерня, 25 CLI, 95 API, 457 тестів.\nКлючі не на сервері · USDC напряму · preflight · відтворюваність.\nДякую за увагу!"
+    "Створено Series Lab v1.10.0: майстерня, 25 CLI, 95 API, 457 тестів.\nКлючі не на сервері · USDC напряму · preflight · відтворюваність.\nДякую за увагу!"
   );
 
   await pres.writeFile({ fileName: OUT });
