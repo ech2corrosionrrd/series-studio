@@ -5494,6 +5494,26 @@ function setupKits() {
 
 
 /* ---------- Resources: recommended balance per provider ---------- */
+/** Role text of a service (explicit keys so the i18n audit can see them). */
+function resRole(id) {
+  const roles = {
+    openai: t("res.role.openai"),
+    anthropic: t("res.role.anthropic"),
+    stability: t("res.role.stability"),
+    replicate: t("res.role.replicate"),
+    fal: t("res.role.fal"),
+    runware: t("res.role.runware"),
+    pollinations: t("res.role.pollinations"),
+    alchemy: t("res.role.alchemy"),
+    solana: t("res.role.solana"),
+    base: t("res.role.base"),
+    irys: t("res.role.irys"),
+    telegram: t("res.role.telegram"),
+    localgpu: t("res.role.localgpu"),
+  };
+  return roles[id] || "";
+}
+
 async function renderResourcePlan({ probe = false } = {}) {
   const box = $("res-plan");
   if (!box) return;
@@ -5504,18 +5524,22 @@ async function renderResourcePlan({ probe = false } = {}) {
     box.innerHTML = `<p class="err-msg">${escapeHtml(e.message)}</p>`;
     return;
   }
+  const badge = (label, cls) => `<span class="prov-badge ${cls}">${escapeHtml(label)}</span>`;
   const status = (p) => {
-    const label =
-      p.status === "ok" ? t("res.plan.status.ok")
-        : p.status === "low" ? t("res.plan.status.low")
-          : p.status === "critical" ? t("res.plan.status.critical")
-            : p.status === "unknown" ? t("res.plan.status.unknown")
-              : t("res.plan.status.off");
-    const cls = p.status === "ok" ? "on" : p.status === "critical" ? "fail" : "off";
-    return `<span class="prov-badge ${cls}">${escapeHtml(label)}</span>`;
+    if (p.status === "ok") return badge(t("res.plan.status.ok"), "on");
+    if (p.status === "low") return badge(t("res.plan.status.low"), "off");
+    if (p.status === "critical") return badge(t("res.plan.status.critical"), "fail");
+    if (p.status === "unknown") return badge(t("res.plan.status.unknown"), "off");
+    return badge(t("res.plan.status.off"), "off");
   };
+  const alertCell = (p) => {
+    const src = p.alert_source === "default" ? t("res.plan.alert.default") : p.alert_source === "custom" ? t("res.plan.alert.custom") : t("res.plan.alert.off");
+    const hit = p.alert_triggered ? ` ${badge(t("res.plan.alert.hit"), "fail")}` : "";
+    return `<input type="number" min="0" step="0.5" class="res-alert-input" data-provider="${escapeHtml(p.id)}" value="${p.alert_below_usd ?? ""}" placeholder="—" aria-label="${escapeHtml(t("res.plan.alertOf", { name: p.name }))}"> <button type="button" class="btn small res-alert-save" data-provider="${escapeHtml(p.id)}">${escapeHtml(t("res.plan.save"))}</button>${hit}<br><em class="muted small">${escapeHtml(src)}</em>`;
+  };
+  const noteCell = (id, note) =>
+    `<input type="text" maxlength="300" class="res-note-input" data-provider="${escapeHtml(id)}" value="${escapeHtml(note || "")}" placeholder="${escapeHtml(t("res.note.ph"))}" aria-label="${escapeHtml(t("res.note.label", { name: id }))}"> <button type="button" class="btn small res-note-save" data-provider="${escapeHtml(id)}">${escapeHtml(t("res.plan.save"))}</button>`;
   const rows = plan.providers
-    .filter((p) => p.recommended_usd > 0 || p.balance_usd != null)
     .map((p) => {
       const bal = p.balance_usd != null ? p.balance_usd : "";
       const srcNote = p.balance_source === "api"
@@ -5525,15 +5549,31 @@ async function renderResourcePlan({ probe = false } = {}) {
           : "";
       const trendTxt = p.trend > 1.05 ? `↑ ×${p.trend}` : p.trend < 0.95 ? `↓ ×${p.trend}` : "→";
       return `<tr>
-        <td><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a>${p.low_data ? ` <em class="muted small">${escapeHtml(t("res.plan.lowData"))}</em>` : ""}</td>
+        <td><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a><br><em class="muted small">${escapeHtml(resRole(p.id))}</em>${p.low_data ? `<br><em class="muted small">${escapeHtml(t("res.plan.lowData"))}</em>` : ""}</td>
         <td class="num">${fmtUsd(p.spend_7d_usd)} / ${fmtUsd(p.spend_30d_usd)}<br><em class="muted small">${escapeHtml(t("res.plan.external", { usd: fmtUsd(p.spend_30d_external_usd) }))}</em></td>
         <td class="num">${fmtUsd(p.projected_per_day_usd)}<br><em class="muted small">${escapeHtml(trendTxt)}</em></td>
         <td class="num">${fmtUsd(p.reserve_usd)}</td>
         <td class="num"><b>${fmtUsd(p.recommended_usd, 0)}</b></td>
         <td class="num"><input type="number" min="0" step="1" class="res-plan-input" data-provider="${escapeHtml(p.id)}" value="${bal}" placeholder="—" aria-label="${escapeHtml(t("res.plan.balanceOf", { name: p.name }))}"> <button type="button" class="btn small res-plan-save" data-provider="${escapeHtml(p.id)}">${escapeHtml(t("res.plan.save"))}</button><br><em class="muted small">${escapeHtml(srcNote)}</em></td>
+        <td class="num">${alertCell(p)}</td>
         <td class="num">${p.runway_days == null ? "—" : escapeHtml(t("res.plan.days", { n: Math.floor(p.runway_days) }))}</td>
         <td>${status(p)}</td>
         <td class="num">${p.top_up_usd > 0 ? `<b>${fmtUsd(p.top_up_usd, 0)}</b>` : "—"}</td>
+        <td>${noteCell(p.id, p.note)}</td>
+      </tr>`;
+    })
+    .join("");
+  const infraRows = (plan.infra || [])
+    .map((x) => {
+      const state = x.status === "ok"
+        ? badge(x.public_default ? t("res.infra.public") : t("res.infra.on"), "on")
+        : badge(t("res.infra.off"), "off");
+      const link = x.url ? `<a href="${escapeHtml(x.url)}" target="_blank" rel="noopener">${escapeHtml(x.name)}</a>` : escapeHtml(x.name);
+      return `<tr>
+        <td>${link}</td>
+        <td>${escapeHtml(resRole(x.id))}</td>
+        <td>${state}</td>
+        <td>${noteCell(x.id, x.note)}</td>
       </tr>`;
     })
     .join("");
@@ -5544,30 +5584,46 @@ async function renderResourcePlan({ probe = false } = {}) {
       <th class="num">${escapeHtml(t("res.plan.col.reserve"))}</th>
       <th class="num">${escapeHtml(t("res.plan.col.rec"))}</th>
       <th class="num">${escapeHtml(t("res.plan.col.balance"))}</th>
+      <th class="num">${escapeHtml(t("res.plan.col.alert"))}</th>
       <th class="num">${escapeHtml(t("res.plan.col.runway"))}</th>
       <th>${escapeHtml(t("res.plan.col.status"))}</th>
       <th class="num">${escapeHtml(t("res.plan.col.topup"))}</th>
-    </tr></thead><tbody>${rows || `<tr><td colspan="9" class="muted">${escapeHtml(t("res.plan.empty"))}</td></tr>`}</tbody></table>
+      <th>${escapeHtml(t("res.plan.col.note"))}</th>
+    </tr></thead><tbody>${rows || `<tr><td colspan="11" class="muted">${escapeHtml(t("res.plan.empty"))}</td></tr>`}</tbody></table>
     <p class="econ-note">${escapeHtml(t("res.plan.total", { rec: fmtUsd(plan.totals.recommended_usd, 0), topup: fmtUsd(plan.totals.top_up_usd, 0), unknown: plan.totals.unknown_balances }))}</p>
-    <p class="econ-note">${escapeHtml(t("res.plan.method", { days: plan.settings.cover_days, share: Math.round(plan.settings.liability_share * 100), min: plan.settings.min_usd, credits: fmtNum(plan.outstanding_credits) }))}</p>`;
-  box.querySelectorAll(".res-plan-save").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const id = btn.dataset.provider;
-      const input = box.querySelector(`.res-plan-input[data-provider="${id}"]`);
-      const raw = String(input?.value ?? "").trim();
-      btn.disabled = true;
-      try {
-        await api("/api/admin/resources/balance", {
-          method: "POST",
-          body: JSON.stringify({ provider: id, balance_usd: raw === "" ? null : Number(raw) }),
-        });
-        await renderResourcePlan();
-      } catch (e) {
-        box.insertAdjacentHTML("beforeend", `<p class="err-msg">${escapeHtml(e.message)}</p>`);
-        btn.disabled = false;
-      }
-    });
-  });
+    <p class="econ-note">${escapeHtml(t("res.plan.method", { days: plan.settings.cover_days, share: Math.round(plan.settings.liability_share * 100), min: plan.settings.min_usd, credits: fmtNum(plan.outstanding_credits) }))}</p>
+    <p class="econ-note">${escapeHtml(t("res.plan.alertNote"))}</p>
+    <h4 class="econ-sub">${escapeHtml(t("res.infra.h4"))}</h4>
+    <table class="econ-table res-plan-table"><thead><tr>
+      <th>${escapeHtml(t("res.infra.col.service"))}</th>
+      <th>${escapeHtml(t("res.infra.col.role"))}</th>
+      <th>${escapeHtml(t("res.infra.col.state"))}</th>
+      <th>${escapeHtml(t("res.plan.col.note"))}</th>
+    </tr></thead><tbody>${infraRows}</tbody></table>
+    <p class="econ-note">${escapeHtml(t("res.infra.hint"))}</p>`;
+  const post = async (btn, path, payload) => {
+    btn.disabled = true;
+    try {
+      await api(path, { method: "POST", body: JSON.stringify(payload) });
+      await renderResourcePlan();
+    } catch (e) {
+      box.insertAdjacentHTML("beforeend", `<p class="err-msg">${escapeHtml(e.message)}</p>`);
+      btn.disabled = false;
+    }
+  };
+  const val = (cls, id) => String(box.querySelector(`.${cls}[data-provider="${id}"]`)?.value ?? "").trim();
+  box.querySelectorAll(".res-plan-save").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const raw = val("res-plan-input", btn.dataset.provider);
+      post(btn, "/api/admin/resources/balance", { provider: btn.dataset.provider, balance_usd: raw === "" ? null : Number(raw) });
+    }));
+  box.querySelectorAll(".res-alert-save").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const raw = val("res-alert-input", btn.dataset.provider);
+      post(btn, "/api/admin/resources/alert", { provider: btn.dataset.provider, below_usd: raw === "" ? null : Number(raw) });
+    }));
+  box.querySelectorAll(".res-note-save").forEach((btn) =>
+    btn.addEventListener("click", () => post(btn, "/api/admin/resources/note", { provider: btn.dataset.provider, note: val("res-note-input", btn.dataset.provider) })));
 }
 
 /* ---------- Resources ---------- */

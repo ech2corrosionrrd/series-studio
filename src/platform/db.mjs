@@ -53,6 +53,16 @@ const SCHEMA = [
      balance_usd REAL NOT NULL,
      updated_at TEXT NOT NULL,
      note TEXT NOT NULL DEFAULT '')`,
+  // Balance alert threshold per provider (NULL below_usd = alert switched off on purpose; no row = built-in default).
+  `CREATE TABLE IF NOT EXISTS resource_alerts (
+     provider TEXT PRIMARY KEY,
+     below_usd REAL,
+     last_alert_at TEXT)`,
+  // Free-text status of any service in Admin → Ресурси (quota usage, plan, remarks).
+  `CREATE TABLE IF NOT EXISTS resource_notes (
+     provider TEXT PRIMARY KEY,
+     note TEXT NOT NULL,
+     updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS referral_codes (
      code TEXT PRIMARY KEY,
      wallet_address TEXT NOT NULL,
