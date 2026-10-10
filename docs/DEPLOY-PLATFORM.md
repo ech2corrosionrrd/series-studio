@@ -37,6 +37,8 @@
 | кожні 6 год | `verify-backup.sh fresh` — найновіша погодинна копія не старша за `VERIFY_MAX_AGE_HOURS` (3) | — |
 | кожні 6 год (:25) | `verify-backup.sh disk`: диск з даними заповнений менше ніж на `DISK_WARN_PCT` (80%); алерт у Telegram інакше. Потрібен, бо гаманці завантажують шари PNG і генерують картинки | — |
 | неділя 05:00 | `verify-backup.sh drill` — найновіша добова копія відкривається, `integrity_check` ок, є таблиці `users`, `payments`, `transactions`, `wallet_nonces` | — |
+| щодня 04:40 | `verify-backup.sh offsite` — нічний повний запуск дійшов до хмари і не старший за `VERIFY_OFFSITE_MAX_HOURS` (30); інакше алерт у Telegram. Мовчить, якщо `BACKUP_RCLONE_REMOTE` порожній | — |
+| неділя 05:30 | `verify-backup.sh cloud` — найновіша хмарна копія скачується, розшифровується `BACKUP_PASSPHRASE` і проходить той самий drill (доводить, що копія в хмарі справді відкривається); алерт, якщо вона старша за `VERIFY_CLOUD_MAX_AGE_HOURS` (50) | — |
 
 Копія, яку ніхто не пробував відкрити, не є бекапом, тому перевірки не пропускайте. За збою `verify-backup.sh` завершується з кодом 1 і пише в `logs/verify.log`; якщо в `backup.env` задано `SERIES_TELEGRAM_BOT_TOKEN` і `SERIES_TELEGRAM_CHAT_ID`, надсилає алерт у Telegram. Локально те саме робить `npm run backup` ([GUIDE.md](./GUIDE.md#бекап)); окрему копію перевіряє `node scripts/verify-backup.mjs --path users.db`.
 
@@ -51,6 +53,8 @@ ENDPOINT=fsn1.your-objectstorage.com PROVIDER=Other REGION=fsn1 BUCKET=<назв
 Для Hetzner потрібен `REGION` (`fsn1`, `nbg1`, `hel1`: збігається з локацією bucket, інакше `LocationConstraintConflict`). `rclone` 1.60 з Ubuntu 24.04 не знає провайдера `Hetzner`, тож `PROVIDER=Other`. Bucket створюють у консолі (Object Storage, від $7.99/міс), ключі S3 — у Security → S3 credentials; вони діють на всі bucket проєкту. Щойно створені ключі й щойно записаний об'єкт кілька секунд можуть віддавати 403: скрипт повторює читання назад.
 
 Він приховано питає ключі S3, створює remote `series-offsite`, перевіряє досяжність (невдалий remote видаляється), заливає зашифрований знімок, завантажує його назад, розшифровує й лише тоді записує `BACKUP_RCLONE_REMOTE` та випадкову `BACKUP_PASSPHRASE` у `backup.env`. **Збережіть фразу в менеджері паролів:** без неї хмарні копії не розшифрувати. Підходить будь-яке S3-сховище з ключами API (Hetzner Object Storage, Backblaze B2, Cloudflare R2); OAuth-сховища (Proton, Drive) не беріть: токен спливає, і бекап мовчки зупиняється. Cloudflare R2 вимагає окремої підписки на картку (безкоштовно в межах 10 ГБ), тому типовий вибір — Hetzner Object Storage у тому ж дата-центрі.
+
+Хмарні копії `users-*.tar.gz.enc` старші за `BACKUP_REMOTE_KEEP_DAYS` (60; `0` = не чистити, змінна в `backup.env`) `backup.sh` видаляє сам, але лише після вдалого завантаження свіжої копії й лише файли з таким іменем. Статус для адмінки (`data-next/backup-status.json`) тепер має поле `offsiteAt` (час останньої вдалої хмарної копії); погодинний запуск його не скидає (раніше щогодини «Зовнішня копія» ставала «Ні»).
 
 Відновлення: `openssl enc -d -aes-256-cbc -pbkdf2 -pass env:BACKUP_PASSPHRASE -in users-YYYYMMDD-HHMM.tar.gz.enc | tar -xz`, потім знайдіть `users.db` у розпакованому й перевірте `PRAGMA integrity_check` (або `verify-backup.mjs`).
 
