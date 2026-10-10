@@ -320,6 +320,22 @@
       font-size: 13px;
     }
     .mobile-wallets.on { display: block; }
+    /* Невисокі екрани: лишаємо назви етапів без підписів, щоб ліва панель вміщалась без прокрутки. */
+    @media (min-width: 960px) and (max-height: 1000px) {
+      .brand-pane { padding: 32px 52px; gap: 18px; }
+      .stages li em { display: none; }
+      .stages li { padding-top: 10px; padding-bottom: 10px; }
+      .auth-pane { padding-top: 20px; padding-bottom: 20px; }
+      .top-row { margin-bottom: 8px; }
+      .why > p { display: none; }
+    }
+    .showcase { margin: 0; }
+    .showcase img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); }
+    .showcase figcaption { margin-top: 8px; font-size: 12px; line-height: 1.5; color: var(--lo); }
+    .showcase-m { margin-bottom: 16px; }
+    @media (min-width: 960px) { .showcase-m { display: none; } }
+    .price-note { margin: 10px 2px 0; font-size: 12px; line-height: 1.5; color: var(--muted); text-align: center; }
+    .price-note:empty { display: none; }
     .foot a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }
     .mobile-wallets p { margin: 0 0 4px; color: var(--muted); }
     .mobile-wallets a {
@@ -459,13 +475,6 @@
         </div>
       </div>
 
-      <ol class="stages" data-i18n-aria="a11y.stages" aria-label="Етапи">
-        <li><span>1–2</span><div><b data-i18n="st12t">Огляд і основа</b><em data-i18n="st12d">Паспорт серії та базова картинка</em></div></li>
-        <li><span>3–4</span><div><b data-i18n="st34t">Конструктор і рецепти</b><em data-i18n="st34d">Промпт, риси, тексти без рендеру</em></div></li>
-        <li><span>5–6</span><div><b data-i18n="st56t">Генерація і відбір</b><em data-i18n="st56d">Пілоти, keep / redo, версії</em></div></li>
-        <li><span>7</span><div><b data-i18n="st7t">Експорт</b><em data-i18n="st7d">Архів випуску OpenSea / launchpad</em></div></li>
-      </ol>
-
       <div class="hero">
         <h1 data-i18n="hero">Серія від пресету<br>до архіву випуску.</h1>
         <p data-i18n="hero.p">Один гаманець — ваші пресети, набори й кредити. Підпис лише для входу: без gas і без доступу до коштів.</p>
@@ -475,6 +484,20 @@
           <span class="pill" data-i18n="pill.credits">Кредити за кадри</span>
         </div>
       </div>
+
+      <figure class="showcase">
+        <img src="/img/showcase-lion.jpg" width="1000" height="200" alt="" loading="lazy" decoding="async" />
+        <figcaption data-i18n="sc.cap">Базова картинка серії (ліворуч) і 4 кадри: той самий герой, інші шарф, фон, вираз. Реальний тест.</figcaption>
+      </figure>
+
+
+      <ol class="stages" data-i18n-aria="a11y.stages" aria-label="Етапи">
+        <li><span>1–2</span><div><b data-i18n="st12t">Огляд і основа</b><em data-i18n="st12d">Паспорт серії та базова картинка</em></div></li>
+        <li><span>3–4</span><div><b data-i18n="st34t">Конструктор і рецепти</b><em data-i18n="st34d">Промпт, риси, тексти без рендеру</em></div></li>
+        <li><span>5–6</span><div><b data-i18n="st56t">Генерація і відбір</b><em data-i18n="st56d">Пілоти, keep / redo, версії</em></div></li>
+        <li><span>7</span><div><b data-i18n="st7t">Експорт</b><em data-i18n="st7d">Архів випуску OpenSea / launchpad</em></div></li>
+      </ol>
+
     </aside>
 
     <main class="auth-pane">
@@ -502,6 +525,11 @@
           <span data-i18n="ms4">7 ZIP</span>
         </div>
 
+        <figure class="showcase showcase-m">
+          <img src="/img/showcase-lion.jpg" width="1000" height="200" alt="" loading="lazy" decoding="async" />
+          <figcaption data-i18n="sc.cap">Базова картинка серії (ліворуч) і 4 кадри: той самий герой, інші шарф, фон, вираз. Реальний тест.</figcaption>
+        </figure>
+
         <div class="card">
           <h2 data-i18n="title">Увійти в майстерню</h2>
           <p class="lead" data-i18n="lead">Підключіть гаманець, щоб відкрити Studio: ваші пресети, набори й кредити — окремо для кожного акаунта.</p>
@@ -517,6 +545,7 @@
             <span id="connect-label" data-i18n="connect">Підключити гаманець</span>
           </button>
           <div id="status"></div>
+          <p id="price-note" class="price-note" data-usd="{{PACK_USD}}" data-credits="{{PACK_CREDITS}}"></p>
 
           <div id="mobile-wallets" class="mobile-wallets" role="region" aria-live="polite">
             <p data-i18n="mw.hint">Цей браузер не бачить гаманця. Відкрийте сторінку в застосунку гаманця:</p>

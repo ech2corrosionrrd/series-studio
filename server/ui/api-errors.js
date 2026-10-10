@@ -71,7 +71,6 @@ const EXACT = {
   "image not found": "api.imageMissing",
   "login.html не знайдено": "api.loginMissing",
   "login.js not found": "api.loginMissing",
-  "font not found": "api.imageMissing",
   "Image data is required for vision analysis": "api.visionData",
   "Missing required parameters: botToken, chatId, or text": "api.tgParams",
   "Telegram notifications not configured (set SERIES_TELEGRAM_BOT_TOKEN + SERIES_TELEGRAM_CHAT_ID)": "api.tgOff",
