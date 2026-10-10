@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { composeArchive, overlaySet, previewEdition } from "../src/layers.mjs";
 import { decodePngRgba } from "../src/dupes.mjs";
 import { encodeRgbaPng } from "../src/png-fit.mjs";
@@ -129,6 +131,71 @@ describe("single frame preview", () => {
       const withZ = [{ ...items[0], z: 5 }, items[1]];
       const z = previewEdition({ archive, items: withZ, edition: 1, basePng, layerDir: layers, skipMissing: true });
       assert.deepEqual(z.layers, ["base", "bg/Red"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("series compose --preview (CLI)", () => {
+  const CLI = fileURLToPath(new URL("../bin/series.mjs", import.meta.url));
+
+  function cliSetup() {
+    const { dir, layers, set } = setup();
+    const full = [items[0]];
+    const arch = { presetId: "x", recipes: archive.recipes.map((r) => ({ ...r, dna: dna("A", r.traits, ["bg"]) })) };
+    writeFileSync(join(dir, "archive.json"), JSON.stringify(arch));
+    writeFileSync(join(dir, "preset.json"), JSON.stringify({ traits: { items: full } }));
+    writeFileSync(join(dir, "base.png"), solidPng(0, 0, 40));
+    return { dir, layers, set, arch, full };
+  }
+  const run = (dir, args) =>
+    spawnSync(process.execPath, [CLI, "compose", join(dir, "archive.json"), "--preset", join(dir, "preset.json"), ...args], { encoding: "utf8", cwd: dir });
+
+  it("writes one PNG equal to the frame the full compose writes, and no set or dna.json", () => {
+    const { dir, layers, arch, full } = cliSetup();
+    try {
+      const out = join(dir, "frame.png");
+      const r = run(dir, ["--layers", layers, "--base", join(dir, "base.png"), "--preview", "2", "-o", out]);
+      assert.equal(r.status, 0, r.stderr);
+      assert.match(r.stdout, /Preview of edition 2/);
+      const full2 = join(dir, "full");
+      composeArchive({ archive: arch, items: full, basePng: readFileSync(join(dir, "base.png")), layerDir: layers, outDir: full2 });
+      assert.equal(Buffer.compare(readFileSync(out), readFileSync(join(full2, "2.png"))), 0);
+      assert.equal(existsSync(join(dir, "out")), false, "no out/ set was created");
+      assert.equal(existsSync(join(dir, "dna.json")), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("hybrid: reads the frame of the set and paints the layers over it", () => {
+    const { dir, layers, set } = cliSetup();
+    try {
+      const out = join(dir, "h.png");
+      const r = run(dir, ["--layers", layers, "--over", set, "--preview", "1", "-o", out]);
+      assert.equal(r.status, 0, r.stderr);
+      assert.deepEqual(px(readFileSync(out)), [200, 0, 0, 255]);
+      assert.equal(existsSync(join(dir, "set-layers")), false, "the hybrid set was not created");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a bad number, an edition outside the archive and a missing frame", () => {
+    const { dir, layers, set } = cliSetup();
+    try {
+      for (const bad of ["abc", "0", "-3", "1.5"]) {
+        const r = run(dir, ["--layers", layers, "--base", join(dir, "base.png"), "--preview", bad]);
+        assert.equal(r.status, 1, bad);
+        assert.match(r.stderr, /edition number/);
+      }
+      const nope = run(dir, ["--layers", layers, "--base", join(dir, "base.png"), "--preview", "99"]);
+      assert.equal(nope.status, 1);
+      assert.match(nope.stderr, /not in the archive/);
+      const noFrame = run(dir, ["--layers", layers, "--over", set, "--preview", "40"]);
+      assert.equal(noFrame.status, 1);
+      assert.match(noFrame.stderr, /frame is missing/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
