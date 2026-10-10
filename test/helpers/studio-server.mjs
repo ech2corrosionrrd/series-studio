@@ -29,7 +29,11 @@ export function newEvmWallet() {
  */
 export async function startStudio({ mode = "public", adminWallet = false, extraEnv = {} } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "series-harness-"));
-  const port = 6600 + Math.floor(Math.random() * 600);
+  // Chrome refuses some ports outright (ERR_UNSAFE_PORT: 6665-6669 and 6697 are IRC), which made browser tests fail by chance.
+  const unsafe = (n) => (n >= 6665 && n <= 6669) || n === 6697;
+  let port;
+  do port = 6600 + Math.floor(Math.random() * 600);
+  while (unsafe(port));
   const user = newEvmWallet();
   const env = {
     ...process.env,
