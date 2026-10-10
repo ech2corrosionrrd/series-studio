@@ -192,7 +192,7 @@ import { setManualBalance } from "../src/platform/resources.mjs";
 import { resourceCatalog, setAlertThreshold, setResourceNote } from "../src/platform/resource-catalog.mjs";
 import { decisionRule } from "../src/platform/decision.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
-import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, moveSetBetweenProjects, projectAssetStats, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
+import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, moveSetBetweenProjects, projectAssetStats, pruneWalletTrash, purgeDeletedProject, trashDaysLeft, trashRetentionDays, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
@@ -1976,7 +1976,8 @@ async function handleApi(req, res, url) {
     const rows = describeProjects(P(), list).map((p) => ({ ...p, assets: projectAssetStats(P(), p.file) }));
     return send(res, 200, {
       projects: rows,
-      deleted: listDeletedProjects(P()),
+      deleted: listDeletedProjects(P()).map((d) => ({ ...d, daysLeft: trashDaysLeft(d.at) })),
+      trashDays: trashRetentionDays(),
       active: readActiveProject(P()),
       assetsPerProject: PUBLIC_MODE,
       quota: { ...quota, needsCharge: exempt ? false : quota.needsCharge, exempt },
@@ -2019,6 +2020,17 @@ async function handleApi(req, res, url) {
     saveProjects(P(), next);
     if (readActiveProject(P()) === file) writeActiveProject(P(), next[0]?.file || null);
     return send(res, 200, { ok: true, file, trashId, active: readActiveProject(P()), quota: projectQuota(next, projectsConfig()) });
+  }
+
+  if (pathname === "/api/projects/purge" && req.method === "POST") {
+    const body = await readBody(req);
+    if (body.confirm !== true) throw httpError(400, "confirmation required");
+    try {
+      purgeDeletedProject(P(), String(body.id || ""));
+    } catch (e) {
+      throw e.status ? httpError(e.status, e.message) : e;
+    }
+    return send(res, 200, { ok: true, id: String(body.id) });
   }
 
   if (pathname === "/api/projects/restore" && req.method === "POST") {
@@ -3986,21 +3998,23 @@ async function handleRequest(req, res, url) {
   }
 }
 
-try {
-  const days = Number(process.env.SERIES_TRASH_DAYS ?? 30);
-  if (days > 0) {
-    const trashDirs = [trashDir()];
+/** Purge trash older than SERIES_TRASH_DAYS: at start and then once a day (deleted projects and every project's file trash). */
+function pruneAllTrash() {
+  try {
+    const days = trashRetentionDays();
+    if (!days) return;
+    let purged = pruneTrash(trashDir(), days).length;
     const usersDir = join(DATA_DIR, "users");
     if (PUBLIC_MODE && existsSync(usersDir)) {
-      for (const u of readdirSync(usersDir)) trashDirs.push(join(usersDir, u, "out", "trash"));
+      for (const u of readdirSync(usersDir)) purged += pruneWalletTrash(join(usersDir, u), days);
     }
-    let purged = 0;
-    for (const dir of trashDirs) purged += pruneTrash(dir, days).length;
     if (purged) console.log(`Trash: purged ${purged} item(s) older than ${days} days`);
+  } catch (e) {
+    console.warn(`Trash prune skipped: ${e.message}`);
   }
-} catch (e) {
-  console.warn(`Trash prune skipped: ${e.message}`);
 }
+pruneAllTrash();
+setInterval(pruneAllTrash, 86_400_000).unref();
 
 const openErr = openAccessError(HOST, PUBLIC_MODE) || hostedConfigError(HOST, PUBLIC_MODE, process.env);
 if (openErr) {
