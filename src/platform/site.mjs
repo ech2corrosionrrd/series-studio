@@ -135,9 +135,9 @@ export function renderCollectionHtml(slug) {
   const og = images.length ? `${PUBLIC_BASE}/c/${s}/img/${images[0]}` : `${PUBLIC_BASE}/og-card.png`;
   const pageUrl = `${PUBLIC_BASE}/c/${s}`;
   const tiles = images.map((name, i) =>
-    `        <img src="/c/${s}/img/${escHtml(name)}" alt="${title} #${i + 1}" loading="lazy" class="aspect-square w-full rounded-xl border border-[var(--border)] object-cover" />`).join("\n");
-  const by = walletShort ? `<p class="mt-1 text-sm text-[var(--lo)]">by ${walletShort}</p>` : "";
-  const sub = subtitle ? `<p class="mt-3 text-[var(--muted)]">${subtitle}</p>` : "";
+    `        <img src="/c/${s}/img/${escHtml(name)}" alt="${title} #${i + 1}" loading="lazy" decoding="async" />`).join("\n");
+  const by = walletShort ? `<p class="by">by ${walletShort}</p>` : "";
+  const sub = subtitle ? `<p class="sub">${subtitle}</p>` : "";
   const cta = APP_CTA + (m.ref_code ? `&ref=${m.ref_code}` : "");
   return `<!DOCTYPE html>
 <html lang="en" class="dark">
@@ -154,43 +154,65 @@ export function renderCollectionHtml(slug) {
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="${og}" />
   <link rel="canonical" href="${pageUrl}" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet" />
   <style>
+    /* Self-contained: the server CSP allows no third-party scripts, fonts or stylesheets (no Tailwind CDN, no Google Fonts). */
+    @font-face{font-family:"Onest";font-weight:400 700;font-display:swap;src:url(/fonts/onest-cyrillic.woff2) format("woff2");unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116}
+    @font-face{font-family:"Onest";font-weight:400 700;font-display:swap;src:url(/fonts/onest-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
     ${SHARED_STYLE}
-    *{font-family:'Inter',system-ui,sans-serif}
-    body{margin:0;background:var(--bg);color:var(--text)}
-    .btn-accent{background:linear-gradient(135deg,var(--accent),var(--accent-soft))}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:16px/1.5 "Onest",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:none}
+    .btn-accent{background:linear-gradient(135deg,var(--accent),var(--accent-soft));color:#fff}
     .btn-accent:hover{filter:brightness(1.08)}
+    .wrap{max-width:64rem;margin:0 auto;padding:0 24px}
+    header.wrap{display:flex;align-items:center;justify-content:space-between;padding-top:20px;padding-bottom:20px;gap:12px}
+    .brand{display:flex;align-items:center;gap:8px;font-weight:600;letter-spacing:-.01em}
+    .logo{display:grid;place-items:center;width:32px;height:32px;border-radius:8px;font-size:14px;font-weight:800}
+    .pill{border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;min-height:44px;display:inline-flex;align-items:center}
+    h1{margin:0;font-size:clamp(1.9rem,4vw,2.4rem);font-weight:800;letter-spacing:-.02em;line-height:1.15}
+    .by{margin:4px 0 0;font-size:14px;color:var(--lo)}
+    .sub{margin:12px 0 0;color:var(--muted)}
+    .meta{margin:8px 0 0;font-size:12px;color:var(--lo)}
+    .meta a{color:var(--accent-soft)}
+    .meta a:hover{text-decoration:underline}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:32px 0}
+    @media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
+    @media(min-width:768px){.grid{grid-template-columns:repeat(4,1fr)}}
+    .grid img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--border)}
+    .cta{margin:0 0 64px;padding:32px 24px;border:1px solid var(--border);border-radius:16px;background:var(--surface);text-align:center}
+    .cta h2{margin:0;font-size:1.25rem;font-weight:700;letter-spacing:-.01em}
+    .cta p{max-width:28rem;margin:8px auto 0;font-size:14px;color:var(--muted)}
+    .cta .big{margin-top:20px;border-radius:12px;padding:12px 28px;font-weight:600;display:inline-flex;align-items:center;min-height:44px}
+    a:focus-visible{outline:2px solid var(--accent-soft);outline-offset:2px}
   </style>
 </head>
-<body class="min-h-screen">
-  <header class="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-    <a href="${PUBLIC_BASE}" class="flex items-center gap-2">
-      <div class="grid h-8 w-8 place-items-center rounded-lg btn-accent text-sm font-extrabold text-white">S</div>
-      <span class="font-semibold tracking-tight">Series Lab</span>
+<body>
+  <header class="wrap">
+    <a href="${PUBLIC_BASE}" class="brand">
+      <span class="logo btn-accent">S</span>
+      <span>Series Lab</span>
     </a>
-    <a href="${cta}" class="btn-accent rounded-lg px-4 py-2 text-sm font-semibold text-white transition">Make your own →</a>
+    <a href="${cta}" class="btn-accent pill">Make your own →</a>
   </header>
 
-  <section class="mx-auto max-w-5xl px-6 pt-6">
-    <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">${title}</h1>
+  <section class="wrap" style="padding-top:24px">
+    <h1>${title}</h1>
     ${by}
     ${sub}
-    <p class="mt-2 text-xs text-[var(--lo)]">${images.length} items · made with <a href="${PUBLIC_BASE}" class="text-[var(--accent-soft)] hover:underline">Series Lab</a></p>
+    <p class="meta">${images.length} items · made with <a href="${PUBLIC_BASE}">Series Lab</a></p>
   </section>
 
-  <section class="mx-auto max-w-5xl px-6 py-8">
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+  <section class="wrap">
+    <div class="grid">
 ${tiles}
     </div>
   </section>
 
-  <section class="mx-auto max-w-5xl px-6 pb-16">
-    <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center">
-      <h2 class="text-xl font-bold tracking-tight">Make a collection like this</h2>
-      <p class="mx-auto mt-2 max-w-md text-sm text-[var(--muted)]">Preset → recipes → images → release ZIP. Sign in with a wallet. Pay-as-you-go, non-custodial.</p>
-      <a href="${cta}" class="btn-accent mt-5 inline-block rounded-xl px-7 py-3 font-semibold text-white transition">Open Series Lab →</a>
+  <section class="wrap">
+    <div class="cta">
+      <h2>Make a collection like this</h2>
+      <p>Preset → recipes → images → release ZIP. Sign in with a wallet. Pay-as-you-go, non-custodial.</p>
+      <a href="${cta}" class="btn-accent big">Open Series Lab →</a>
     </div>
   </section>
 </body>
