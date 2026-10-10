@@ -79,7 +79,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `SERIES_CSP` | Content-Security-Policy: `report` (типово: лише звіти порушень у журнал), `enforce` (блокує), `off`; див. docs/HOSTING.md |
 | `SERIES_SPEND_CAP_USD` | Денна межа витрат, $ (або `off`); на публічному хості типово `off` |
 | `SERIES_MAX_CONSECUTIVE_FAILURES` | Автостоп batch (5) |
-| `SERIES_TRASH_DAYS` | Кошик (30; 0 = не чистити) |
+| `SERIES_TRASH_DAYS` | Кошик, включно з видаленими проєктами (30 днів; 0 = не чистити); чиститься при старті і раз на добу |
 | `PORT`, `HOST`, `SERIES_ALLOWED_HOSTS` | Адреса сервера / Host allowlist |
 
 ---

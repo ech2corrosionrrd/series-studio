@@ -454,3 +454,70 @@ describe("one-time move of the shared assets into the projects", () => {
     assert.equal(projectAssetStats(user, "nobody.json").frames, 0);
   });
 });
+
+describe("trash retention and purging deleted projects", () => {
+  let s;
+  const basePreset = JSON.parse(readFileSync("presets/demo-series.json", "utf8"));
+  const save = (id) => s.call("POST", "/api/preset/save", { body: { preset: { ...basePreset, id, name: `Project ${id}` }, confirmCharge: true } });
+  const del = (file) => s.call("POST", "/api/projects/delete", { body: { file, confirm: true } });
+  const deleted = async () => (await s.call("GET", "/api/projects")).json.deleted;
+
+  before(async () => {
+    s = await startStudio({ adminWallet: false, extraEnv: { WELCOME_CREDITS: "500", EARLY_WELCOME_CREDITS: "500", PROJECTS_FREE: "5" } });
+    await s.signIn();
+  });
+  after(async () => {
+    await s?.stop();
+  });
+
+  it("a deleted project shows the days left and can be purged for good after a confirmation", async () => {
+    assert.equal((await save("aa")).status, 200);
+    assert.equal((await save("bb")).status, 200);
+    assert.equal((await del("aa.json")).status, 200);
+    const [item] = await deleted();
+    assert.equal(item.daysLeft, 30);
+    const purge = (body) => s.call("POST", "/api/projects/purge", { body });
+    assert.equal((await purge({ id: item.trashId })).status, 400, "needs confirm");
+    assert.equal((await purge({ id: "20200101T000000-nope-abcd", confirm: true })).status, 404);
+    assert.equal((await purge({ id: item.trashId, confirm: true })).status, 200);
+    assert.equal((await deleted()).length, 0);
+    assert.equal((await del("bb.json")).status, 200, "other deleted projects are untouched");
+    assert.equal((await deleted()).length, 1);
+  });
+});
+
+describe("pruneWalletTrash", () => {
+  it("purges old deleted projects and old per-project file trash, keeps the recent ones", async () => {
+    const { pruneWalletTrash, trashDaysLeft, trashRetentionDays } = await import("../src/projects.mjs");
+    const root = mkdtempSync(join(tmpdir(), "prune-trash-"));
+    try {
+      const old = new Date(Date.now() - 40 * 86_400_000).toISOString();
+      const fresh = new Date().toISOString();
+      const mkDeleted = (id, file, at) => {
+        mkdirSync(join(root, "trash-projects", id), { recursive: true });
+        writeFileSync(join(root, "trash-projects", id, "meta.json"), JSON.stringify({ id, file, at }));
+      };
+      mkDeleted("20200101T000000-old-aaaa", "old.json", old);
+      mkDeleted("20261010T000000-new-bbbb", "new.json", fresh);
+      const mkItem = (id, at) => {
+        const dir = join(root, "projects", "p1", "out", "trash", id);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(join(dir, "item.json"), JSON.stringify({ id, at, reason: "x", files: [] }));
+      };
+      mkItem("20200101T000000-oldx", old);
+      mkItem("20261010T000000-newx", fresh);
+      assert.equal(pruneWalletTrash(root, 30), 2);
+      assert.ok(!existsSync(join(root, "trash-projects", "20200101T000000-old-aaaa")));
+      assert.ok(existsSync(join(root, "trash-projects", "20261010T000000-new-bbbb")));
+      assert.ok(!existsSync(join(root, "projects", "p1", "out", "trash", "20200101T000000-oldx")));
+      assert.ok(existsSync(join(root, "projects", "p1", "out", "trash", "20261010T000000-newx")));
+      assert.equal(pruneWalletTrash(root, 0), 0, "0 days = never purge");
+      assert.equal(trashRetentionDays({ SERIES_TRASH_DAYS: "0" }), 0);
+      assert.equal(trashDaysLeft(fresh, 30), 30);
+      assert.equal(trashDaysLeft(old, 30), 0);
+      assert.equal(trashDaysLeft(fresh, 0), null);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
