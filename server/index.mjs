@@ -26,6 +26,7 @@ import {
 import { dirname, extname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeSetQuality } from "../src/quality.mjs";
+import { ensurePng, imageFormat } from "../src/png-normalize.mjs";
 import { compressSet, COMPRESS_TARGET_BYTES } from "../src/compress.mjs";
 import { loadSharp } from "../src/upscale.mjs";
 import {
@@ -528,6 +529,20 @@ async function paidCall(entry, fn) {
     logRender({ ...entry, ok: false, costUsd: 0, error: String(e.message || e).slice(0, 300) });
     throw e;
   }
+}
+
+/** The series base as PNG bytes for the similarity metric (PNG only). JPEG/WebP bases are converted; null when that is impossible. */
+async function primaryBasePng() {
+  const primary = listBases().find((f) => f.primary) || listBases()[0];
+  if (!primary) return { exists: false, buf: null };
+  let raw;
+  try {
+    raw = readFileSync(join(P().input, primary.file));
+  } catch {
+    return { exists: false, buf: null };
+  }
+  const { buffer } = await ensurePng(raw);
+  return { exists: true, buf: imageFormat(buffer) === "png" ? buffer : null, raw };
 }
 
 function safeJsonName(file, fallback = "demo-series.json") {
@@ -2477,9 +2492,10 @@ async function handleApi(req, res, url) {
     const dirName = safeSetName(url.searchParams.get("dir") || "");
     const setDir = join(P().out, dirName);
     if (!existsSync(setDir)) return send(res, 400, { error: "set not found" });
-    const primary = listBases().find((f) => f.primary) || listBases()[0];
-    if (!primary) return send(res, 400, { error: "No base image found to analyze" });
-    const baseBuf = readFileSync(join(P().input, primary.file));
+    const base = await primaryBasePng();
+    if (!base.exists) return send(res, 400, { error: "No base image found to analyze" });
+    if (!base.buf) return send(res, 200, { ok: true, method: SIMILARITY_METHOD, offline: true, editions: [], baseUnusable: true });
+    const baseBuf = base.buf;
     const editions = [];
     for (const name of readdirSync(setDir)) {
       const m = /^(\d+)\.png$/i.exec(name);
@@ -2511,17 +2527,10 @@ async function handleApi(req, res, url) {
     const dirName = safeSetName(url.searchParams.get("dir") || "");
     const setDir = join(P().out, dirName);
     if (!dirName || !existsSync(setDir) || !statSync(setDir).isDirectory()) return send(res, 400, { error: "set not found" });
-    const primary = listBases().find((f) => f.primary) || listBases()[0];
-    let baseBuf = null;
-    if (primary) {
-      try {
-        baseBuf = readFileSync(join(P().input, primary.file));
-      } catch {
-        baseBuf = null;
-      }
-    }
-    const report = await analyzeSetQuality({ setDir, baseBuf, marks: readMarks(dirName) });
-    return send(res, 200, { ok: true, dir: dirName, ...report });
+    const base = await primaryBasePng();
+    const report = await analyzeSetQuality({ setDir, baseBuf: base.buf, marks: readMarks(dirName) });
+    // A base that exists but cannot be decoded must not read as "all good": say that similarity was not checked.
+    return send(res, 200, { ok: true, dir: dirName, ...report, hasBase: base.exists, baseUnusable: base.exists && (!base.buf || (report.total > 0 && !report.similarity)) });
   }
 
   if (pathname === "/api/waves" && req.method === "GET") {

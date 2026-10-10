@@ -73,14 +73,15 @@ export function decisionRule({ db = openDb(), env = process.env, now = new Date(
 export function weeklyNumbers({ db = openDb(), now = new Date() } = {}) {
   const since = nowIso(new Date(now.getTime() - 7 * DAY_MS));
   const ext = scopeSql("external", "wallet_address");
-  const week = db
-    .prepare(`SELECT wallet_address AS w, created_at AS at, amount_usd AS usd FROM payments WHERE created_at >= ?${ext.sql} ORDER BY created_at`)
-    .all(since, ...ext.params);
-  const firstEver = new Map(
-    db.prepare(`SELECT wallet_address AS w, MIN(created_at) AS m FROM payments WHERE 1 = 1${ext.sql} GROUP BY wallet_address`).all(...ext.params).map((r) => [r.w, r.m]),
-  );
+  // Payments in time order, ties broken by insertion order: two payments stamped in the same millisecond are still first and second.
+  const all = db
+    .prepare(`SELECT rowid AS id, wallet_address AS w, created_at AS at, amount_usd AS usd FROM payments WHERE 1 = 1${ext.sql} ORDER BY created_at, rowid`)
+    .all(...ext.params);
+  const firstId = new Map();
+  for (const r of all) if (!firstId.has(r.w)) firstId.set(r.w, r.id);
+  const week = all.filter((r) => r.at >= since);
   const payers = new Set(week.map((r) => r.w));
-  const repeatPayers = new Set(week.filter((r) => firstEver.get(r.w) && firstEver.get(r.w) < r.at).map((r) => r.w));
+  const repeatPayers = new Set(week.filter((r) => r.id !== firstId.get(r.w)).map((r) => r.w));
   const revenue = Math.round(week.reduce((a, r) => a + r.usd, 0) * 100) / 100;
   const newUsers = db
     .prepare(`SELECT COUNT(*) AS n FROM users WHERE created_at >= ?${scopeSql("external").sql}`)
