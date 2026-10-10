@@ -62,6 +62,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `IRYS_PRIVATE_KEY` | Серверна кнопка Arweave в Експорті (окремий гаманець з малим балансом). Для випуску краще `series upload --keypair` — ключ лишається на ПК |
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | Сповіщення від імені Series Lab |
 | `SOLANA_PAY_RECIPIENT` (+ `SOLANA_RPC_URL`) | Поповнення кредитів: USDC у Solana переказом напряму, без посередника; публічна адреса-отримувач, ключ не потрібен |
+| `DECISION_START`, `DECISION_DAYS`, `DECISION_TARGET_PAYERS`, `DECISION_TARGET_REPEAT` | Правило рішення про розвиток (типово 90 днів від 2026-10-10, 10 зовнішніх платників, 2 повторні): картка в Адмін → Економіка й тижневий звіт у Telegram |
 | `HOSTING_MONTHLY_USD`, `SAAS_MONTHLY_USD`, `PAYMENT_FEE_PCT`, `FX_FEE_PCT`, `RESOURCE_FX_PCT` | Адмін → Економіка (накладні + комісії; див. [docs/ECONOMY.md](docs/ECONOMY.md)) |
 | `STAGE_*`, `DEPLOY_*`, `MARKETPLACE_IMAGE_SIZES`, `PREFLIGHT_MAX_IMAGE_BYTES` | Ціна етапів, оцінка деплою, розміри майданчиків, стеля файлу — [docs/PRODUCT.md](docs/PRODUCT.md) |
 | `SERIES_DATA_DIR`, `AUTH_COOKIE_INSECURE` | Каталог даних; прапорець для входу по http (лише тест) |
