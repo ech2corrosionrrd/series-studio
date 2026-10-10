@@ -401,6 +401,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 | `node bin/series.mjs reveal <тека-набору> --keypair creator.json` | підписує оновлення імені й URI (`UpdateV1`) ключем оновлення колекції для асетів із `mints.json`. Без `--keypair` лише `reveal-updates.json` |
 | `node bin/series.mjs compose out/demo-archive.json --layers layers --over out/fal-s0.35 --only hat,scarf` | гібрид: накладає ваші PNG-шари поверх кадрів, які вже намалював ШІ, у новий набір `out/fal-s0.35-layers` (лише риси, для яких є шар; `--only` обмежує список рис) |
 | `node bin/series.mjs compose out/demo-archive.json --layers layers --base input/primary.png` | складає PNG-шари у картинки видань. Промпти лишаються |
+| `node bin/series.mjs compose out/demo-archive.json --layers layers --base input/primary.png --preview 7 -o out/preview-7.png` | перегляд одного кадру: складає лише видання 7 в один PNG (без набору й `dna.json`). З `--over <набір>` бере кадр `<набір>/7.png`, у гібриді підтримує `--only`. Номер від 1; немає видання в архіві чи кадру в наборі — помилка |
 | `node bin/series.mjs verify release.json` | звірка Core Candy Machine або Candy Machine v3 у блокчейні з `release.json` (лише читання) |
 | `node bin/series.mjs notify "Готово"` | тестове сповіщення в Telegram |
 | `node bin/series.mjs manifest out/demo-archive.json --profile opensea` | CSV-маніфест для лаунчпада |
