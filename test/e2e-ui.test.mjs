@@ -225,6 +225,28 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     assert.equal(before - (await balance()), 30, "saving the same project again is free");
   });
 
+  it("projects: delete asks twice and goes to the trash, restore at the limit asks to confirm and charges once", async () => {
+    await tab("home");
+    await waitFor(async () => (await page.$$("#projects-list li")).length === 3, { what: "three projects" });
+    const del = '[data-project-delete="e2e-second.json"]';
+    await page.click(del);
+    assert.equal((await page.$$("#projects-list li")).length, 3, "the first click only arms the button");
+    await page.click(del);
+    await waitFor(async () => (await page.$$("#projects-list li")).length === 2, { what: "project removed from the list" });
+    await waitFor(async () => !(await page.isHidden("#projects-deleted-wrap")), { what: "deleted block shown" });
+    assert.equal((await page.$$("#projects-deleted li")).length, 1);
+    assert.equal((await studio.call("GET", "/api/presets")).json.presets.some((p) => p.file === "e2e-second.json"), false);
+
+    const before = await balance();
+    await page.click("#projects-deleted [data-restore]");
+    await waitFor(async () => /30/.test(await page.textContent("#projects-msg")), { what: "restore asks to confirm" });
+    assert.equal(await balance(), before, "the first restore click charges nothing");
+    await page.click("#projects-deleted [data-restore]");
+    await waitFor(async () => (await page.$$("#projects-list li")).length === 3, { what: "project restored" });
+    assert.equal(before - (await balance()), 30, "restoring beyond the limit is a new project: charged once");
+    assert.equal(await page.isHidden("#projects-deleted-wrap"), true);
+  });
+
   it("switches the interface language", async () => {
     await page.click('button:has-text("EN")');
     await waitFor(async () => (await page.getAttribute("html", "lang")) === "en", { what: "html lang=en" });
@@ -233,9 +255,9 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
 
   it("the whole session produced no console errors, page exceptions or failed requests", () => {
     // the one expected refusal is the "confirm the paid project" answer (402) that the projects test provoked on purpose
-    const expected = failedRequests.filter((r) => r === "402 POST /api/preset/save");
-    assert.equal(expected.length, 1);
-    assert.deepEqual(failedRequests.filter((r) => r !== "402 POST /api/preset/save"), [], "no other request of a normal session may fail");
+    const isAsk = (r) => r === "402 POST /api/preset/save" || r === "402 POST /api/projects/restore";
+    assert.equal(failedRequests.filter(isAsk).length, 2, "the save and the restore each asked once");
+    assert.deepEqual(failedRequests.filter((r) => !isAsk(r)), [], "no other request of a normal session may fail");
     assert.deepEqual(consoleErrors.filter((m) => !/status of 402/.test(m)), [], "the browser logs the deliberate 402 itself; nothing else may be logged");
   });
 });

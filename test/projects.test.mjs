@@ -180,3 +180,101 @@ describe("project gate on the server", () => {
     }
   });
 });
+
+describe("deleting and restoring a project", () => {
+  let s;
+  const basePreset = JSON.parse(readFileSync("presets/demo-series.json", "utf8"));
+  const preset = (id) => ({ ...basePreset, id, name: `Project ${id}` });
+  const save = (id, extra = {}) => s.call("POST", "/api/preset/save", { body: { preset: preset(id), ...extra } });
+  const del = (file, extra = { confirm: true }) => s.call("POST", "/api/projects/delete", { body: { file, ...extra } });
+  const projects = async () => (await s.call("GET", "/api/projects")).json;
+  const balance = async () => (await s.call("GET", "/api/me")).json.balance;
+
+  before(async () => {
+    s = await startStudio({ adminWallet: false, extraEnv: { WELCOME_CREDITS: "200", EARLY_WELCOME_CREDITS: "200", PROJECTS_FREE: "2", PROJECT_EXTRA_CREDITS: "30" } });
+    await s.signIn();
+    for (const id of ["d-one", "d-two"]) assert.equal((await save(id)).status, 200);
+    assert.equal((await s.call("POST", "/api/build", { body: { file: "d-two.json" } })).status, 200, "an archive exists for d-two");
+  });
+  after(async () => {
+    await s?.stop();
+  });
+
+  it("refuses without confirmation, for an unknown project and for a bad name", async () => {
+    assert.equal((await del("d-two.json", {})).status, 400);
+    assert.equal((await del("nope.json")).status, 404);
+    assert.equal((await del("../x.json")).status, 400);
+    assert.equal((await del("")).status, 400);
+    assert.equal((await projects()).projects.length, 2);
+  });
+
+  it("deleting moves the preset and its archive to the trash, frees the slot and lists it as deleted", async () => {
+    const r = await del("d-two.json");
+    assert.equal(r.status, 200, r.text);
+    assert.ok(r.json.trashId);
+    assert.equal(r.json.quota.used, 1);
+    const list = await projects();
+    assert.deepEqual(list.projects.map((p) => p.file), ["d-one.json"]);
+    assert.equal(list.deleted.length, 1);
+    assert.equal(list.deleted[0].file, "d-two.json");
+    assert.equal((await s.call("GET", "/api/presets")).json.presets.some((p) => p.file === "d-two.json"), false, "the preset file is gone from the working folder");
+    const trash = (await s.call("GET", "/api/trash")).json.items.find((i) => i.reason === "project:d-two.json");
+    assert.ok(trash, "the trash holds it");
+    assert.ok(trash.files.some((f) => f.from.endsWith("presets/d-two.json")));
+    assert.ok(trash.files.some((f) => f.from.endsWith("out/d-two.json")), "the archive went with it");
+  });
+
+  it("the freed slot is free again: a new project costs nothing", async () => {
+    const before = await balance();
+    const r = await save("d-three");
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.project.charged, 0);
+    assert.equal(await balance(), before);
+  });
+
+  it("restoring is a new project for the limit: at the limit it asks first and charges once", async () => {
+    const trashId = (await projects()).deleted[0].trashId;
+    const before = await balance();
+    const blocked = await s.call("POST", "/api/projects/restore", { body: { id: trashId } });
+    assert.equal(blocked.status, 402, blocked.text);
+    assert.equal(blocked.json.code, "project_charge");
+    assert.equal(await balance(), before);
+    const ok = await s.call("POST", "/api/projects/restore", { body: { id: trashId, confirmCharge: true } });
+    assert.equal(ok.status, 200, ok.text);
+    assert.equal(before - (await balance()), 30);
+    const list = await projects();
+    assert.deepEqual(list.projects.map((p) => p.file).sort(), ["d-one.json", "d-three.json", "d-two.json"]);
+    assert.equal(list.deleted.length, 0);
+    assert.equal((await s.call("GET", "/api/presets")).json.presets.some((p) => p.file === "d-two.json"), true);
+    assert.equal((await s.call("POST", "/api/estimate", { body: { file: "d-two.json", engine: "mock", mode: "first", first: 1 } })).status, 200, "the archive came back too");
+  });
+
+  it("the generic trash restore also goes through the project gate", async () => {
+    assert.equal((await del("d-three.json")).status, 200);
+    const trashId = (await projects()).deleted[0].trashId;
+    // 2 projects remain and the limit is 2, so putting the deleted one back is a new project: it must ask first
+    const blocked = await s.call("POST", "/api/trash/restore", { body: { id: trashId } });
+    assert.equal(blocked.status, 402, blocked.text);
+    assert.equal(blocked.json.code, "project_charge");
+    assert.equal((await projects()).projects.length, 2);
+    const before = await balance();
+    const r = await s.call("POST", "/api/trash/restore", { body: { id: trashId, confirmCharge: true } });
+    assert.equal(r.status, 200, r.text);
+    assert.equal(r.json.project.charged, 30);
+    assert.equal(before - (await balance()), 30);
+    assert.equal((await projects()).projects.length, 3);
+  });
+
+  it("restoring over an existing file is a 409, never an overwrite", async () => {
+    assert.equal((await del("d-one.json")).status, 200);
+    assert.equal((await save("d-one", { confirmCharge: true })).status, 200, "the user created a new d-one meanwhile");
+    const trashId = (await projects()).deleted.find((d) => d.file === "d-one.json").trashId;
+    const r = await s.call("POST", "/api/projects/restore", { body: { id: trashId, confirmCharge: true } });
+    assert.equal(r.status, 409, r.text);
+  });
+
+  it("restore refuses things that are not deleted projects", async () => {
+    assert.equal((await s.call("POST", "/api/projects/restore", { body: { id: "19990101T000000-abcdef" } })).status, 404);
+    assert.equal((await s.call("POST", "/api/projects/restore", { body: {} })).status, 400);
+  });
+});
