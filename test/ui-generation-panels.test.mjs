@@ -23,3 +23,16 @@ test("quality and triage results are cleared when another set is opened", () => 
   assert.match(fn, /state\.galleryTriage = \{\}/);
   assert.match(fn, /v-quality-out/);
 });
+
+test("the studio opens on the saved series, else the portrait template, never an arbitrary alphabetical preset", () => {
+  const fn = app.slice(app.indexOf("function startSeries"), app.indexOf("async function boot"));
+  assert.match(fn, /\[saved, "pfp-portrait\.json", "demo-series\.json"\]/);
+  assert.match(app, /const start = startSeries\(ws\?\.workspace\)/);
+  assert.doesNotMatch(app, /state\.presets\[0\]\.file\)\}`\)/, "boot must not load the first preset blindly");
+});
+
+test("layers and kits use the current series first, the Export selector only as a fallback", () => {
+  const fn = app.slice(app.indexOf("function kitArchive"), app.indexOf("function setBusy"));
+  assert.match(fn, /return state\.archiveFile \|\| \$\("x-file"\)\?\.value/);
+  assert.match(app, /function syncActiveSeries/);
+});
