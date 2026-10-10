@@ -118,6 +118,7 @@ describe("public mode end-to-end", () => {
     assert.ok(pics.length >= 3);
     for (const src of pics) assert.match(src, /^(https:\/\/lab\.w3ir\.io)?\/img\/[a-z0-9-]+\.jpg$/, `login picture ${src} must be a local Series Lab image`);
     assert.doesNotMatch(String(html.text), /og-card\.png/);
+    assert.notEqual((await call("GET", "/og-card.png", { raw: true })).status, 200, "the previous product card is gone");
     assert.equal((await call("GET", "/img/og-series-lab.jpg", { raw: true })).status, 200);
     const shot = await call("GET", "/img/showcase-lion.jpg", { raw: true });
     assert.equal(shot.status, 200);
