@@ -6380,6 +6380,38 @@ function renderDeletedProjects(deleted) {
   });
 }
 
+/** Move a frame set of the open project into another one (the set changes owner; nothing is copied or charged). */
+async function renderMoveSet(projects, current) {
+  const wrap = $("projects-move-wrap");
+  if (!wrap) return;
+  const others = (projects || []).filter((p) => p.id !== current);
+  let sets = [];
+  if (state.assetsPerProject && others.length) {
+    try {
+      sets = (await api("/api/sets")).sets || [];
+    } catch {
+      sets = [];
+    }
+  }
+  wrap.hidden = !sets.length;
+  if (!sets.length) return;
+  $("projects-move-set").innerHTML = sets.map((s) => `<option value="${escapeHtml(s.dir)}">${escapeHtml(s.dir)} (${s.count})</option>`).join("");
+  $("projects-move-to").innerHTML = others.map((p) => `<option value="${escapeHtml(p.file)}">${escapeHtml(p.name)}</option>`).join("");
+  $("projects-move-btn").onclick = async () => {
+    const dir = $("projects-move-set").value;
+    const to = $("projects-move-to").value;
+    try {
+      await api("/api/projects/move-set", { method: "POST", body: JSON.stringify({ dir, to }) });
+    } catch (e) {
+      setProjectsMsg(e.message, "small err-msg");
+      return;
+    }
+    setProjectsMsg(t("projects.moved", { set: dir, to: $("projects-move-to").selectedOptions[0]?.textContent || to }), "small ok-msg");
+    loadGallerySets();
+    renderProjects();
+  };
+}
+
 /** "My projects": every collection is a project you can reopen; beyond the free ones a new project costs credits once. */
 async function renderProjects() {
   const list = $("projects-list");
@@ -6426,6 +6458,7 @@ async function renderProjects() {
     btn.addEventListener("click", () => deleteProject(btn, current));
   });
   renderDeletedProjects(data.deleted || []);
+  renderMoveSet(data.projects, current);
   list.querySelectorAll("[data-project]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const sel = $("r-preset");
