@@ -6342,6 +6342,7 @@ async function deleteProject(btn, current) {
 }
 
 let armedRestore = null;
+let armedPurge = null;
 function renderDeletedProjects(deleted) {
   const wrap = $("projects-deleted-wrap");
   const ul = $("projects-deleted");
@@ -6350,9 +6351,36 @@ function renderDeletedProjects(deleted) {
   ul.innerHTML = "";
   for (const d of deleted) {
     const li = document.createElement("li");
-    li.innerHTML = `<span class="p-name">${escapeHtml(d.file.replace(/\.json$/, ""))}</span><span class="p-meta">${escapeHtml(String(d.at || "").slice(0, 10))}</span><span class="p-actions"><button type="button" class="btn small" data-restore="${escapeHtml(d.trashId)}">${escapeHtml(t("projects.restore"))}</button></span>`;
+    li.innerHTML = `<span class="p-name">${escapeHtml(d.file.replace(/\.json$/, ""))}</span><span class="p-meta">${escapeHtml(String(d.at || "").slice(0, 10))}${d.daysLeft != null ? ` · ${escapeHtml(t("projects.purgeIn", { n: d.daysLeft }))}` : ""}</span><span class="p-actions"><button type="button" class="btn small" data-restore="${escapeHtml(d.trashId)}">${escapeHtml(t("projects.restore"))}</button> <button type="button" class="btn small" data-purge="${escapeHtml(d.trashId)}" data-name="${escapeHtml(d.file.replace(/\.json$/, ""))}">${escapeHtml(t("projects.purge"))}</button></span>`;
     ul.appendChild(li);
   }
+  ul.querySelectorAll("[data-purge]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.purge;
+      if (armedPurge?.id !== id) {
+        if (armedPurge) armedPurge.btn.textContent = t("projects.purge");
+        armedPurge = { id, btn };
+        btn.textContent = t("projects.purgeSure");
+        setProjectsMsg(t("projects.purgeHint", { name: btn.dataset.name }));
+        setTimeout(() => {
+          if (armedPurge?.id === id) {
+            btn.textContent = t("projects.purge");
+            armedPurge = null;
+          }
+        }, 12000);
+        return;
+      }
+      armedPurge = null;
+      try {
+        await api("/api/projects/purge", { method: "POST", body: JSON.stringify({ id, confirm: true }) });
+      } catch (e) {
+        setProjectsMsg(e.message, "small err-msg");
+        return;
+      }
+      setProjectsMsg(t("projects.purgedMsg", { name: btn.dataset.name }), "small ok-msg");
+      renderProjects();
+    });
+  });
   ul.querySelectorAll("[data-restore]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.restore;

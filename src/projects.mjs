@@ -11,6 +11,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { writeJsonAtomic } from "./fs-safe.mjs";
+import { pruneTrash } from "./trash.mjs";
 
 export const PROJECTS_FREE_DEFAULT = 3;
 export const PROJECT_EXTRA_CREDITS_DEFAULT = 30;
@@ -382,6 +383,51 @@ export function listDeletedProjects(user) {
     }
   }
   return out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+}
+
+/** How long the trash keeps things: SERIES_TRASH_DAYS (default 30); 0 or less means never purge. */
+export function trashRetentionDays(env = process.env) {
+  const n = Number(env.SERIES_TRASH_DAYS ?? 30);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** Whole days left before a deleted project is purged, or null when the trash is kept for good. */
+export function trashDaysLeft(at, days = trashRetentionDays(), now = new Date()) {
+  if (!days) return null;
+  const left = Date.parse(at) + days * 86_400_000 - now.getTime();
+  return Number.isFinite(left) ? Math.max(0, Math.ceil(left / 86_400_000)) : null;
+}
+
+/** Delete a project from the trash for good (the caller has confirmed). */
+export function purgeDeletedProject(user, trashId) {
+  if (!DELETED_ID.test(String(trashId || ""))) throw Object.assign(new Error("bad trash id"), { status: 400 });
+  if (!deletedProjectFile(user, trashId)) throw Object.assign(new Error("trash item is not a project"), { status: 404 });
+  rmSync(join(deletedRoot(user), trashId), { recursive: true, force: true });
+}
+
+/**
+ * Purge everything older than `days` from one wallet folder: deleted projects, the old shared `out/trash` and the
+ * file trash that now lives inside every project (`projects/<id>/out/trash`).
+ * @returns {number} items purged
+ */
+export function pruneWalletTrash(userRoot, days, now = new Date()) {
+  if (!(days > 0)) return 0;
+  const cutoff = now.getTime() - days * 86_400_000;
+  let purged = 0;
+  const user = { root: userRoot };
+  for (const d of listDeletedProjects(user)) {
+    if (Date.parse(d.at) < cutoff) {
+      rmSync(join(deletedRoot(user), d.trashId), { recursive: true, force: true });
+      purged += 1;
+    }
+  }
+  const dirs = [join(userRoot, "out", "trash")];
+  const projects = join(userRoot, "projects");
+  if (existsSync(projects)) {
+    for (const id of readdirSync(projects)) dirs.push(join(projects, id, "out", "trash"));
+  }
+  for (const dir of dirs) if (existsSync(dir)) purged += pruneTrash(dir, days, now).length;
+  return purged;
 }
 
 /** Which project a deleted entry is (for the gate): its preset file name, or null when the id is unknown. */
