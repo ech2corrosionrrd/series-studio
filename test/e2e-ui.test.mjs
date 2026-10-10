@@ -70,6 +70,14 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
   });
 
   const tab = (name) => page.click(`nav [data-tab="${name}"], [data-tab="${name}"]`);
+  // Creating, opening or restoring a project restarts the studio on it (its base, layers and frame sets are its own).
+  const waitReload = async (action) => {
+    const loaded = page.waitForEvent("load");
+    await action();
+    await loaded;
+    await page.waitForSelector("#o-id", { state: "attached" });
+    await waitFor(async () => (await page.$$("#projects-list li")).length > 0, { what: "the studio to boot again" });
+  };
   const balance = async () => (await studio.call("GET", "/api/me")).json.balance;
 
   it("a first visit opens on the portrait template, not on an arbitrary alphabetical preset", async () => {
@@ -95,8 +103,11 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     await page.fill("#o-id", "e2e-series");
     await page.fill("#o-size", "4");
     await page.selectOption("#o-engine", "mock");
-    await page.click("#o-save");
-    await waitFor(async () => /e2e-series\.json/.test(await page.textContent("#o-msg")), { what: "save message" });
+    await waitReload(() => page.click("#o-save"));
+    await waitFor(async () => /e2e-series\.json/.test(await page.textContent("#o-msg")), { what: "save message after the restart" });
+    const mine = (await studio.call("GET", "/api/projects")).json;
+    assert.equal(mine.active, "e2e-series.json");
+    assert.equal(mine.projects[0].assets.hasBase, true, "the base uploaded before the first project moved into it");
   });
 
   it("builds the recipe texts for free", async () => {
@@ -175,24 +186,24 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     await page.fill("#o-name", "E2E Second");
     await page.fill("#o-id", "e2e-second");
     await page.fill("#o-size", "4");
-    await page.click("#o-save");
-    await waitFor(async () => /e2e-second\.json/.test(await page.textContent("#o-msg")), { what: "second preset saved" });
+    await waitReload(() => page.click("#o-save"));
+    assert.equal((await studio.call("GET", "/api/projects")).json.active, "e2e-second.json");
+    assert.equal((await studio.call("GET", "/api/sets")).json.sets.length, 0, "the new project does not see the first project's frames");
+    assert.equal((await studio.call("GET", "/api/base/list")).json.files.length, 0, "nor its base image");
     await tab("recipes");
-    await page.selectOption("#r-preset", "e2e-second.json");
     await page.click("#r-build");
     await waitFor(async () => (await page.inputValue("#x-file")) === "e2e-second.json", { what: "Export follows the second series" });
-    await page.selectOption("#r-preset", "e2e-series.json");
+    await waitReload(() => page.selectOption("#r-preset", "e2e-series.json"));
     await waitFor(async () => (await page.inputValue("#x-file")) === "e2e-series.json", { what: "Export follows the switch back" });
     await waitFor(async () => (await page.inputValue("#o-id")) === "e2e-series", { what: "Overview follows the switch too" });
+    assert.equal((await studio.call("GET", "/api/sets")).json.sets.length, 2, "the first project's frames are back");
     await tab("gallery");
     const srcs = await page.$$eval("#v-grid img", (imgs) => imgs.map((i) => i.getAttribute("src")));
     assert.ok(srcs.length > 0 && srcs.every((s) => /\?v=\d+$/.test(s)), `frame URLs: ${srcs.slice(0, 2)}`);
   });
 
   it("after a reload the studio reopens on the series the user was working on", async () => {
-    await page.waitForTimeout(1200); // the studio saves the workspace 400 ms after a change
-    const ws = (await studio.call("GET", "/api/workspace")).json?.workspace;
-    assert.equal(ws?.presetId, "e2e-series", `workspace: ${JSON.stringify(ws)}`);
+    assert.equal((await studio.call("GET", "/api/projects")).json.active, "e2e-series.json", "the server remembers the open project");
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForSelector("#o-id", { state: "attached" }); // the studio reopens on the last tab, Overview may be hidden
     await page.waitForTimeout(2500);
@@ -215,7 +226,7 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     await waitFor(async () => /30/.test(await page.textContent("#o-msg")), { what: "confirmation notice" });
     assert.equal(await balance(), before, "nothing is charged by the first click");
     assert.equal((await page.$$("#projects-list li")).length, 2);
-    await page.click("#o-save");
+    await waitReload(() => page.click("#o-save"));
     await waitFor(async () => /e2e-third\.json/.test(await page.textContent("#o-msg")), { what: "third project saved" });
     assert.equal(before - (await balance()), 30, "the second click charges once");
     await waitFor(async () => (await page.$$("#projects-list li")).length === 3, { what: "three projects listed" });
@@ -241,7 +252,7 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     await page.click("#projects-deleted [data-restore]");
     await waitFor(async () => /30/.test(await page.textContent("#projects-msg")), { what: "restore asks to confirm" });
     assert.equal(await balance(), before, "the first restore click charges nothing");
-    await page.click("#projects-deleted [data-restore]");
+    await waitReload(() => page.click("#projects-deleted [data-restore]"));
     await waitFor(async () => (await page.$$("#projects-list li")).length === 3, { what: "project restored" });
     assert.equal(before - (await balance()), 30, "restoring beyond the limit is a new project: charged once");
     assert.equal(await page.isHidden("#projects-deleted-wrap"), true);

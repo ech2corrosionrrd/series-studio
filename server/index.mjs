@@ -192,7 +192,7 @@ import { setManualBalance } from "../src/platform/resources.mjs";
 import { resourceCatalog, setAlertThreshold, setResourceNote } from "../src/platform/resource-catalog.mjs";
 import { decisionRule } from "../src/platform/decision.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
-import { admitProject, describeProjects, isProject, loadProjects, projectQuota, projectsConfig, registerProject, saveProjects } from "../src/projects.mjs";
+import { adoptLegacyAssets, admitProject, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, projectAssetStats, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
@@ -581,25 +581,21 @@ function admitNewProject(file, body = {}) {
   return { isNew: true, charge: { wallet, amount: verdict.charge, engine: "project", note }, credits: verdict.charge };
 }
 
-const PROJECT_TRASH_PREFIX = "project:";
-
-/** Files that belong to a project and move to the trash with it: the preset and its recipe archive. Shared assets stay. */
-const projectFiles = (file) => [join(P().presets, file), join(P().out, file)];
-
-/** Put a deleted project back. A restored project is a new project for the limit: beyond the free ones it asks to confirm and charges once. */
+/**
+ * Put a deleted project back. A restored project is a new project for the limit: beyond the free ones it asks to confirm
+ * and charges once (so deleting does not dodge the price).
+ */
 function restoreProjectFromTrash(trashId, body) {
   if (!trashId) throw httpError(400, "file required");
-  const item = listTrash(trashDir()).find((i) => i.id === trashId);
-  if (!item || !String(item.reason || "").startsWith(PROJECT_TRASH_PREFIX)) throw httpError(404, "trash item is not a project");
-  const file = String(item.reason).slice(PROJECT_TRASH_PREFIX.length);
+  const file = deletedProjectFile(P(), trashId);
+  if (!file) throw httpError(404, "trash item is not a project");
   const admission = admitNewProject(file, body);
   try {
-    restoreTrash({ root: P().root, trashDir: trashDir() }, trashId);
+    restoreDeletedProject(P(), trashId, { legacyArchiveTarget: PUBLIC_MODE ? null : join(P().out, file) });
     commitNewProject(file, admission);
   } catch (e) {
     refundCharge(admission.charge);
-    if (/already exists/.test(String(e.message))) throw httpError(409, "A project file with this name already exists: delete or rename it first.");
-    throw e;
+    throw e.status ? httpError(e.status, e.message) : e;
   }
   return { file, charged: admission.credits };
 }
@@ -607,6 +603,7 @@ function restoreProjectFromTrash(trashId, body) {
 function commitNewProject(file, admission) {
   if (!admission.isNew) return;
   registerProject(P(), walletProjects(), file, { charge: admission.credits });
+  writeActiveProject(P(), file); // the new project is the one the user works on now
 }
 
 function safeJsonName(file, fallback = "demo-series.json") {
@@ -1974,10 +1971,23 @@ async function handleApi(req, res, url) {
     const cfg = projectsConfig();
     const quota = projectQuota(list, cfg);
     const exempt = !PUBLIC_MODE || isAdmin(currentWallet());
-    const deleted = listTrash(trashDir())
-      .filter((i) => String(i.reason || "").startsWith(PROJECT_TRASH_PREFIX))
-      .map((i) => ({ trashId: i.id, file: String(i.reason).slice(PROJECT_TRASH_PREFIX.length), at: i.at }));
-    return send(res, 200, { projects: describeProjects(P(), list), deleted, quota: { ...quota, needsCharge: exempt ? false : quota.needsCharge, exempt } });
+    const rows = describeProjects(P(), list).map((p) => ({ ...p, assets: projectAssetStats(P(), p.file) }));
+    return send(res, 200, {
+      projects: rows,
+      deleted: listDeletedProjects(P()),
+      active: readActiveProject(P()),
+      assetsPerProject: PUBLIC_MODE,
+      quota: { ...quota, needsCharge: exempt ? false : quota.needsCharge, exempt },
+    });
+  }
+
+  if (pathname === "/api/projects/open" && req.method === "POST") {
+    const body = await readBody(req);
+    const file = String(body.file || "");
+    const list = walletProjects();
+    if (!isProject(list, file)) return send(res, 404, { error: "project not found" });
+    writeActiveProject(P(), file); // every asset route now works on this project (base, layers, sets, archive)
+    return send(res, 200, { ok: true, active: file });
   }
 
   if (pathname === "/api/projects/delete" && req.method === "POST") {
@@ -1987,11 +1997,12 @@ async function handleApi(req, res, url) {
     const list = walletProjects();
     if (!isProject(list, file)) return send(res, 404, { error: "project not found" });
     if (body.confirm !== true) throw httpError(400, "confirmation required");
-    // Reversible: the preset and its recipe archive go to the trash; sets, base image and layers are shared and stay.
-    const item = toTrash(projectFiles(file), `${PROJECT_TRASH_PREFIX}${file}`);
+    // Reversible: the preset, the recipe archive and the project's own base image, layers and frame sets go to the trash together.
+    const trashId = trashProject(P(), file, { legacyArchive: PUBLIC_MODE ? null : join(P().out, file) });
     const next = list.filter((p) => p.file !== file);
     saveProjects(P(), next);
-    return send(res, 200, { ok: true, file, trashId: item?.id || null, quota: projectQuota(next, projectsConfig()) });
+    if (readActiveProject(P()) === file) writeActiveProject(P(), next[0]?.file || null);
+    return send(res, 200, { ok: true, file, trashId, active: readActiveProject(P()), quota: projectQuota(next, projectsConfig()) });
   }
 
   if (pathname === "/api/projects/restore" && req.method === "POST") {
@@ -2583,11 +2594,6 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/trash/restore" && req.method === "POST") {
     const body = await readBody(req);
     const trashId = String(body.id || "");
-    const head = listTrash(trashDir()).find((i) => i.id === trashId);
-    if (head && String(head.reason || "").startsWith(PROJECT_TRASH_PREFIX)) {
-      const done = restoreProjectFromTrash(trashId, body);
-      return send(res, 200, { ok: true, restored: head, project: done, items: listTrash(trashDir()) });
-    }
     let item;
     try {
       item = restoreTrash({ root: P().root, trashDir: trashDir() }, trashId);
@@ -3798,6 +3804,26 @@ function userPaths(wallet) {
   return paths;
 }
 
+/**
+ * The folders a signed-in wallet works in: the ACTIVE project's base image, layers and frame sets (everything else stays
+ * at user level). Before the first project exists everything is the old shared layout; the moment a project exists, the
+ * assets the wallet already had move into it once (see adoptLegacyAssets).
+ */
+function scopedPaths(wallet) {
+  const user = userPaths(wallet);
+  const list = loadProjects(user, templatePresetFiles());
+  if (!list.length) return user;
+  let active = readActiveProject(user);
+  if (!active || !isProject(list, active)) {
+    active = initialActiveProject(user, list);
+    writeActiveProject(user, active);
+  }
+  adoptLegacyAssets(user, active, list.map((p) => p.file));
+  const paths = projectPaths(user, active);
+  ensureProjectDirs(paths);
+  return paths;
+}
+
 const isPageRequest = (pathname) => pathname === "/" || pathname === "/studio" || pathname === "/studio/" || pathname.endsWith(".html");
 
 const cspLog = createCspLog();
@@ -3910,7 +3936,7 @@ const server = createServer(async (req, res) => {
       if (isPageRequest(url.pathname)) return send(res, 302, "", "text/plain", { Location: `/login${url.search}` });
       if (url.pathname.startsWith("/out/") || url.pathname.startsWith("/input/")) return send(res, 401, "Sign in required", "text/plain");
     }
-    const store = wallet ? { wallet, paths: userPaths(wallet) } : undefined;
+    const store = wallet ? { wallet, paths: scopedPaths(wallet) } : undefined;
     return await reqCtx.run(store, () => handleRequest(req, res, url));
   } catch (e) {
     if (res.headersSent) {
