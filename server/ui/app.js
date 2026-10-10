@@ -1429,6 +1429,7 @@ function setupOverview() {
     if (data.file) {
       if ($("ctor-file")) $("ctor-file").value = data.file;
       if ($("r-preset")) $("r-preset").value = data.file;
+      state.archiveFile = state.archives?.some((a) => a.file === data.file) ? data.file : null;
     }
     renderFacts();
     renderCtorSummary();
@@ -1869,12 +1870,27 @@ function openRecipeEditor(index) {
   }
 }
 
+/**
+ * One "current series": its archive file has the same name as its preset. The Recipes, Constructor and Export
+ * selectors and state.archiveFile must always point at it, or "Compose layers" and the kits use a different series
+ * than the one the user is looking at.
+ */
+function syncActiveSeries(file) {
+  if (!file) return;
+  state.archiveFile = file;
+  state.archiveOut = `out/${file}`;
+  for (const id of ["x-file", "r-preset", "ctor-file"]) {
+    const el = $(id);
+    if (el && [...el.options].some((o) => o.value === file)) el.value = file;
+  }
+  updateJsonLink();
+}
+
 async function loadRecipesArchive(file) {
   if (!file) return;
   const data = await api(`/api/recipes?file=${encodeURIComponent(file)}`);
   state.recipes = data.recipes || data.archive?.recipes || [];
-  state.archiveFile = file;
-  state.archiveOut = `out/${file}`;
+  syncActiveSeries(file);
   refreshLayersStatus();
   renderRecipeTable();
   if (data.rarity) renderRarity(data.rarity);
@@ -1935,6 +1951,7 @@ function fillArchiveSelect() {
     .map((a) => `<option value="${escapeHtml(a.file)}">${escapeHtml(a.file)} (${a.size ?? "?"})</option>`)
     .join("");
   if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+  if (state.archiveFile && [...sel.options].some((o) => o.value === state.archiveFile)) sel.value = state.archiveFile;
   for (const id of ["r-diff-a", "r-diff-b"]) {
     const box = $(id);
     if (!box) continue;
@@ -1984,6 +2001,13 @@ async function refreshWaves() {
 }
 
 function setupRecipes() {
+  $("r-preset")?.addEventListener("change", async () => {
+    const file = $("r-preset").value;
+    if (!file) return;
+    if (state.archives?.some((a) => a.file === file)) await loadRecipesArchive(file).catch(() => syncActiveSeries(file));
+    else syncActiveSeries(file);
+    scheduleWorkspaceSave();
+  });
   $("r-build")?.addEventListener("click", async () => {
     try {
       const file = $("r-preset")?.value;
@@ -4611,7 +4635,7 @@ async function saveWorkspace(patch = {}) {
   const body = {
     locale: getLocale(),
     presetId: $("o-id")?.value?.trim() || $("c-id")?.value?.trim() || null,
-    lastArchive: $("x-file")?.value || state.archiveFile || state.archives[0]?.file || null,
+    lastArchive: state.archiveFile || $("x-file")?.value || state.archives[0]?.file || null,
     lastSet: $("x-set")?.value || state.galleryDir || state.lastSet || null,
     overview: {
       name: $("o-name")?.value || "",
@@ -4642,9 +4666,8 @@ async function restoreWorkspace() {
       if ($("o-strength-v")) $("o-strength-v").textContent = String(ov.strength);
     }
     syncCtorFromOverview();
-    if (w.lastArchive && $("x-file") && [...($("x-file").options || [])].some((o) => o.value === w.lastArchive)) {
-      $("x-file").value = w.lastArchive;
-      updateJsonLink();
+    if (!state.archiveFile && w.lastArchive && $("x-file") && [...($("x-file").options || [])].some((o) => o.value === w.lastArchive)) {
+      syncActiveSeries(w.lastArchive);
     }
     if (w.lastSet) {
       state.galleryDir = w.lastSet;
@@ -4857,6 +4880,7 @@ function applyProfileUi() {
 
 function setupExport() {
   $("x-file")?.addEventListener("change", () => {
+    syncActiveSeries($("x-file").value);
     updateJsonLink();
     updateMetadataPreview();
     scheduleWorkspaceSave();
@@ -5288,7 +5312,7 @@ async function updateReleaseHub() {
 }
 
 function kitArchive() {
-  return $("x-file")?.value || state.archiveFile || state.archives?.[0]?.file || "";
+  return state.archiveFile || $("x-file")?.value || state.archives?.[0]?.file || "";
 }
 
 function setBusy(btn, on) {
@@ -6190,6 +6214,22 @@ function setupEngineDiagnostics() {
 }
 
 /* ---------- Boot ---------- */
+/**
+ * Which series the studio opens on: the one saved in the workspace; for a first visit the portrait template
+ * (a new series inherits its text and traits from the preset that is loaded when it is first saved, so the
+ * first one must not be an arbitrary alphabetical neighbour such as an abstract preset).
+ */
+function startSeries(workspace) {
+  const presets = new Set((state.presets || []).map((p) => p.file));
+  const archives = new Set((state.archives || []).map((a) => a.file));
+  const saved = workspace?.presetId ? `${workspace.presetId}.json` : "";
+  const preferred = [saved, "pfp-portrait.json", "demo-series.json"].find((f) => f && presets.has(f));
+  const preset = preferred || state.presets?.[0]?.file || "";
+  const savedArchive = workspace?.lastArchive && archives.has(workspace.lastArchive) ? workspace.lastArchive : "";
+  const archive = archives.has(preset) ? preset : savedArchive || state.archives?.[0]?.file || "";
+  return { preset, archive };
+}
+
 async function boot() {
   initI18n();
   setupTabs();
@@ -6236,16 +6276,19 @@ async function boot() {
   // one failing loader must not leave the rest of the UI uninitialised
   const loads = await Promise.allSettled([loadPresets(), loadTemplates(), loadArchives(), refreshBaseStatus()]);
   loads.filter((r) => r.status === "rejected").forEach((r) => console.error(r.reason));
-  if (state.presets[0]) {
+  const ws = await api("/api/workspace").catch(() => null);
+  const start = startSeries(ws?.workspace);
+  if (start.preset) {
     try {
-      const data = await api(`/api/preset?file=${encodeURIComponent(state.presets[0].file)}`);
+      const data = await api(`/api/preset?file=${encodeURIComponent(start.preset)}`);
       fillConstructor(data.preset);
+      for (const id of ["ctor-file", "r-preset"]) if ($(id) && [...$(id).options].some((o) => o.value === start.preset)) $(id).value = start.preset;
     } catch {
       /* ignore */
     }
   }
-  if (state.archives.length) {
-    try { await loadRecipesArchive(state.archives[0].file); } catch { /* ignore */ }
+  if (start.archive) {
+    try { await loadRecipesArchive(start.archive); } catch { /* ignore */ }
   }
   renderSteps();
   renderFacts();

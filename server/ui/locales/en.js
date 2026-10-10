@@ -175,7 +175,7 @@ export default {
   "ctor.change.explain": "Keys from the traits dictionary. Lab fills different values per NFT.",
   "ctor.extraHelp": "extraKeys — extras (comma-separated)",
   "ctor.extra.ph": "accessory, background",
-  "ctor.extra.explain": "Optional. Leave empty if unsure.",
+  "ctor.extra.explain": "Optional, leave empty if unsure. These traits also change between frames and go into the prompt: to keep a trait fixed, do NOT list it here or in the change keys.",
   "ctor.suffix": "suffix — prompt ending",
   "ctor.suffix.ph": "high detail, 4k, …",
   "ctor.suffix.explain": "Appended to every prompt. Handy for quality and bans.",
