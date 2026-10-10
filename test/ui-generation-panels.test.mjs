@@ -18,7 +18,7 @@ test("the local GPU explanation shows only for ComfyUI / A1111, never for cloud 
 
 test("quality and triage results are cleared when another set is opened", () => {
   assert.match(app, /function resetSetScopedPanels/);
-  assert.match(app, /if \(dir !== state\.galleryDir\) resetSetScopedPanels\(\)/);
+  assert.match(app, /if \(dir !== state\.panelsDir\) \{\s*resetSetScopedPanels\(\);\s*state\.panelsDir = dir;/);
   const fn = app.slice(app.indexOf("function resetSetScopedPanels"), app.indexOf("async function loadGalleryDir(dir)"));
   assert.match(fn, /state\.galleryTriage = \{\}/);
   assert.match(fn, /v-quality-out/);

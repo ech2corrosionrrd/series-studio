@@ -35,7 +35,9 @@
     "smoke:stage": "node scripts/stage-smoke.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "ci": "node scripts/ci.mjs",
-    "vendor": "node scripts/build-vendor.mjs"
+    "vendor": "node scripts/build-vendor.mjs",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=85 --test-coverage-branches=70 --test-coverage-functions=80",
+    "test:repeat": "node scripts/test-repeat.mjs"
   },
   "keywords": [
     "nft",
@@ -71,6 +73,7 @@
     "sharp": "^0.35.4"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.64.0"
   }
 }

@@ -105,7 +105,7 @@ export function describeSupply(preset) {
  */
 export function appendSupplyWave(preset, { size, seed, name } = {}) {
   const add = Number(size);
-  if (!Number.isInteger(add) || add < 1) throw new Error("wave size must be a positive integer");
+  if (!Number.isInteger(add) || add < 1) throw Object.assign(new Error("wave size must be a positive integer"), { status: 400 });
   const waveSeed = String(seed || "").trim();
   if (!waveSeed) throw new Error("wave seed required");
 

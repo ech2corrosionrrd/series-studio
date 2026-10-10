@@ -2706,7 +2706,11 @@ function resetSetScopedPanels() {
 }
 
 async function loadGalleryDir(dir) {
-  if (dir !== state.galleryDir) resetSetScopedPanels();
+  // state.galleryDir is already the new value when the selector changes, so remember which set the panels belong to.
+  if (dir !== state.panelsDir) {
+    resetSetScopedPanels();
+    state.panelsDir = dir;
+  }
   const empty = $("v-empty");
   const grid = $("v-grid");
   if (!dir) {
@@ -5649,6 +5653,8 @@ async function renderResourcePlan({ probe = false } = {}) {
 
 /* ---------- Resources ---------- */
 async function renderResources({ probe = false } = {}) {
+  // Operator data: a normal wallet would only collect 403s in the console (found by the browser test).
+  if (state.account && !state.account.admin) return;
   renderResourcePlan({ probe });
   const grid = $("res-grid");
   const provBox = $("res-providers");
@@ -5799,6 +5805,7 @@ function setupResources() {
 async function renderSpend() {
   const out = $("spend-out");
   if (!out) return;
+  if (state.account && !state.account.admin) return;
   try {
     const d = await api("/api/spend");
     const by = Object.entries(d.byEngine || {}).map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(fmtUsdLocale(v, Number(v) < 0.1 ? 4 : 2))}`).join(" · ");

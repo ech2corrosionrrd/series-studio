@@ -358,7 +358,7 @@ async function routes(req, res, url) {
   if (path === "/api/vault/status" && method === "GET") {
     rateLimit(req, "vault_status", LIMITS.vault());
     const vault = String(process.env.VAULT_WALLET_ADDRESS || "").trim();
-    if (!vault) throw new HttpError(500, "VAULT_WALLET_ADDRESS is not configured in environment");
+    if (!vault) throw new HttpError(503, "VAULT_WALLET_ADDRESS is not configured in environment");
     let catalog;
     try { catalog = loadCatalog(); } catch (e) { throw new HttpError(500, `vault catalog invalid: ${e.message}`); }
     let held;
