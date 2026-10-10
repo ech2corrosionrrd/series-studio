@@ -2394,6 +2394,35 @@ function setupRender() {
       setBusy(btn, false);
     }
   });
+  $("g-compose-preview")?.addEventListener("click", async () => {
+    const msg = $("g-compose-preview-msg");
+    const img = $("g-compose-preview-img");
+    const btn = $("g-compose-preview");
+    try {
+      const archive = kitArchive();
+      if (!archive) throw new Error(t("export.none"));
+      const n = Number($("g-compose-preview-n")?.value);
+      if (!Number.isInteger(n) || n < 1) throw new Error(t("render.layers.previewBad"));
+      setBusy(btn, true);
+      if (msg) msg.textContent = t("ui.working");
+      const over = $("g-compose-over")?.value || "";
+      const data = await api("/api/compose", {
+        method: "POST",
+        body: JSON.stringify({ archive, preview: n, ...(over ? { over } : {}) }),
+      });
+      if (img) {
+        img.src = data.png;
+        img.alt = t("render.layers.previewAlt", { n: data.edition });
+        img.hidden = false;
+      }
+      if (msg) msg.textContent = t("render.layers.previewOk", { n: data.edition, painted: data.layers.length, left: data.skipped.length });
+    } catch (e) {
+      if (img) img.hidden = true;
+      if (msg) msg.textContent = e.message;
+    } finally {
+      setBusy(btn, false);
+    }
+  });
   const reLockPlan = () => lockGenerate(true);
   $("g-strength")?.addEventListener("input", () => {
     if ($("g-strength-v")) $("g-strength-v").textContent = $("g-strength").value;
