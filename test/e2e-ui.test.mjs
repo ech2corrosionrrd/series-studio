@@ -205,6 +205,8 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     await tab("home");
     await waitFor(async () => (await page.$$("#projects-list li")).length === 2, { what: "two projects listed" });
     assert.match(await page.textContent("#projects-quota"), /2/);
+    const box = await page.locator("#projects-card").boundingBox();
+    assert.ok(box && box.y < 450, `the projects card must be visible without scrolling, it is at y=${box?.y}`);
     const before = await balance();
     await page.fill("#o-name", "E2E Third");
     await page.fill("#o-id", "e2e-third");
