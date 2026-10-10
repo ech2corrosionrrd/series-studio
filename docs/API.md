@@ -81,7 +81,7 @@
 |--------|------|------|
 | GET | `/api/sets` | список наборів у `out/` |
 | GET | `/api/set?dir=` | зображення набору + marks + light QA + `shelved` (кадри, прибрані з набору) |
-| POST | `/api/set/delete` | `{ dir, edition }` — кадр у кошик |
+| POST | `/api/set/delete` | `{ dir, edition }` — кадр видаляється назавжди (кошика для кадрів немає) |
 | POST | `/api/set/drop` | `{ dir, edition }` — прибрати кадр із набору, файл лишається у `versions/` |
 | GET | `/api/marks?dir=` | keep/redo marks |
 | POST | `/api/marks` | оновити marks (`dir` + `edition`/`mark` або `marks`) |
@@ -122,8 +122,8 @@
 |--------|------|------|
 | GET | `/api/versions?dir=&edition=` | історія версій картинки: `out/<set>/versions/<N>/` |
 | POST | `/api/versions/current` | `{ dir, edition, v }` — зробити версію поточною (`<N>.png`) |
-| POST | `/api/versions/drop` | `{ dir, edition, v }` — непоточну версію в кошик |
-| POST | `/api/set/delete` | `{ dir, edition }` — поточний кадр, його версії й нотатку створення в кошик; позначку keep/redo знімає |
+| POST | `/api/versions/drop` | `{ dir, edition, v }` — непоточну версію видаляє назавжди |
+| POST | `/api/set/delete` | `{ dir, edition }` — поточний кадр, його версії й нотатку створення видаляє назавжди; позначку keep/redo знімає |
 | POST | `/api/set/drop` | `{ dir, edition }` — прибрати поточний кадр із набору, не знищуючи файл: `<N>.png` стає `versions/<N>/v<k>.png`, `current` = null. Повернути — `POST /api/versions/current` |
 | GET | `/api/trash` | записи кошика `out/trash/<id>/` (новіші першими) |
 | POST | `/api/trash/restore` | `{ id }` — повернути файли на місце (відмова, якщо ціль уже існує) |

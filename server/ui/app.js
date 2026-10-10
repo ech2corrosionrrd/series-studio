@@ -37,7 +37,6 @@ const state = {
   galleryTriage: {},
   gallerySets: [],
   galleryShelved: [],
-  galleryTrash: [],
   renderPlan: null,
   lastSet: null,
   rarity: null,
@@ -171,10 +170,7 @@ function lockGenerate(locked) {
 async function ensureGalleryLoaded() {
   await loadGallerySets();
   if (state.galleryDir) await loadGalleryDir(state.galleryDir);
-  else {
-    await loadSetTrash();
-    renderGallery();
-  }
+  else renderGallery();
 }
 
 async function ensureRecipesLoaded() {
@@ -2802,9 +2798,7 @@ async function loadGalleryDir(dir) {
     state.galleryMarks = {};
     state.galleryShelved = [];
     state.galleryImages2 = [];
-    await loadSetTrash();
     renderAside();
-    renderSetTrash();
     return;
   }
   try {
@@ -2814,7 +2808,6 @@ async function loadGalleryDir(dir) {
     state.galleryMarks = data.marks || {};
     state.galleryShelved = data.shelved || [];
     await loadGalleryDir2($("v-dir2")?.value || state.galleryDir2);
-    await loadSetTrash();
     renderGallery();
   } catch (e) {
     if (empty) {
@@ -2865,7 +2858,6 @@ function renderGallery() {
     grid.classList.remove("pair");
     if ($("v-stats")) $("v-stats").textContent = "";
     renderAside();
-    renderSetTrash();
     return;
   }
   if (empty) empty.hidden = true;
@@ -2943,13 +2935,12 @@ function renderGallery() {
     tile.querySelector(".b-keep")?.addEventListener("click", () => toggleMark(row.edition, "keep"));
     tile.querySelector(".b-redo")?.addEventListener("click", () => toggleMark(row.edition, "redo"));
     tile.querySelector(".b-drop")?.addEventListener("click", () => dropFrame(row.edition));
-    tile.querySelector(".b-delete")?.addEventListener("click", () => deleteFrame(row.edition));
+    tile.querySelector(".b-delete")?.addEventListener("click", (ev) => confirmTwice(ev.currentTarget, () => deleteFrame(row.edition)));
     grid.appendChild(tile);
   }
   if ($("v-stats")) $("v-stats").textContent = t("gallery.stats", { keep, redo, none });
   applyTips(grid);
   renderAside();
-  renderSetTrash();
 }
 
 function frameActionButtons(canFile) {
@@ -3826,7 +3817,7 @@ function renderVersions(data) {
       </div>`;
     item.querySelector("img").addEventListener("click", () => openLightbox(v.url));
     item.querySelector(".b-cur")?.addEventListener("click", () => versionAction("/api/versions/current", data.edition, v.v));
-    item.querySelector(".b-drop")?.addEventListener("click", () => versionAction("/api/versions/drop", data.edition, v.v));
+    item.querySelector(".b-drop")?.addEventListener("click", (ev) => confirmTwice(ev.currentTarget, () => versionAction("/api/versions/drop", data.edition, v.v)));
     list.appendChild(item);
   }
   applyTips(list);
@@ -3879,6 +3870,23 @@ async function dropFrame(edition) {
   }
 }
 
+/** Irreversible actions ask twice: the first click arms the button for a few seconds, the second one runs. */
+function confirmTwice(btn, run) {
+  if (btn.dataset.armed) {
+    delete btn.dataset.armed;
+    return run();
+  }
+  btn.dataset.armed = "1";
+  const label = btn.textContent;
+  btn.textContent = t("common.deleteSure");
+  setTimeout(() => {
+    if (btn.dataset.armed) {
+      delete btn.dataset.armed;
+      btn.textContent = label;
+    }
+  }, 6000);
+}
+
 async function deleteFrame(edition) {
   if (!state.galleryDir) return;
   try {
@@ -3891,7 +3899,6 @@ async function deleteFrame(edition) {
     manageStatus(t("gallery.deleted", { edition }));
     renderGallery();
     await loadGallerySets();
-    await loadSetTrash();
   } catch (e) {
     manageStatus(e.message);
   }
@@ -3910,39 +3917,6 @@ async function returnFrame(edition, v) {
   } catch (e) {
     manageStatus(e.message);
   }
-}
-
-function frameTrashMatch(from, dir) {
-  const p = String(from || "");
-  const rest = dir && p.startsWith(`out/${dir}/`) ? p.slice(`out/${dir}/`.length) : "";
-  const body = dir ? rest : p.replace(/^out\/(?!trash\/)[^/]+\//, "");
-  if (dir && !p.startsWith(`out/${dir}/`)) return false;
-  if (!dir && !/^out\/(?!trash\/)[^/]+\//.test(p)) return false;
-  return /^\d+\.(png|jpe?g|webp)$/i.test(body)
-    || /^versions\/\d+\//.test(body)
-    || /^creation\/\d+\.json$/i.test(body);
-}
-
-function trashEdition(item) {
-  for (const f of item.files || []) {
-    const m = String(f.from || "").match(/\/(\d+)\.(?:png|jpe?g|webp)$/i)
-      || String(f.from || "").match(/\/versions\/(\d+)\//)
-      || String(f.from || "").match(/\/creation\/(\d+)\.json$/i);
-    if (m) return m[1];
-  }
-  return "";
-}
-
-async function loadSetTrash() {
-  try {
-    const data = await api("/api/trash");
-    const dir = state.galleryDir;
-    state.galleryTrash = (data.items || []).filter((it) =>
-      (it.files || []).some((f) => frameTrashMatch(f.from, dir)));
-  } catch {
-    state.galleryTrash = [];
-  }
-  renderSetTrash();
 }
 
 function renderAside() {
@@ -3964,46 +3938,10 @@ function renderAside() {
       </div>`;
     item.querySelector("img").addEventListener("click", () => openLightbox(row.url));
     item.querySelector(".b-return").addEventListener("click", () => returnFrame(row.edition, row.v));
-    item.querySelector(".b-delete").addEventListener("click", () => deleteFrame(row.edition));
+    item.querySelector(".b-delete").addEventListener("click", (ev) => confirmTwice(ev.currentTarget, () => deleteFrame(row.edition)));
     list.appendChild(item);
   }
   applyTips(list);
-}
-
-function renderSetTrash() {
-  const box = $("v-set-trash");
-  const list = $("v-set-trash-list");
-  if (!box || !list) return;
-  const items = state.galleryTrash || [];
-  box.hidden = items.length === 0;
-  list.innerHTML = "";
-  for (const it of items) {
-    const edition = trashEdition(it);
-    const row = document.createElement("div");
-    row.className = "trash-row";
-    const label = edition ? `#${edition}` : (it.files || []).map((f) => f.from).join(", ");
-    row.innerHTML = `
-      <div><b>${escapeHtml(label)}</b> · ${escapeHtml(it.reason || "")}
-        <div class="muted">${escapeHtml(fmtDate(it.at))}</div></div>
-      <div class="btns">
-        <button type="button" class="btn small b-restore"${tipAttr("trash.restore")}>${escapeHtml(t("trash.restore"))}</button>
-      </div>`;
-    row.querySelector(".b-restore").addEventListener("click", () => restoreFrame(it.id));
-    list.appendChild(row);
-  }
-  applyTips(list);
-}
-
-async function restoreFrame(id) {
-  try {
-    await api("/api/trash/restore", { method: "POST", body: JSON.stringify({ id }) });
-    manageStatus(t("gallery.restored"));
-    await loadGallerySets();
-    if (state.galleryDir) await loadGalleryDir(state.galleryDir);
-    else await loadSetTrash();
-  } catch (e) {
-    manageStatus(e.message);
-  }
 }
 
 function setupVersions() {
