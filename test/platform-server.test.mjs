@@ -198,6 +198,8 @@ describe("public mode end-to-end", () => {
     const act = await call("GET", `/gremlin/activity?wallet=${user.address}&date=${day}`, { headers: { "X-Gremlin-Key": "gremlin-key" } });
     assert.equal(act.status, 200);
     assert.equal(act.json.generated, 3);
+    assert.equal(act.json.generated_total, 3, "lifetime count does not depend on the date");
+    assert.equal(act.json.credits_purchased_usd, 0, "no real payments yet; grants never count");
     const bad = await call("GET", `/gremlin/activity?wallet=${user.address}&date=2026-02-30`, { headers: { "X-Gremlin-Key": "gremlin-key" } });
     assert.equal(bad.status, 400);
   });
