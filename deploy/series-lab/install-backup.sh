@@ -65,6 +65,16 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 EOF
 chmod 644 /etc/cron.d/series-lab-backup
 
+# Monday report: three external numbers for the week + progress of the decision rule (src/platform/decision.mjs).
+# Runs inside the container, which already has the Telegram settings; silent (prints only) if Telegram is not set.
+cat > /etc/cron.d/series-lab-report <<REPORT
+# Series Lab weekly business report (Telegram). Rule and targets: DECISION_* in the container env.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+0 8 * * 1 root docker exec serieslab node src/platform/decision.mjs --report >> $BASE/logs/report.log 2>&1
+REPORT
+chmod 644 /etc/cron.d/series-lab-report
+
 echo "cron installed: hourly ledger, 03:15 UTC full, freshness and disk every 6 h, offsite check 04:40, drill and cloud drill on Sundays"
 "$BASE/backup.sh"
 BACKUP_MODE=hourly "$BASE/backup.sh"

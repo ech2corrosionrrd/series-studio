@@ -5698,6 +5698,8 @@ async function renderEconomy() {
     const f = d.funnel_30d || {};
     const fe = d.funnel_30d_external || {};
     const ft = d.funnel_total_external || {};
+    const dr = d.decision_rule || {};
+    const ruleStatus = dr.status === "met" ? t("econ.rule.status.met") : dr.status === "failed" ? t("econ.rule.status.failed") : t("econ.rule.status.active");
     // One row of funnel KPIs: sign-up → welcome (granted / refused for good) → opened payment → paid → repeat.
     const funnelRow = (x, title) => `<h5 class="econ-sub">${escapeHtml(title)}</h5><div class="econ-kpis">
           ${econKpi(t("econ.funnel.new"), x.new_users ?? "—")}
@@ -5901,6 +5903,16 @@ async function renderEconomy() {
             <tbody>${engRows}</tbody>
           </table>
         </div>
+      </section>
+      <section class="econ-section">
+        <h4>${escapeHtml(t("econ.rule"))} · ${escapeHtml(ruleStatus)}</h4>
+        <div class="econ-kpis">
+          ${econKpi(t("econ.rule.payers"), `${dr.external_payers ?? "—"} / ${dr.target_payers ?? "—"}`, { cls: (dr.external_payers ?? 0) >= (dr.target_payers ?? 1) ? "ok" : "warn" })}
+          ${econKpi(t("econ.rule.repeat"), `${dr.external_repeat_payers ?? "—"} / ${dr.target_repeat ?? "—"}`, { cls: (dr.external_repeat_payers ?? 0) >= (dr.target_repeat ?? 0) ? "ok" : "warn" })}
+          ${econKpi(t("econ.rule.revenue"), fmtUsd(dr.external_revenue_usd))}
+          ${econKpi(t("econ.rule.days"), `${dr.days_left ?? "—"}`, { sub: t("econ.rule.window", { start: dr.start ?? "—", end: dr.end ?? "—" }) })}
+        </div>
+        <p class="econ-note">${escapeHtml(t("econ.rule.note"))}</p>
       </section>
       <section class="econ-section">
         <h4>${escapeHtml(t("econ.funnel"))}</h4>
