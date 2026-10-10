@@ -72,6 +72,8 @@ cat > /etc/cron.d/series-lab-report <<REPORT
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 0 8 * * 1 root docker exec serieslab node src/platform/decision.mjs --report >> $BASE/logs/report.log 2>&1
+# every 6 hours: a Telegram message when a known provider balance is at or below its threshold (Admin → Ресурси)
+15 */6 * * * root docker exec serieslab node src/platform/resource-catalog.mjs --alerts >> $BASE/logs/resources.log 2>&1
 REPORT
 chmod 644 /etc/cron.d/series-lab-report
 
