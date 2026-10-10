@@ -57,7 +57,7 @@ import {
   selectMintGroup,
   sendInstructions,
 } from "../src/core-flow.mjs";
-import { composeArchive, overlaySet } from "../src/layers.mjs";
+import { composeArchive, overlaySet, previewEdition } from "../src/layers.mjs";
 import { ENGINES, TXT2IMG, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 import { loadC2pa, signSet } from "../src/c2pa-sign.mjs";
@@ -85,7 +85,7 @@ Usage:
   series hidden <bundle-dir> --uri <hidden.json-link> [--uri-prefix <prefix>] [--name <text>]
   series mint <release.json> --keypair <file> [--group <label>] [--public] [--dry-run]
   series reveal <bundle-dir> [--keypair <file>] [--check <revealed.json>] [--dry-run]
-  series compose <archive.json> --layers <dir> (--base <png> | --over <set-dir> [--only a,b]) [-o out/layers]
+  series compose <archive.json> --layers <dir> (--base <png> | --over <set-dir> [--only a,b]) [-o out/layers] [--preview <edition> [-o frame.png]]
   series verify <release.json> [--rpc <url>]
   series engines
   series doctor
@@ -130,6 +130,7 @@ Options:
   --uri-prefix <prefix>   Build reveal URIs as <prefix><index>.json instead of cache.json
   --layers <dir>          PNG layers directory for series compose
   --base <png>            Base image under the trait layers
+  --preview <edition>     series compose: compose ONE frame into a single PNG (-o file, default out/preview-<edition>.png); no set, no dna.json
   --check <file>          Revealed name/uri list to compare in series reveal
   -h, --help              Show help
 `;
@@ -819,6 +820,33 @@ function cmdCompose(archivePath, opts = {}) {
     process.exit(1);
   }
   const layerDir = resolve(opts.layers);
+  if (opts.preview !== undefined) {
+    // Перегляд одного кадру: складає лише це видання в один PNG, без набору й dna.json.
+    if (!/^[1-9]\d{0,8}$/.test(String(opts.preview))) {
+      console.error("[ERROR] --preview needs an edition number (a whole number from 1)");
+      process.exit(1);
+    }
+    const hybrid = Boolean(opts.over);
+    const frameIn = hybrid ? join(resolve(opts.over), `${Number(opts.preview)}.png`) : resolve(opts.base);
+    if (!existsSync(layerDir) || !existsSync(frameIn)) {
+      console.error(hybrid ? `[ERROR] layers directory or frame is missing: ${frameIn}` : "[ERROR] layers directory or base image is missing");
+      process.exit(1);
+    }
+    try {
+      const frame = previewEdition({ archive, items, edition: opts.preview, basePng: readFileSync(frameIn), layerDir, only: opts.only, skipMissing: hybrid });
+      const file = resolve(opts.out || join("out", `preview-${Number(opts.preview)}.png`));
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, frame.png);
+      const painted = frame.layers.filter((l) => l !== "base");
+      console.log(`Preview of edition ${Number(opts.preview)}: ${painted.length} layers painted${frame.skipped.length ? `, ${frame.skipped.length} left as drawn` : ""} → ${file}`);
+      if (painted.length) console.log(`Layers (bottom first): ${painted.join(", ")}`);
+      console.log("Only this PNG was written. Nothing was composed into a set.");
+    } catch (e) {
+      console.error(`[ERROR] ${e.message}`);
+      process.exit(1);
+    }
+    return;
+  }
   if (opts.over) {
     // Гібрид: шари поверх кадрів набору, що їх намалювала модель.
     const setDir = resolve(opts.over);
@@ -1170,6 +1198,7 @@ function parseOpts(args) {
     else if (a === "--layers") opts.layers = args[++i];
     else if (a === "--base") opts.base = args[++i];
     else if (a === "--over") opts.over = args[++i];
+    else if (a === "--preview") opts.preview = args[++i];
     else if (a === "--only") opts.only = String(args[++i] || "").split(",").map((k) => k.trim()).filter(Boolean);
     else if (a === "--check") opts.check = args[++i];
     else if (a === "--group") opts.group = args[++i];
