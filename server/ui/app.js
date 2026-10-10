@@ -5949,6 +5949,7 @@ async function renderEconomy() {
           ${econKpi(t("econ.funnel.started"), x.pay_started_wallets ?? "—")}
           ${econKpi(t("econ.funnel.paying"), x.paying_wallets ?? "—", { sub: fmtPct(x.conversion_started_to_paid_pct) })}
           ${econKpi(t("econ.funnel.repeat"), x.repeat_paying_wallets ?? "—")}
+          ${econKpi(t("econ.funnel.projectGate"), x.project_gate_wallets ?? "—", { sub: t("econ.funnel.projectGateSub", { n: x.project_paid_wallets ?? 0, pct: fmtPct(x.conversion_project_gate_to_paid_pct) }) })}
           ${econKpi(t("econ.funnel.export"), x.exported_wallets ?? "—", { sub: fmtPct(x.conversion_generate_to_export_pct) })}
         </div>`;
 
@@ -6318,7 +6319,7 @@ async function deleteProject(btn, current) {
         btn.textContent = t("projects.delete");
         armedDelete = null;
       }
-    }, 7000);
+    }, 12000);
     return;
   }
   armedDelete = null;

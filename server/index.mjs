@@ -572,12 +572,14 @@ function admitNewProject(file, body = {}) {
   if (exempt || verdict.charge <= 0) return { isNew: true, charge: null, credits: 0 };
   const q = projectQuota(list, cfg);
   if (body.confirmCharge !== true) {
+    recordFunnelEvent(wallet, "project_charge", { cost: verdict.charge, used: q.used });
     throw httpError(402, `Project limit: ${q.used} of ${q.free} free projects are used; a new project costs ${verdict.charge} credits. Confirm to continue.`, {
       code: "project_charge", cost: verdict.charge, free: q.free, used: q.used, balance: getBalance(wallet),
     });
   }
   const note = `New project #${q.used + 1} beyond ${q.free} free`;
   if (!deductCredits(wallet, verdict.charge, { engine: "project", note })) throw insufficient(wallet, verdict.charge);
+  recordFunnelEvent(wallet, "project_paid", { cost: verdict.charge, used: q.used });
   return { isNew: true, charge: { wallet, amount: verdict.charge, engine: "project", note }, credits: verdict.charge };
 }
 

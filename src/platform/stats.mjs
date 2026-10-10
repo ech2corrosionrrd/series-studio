@@ -107,6 +107,9 @@ export function funnel(days = 30, { scope = "all", db = openDb() } = {}) {
   const granted = set("SELECT DISTINCT wallet_address FROM transactions WHERE kind = 'welcome' AND created_at >= ?");
   const everGranted = new Set(db.prepare("SELECT DISTINCT wallet_address FROM transactions WHERE kind = 'welcome'").all().map((r) => r.wallet_address));
   const deniedLost = [...denied].filter((w) => !everGranted.has(w));
+  // Project limit: who hit the paid-project gate and who confirmed the charge.
+  const projectGate = set("SELECT DISTINCT wallet_address FROM funnel_events WHERE event = 'project_charge' AND created_at >= ?");
+  const projectPaid = set("SELECT DISTINCT wallet_address FROM funnel_events WHERE event = 'project_paid' AND created_at >= ?");
   // Payment funnel: opened an order → paid → came back for a second purchase (all-time payments).
   const started = set("SELECT DISTINCT wallet_address FROM sol_orders WHERE created_at >= ?");
   const repeaters = new Set(
@@ -133,6 +136,9 @@ export function funnel(days = 30, { scope = "all", db = openDb() } = {}) {
     welcome_granted_wallets: granted.size,
     welcome_denied_wallets: denied.size,
     welcome_denied_lost_wallets: deniedLost.length,
+    project_gate_wallets: projectGate.size,
+    project_paid_wallets: projectPaid.size,
+    conversion_project_gate_to_paid_pct: pct(projectPaid, projectGate),
     pay_started_wallets: started.size,
     conversion_started_to_paid_pct: pct(payers, started),
     repeat_paying_wallets: [...payers].filter((w) => repeaters.has(w)).length,

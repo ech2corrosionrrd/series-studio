@@ -46,10 +46,16 @@ describe("funnel: sign-up friction, payment start, repeat payers, external scope
     assert.equal(recordPayment("tx-a2", ALICE, 100, 4.99, { db }), true);
     assert.equal(recordPayment("tx-op", OPERATOR, 100, 4.99, { db }), true);
 
+    recordFunnelEvent(ALICE, "project_charge", null, db);
+    recordFunnelEvent(CAROL, "project_charge", null, db);
+    recordFunnelEvent(ALICE, "project_paid", null, db);
     const all = funnel(30, { db });
     assert.equal(all.welcome_denied_wallets, 2, "Alice (twice) and Bob are 2 unique wallets");
     assert.equal(all.welcome_denied_lost_wallets, 1, "only Bob never got welcome credits");
     assert.equal(all.pay_started_wallets, 2);
+    assert.equal(all.project_gate_wallets, 2);
+    assert.equal(all.project_paid_wallets, 1);
+    assert.equal(all.conversion_project_gate_to_paid_pct, 50);
     assert.equal(all.paying_wallets, 2, "Alice and the operator");
     assert.equal(all.repeat_paying_wallets, 1, "only Alice paid twice");
     assert.equal(all.conversion_started_to_paid_pct, 50, "Alice paid, Carol did not");
