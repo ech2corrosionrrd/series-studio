@@ -96,7 +96,12 @@ function styleLockBits(preset) {
     return { styleKeepExtra: [], styleParagraph: "" };
   }
   const styleKeepExtra = [];
-  const extras = Array.isArray(lock.extraKeep) ? lock.extraKeep : [];
+  // The UI field is "one phrase per line", so a plain string (API, hand-edited preset) is split the same way.
+  const extras = Array.isArray(lock.extraKeep)
+    ? lock.extraKeep
+    : typeof lock.extraKeep === "string"
+      ? lock.extraKeep.split(/\r?\n/)
+      : [];
   for (const e of extras) {
     const s = String(e || "").trim();
     if (s) styleKeepExtra.push(s);
