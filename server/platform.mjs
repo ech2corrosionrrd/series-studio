@@ -212,6 +212,12 @@ async function routes(req, res, url) {
       send(res, 200, page, "text/html; charset=utf-8");
       return true;
     }
+    if (/^\/fonts\/[a-z0-9-]+\.woff2$/.test(path)) {
+      const file = siteFile(path.slice(1));
+      if (!existsSync(file)) throw new HttpError(404, "font not found");
+      send(res, 200, readFileSync(file), "font/woff2", { "Cache-Control": CACHE.asset });
+      return true;
+    }
     if (path === "/login.js") {
       const script = loginScript();
       if (!script) throw new HttpError(404, "login.js not found");

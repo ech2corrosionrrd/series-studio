@@ -28,7 +28,7 @@ test("report mode sends Report-Only, enforce sends the real header, off sends no
   assert.deepEqual(c.h, {});
 });
 
-test("the studio policy is strict on scripts; only the login page allows inline scripts", () => {
+test("one strict policy for every page: no inline scripts, no third-party fonts or code", () => {
   const studio = buildCsp("/studio/");
   assert.match(studio, /script-src 'self' https:\/\/static\.cloudflareinsights\.com(;|$)/);
   assert.doesNotMatch(studio, /script-src[^;]*unsafe-inline/);
@@ -39,14 +39,15 @@ test("the studio policy is strict on scripts; only the login page allows inline 
   assert.match(studio, new RegExp(`report-uri ${CSP_REPORT_PATH.replace(/\//g, "\/")}`));
   const login = buildCsp("/login");
   assert.doesNotMatch(login, /script-src[^;]*unsafe-inline/);
-  assert.match(login, /fonts\.googleapis\.com/);
-  assert.equal(buildCsp("/login?next=1".split("?")[0]), login);
+  assert.doesNotMatch(login, /googleapis|gstatic/);
+  assert.match(login, /font-src 'self' data:/);
+  assert.equal(login, studio);
 });
 
 test("query strings do not change the policy chosen for /login", () => {
   const r = fakeRes();
   applyCsp({ url: "/login?x=1" }, r, {});
-  assert.match(r.h["Content-Security-Policy-Report-Only"], /fonts\.googleapis\.com/);
+  assert.match(r.h["Content-Security-Policy-Report-Only"], /script-src 'self'/);
 });
 
 test("summarizeReport reads both report formats and strips query strings", () => {

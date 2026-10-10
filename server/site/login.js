@@ -68,6 +68,10 @@ const I18N = {
     "mw.phantom": "Відкрити у Phantom (Solana)",
     "mw.metamask": "Відкрити у MetaMask",
     "mw.coinbase": "Відкрити у Coinbase Wallet",
+    "dw.hint": "Гаманця в цьому браузері немає. Встановіть розширення, потім оновіть сторінку:",
+    "dw.phantom": "Встановити Phantom (Solana)",
+    "dw.metamask": "Встановити MetaMask",
+    "dw.coinbase": "Встановити Coinbase Wallet",
     chainEvm: "EVM",
     chainSol: "Solana",
     docTitle: "Series Lab — вхід",
@@ -135,6 +139,10 @@ const I18N = {
     "mw.phantom": "Open in Phantom (Solana)",
     "mw.metamask": "Open in MetaMask",
     "mw.coinbase": "Open in Coinbase Wallet",
+    "dw.hint": "No wallet in this browser. Install an extension, then reload the page:",
+    "dw.phantom": "Install Phantom (Solana)",
+    "dw.metamask": "Install MetaMask",
+    "dw.coinbase": "Install Coinbase Wallet",
     chainEvm: "EVM",
     chainSol: "Solana",
     docTitle: "Series Lab — sign in",
@@ -372,6 +380,7 @@ function connect(entry) {
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const showMobileWallets = () => { if (isMobile) $("mobile-wallets").classList.add("on"); };
+const showDesktopWallets = () => { if (!isMobile) $("desktop-wallets").classList.add("on"); };
 (() => {
   const url = location.href;
   $("mw-phantom").href = `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(location.origin)}`;
@@ -382,7 +391,13 @@ const showMobileWallets = () => { if (isMobile) $("mobile-wallets").classList.ad
 
 $("connect").onclick = () => {
   const providers = detectProviders();
-  if (!providers.length) { showMobileWallets(); setStatus(t("errNoWallet"), "err"); return; }
+  if (!providers.length) {
+    showMobileWallets();
+    showDesktopWallets();
+    // The install block already says it on desktop; keep the red line for phones, where the block is the app links.
+    setStatus(isMobile ? t("errNoWallet") : "", "err");
+    return;
+  }
   if (providers.length === 1 && providers[0].id !== "injected") { connect(providers[0]); return; }
   openModal(providers);
 };
