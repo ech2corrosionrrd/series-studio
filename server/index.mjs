@@ -186,6 +186,7 @@ import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs
 import { publishCollection } from "../src/platform/site.mjs";
 import { economyReport } from "../src/platform/margin.mjs";
 import { funnel } from "../src/platform/stats.mjs";
+import { resourcePlan, setManualBalance } from "../src/platform/resources.mjs";
 import { decisionRule } from "../src/platform/decision.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
@@ -1387,7 +1388,7 @@ async function handleApi(req, res, url) {
   // Operator-only views in public mode: server keys, server-wide spend, economy, Telegram test.
   if (
     PUBLIC_MODE &&
-    ["/api/spend", "/api/resources", "/api/engines/status", "/api/admin/economy", "/api/notifications/test"].includes(pathname) &&
+    ["/api/spend", "/api/resources", "/api/engines/status", "/api/admin/economy", "/api/admin/resources/plan", "/api/admin/resources/balance", "/api/notifications/test"].includes(pathname) &&
     !isAdmin(currentWallet())
   ) {
     return send(res, 403, { error: "admin only" });
@@ -1495,6 +1496,27 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/admin/system" && req.method === "GET") {
     if (PUBLIC_MODE && !isAdmin(currentWallet())) return send(res, 403, { error: "admin only" });
     return send(res, 200, systemPayload());
+  }
+
+  // Recommended balance per API provider (load, demand trend, credits already sold) + manual balances.
+  if (pathname === "/api/admin/resources/plan" && req.method === "GET") {
+    const probe = url.searchParams.get("probe") === "1" || url.searchParams.get("probe") === "true";
+    const live = {};
+    if (probe) {
+      const float = await providerFloatStatus();
+      const st = float.find((f) => f.name === "Stability AI");
+      if (st && st.balance_usd != null) live.stability = st.balance_usd;
+    }
+    return send(res, 200, resourcePlan({ live }));
+  }
+  if (pathname === "/api/admin/resources/balance" && req.method === "POST") {
+    const body = await readBody(req);
+    if (rejectSecrets(res, body)) return;
+    try {
+      return send(res, 200, { ok: true, ...setManualBalance(body.provider, body.balance_usd, { note: body.note }) });
+    } catch (e) {
+      return send(res, e.status || 400, { error: String(e.message || e) });
+    }
   }
 
   if (pathname === "/api/admin/economy" && req.method === "GET") {

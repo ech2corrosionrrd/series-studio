@@ -16,6 +16,7 @@ import { pathToFileURL } from "node:url";
 import { openDb, nowIso } from "./db.mjs";
 import { scopeSql } from "./ops.mjs";
 import { getTelegramConfig, sendTelegramNotification } from "../notifications.mjs";
+import { resourcePlan } from "./resources.mjs";
 
 const DAY_MS = 86_400_000;
 
@@ -89,6 +90,20 @@ export function weeklyNumbers({ db = openDb(), now = new Date() } = {}) {
 
 const STATUS_UK = { met: "ЦІЛЬ ДОСЯГНУТО", active: "іде", failed: "ЦІЛЬ НЕ ДОСЯГНУТО" };
 
+/** Lines about provider balances that need attention (low / critical, and how many balances are not entered). */
+export function resourceAlertLines({ db = openDb(), env = process.env, now = new Date() } = {}) {
+  try {
+    const plan = resourcePlan({ db, env, now });
+    const lines = plan.providers
+      .filter((p) => p.status === "critical" || p.status === "low")
+      .map((p) => `${p.name}: ${p.status === "critical" ? "критично" : "мало"}, лишилось ≈ ${p.runway_days == null ? "?" : Math.floor(p.runway_days)} дн., поповнити на $${p.top_up_usd}`);
+    if (plan.totals.unknown_balances > 0) lines.push(`Не введено баланс у ${plan.totals.unknown_balances} провайдерів (Адмін → Ресурси)`);
+    return lines;
+  } catch {
+    return [];
+  }
+}
+
 /** Plain text (no Markdown, so no escaping problems) for Telegram. */
 export function buildWeeklyReport({ db = openDb(), env = process.env, now = new Date() } = {}) {
   const w = weeklyNumbers({ db, now });
@@ -104,6 +119,8 @@ export function buildWeeklyReport({ db = openDb(), env = process.env, now = new 
     `Платників: ${r.external_payers} з ${r.target_payers}; повторних: ${r.external_repeat_payers} з ${r.target_repeat}; $${r.external_revenue_usd.toFixed(2)}`,
     r.status === "active" ? `Минуло ${r.days_elapsed} з ${r.days} днів, лишилось ${r.days_left}.` : r.status === "failed" ? "Строк вичерпано: перейти в режим мінімальних витрат." : "Можна інвестувати далі.",
   ];
+  const res = resourceAlertLines({ db, env, now });
+  if (res.length) lines.push("", "Ресурси (баланси провайдерів):", ...res);
   return lines.join("\n");
 }
 
