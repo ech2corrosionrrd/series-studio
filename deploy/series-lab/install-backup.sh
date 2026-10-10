@@ -34,6 +34,8 @@ if [ ! -f "$BASE/backup.env" ]; then
 # Easiest: run deploy/series-lab/setup-offsite.sh (creates the remote and proves a round-trip).
 BACKUP_RCLONE_REMOTE=
 BACKUP_PASSPHRASE=
+# Days to keep copies in the cloud (default 60, 0 = keep everything).
+# BACKUP_REMOTE_KEEP_DAYS=60
 # Alerts when a snapshot is missing, stale or does not open (optional).
 SERIES_TELEGRAM_BOT_TOKEN=
 SERIES_TELEGRAM_CHAT_ID=
@@ -56,10 +58,14 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 25 */6 * * * root $BASE/verify-backup.sh disk >> $BASE/logs/verify.log 2>&1
 # weekly restore drill: newest daily snapshot must really open
 0 5 * * 0 root $BASE/verify-backup.sh drill >> $BASE/logs/verify.log 2>&1
+# daily 04:40: the 03:15 run must have reached the cloud (Telegram alert otherwise; silent when offsite is off)
+40 4 * * * root $BASE/verify-backup.sh offsite >> $BASE/logs/verify.log 2>&1
+# weekly: the newest CLOUD copy is downloaded, decrypted and opened (silent when offsite is off)
+30 5 * * 0 root $BASE/verify-backup.sh cloud >> $BASE/logs/verify.log 2>&1
 EOF
 chmod 644 /etc/cron.d/series-lab-backup
 
-echo "cron installed: hourly ledger, 03:15 UTC full, freshness and disk every 6 h, drill on Sundays"
+echo "cron installed: hourly ledger, 03:15 UTC full, freshness and disk every 6 h, offsite check 04:40, drill and cloud drill on Sundays"
 "$BASE/backup.sh"
 BACKUP_MODE=hourly "$BASE/backup.sh"
 "$BASE/verify-backup.sh" drill

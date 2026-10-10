@@ -6,6 +6,7 @@
 # Local retention: 48 hourly (ledger only, BACKUP_MODE=hourly) + 7 daily + 4 weekly
 # under /opt/series-lab/backups/. Hourly exists because the ledger holds payments.
 # Offsite: set BACKUP_RCLONE_REMOTE and BACKUP_PASSPHRASE in backup.env.
+# Offsite retention: BACKUP_REMOTE_KEEP_DAYS (default 60, 0 = keep everything).
 # Without those, snapshots stay on this server (same disk as the live db).
 set -euo pipefail
 
@@ -28,20 +29,34 @@ mkdir -p "$DEST/hourly" "$DEST/daily" "$DEST/weekly" "$BASE/logs"
 WORK=$(mktemp -d)
 note_status() {
   # Статус для адмін-панелі: файл у каталозі даних, який бачить контейнер (read-only для застосунку).
-  local ok=$1 kind=$2 offsite=$3 h d w bytes
+  # offsite: true | false | keep. «keep» (погодинний запуск) лишає прапорець і час останньої
+  # вдалої хмарної копії з попереднього запису, інакше щогодини було б «Зовнішня копія: Ні».
+  local ok=$1 kind=$2 offsite=$3 h d w bytes oat=""
+  local prev="$DATA/backup-status.json"
+  if [ "$offsite" = keep ]; then
+    offsite=$(grep -o '"offsite":[a-z]*' "$prev" 2>/dev/null | cut -d: -f2 || true)
+    oat=$(grep -o '"offsiteAt":"[^"]*"' "$prev" 2>/dev/null | cut -d'"' -f4 || true)
+    [ -n "$offsite" ] || offsite=false
+  elif [ "$offsite" = true ]; then
+    oat=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  fi
   h=$(ls -1d "$DEST"/hourly/*/ 2>/dev/null | wc -l)
   d=$(ls -1d "$DEST"/daily/*/ 2>/dev/null | wc -l)
   w=$(ls -1d "$DEST"/weekly/*/ 2>/dev/null | wc -l)
   bytes=$(du -sb "$DEST" 2>/dev/null | cut -f1)
-  printf '{"at":"%s","ok":%s,"kind":"%s","offsite":%s,"hourly":%s,"daily":%s,"weekly":%s,"bytes":%s}\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$ok" "$kind" "$offsite" "${h:-0}" "${d:-0}" "${w:-0}" "${bytes:-0}" \
+  printf '{"at":"%s","ok":%s,"kind":"%s","offsite":%s,"offsiteAt":"%s","hourly":%s,"daily":%s,"weekly":%s,"bytes":%s}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$ok" "$kind" "$offsite" "$oat" "${h:-0}" "${d:-0}" "${w:-0}" "${bytes:-0}" \
     > "$DATA/backup-status.json.tmp" 2>/dev/null && chmod 644 "$DATA/backup-status.json.tmp" \
     && mv -f "$DATA/backup-status.json.tmp" "$DATA/backup-status.json" || true
 }
 on_exit() {
   local rc=$?
   rm -rf "$WORK"
-  [ "$rc" -eq 0 ] || note_status false "${BACKUP_MODE:-full}" false
+  if [ "$rc" -ne 0 ]; then
+    if [ "${BACKUP_MODE:-full}" = hourly ]; then note_status false hourly keep
+    else note_status false full false
+    fi
+  fi
 }
 trap on_exit EXIT
 
@@ -83,7 +98,7 @@ if [ "${BACKUP_MODE:-full}" = hourly ]; then
   chmod 700 "$DEST/hourly" "$hslot"
   note "hourly ledger snapshot $hslot"
   prune "$DEST/hourly" 48
-  note_status true hourly false
+  note_status true hourly keep
   exit 0
 fi
 
@@ -134,4 +149,14 @@ archive="$WORK/users-$STAMP.tar.gz.enc"
 tar -C "$slot" -czf - . | openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:BACKUP_PASSPHRASE -out "$archive"
 "$rclone_bin" copy "$archive" "$remote" --retries 3
 note "offsite uploaded $(basename "$archive") -> $remote"
+# Хмарні копії накопичувались би вічно: лишаємо BACKUP_REMOTE_KEEP_DAYS днів (60; 0 = не чистити).
+# Чистимо лише наші users-*.tar.gz.enc і лише після вдалого завантаження (свіжа копія вже на місці).
+keep_days=${BACKUP_REMOTE_KEEP_DAYS:-60}
+if [ "$keep_days" -gt 0 ] 2>/dev/null; then
+  if "$rclone_bin" delete "$remote" --min-age "${keep_days}d" --include 'users-*.tar.gz.enc' >/dev/null 2>&1; then
+    note "offsite pruned copies older than ${keep_days}d"
+  else
+    note "offsite prune failed (ignored)"
+  fi
+fi
 note_status true full true
