@@ -4680,12 +4680,26 @@ async function fillExportSets() {
 }
 
 let workspaceTimer = null;
+let workspacePending = null; // the debounced save that has not been sent yet ({} when only the form values changed)
 function scheduleWorkspaceSave(patch) {
   clearTimeout(workspaceTimer);
+  workspacePending = patch || {};
   workspaceTimer = setTimeout(() => saveWorkspace(patch).catch(() => {}), 400);
 }
 
-async function saveWorkspace(patch = {}) {
+/** The tab is closing or hidden: send a save that is still waiting for its debounce, so the last edit is not lost. */
+function flushWorkspace() {
+  if (workspacePending === null) return;
+  clearTimeout(workspaceTimer);
+  saveWorkspace(workspacePending, { keepalive: true }).catch(() => {});
+}
+window.addEventListener("pagehide", flushWorkspace);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") flushWorkspace();
+});
+
+async function saveWorkspace(patch = {}, { keepalive = false } = {}) {
+  workspacePending = null;
   const body = {
     locale: getLocale(),
     presetId: $("o-id")?.value?.trim() || $("c-id")?.value?.trim() || null,
@@ -4701,7 +4715,7 @@ async function saveWorkspace(patch = {}) {
     },
     ...patch,
   };
-  await api("/api/workspace", { method: "POST", body: JSON.stringify(body) });
+  await api("/api/workspace", { method: "POST", body: JSON.stringify(body), ...(keepalive ? { keepalive: true } : {}) });
 }
 
 async function restoreWorkspace() {
