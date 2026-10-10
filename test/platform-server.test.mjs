@@ -106,6 +106,8 @@ describe("public mode end-to-end", () => {
     assert.equal(page.headers.location, "/login");
     assert.equal((await call("GET", "/api/me")).status, 401);
     assert.equal((await call("GET", "/login")).status, 200);
+    assert.equal((await call("HEAD", "/login")).status, 200, "uptime monitors probe /login with HEAD");
+    assert.equal((await call("HEAD", "/auth/nonce?address=0x0")).status, 404, "HEAD must not issue nonces");
     const health = await call("GET", "/health");
     assert.deepEqual(health.json, { status: "ok", service: "series-lab" });
   });
