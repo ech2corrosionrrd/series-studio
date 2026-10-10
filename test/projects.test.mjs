@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { adoptLegacyAssets, admitProject, describeProjects, initialActiveProject, loadProjects, projectAssetStats, projectPaths, projectQuota, projectsConfig, registerProject } from "../src/projects.mjs";
+import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, describeProjects, initialActiveProject, listDeletedProjects, restoreDeletedProject, loadProjects, projectAssetStats, projectPaths, projectQuota, projectsConfig, registerProject } from "../src/projects.mjs";
 import { createMockPng } from "../src/mock-image.mjs";
 import { startStudio } from "./helpers/studio-server.mjs";
 
@@ -404,6 +404,24 @@ describe("one-time move of the shared assets into the projects", () => {
     assert.equal(initialActiveProject(u, list), "worked-on.json");
     writeFileSync(join(u.workspace, "current.json"), JSON.stringify({ presetId: "deleted-long-ago" }));
     assert.equal(initialActiveProject(u, list), "first.json", "a stale name falls back to the first");
+  });
+
+  it("projects deleted by the earlier file-level trash become restorable deleted projects, once", () => {
+    const trash = join(dir, "projects", "beta", "out", "trash", "20261010T164317-7pzg1u");
+    mkdirSync(trash, { recursive: true });
+    writeFileSync(join(trash, "1234.json"), JSON.stringify({ id: "1234", name: "Old one" }));
+    writeFileSync(join(trash, "item.json"), JSON.stringify({ id: "20261010T164317-7pzg1u", at: "2026-10-10T16:43:17.000Z", reason: "project:1234.json", files: [{ from: "presets/1234.json", name: "1234.json" }] }));
+    const done = convertLegacyProjectTrash(user);
+    assert.deepEqual(done, ["1234.json"]);
+    assert.equal(existsSync(trash), false, "the old trash item is gone");
+    const listed = listDeletedProjects(user);
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0].file, "1234.json");
+    assert.deepEqual(convertLegacyProjectTrash(user), [], "a marker stops a second pass");
+    mkdirSync(user.presets, { recursive: true });
+    assert.equal(restoreDeletedProject(user, listed[0].trashId), "1234.json");
+    assert.ok(existsSync(join(user.presets, "1234.json")), "the preset is back");
+    assert.equal(listDeletedProjects(user).length, 0);
   });
 
   it("project paths and asset stats", () => {
