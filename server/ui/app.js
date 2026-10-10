@@ -1419,12 +1419,26 @@ function setupOverview() {
     syncCtorFromOverview();
     const preset = readConstructor();
     if (!preset.id) throw new Error(t("home.msg.need"));
-    const data = await api("/api/preset/save", {
-      method: "POST",
-      body: JSON.stringify({ preset }),
-    });
-    $("o-msg").textContent = `${t("home.msg.saved")}: ${data.file}`;
+    const confirmCharge = state.projectConfirm === preset.id;
+    let data;
+    try {
+      data = await api("/api/preset/save", {
+        method: "POST",
+        body: JSON.stringify({ preset, ...(confirmCharge ? { confirmCharge: true } : {}) }),
+      });
+    } catch (e) {
+      // A new project beyond the free ones costs credits: ask once, charge only on the second, explicit click.
+      if (e.payload?.code === "project_charge") {
+        state.projectConfirm = preset.id;
+        throw new Error(t("projects.confirm", { cost: e.payload.cost, used: e.payload.used, free: e.payload.free }));
+      }
+      throw e;
+    }
+    state.projectConfirm = null;
+    const charged = data.project?.charged ? ` ${t("projects.charged", { n: data.project.charged })}` : "";
+    $("o-msg").textContent = `${t("home.msg.saved")}: ${data.file}${charged}`;
     $("o-msg").className = "small ok-msg";
+    if (data.project?.charged) refreshAccount();
     await loadPresets();
     if (data.file) {
       if ($("ctor-file")) $("ctor-file").value = data.file;
@@ -1435,6 +1449,7 @@ function setupOverview() {
     renderCtorSummary();
     renderSteps();
     scheduleWorkspaceSave();
+    renderProjects();
     return data;
   }
   $("o-save").addEventListener("click", async () => {
@@ -1458,8 +1473,21 @@ function setupOverview() {
     try {
       const file = $("r-preset")?.value || ($("o-id")?.value.trim() ? `${$("o-id").value.trim()}.json` : "");
       if (!file) throw new Error(t("home.msg.need"));
-      const data = await api("/api/preset/spinoff", { method: "POST", body: JSON.stringify({ file }) });
+      const spinKey = `spin:${file}`;
+      let data;
+      try {
+        data = await api("/api/preset/spinoff", { method: "POST", body: JSON.stringify({ file, ...(state.projectConfirm === spinKey ? { confirmCharge: true } : {}) }) });
+      } catch (e) {
+        if (e.payload?.code === "project_charge") {
+          state.projectConfirm = spinKey;
+          throw new Error(t("projects.confirm", { cost: e.payload.cost, used: e.payload.used, free: e.payload.free }));
+        }
+        throw e;
+      }
+      state.projectConfirm = null;
+      if (data.project?.charged) refreshAccount();
       await loadPresets();
+      renderProjects();
       fillConstructor(data.preset);
       if ($("r-preset")) $("r-preset").value = data.file;
       $("o-msg").textContent = t("home.spin.done", { file: data.file });
@@ -6221,6 +6249,49 @@ function setupEngineDiagnostics() {
 }
 
 /* ---------- Boot ---------- */
+/** "My projects": every collection is a project you can reopen; beyond the free ones a new project costs credits once. */
+async function renderProjects() {
+  const list = $("projects-list");
+  if (!list) return;
+  let data;
+  try {
+    data = await api("/api/projects");
+  } catch {
+    return;
+  }
+  const q = data.quota || {};
+  const quota = $("projects-quota");
+  if (quota) {
+    quota.textContent = q.exempt
+      ? t("projects.exempt", { used: q.used })
+      : q.needsCharge
+        ? t("projects.quotaFull", { used: q.used, free: q.free, cost: q.extraCredits })
+        : t("projects.quota", { used: q.used, free: q.free, left: q.freeLeft, cost: q.extraCredits });
+  }
+  const current = (state.archiveFile || $("r-preset")?.value || "").replace(/\.json$/, "");
+  list.innerHTML = "";
+  if (!data.projects?.length) {
+    list.innerHTML = `<li class="muted small">${escapeHtml(t("projects.empty"))}</li>`;
+    return;
+  }
+  for (const p of data.projects) {
+    const li = document.createElement("li");
+    if (p.id === current) li.classList.add("current");
+    const size = p.size != null ? ` · ${escapeHtml(t("projects.frames", { n: p.size }))}` : "";
+    li.innerHTML = `<span class="p-name">${escapeHtml(p.name)}</span><span class="p-meta">${escapeHtml(p.file)}${size}</span>${p.paid ? `<span class="badge paid">${escapeHtml(t("projects.paid", { n: p.credits }))}</span>` : ""}<span class="p-actions"><button type="button" class="btn small" data-project="${escapeHtml(p.file)}">${escapeHtml(p.id === current ? t("projects.current") : t("projects.open"))}</button></span>`;
+    list.appendChild(li);
+  }
+  list.querySelectorAll("[data-project]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const sel = $("r-preset");
+      if (!sel) return;
+      sel.value = btn.dataset.project;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+      setTimeout(renderProjects, 600);
+    });
+  });
+}
+
 /**
  * Which series the studio opens on: the one saved in the workspace; for a first visit the portrait template
  * (a new series inherits its text and traits from the preset that is loaded when it is first saved, so the
@@ -6300,6 +6371,7 @@ async function boot() {
   renderSteps();
   renderFacts();
   renderCtorSummary();
+  renderProjects();
   await loadGallerySets();
   if (state.galleryDir) await loadGalleryDir(state.galleryDir);
   else renderGallery();
