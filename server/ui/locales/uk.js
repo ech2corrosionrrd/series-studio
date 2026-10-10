@@ -550,7 +550,7 @@ export default {
   "ctor.options.warn.promptShort": "бажано опис",
   "help.doc.traits": "паки рис і редактор опцій",
   "ctor.styleLockTitle": "Фіксатор стилю (style lock)",
-  "ctor.styleLock.help": "Опційно. Фіксує ракурс / світло / настрій / кадр у кожному промпті. Зберігається в пресеті разом із Зберегти.",
+  "ctor.styleLock.help": "Опційно. Фіксує ракурс / світло / настрій / кадр у кожному промпті. Зберігається в пресеті разом із Зберегти. Світло спрацьовує надійно, а ракурс і кадр рушії тримають із бази: потрібен інший ракурс, оберіть базу з ним.",
   "ctor.styleLock.angle": "Ракурс (angle)",
   "ctor.styleLock.angle.ph": "chest-up centered",
   "ctor.styleLock.light": "Світло (light)",
