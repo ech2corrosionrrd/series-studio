@@ -50,6 +50,11 @@ export function creditsByKindSince(days = null, db = openDb()) {
 /**
  * Wallet activity for one UTC day — Passport quest verification.
  * `generated` comes from money (debits minus failure refunds), not from the funnel.
+ *
+ * Two lifetime fields do not depend on `date` (one-off Passport missions cannot be checked
+ * with a daily counter): `generated_total` (all-time debits minus refunds) and
+ * `credits_purchased_usd` (sum of real payments only — operator grants are `transactions`
+ * rows of kind `grant`, never `payments`, so a free credit cannot close a paid quest).
  */
 export function walletActivity(wallet, day = null, db = openDb()) {
   const w = normalizeWallet(wallet);
@@ -78,6 +83,12 @@ export function walletActivity(wallet, day = null, db = openDb()) {
     else if (event === "curator_save") saved = true;
     else if (event === "export") exported = true;
   }
+  const total = db.prepare(
+    "SELECT SUM(CASE WHEN kind = 'debit' AND note = ? THEN 1 ELSE 0 END) AS debits," +
+      " SUM(CASE WHEN kind = 'refund' AND note = ? THEN 1 ELSE 0 END) AS refunds" +
+      " FROM transactions WHERE wallet_address = ?",
+  ).get(DEBIT_NOTE, FAILURE_NOTE, w);
+  const paid = db.prepare("SELECT COALESCE(SUM(amount_usd), 0) AS usd FROM payments WHERE wallet_address = ?").get(w);
   return {
     wallet: w,
     date: d,
@@ -85,6 +96,8 @@ export function walletActivity(wallet, day = null, db = openDb()) {
     sessions,
     saved,
     exported,
+    generated_total: Math.max(0, Number(total.debits || 0) - Number(total.refunds || 0)),
+    credits_purchased_usd: Math.round(Number(paid.usd) * 100) / 100,
   };
 }
 
