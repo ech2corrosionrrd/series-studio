@@ -110,6 +110,16 @@ describe("public mode end-to-end", () => {
     const html = await call("GET", "/login", { raw: true });
     assert.doesNotMatch(String(html.body ?? html.text ?? ""), /<script(?![^>]*src=)[^>]*>/, "login page has no inline script");
     const js = await call("GET", "/login.js", { raw: true });
+    assert.doesNotMatch(String(html.text), /googleapis|gstatic/, "login page loads no third-party fonts");
+    assert.doesNotMatch(String(html.text), /\{\{/, "no template placeholder is left in the login page");
+    assert.match(String(html.text), /data-usd="4\.99" data-credits="100"/, "entry price comes from the real pack table");
+    const shot = await call("GET", "/img/showcase-lion.jpg", { raw: true });
+    assert.equal(shot.status, 200);
+    assert.equal(shot.headers["content-type"], "image/jpeg");
+    const font = await call("GET", "/fonts/onest-cyrillic.woff2", { raw: true });
+    assert.equal(font.status, 200);
+    assert.equal(font.headers["content-type"], "font/woff2");
+    assert.notEqual((await call("GET", "/fonts/..%2Flogin.html", { raw: true })).status, 200, "font route is a whitelist");
     assert.equal(js.status, 200);
     assert.match(String(js.headers["content-type"]), /javascript/);
     const code = String(js.body ?? js.text ?? "");
