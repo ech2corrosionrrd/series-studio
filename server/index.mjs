@@ -187,6 +187,7 @@ import { publishCollection } from "../src/platform/site.mjs";
 import { economyReport } from "../src/platform/margin.mjs";
 import { funnel } from "../src/platform/stats.mjs";
 import { resourcePlan, setManualBalance } from "../src/platform/resources.mjs";
+import { decisionRule } from "../src/platform/decision.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
@@ -1526,6 +1527,7 @@ async function handleApi(req, res, url) {
     report.funnel_30d = funnel(30);
     report.funnel_30d_external = funnel(30, { scope: "external" });
     report.funnel_total_external = funnel(36500, { scope: "external" });
+    report.decision_rule = decisionRule();
     return send(res, 200, report);
   }
 
