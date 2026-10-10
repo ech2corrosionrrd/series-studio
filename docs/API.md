@@ -24,7 +24,8 @@
 | GET | `/api/preset?file=` | повний пресет |
 | POST | `/api/validate` | body `{ file }` або `{ preset }` |
 | POST | `/api/preset/save` | записати `presets/<id>.json`; новий проєкт понад безкоштовні: `402` з `code: "project_charge"` і `cost`, повтор із `confirmCharge: true` списує кредити один раз |
-| POST | `/api/projects/delete` | видалити проєкт: `{ file, confirm: true }`; пресет і архів рецептів ідуть у кошик, слот звільняється; без `confirm` це 400 |
+| POST | `/api/projects/open` | зробити проєкт активним: `{ file }`; далі база, шари, набори кадрів і архів усіх маршрутів це активного проєкту (у публічному режимі) |
+| POST | `/api/projects/delete` | видалити проєкт: `{ file, confirm: true }`; пресет, архів рецептів і власні база, шари й набори кадрів ідуть у кошик проєктів, слот звільняється; активним стає наступний; без `confirm` це 400 |
 | POST | `/api/projects/restore` | відновити видалений проєкт з кошика: `{ id: <id запису кошика>, confirmCharge? }`; для ліміту це новий проєкт (понад безкоштовні `402 project_charge`) |
 | GET | `/api/projects` | проєкти гаманця й квота (`free`, `used`, `extraCredits`, `needsCharge`, `exempt`) |
 | GET | `/api/templates` | список шаблонів |

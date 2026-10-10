@@ -27,7 +27,7 @@ test("quality and triage results are cleared when another set is opened", () => 
 test("the studio opens on the saved series, else the portrait template, never an arbitrary alphabetical preset", () => {
   const fn = app.slice(app.indexOf("function startSeries"), app.indexOf("async function boot"));
   assert.match(fn, /\[saved, "pfp-portrait\.json", "demo-series\.json"\]/);
-  assert.match(app, /const start = startSeries\(ws\?\.workspace\)/);
+  assert.match(app, /const start = startSeries\(ws\?\.workspace, pr\?\.active \|\| null\)/);
   assert.doesNotMatch(app, /state\.presets\[0\]\.file\)\}`\)/, "boot must not load the first preset blindly");
 });
 

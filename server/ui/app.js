@@ -1450,6 +1450,10 @@ function setupOverview() {
     renderSteps();
     scheduleWorkspaceSave();
     renderProjects();
+    if (data.project?.new && state.assetsPerProject) {
+      // the new project is now the active one: its (empty) base, layers and sets replace the previous project's on screen
+      reloadStudio({ msg: `${t("home.msg.saved")}: ${data.file}${charged}`, tab: state.afterSaveTab || "" });
+    }
     return data;
   }
   $("o-save").addEventListener("click", async () => {
@@ -1462,6 +1466,7 @@ function setupOverview() {
   });
   $("o-start")?.addEventListener("click", async () => {
     try {
+      state.afterSaveTab = "base";
       await saveOverviewPreset();
       showTab("base");
     } catch (e) {
@@ -1486,6 +1491,10 @@ function setupOverview() {
       }
       state.projectConfirm = null;
       if (data.project?.charged) refreshAccount();
+      if (state.assetsPerProject) {
+        reloadStudio({ msg: t("home.spin.done", { file: data.file }), tab: "base" });
+        return;
+      }
       await loadPresets();
       renderProjects();
       fillConstructor(data.preset);
@@ -2032,6 +2041,16 @@ function setupRecipes() {
   $("r-preset")?.addEventListener("change", async () => {
     const file = $("r-preset").value;
     if (!file) return;
+    // A project of its own: the server switches to its base image, layers and frame sets, and the studio restarts on it.
+    if (state.assetsPerProject && state.projectFiles?.has(file) && file !== state.activeProject) {
+      try {
+        await api("/api/projects/open", { method: "POST", body: JSON.stringify({ file }) });
+        reloadStudio();
+      } catch (e) {
+        setProjectsMsg(e.message, "small err-msg");
+      }
+      return;
+    }
     // Choosing a series here switches the whole studio to it (Overview, Constructor), and the workspace remembers it.
     try {
       const data = await api(`/api/preset?file=${encodeURIComponent(file)}`);
@@ -6249,6 +6268,35 @@ function setupEngineDiagnostics() {
 }
 
 /* ---------- Boot ---------- */
+/**
+ * Opening, creating or restoring a project changes which base image, layers and frame sets the server works on, so the
+ * studio restarts on it; a short message and the tab to show survive the reload.
+ */
+function reloadStudio({ msg = "", tab = "" } = {}) {
+  try {
+    sessionStorage.setItem("series.flash", JSON.stringify({ msg, tab }));
+  } catch {
+    /* the flash is optional */
+  }
+  location.reload();
+}
+
+function showFlash() {
+  let flash = null;
+  try {
+    flash = JSON.parse(sessionStorage.getItem("series.flash") || "null");
+    sessionStorage.removeItem("series.flash");
+  } catch {
+    flash = null;
+  }
+  if (!flash) return;
+  if (flash.msg && $("o-msg")) {
+    $("o-msg").textContent = flash.msg;
+    $("o-msg").className = "small ok-msg";
+  }
+  if (flash.tab) showTab(flash.tab);
+}
+
 const setProjectsMsg = (text, cls = "small") => {
   const el = $("projects-msg");
   if (!el) return;
@@ -6283,7 +6331,7 @@ async function deleteProject(btn, current) {
   setProjectsMsg(t("projects.deletedMsg", { name: btn.dataset.name }), "small ok-msg");
   await loadPresets();
   await loadArchives().catch(() => {});
-  if (file.replace(/\.json$/, "") === current) {
+  if (file === state.activeProject || file.replace(/\.json$/, "") === current) {
     // the open project is gone: restart the studio on another one (the saved series no longer exists)
     state.archiveFile = null;
     setTimeout(() => location.reload(), 900);
@@ -6312,6 +6360,10 @@ function renderDeletedProjects(deleted) {
         armedRestore = null;
         setProjectsMsg(data.charged ? t("projects.restoredCharged", { n: data.charged }) : t("projects.restoredMsg"), "small ok-msg");
         if (data.charged) refreshAccount();
+        if (state.assetsPerProject) {
+          reloadStudio({ msg: data.charged ? t("projects.restoredCharged", { n: data.charged }) : t("projects.restoredMsg") });
+          return;
+        }
         await loadPresets();
         await loadArchives().catch(() => {});
         renderProjects();
@@ -6337,6 +6389,9 @@ async function renderProjects() {
   } catch {
     return;
   }
+  state.assetsPerProject = Boolean(data.assetsPerProject);
+  state.activeProject = data.active || null;
+  state.projectFiles = new Set((data.projects || []).map((p) => p.file));
   const q = data.quota || {};
   const quota = $("projects-quota");
   if (quota) {
@@ -6346,7 +6401,9 @@ async function renderProjects() {
         ? t("projects.quotaFull", { used: q.used, free: q.free, cost: q.extraCredits })
         : t("projects.quota", { used: q.used, free: q.free, left: q.freeLeft, cost: q.extraCredits });
   }
-  const current = (state.archiveFile || $("r-preset")?.value || "").replace(/\.json$/, "");
+  const current = state.assetsPerProject && state.activeProject
+    ? state.activeProject.replace(/\.json$/, "")
+    : (state.archiveFile || $("r-preset")?.value || "").replace(/\.json$/, "");
   list.innerHTML = "";
   if (!data.projects?.length) {
     list.innerHTML = `<li class="muted small">${escapeHtml(t("projects.empty"))}</li>`;
@@ -6356,7 +6413,11 @@ async function renderProjects() {
   for (const p of data.projects) {
     const li = document.createElement("li");
     if (p.id === current) li.classList.add("current");
-    const size = p.size != null ? ` · ${escapeHtml(t("projects.frames", { n: p.size }))}` : "";
+    const a = p.assets;
+    const assets = state.assetsPerProject && a
+      ? ` · ${escapeHtml(t("projects.assets", { sets: a.sets, frames: a.frames, mb: (a.bytes / 1048576).toFixed(1) }))}${a.hasBase ? "" : ` · ${escapeHtml(t("projects.noBase"))}`}`
+      : "";
+    const size = (p.size != null ? ` · ${escapeHtml(t("projects.frames", { n: p.size }))}` : "") + assets;
     li.innerHTML = `<span class="p-name">${escapeHtml(p.name)}</span><span class="p-meta">${escapeHtml(p.file)}${size}</span>${p.paid ? `<span class="badge paid">${escapeHtml(t("projects.paid", { n: p.credits }))}</span>` : ""}<span class="p-actions"><button type="button" class="btn small" data-project="${escapeHtml(p.file)}">${escapeHtml(p.id === current ? t("projects.current") : t("projects.open"))}</button> <button type="button" class="btn small" data-project-delete="${escapeHtml(p.file)}" data-name="${escapeHtml(p.name)}">${escapeHtml(t("projects.delete"))}</button></span>`;
     list.appendChild(li);
   }
@@ -6380,10 +6441,10 @@ async function renderProjects() {
  * (a new series inherits its text and traits from the preset that is loaded when it is first saved, so the
  * first one must not be an arbitrary alphabetical neighbour such as an abstract preset).
  */
-function startSeries(workspace) {
+function startSeries(workspace, active = null) {
   const presets = new Set((state.presets || []).map((p) => p.file));
   const archives = new Set((state.archives || []).map((a) => a.file));
-  const saved = workspace?.presetId ? `${workspace.presetId}.json` : "";
+  const saved = active || (workspace?.presetId ? `${workspace.presetId}.json` : "");
   const preferred = [saved, "pfp-portrait.json", "demo-series.json"].find((f) => f && presets.has(f));
   const preset = preferred || state.presets?.[0]?.file || "";
   const savedArchive = workspace?.lastArchive && archives.has(workspace.lastArchive) ? workspace.lastArchive : "";
@@ -6438,7 +6499,11 @@ async function boot() {
   const loads = await Promise.allSettled([loadPresets(), loadTemplates(), loadArchives(), refreshBaseStatus()]);
   loads.filter((r) => r.status === "rejected").forEach((r) => console.error(r.reason));
   const ws = await api("/api/workspace").catch(() => null);
-  const start = startSeries(ws?.workspace);
+  const pr = await api("/api/projects").catch(() => null);
+  state.assetsPerProject = Boolean(pr?.assetsPerProject);
+  state.activeProject = pr?.active || null;
+  state.projectFiles = new Set((pr?.projects || []).map((p) => p.file));
+  const start = startSeries(ws?.workspace, pr?.active || null);
   if (start.preset) {
     try {
       const data = await api(`/api/preset?file=${encodeURIComponent(start.preset)}`);
@@ -6463,6 +6528,7 @@ async function boot() {
   await restoreWorkspace();
   applyI18n(document);
   relabelEngineSelects();
+  showFlash();
 }
 
 boot().catch((e) => {
