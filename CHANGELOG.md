@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Внутрішнє: перший крок розрізання `server/index.mjs`
+- HTTP-помічники (`send`, `writeSse`, `attachStopOnDisconnect`, `readBody`, `httpError`) винесено в `server/http.mjs`. Поведінка не змінилась (чисте перенесення; перший крок плану з `docs/QUALITY-REVIEW.md`). Видимих змін немає.
+
 ### HEAD для сторінки входу
 - `HEAD /login` (а також `favicon.ico`, `og-card.png`, `sitemap.xml`, `robots.txt`) тепер відповідає 200 замість 404, як і `GET`: зовнішній моніторинг, що перевіряє сторінку входу запитом HEAD, більше не бачить хибної несправності. `HEAD /auth/nonce` і решта шляхів не змінилися.
 
