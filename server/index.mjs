@@ -94,7 +94,7 @@ import {
 } from "../src/index.mjs";
 import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
 import { buildDeployKit, deployChainChoice } from "../src/deploy-kit.mjs";
-import { composeArchive, overlaySet } from "../src/layers.mjs";
+import { composeArchive, overlaySet, previewEdition } from "../src/layers.mjs";
 import { buildLaunchAdvisor } from "../src/launch-advisor.mjs";
 import { buildMarketplaceKit } from "../src/marketplace-kit.mjs";
 import { writeFilesZip } from "../src/kit-zip.mjs";
@@ -3321,6 +3321,11 @@ async function handleApi(req, res, url) {
     if (!existsSync(layerDir)) {
       return send(res, 400, { error: `layers directory not found: ${layerDir}` });
     }
+    // Перегляд одного кадру: складаємо одне видання в пам'яті, нічого не пишемо на диск.
+    const previewing = body.preview !== undefined && body.preview !== null && body.preview !== "";
+    if (previewing && !/^\d{1,9}$/.test(String(body.preview))) {
+      return send(res, 400, { error: "preview must be an edition number" });
+    }
     // Гібрид: ручні шари поверх кадрів, які вже намалювала модель (набір `out/<over>`).
     if (body.over) {
       let setName;
@@ -3335,6 +3340,27 @@ async function handleApi(req, res, url) {
       }
       const only = Array.isArray(body.only) ? body.only.map((k) => String(k)).filter((k) => items.some((i) => i.key === k)) : null;
       const outName = `${setName}-layers`;
+      if (previewing) {
+        const frameFile = join(setDir, `${Number(body.preview)}.png`);
+        if (!existsSync(frameFile)) {
+          return send(res, 404, { error: `frame not found: ${setName}/${Number(body.preview)}.png` });
+        }
+        try {
+          const frame = previewEdition({ archive: loaded.archive, items, edition: body.preview, basePng: readFileSync(frameFile), layerDir, only, skipMissing: true });
+          return send(res, 200, {
+            ok: true,
+            mode: "preview",
+            over: setName,
+            edition: Number(body.preview),
+            layers: frame.layers.filter((l) => l !== "base"),
+            skipped: frame.skipped,
+            sha256: frame.sha256,
+            png: `data:image/png;base64,${frame.png.toString("base64")}`,
+          });
+        } catch (e) {
+          return send(res, e.status || 400, { error: String(e.message || e), code: "compose" });
+        }
+      }
       try {
         const report = overlaySet({ archive: loaded.archive, items, setDir, layerDir, outDir: join(P().out, outName), only, limit: body.limit });
         return send(res, 200, {
@@ -3357,6 +3383,23 @@ async function handleApi(req, res, url) {
     const basePath = join(P().input, baseName);
     if (!existsSync(basePath)) {
       return send(res, 400, { error: `base image not found: input/${baseName}` });
+    }
+    if (previewing) {
+      try {
+        const frame = previewEdition({ archive: loaded.archive, items, edition: body.preview, basePng: readFileSync(basePath), layerDir });
+        return send(res, 200, {
+          ok: true,
+          mode: "preview",
+          over: null,
+          edition: Number(body.preview),
+          layers: frame.layers.filter((l) => l !== "base"),
+          skipped: frame.skipped,
+          sha256: frame.sha256,
+          png: `data:image/png;base64,${frame.png.toString("base64")}`,
+        });
+      } catch (e) {
+        return send(res, e.status || 400, { error: String(e.message || e), code: "compose" });
+      }
     }
     const outDir = join(P().out, "layers");
     try {

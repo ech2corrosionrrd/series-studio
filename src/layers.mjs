@@ -163,6 +163,19 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
 }
 
 /**
+ * Compose ONE edition in memory (nothing is written) to look at it before running the whole series.
+ * Same code path as `composeArchive` / `overlaySet`, so the preview is byte-identical to the real frame.
+ * `basePng` is either the base image (full stack) or the model-drawn frame (hybrid, pass `skipMissing`).
+ * Throws an error with `status` 404 when the edition is not in the archive.
+ */
+export function previewEdition({ archive, items, edition, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false }) {
+  const n = Number(edition);
+  const recipe = Number.isInteger(n) ? (archive?.recipes || []).find((r) => Number(r.edition) === n) : null;
+  if (!recipe) throw Object.assign(new Error(`preview: edition ${edition} is not in the archive`), { status: 404 });
+  return composeEdition({ recipe, items, basePng, layerDir, readFile, only, skipMissing });
+}
+
+/**
  * Write `<edition>.png` plus `dna.json`. Prompts from the archive are copied, not regenerated.
  */
 export function composeArchive({
