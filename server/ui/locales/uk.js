@@ -1357,6 +1357,8 @@ export default {
   "econ.funnel.deniedSub": "відмов унікальних гаманців: {n}; частина потім отримала",
   "econ.funnel.started": "Почали оплату",
   "econ.funnel.repeat": "Повторні платники",
+  "econ.funnel.projectGate": "Вперлись у ліміт проєктів",
+  "econ.funnel.projectGateSub": "підтвердили оплату: {n} ({pct})",
   "econ.funnel.all30": "Усі гаманці, 30 днів",
   "econ.funnel.ext30": "Лише зовнішні, 30 днів",
   "econ.funnel.extTotal": "Лише зовнішні, за весь час",
