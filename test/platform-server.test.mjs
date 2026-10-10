@@ -113,6 +113,12 @@ describe("public mode end-to-end", () => {
     assert.doesNotMatch(String(html.text), /googleapis|gstatic/, "login page loads no third-party fonts");
     assert.doesNotMatch(String(html.text), /\{\{/, "no template placeholder is left in the login page");
     assert.match(String(html.text), /data-usd="4\.99" data-credits="100"/, "entry price comes from the real pack table");
+    // Only pictures made with Series Lab itself: every image on the login page is a local /img/ file, none is a stock or old-brand card.
+    const pics = [...String(html.text).matchAll(/<img[^>]+src="([^"]+)"/g)].map((m) => m[1]).concat([...String(html.text).matchAll(/(?:og|twitter):image"? content="([^"]+)"/g)].map((m) => m[1]));
+    assert.ok(pics.length >= 3);
+    for (const src of pics) assert.match(src, /^(https:\/\/lab\.w3ir\.io)?\/img\/[a-z0-9-]+\.jpg$/, `login picture ${src} must be a local Series Lab image`);
+    assert.doesNotMatch(String(html.text), /og-card\.png/);
+    assert.equal((await call("GET", "/img/og-series-lab.jpg", { raw: true })).status, 200);
     const shot = await call("GET", "/img/showcase-lion.jpg", { raw: true });
     assert.equal(shot.status, 200);
     assert.equal(shot.headers["content-type"], "image/jpeg");
