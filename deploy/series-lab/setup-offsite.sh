@@ -7,7 +7,7 @@
 # Run ON THE SERVER as root (backup.sh runs from root's cron):
 #   bash /opt/series-lab/src/deploy/series-lab/setup-offsite.sh
 #
-# Target: any S3-compatible storage with API keys (Hetzner Object Storage, Backblaze B2,
+# Target: any S3-compatible storage with API keys (Cloudflare R2 = free up to 10 GB, Hetzner Object Storage, Backblaze B2,
 # Cloudflare R2). Avoid OAuth remotes (Proton, Drive): the token expires and the backup dies
 # silently. Idempotent. A remote that fails the check is DELETED, never left half-working.
 set -euo pipefail
@@ -20,6 +20,8 @@ BUCKET=${BUCKET:-series-lab-backups}
 PROVIDER=${PROVIDER:-Other}                         # Other | Hetzner | Cloudflare | Backblaze...
 ENDPOINT=${ENDPOINT:-}                              # e.g. fsn1.your-objectstorage.com
 REGION=${REGION:-}                                  # Hetzner requires it (fsn1, nbg1, hel1); old rclone has no Hetzner provider: use PROVIDER=Other
+NO_CHECK_BUCKET=${NO_CHECK_BUCKET:-}                # 1 for a key scoped to ONE bucket (Cloudflare R2): rclone must not try to create/list buckets
+KEEP_PASSPHRASE=${KEEP_PASSPHRASE:-}                # 1 = reuse BACKUP_PASSPHRASE already in backup.env (the owner already stored it), when moving to another storage
 DEST=${BACKUP_DIR:-$BASE/backups}
 
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -27,7 +29,7 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] || die "run as root"
 [ -x "$RCLONE" ] || die "rclone not found (set RCLONE_BIN)"
 command -v openssl >/dev/null || die "openssl missing"
-[ -n "$ENDPOINT" ] || die "set ENDPOINT, e.g. ENDPOINT=fsn1.your-objectstorage.com PROVIDER=Hetzner"
+[ -n "$ENDPOINT" ] || die "set ENDPOINT, e.g. ENDPOINT=https://<account>.r2.cloudflarestorage.com PROVIDER=Cloudflare REGION=auto NO_CHECK_BUCKET=1"
 [ -f "$ENV_FILE" ] || die "$ENV_FILE missing — run install-backup.sh first"
 
 SNAP=$(ls -1dt "$DEST"/daily/*/ 2>/dev/null | head -1 || true)
@@ -38,18 +40,24 @@ echo "== 1/4 credentials (hidden input)"
 read -rsp "Access key ID:     " AKEY; echo
 read -rsp "Secret access key: " SKEY; echo
 [ -n "$AKEY" ] && [ -n "$SKEY" ] || die "empty key — nothing changed"
-PASS=$(openssl rand -base64 33)
+if [ "$KEEP_PASSPHRASE" = 1 ]; then
+  PASS=$(grep '^BACKUP_PASSPHRASE=' "$ENV_FILE" | head -1 | cut -d= -f2-)
+  [ -n "$PASS" ] || die "KEEP_PASSPHRASE=1 but no BACKUP_PASSPHRASE in $ENV_FILE"
+else
+  PASS=$(openssl rand -base64 33)
+fi
 
 echo "== 2/4 remote '$REMOTE'"
 "$RCLONE" config delete "$REMOTE" 2>/dev/null || true
 "$RCLONE" config create "$REMOTE" s3 provider="$PROVIDER" endpoint="$ENDPOINT" \
-  ${REGION:+region="$REGION"} access_key_id="$AKEY" secret_access_key="$SKEY" >/dev/null
+  ${REGION:+region="$REGION"} ${NO_CHECK_BUCKET:+no_check_bucket=true} access_key_id="$AKEY" secret_access_key="$SKEY" >/dev/null
 unset AKEY SKEY
-if ! "$RCLONE" lsd "$REMOTE:" --max-depth 1 >/dev/null 2>&1; then
+# lsf of the bucket itself: works for a key scoped to one bucket, which may not list all buckets
+if ! "$RCLONE" lsf "$REMOTE:$BUCKET" --max-depth 1 >/dev/null 2>&1 && ! "$RCLONE" lsd "$REMOTE:" --max-depth 1 >/dev/null 2>&1; then
   "$RCLONE" config delete "$REMOTE" 2>/dev/null || true
   die "remote unreachable — config DELETED (wrong keys, endpoint or no storage yet)"
 fi
-"$RCLONE" mkdir "$REMOTE:$BUCKET" 2>/dev/null || true
+[ -n "$NO_CHECK_BUCKET" ] || "$RCLONE" mkdir "$REMOTE:$BUCKET" 2>/dev/null || true
 
 echo "== 3/4 upload + round-trip"
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
@@ -69,6 +77,7 @@ mkdir "$TMP/open"
 openssl enc -d -aes-256-cbc -pbkdf2 -pass env:PASS -in "$TMP/back/$NAME" | tar -C "$TMP/open" -xzf -
 [ -s "$TMP/open/series-lab/users.db" ] || [ -s "$TMP/open/users.db" ] || die "round-trip failed: users.db not found after decrypt"
 echo "   round-trip ok"
+"$RCLONE" deletefile "$REMOTE:$BUCKET/$NAME" >/dev/null 2>&1 || true   # the probe is not a backup: do not leave it in the bucket
 
 echo "== 4/4 enabling in $ENV_FILE"
 sed -i '/^BACKUP_RCLONE_REMOTE=/d;/^BACKUP_PASSPHRASE=/d' "$ENV_FILE"

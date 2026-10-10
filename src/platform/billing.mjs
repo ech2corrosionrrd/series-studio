@@ -38,6 +38,9 @@ const ENGINE_FAMILY = {
   stability: "stability",
   kontext: "flux", fal: "flux", schnell: "flux", runware: "flux", pollinations: "flux",
 };
+// Kontext Pro (Replicate) is the most expensive Flux engine ($0.04/image) and the one we recommend, so it
+// keeps a minimum of 3 credits (55% gross margin at the cheapest pack instead of 33% at 2 credits).
+const ENGINE_MIN_CREDITS = { kontext: 3 };
 const FREE_ENGINES = new Set(["mock"]);
 
 /** Credits per ComfyUI/A1111 image — Lab support fee (GPU compute is free on user's PC). */
@@ -49,6 +52,7 @@ export function localGpuCreditCost(env = process.env) {
 /**
  * Credits for ONE image. Tariff table, with a margin floor: at the cheapest pack
  * price ($0.03/credit) an image must still cover 1.5 × provider cost.
+ * Per-engine minimum: ENGINE_MIN_CREDITS (kontext: 3).
  * Override per engine with env ENGINE_CREDIT_COSTS='{"kontext":3}'.
  * Local GPU (comfyui/a1111): LOCAL_GPU_CREDIT_COST (default 1) — support fee for Lab.
  */
@@ -61,7 +65,7 @@ export function creditCost(engine, { reference = false, final = false, costUsd =
   const row = FAMILY_CREDITS[ENGINE_FAMILY[engine] || "flux"];
   const base = row[(reference ? 2 : 0) + (final ? 1 : 0)];
   const floor = Math.ceil(Number(costUsd || 0) * 50 - 1e-9);
-  return Math.max(base, floor, 1);
+  return Math.max(base, floor, ENGINE_MIN_CREDITS[engine] || 0, 1);
 }
 
 // ── Wallets ──────────────────────────────────────────────────────────────────
