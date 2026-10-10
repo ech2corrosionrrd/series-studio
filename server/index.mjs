@@ -192,7 +192,7 @@ import { setManualBalance } from "../src/platform/resources.mjs";
 import { resourceCatalog, setAlertThreshold, setResourceNote } from "../src/platform/resource-catalog.mjs";
 import { decisionRule } from "../src/platform/decision.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
-import { admitProject, describeProjects, loadProjects, projectQuota, projectsConfig, registerProject } from "../src/projects.mjs";
+import { admitProject, describeProjects, isProject, loadProjects, projectQuota, projectsConfig, registerProject, saveProjects } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
@@ -581,6 +581,29 @@ function admitNewProject(file, body = {}) {
   return { isNew: true, charge: { wallet, amount: verdict.charge, engine: "project", note }, credits: verdict.charge };
 }
 
+const PROJECT_TRASH_PREFIX = "project:";
+
+/** Files that belong to a project and move to the trash with it: the preset and its recipe archive. Shared assets stay. */
+const projectFiles = (file) => [join(P().presets, file), join(P().out, file)];
+
+/** Put a deleted project back. A restored project is a new project for the limit: beyond the free ones it asks to confirm and charges once. */
+function restoreProjectFromTrash(trashId, body) {
+  if (!trashId) throw httpError(400, "file required");
+  const item = listTrash(trashDir()).find((i) => i.id === trashId);
+  if (!item || !String(item.reason || "").startsWith(PROJECT_TRASH_PREFIX)) throw httpError(404, "trash item is not a project");
+  const file = String(item.reason).slice(PROJECT_TRASH_PREFIX.length);
+  const admission = admitNewProject(file, body);
+  try {
+    restoreTrash({ root: P().root, trashDir: trashDir() }, trashId);
+    commitNewProject(file, admission);
+  } catch (e) {
+    refundCharge(admission.charge);
+    if (/already exists/.test(String(e.message))) throw httpError(409, "A project file with this name already exists: delete or rename it first.");
+    throw e;
+  }
+  return { file, charged: admission.credits };
+}
+
 function commitNewProject(file, admission) {
   if (!admission.isNew) return;
   registerProject(P(), walletProjects(), file, { charge: admission.credits });
@@ -588,7 +611,7 @@ function commitNewProject(file, admission) {
 
 function safeJsonName(file, fallback = "demo-series.json") {
   const base = basename(String(file || fallback)).replace(/[/\\]/g, "");
-  if (!base.endsWith(".json")) throw new Error("file must be *.json");
+  if (!base.endsWith(".json")) throw httpError(400, "file must be *.json");
   if (base.includes("..")) throw httpError(400, "bad path");
   return base;
 }
@@ -1951,7 +1974,30 @@ async function handleApi(req, res, url) {
     const cfg = projectsConfig();
     const quota = projectQuota(list, cfg);
     const exempt = !PUBLIC_MODE || isAdmin(currentWallet());
-    return send(res, 200, { projects: describeProjects(P(), list), quota: { ...quota, needsCharge: exempt ? false : quota.needsCharge, exempt } });
+    const deleted = listTrash(trashDir())
+      .filter((i) => String(i.reason || "").startsWith(PROJECT_TRASH_PREFIX))
+      .map((i) => ({ trashId: i.id, file: String(i.reason).slice(PROJECT_TRASH_PREFIX.length), at: i.at }));
+    return send(res, 200, { projects: describeProjects(P(), list), deleted, quota: { ...quota, needsCharge: exempt ? false : quota.needsCharge, exempt } });
+  }
+
+  if (pathname === "/api/projects/delete" && req.method === "POST") {
+    const body = await readBody(req);
+    const file = String(body.file || "");
+    if (!/^[a-zA-Z0-9._-]+\.json$/.test(file) || file.includes("..")) throw httpError(400, "bad file");
+    const list = walletProjects();
+    if (!isProject(list, file)) return send(res, 404, { error: "project not found" });
+    if (body.confirm !== true) throw httpError(400, "confirmation required");
+    // Reversible: the preset and its recipe archive go to the trash; sets, base image and layers are shared and stay.
+    const item = toTrash(projectFiles(file), `${PROJECT_TRASH_PREFIX}${file}`);
+    const next = list.filter((p) => p.file !== file);
+    saveProjects(P(), next);
+    return send(res, 200, { ok: true, file, trashId: item?.id || null, quota: projectQuota(next, projectsConfig()) });
+  }
+
+  if (pathname === "/api/projects/restore" && req.method === "POST") {
+    const body = await readBody(req);
+    const done = restoreProjectFromTrash(String(body.id || ""), body);
+    return send(res, 200, { ok: true, ...done, project: { new: true, charged: done.charged } });
   }
 
   if (pathname === "/api/archive/list" && req.method === "GET") {
@@ -2536,7 +2582,19 @@ async function handleApi(req, res, url) {
 
   if (pathname === "/api/trash/restore" && req.method === "POST") {
     const body = await readBody(req);
-    const item = restoreTrash({ root: P().root, trashDir: trashDir() }, String(body.id || ""));
+    const trashId = String(body.id || "");
+    const head = listTrash(trashDir()).find((i) => i.id === trashId);
+    if (head && String(head.reason || "").startsWith(PROJECT_TRASH_PREFIX)) {
+      const done = restoreProjectFromTrash(trashId, body);
+      return send(res, 200, { ok: true, restored: head, project: done, items: listTrash(trashDir()) });
+    }
+    let item;
+    try {
+      item = restoreTrash({ root: P().root, trashDir: trashDir() }, trashId);
+    } catch (e) {
+      if (/already exists/.test(String(e.message))) throw httpError(409, "A file with this name already exists: move or delete it first.");
+      throw e;
+    }
     return send(res, 200, { ok: true, restored: item, items: listTrash(trashDir()) });
   }
 
