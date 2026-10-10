@@ -80,6 +80,13 @@
       <p id="projects-quota" class="small" role="status"></p>
       <ul id="projects-list" class="projects-list"></ul>
       <p id="projects-msg" class="small" role="status"></p>
+      <div id="projects-move-wrap" class="row" hidden>
+        <label class="small" for="projects-move-set" data-i18n="projects.moveLabel">Перенести набір кадрів</label>
+        <select id="projects-move-set"></select>
+        <span class="small" data-i18n="projects.moveTo">у проєкт</span>
+        <select id="projects-move-to"></select>
+        <button type="button" class="btn small" id="projects-move-btn" data-i18n="projects.move">Перенести</button>
+      </div>
       <div id="projects-deleted-wrap" hidden>
         <h4 data-i18n="projects.deleted">Видалені проєкти</h4>
         <p class="muted small" data-i18n="projects.deletedHint"></p>
