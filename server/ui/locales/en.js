@@ -401,7 +401,7 @@ export default {
   "res.plan.alert.off": "off",
   "res.plan.alert.hit": "below threshold",
   "res.plan.alertOf": "Alert threshold of {name}, $",
-  "res.plan.alertNote": "Threshold: when a known provider balance is at or below it, a Telegram message is sent (checked every 6 hours, repeated at most once a day until the balance recovers). Replicate defaults to $5 because it is the recommended Kontext Pro engine and the first to run dry. An empty field switches the alert off for that provider.",
+  "res.plan.alertNote": "Threshold: when a known provider balance is at or below it, a Telegram message is sent (checked every 6 hours, repeated at most once a day until the balance recovers). The default is $5 for Replicate, OpenAI, Anthropic and fal (auto-reload is off; Replicate runs dry first). An empty field switches the alert off for that provider.",
   "res.note.ph": "note: plan, quota, remarks",
   "res.note.label": "Note about {name}",
   "res.role.openai": "gpt-image pictures, vision, LLM",
