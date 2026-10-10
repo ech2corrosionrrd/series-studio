@@ -102,6 +102,16 @@ export function funnel(days = 30, { scope = "all", db = openDb() } = {}) {
   const generators = set("SELECT DISTINCT wallet_address FROM transactions WHERE kind = 'debit' AND created_at >= ?");
   const savers = set("SELECT DISTINCT wallet_address FROM funnel_events WHERE event = 'curator_save' AND created_at >= ?");
   const exporters = set("SELECT DISTINCT wallet_address FROM funnel_events WHERE event = 'export' AND created_at >= ?");
+  // Sign-up friction: who was refused the welcome credits (empty wallet) and never got them after.
+  const denied = set("SELECT DISTINCT wallet_address FROM funnel_events WHERE event = 'welcome_denied' AND created_at >= ?");
+  const granted = set("SELECT DISTINCT wallet_address FROM transactions WHERE kind = 'welcome' AND created_at >= ?");
+  const everGranted = new Set(db.prepare("SELECT DISTINCT wallet_address FROM transactions WHERE kind = 'welcome'").all().map((r) => r.wallet_address));
+  const deniedLost = [...denied].filter((w) => !everGranted.has(w));
+  // Payment funnel: opened an order → paid → came back for a second purchase (all-time payments).
+  const started = set("SELECT DISTINCT wallet_address FROM sol_orders WHERE created_at >= ?");
+  const repeaters = new Set(
+    db.prepare(`SELECT wallet_address FROM payments WHERE 1 = 1${s.sql} GROUP BY wallet_address HAVING COUNT(*) >= 2`).all(...s.params).map((r) => r.wallet_address),
+  );
   const firstDebit = db.prepare(
     `SELECT COUNT(*) AS n FROM (SELECT wallet_address, MIN(created_at) m FROM transactions WHERE kind = 'debit'${s.sql} GROUP BY wallet_address HAVING m >= ?)`,
   ).get(...s.params, cutoff).n;
@@ -120,6 +130,12 @@ export function funnel(days = 30, { scope = "all", db = openDb() } = {}) {
     curator_save_wallets: savers.size,
     exported_wallets: exporters.size,
     paying_wallets: payers.size,
+    welcome_granted_wallets: granted.size,
+    welcome_denied_wallets: denied.size,
+    welcome_denied_lost_wallets: deniedLost.length,
+    pay_started_wallets: started.size,
+    conversion_started_to_paid_pct: pct(payers, started),
+    repeat_paying_wallets: [...payers].filter((w) => repeaters.has(w)).length,
     conversion_verified_to_paying_pct: pct(payers, verified),
     conversion_generate_to_save_pct: pct(savers, generators),
     conversion_save_to_export_pct: pct(exporters, savers),

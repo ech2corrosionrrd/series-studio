@@ -973,3 +973,4 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .sys-table th, .sys-table td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .sys-table th:first-child, .sys-table td:first-child { text-align: left; overflow-wrap: anywhere; }
 .sys-table th { color: var(--muted); font-weight: 600; }
+.econ-sub { margin: 12px 0 4px; font-size: 13px; font-weight: 600; opacity: 0.8; }
