@@ -274,7 +274,7 @@ series validate <preset.json>
   series hidden <bundle-dir> --uri <hidden.json-link> [--uri-prefix <prefix>] [--name <text>]
   series mint <release.json> --keypair <file> [--group <label>] [--public] [--dry-run]
   series reveal <bundle-dir> [--keypair <file>] [--check <revealed.json>] [--dry-run]
-  series compose <archive.json> --layers <dir> --base <png> [-o out/layers]
+  series compose <archive.json> --layers <dir> (--base <png> | --over <set-dir> [--only a,b]) [-o out/layers] [--preview <edition> [-o frame.png]]
   series verify <release.json> [--rpc <url>]
   series engines
   series doctor
