@@ -192,7 +192,7 @@ import { setManualBalance } from "../src/platform/resources.mjs";
 import { resourceCatalog, setAlertThreshold, setResourceNote } from "../src/platform/resource-catalog.mjs";
 import { decisionRule } from "../src/platform/decision.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
-import { adoptLegacyAssets, admitProject, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, projectAssetStats, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
+import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, projectAssetStats, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
@@ -3819,6 +3819,7 @@ function scopedPaths(wallet) {
     writeActiveProject(user, active);
   }
   adoptLegacyAssets(user, active, list.map((p) => p.file));
+  convertLegacyProjectTrash(user);
   const paths = projectPaths(user, active);
   ensureProjectDirs(paths);
   return paths;
