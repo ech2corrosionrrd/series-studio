@@ -1190,7 +1190,7 @@ export default {
   "help.cli.build": "build the recipe archive",
   "help.cli.render": "batch generation without a browser (with versions, spend log and daily cap)",
   "help.cli.triage": "automatic quality scoring of a set",
-  "help.cli.upscale": "double image size",
+  "help.cli.upscale": "double image size (copies go to a folder with the -2x suffix, originals stay intact)",
   "help.cli.repairPng": "turn JPEG saved under a .png name into real PNG (needs sharp)",
   "help.cli.c2pa": "sign the set's frames with C2PA (AI-generated) on your PC into a new set; needs a separate library (see C2PA.md)",
   "help.cli.pin": "upload a set to Arweave (Irys)",

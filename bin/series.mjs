@@ -36,6 +36,7 @@ import {
   exportDatasetZip,
   dispatchBatchNotification,
   sendTelegramNotification,
+  getTelegramConfig,
 } from "../src/index.mjs";
 import { loadKeys } from "../src/keys.mjs";
 import { repairPngFiles } from "../src/png-normalize.mjs";
@@ -1144,18 +1145,24 @@ async function cmdDataset(archivePath, opts = {}) {
 
 async function cmdNotify(message, opts = {}) {
   loadKeys();
-  const text = message || opts.message || "🔔 *Series Lab*: Тестове сповіщення з терміналу CLI успішно надіслано!";
+  const custom = message || opts.message;
   console.log(`Sending Telegram notification...`);
-  const res = await dispatchBatchNotification({
-    presetName: "Series Lab CLI",
-    total: 1,
-    success: 1,
-    failed: 0,
-  });
+  let res;
+  if (custom) {
+    // The text the user typed is the text that is sent (it used to be ignored in favour of a canned summary).
+    const cfg = getTelegramConfig();
+    res = cfg.configured
+      ? await sendTelegramNotification({ botToken: cfg.botToken, chatId: cfg.chatId, text: String(custom), parseMode: "" })
+          .then((r) => ({ sent: r.ok, error: r.error }))
+      : { sent: false, error: "Telegram notifications not configured (set SERIES_TELEGRAM_BOT_TOKEN + SERIES_TELEGRAM_CHAT_ID)" };
+  } else {
+    res = await dispatchBatchNotification({ presetName: "Series Lab CLI", total: 1, success: 1, failed: 0 });
+  }
   if (res.sent) {
     console.log(`✅ Telegram notification sent successfully!`);
   } else {
-    console.log(`❌ Telegram notification failed: ${res.error}`);
+    console.error(`❌ Telegram notification failed: ${res.error}`);
+    process.exitCode = 1; // a failed notification must not look like success to cron and scripts
   }
 }
 
@@ -1265,14 +1272,17 @@ async function cmdUpscale(dirPath, opts = {}) {
     console.log(`No images found in ${abs}`);
     return;
   }
-  const outDir = opts.out ? resolve(opts.out) : abs;
+  // Never overwrite the originals by default: their hashes feed the provenance hash and the bundle.
+  // To upscale in place, pass -o with the same folder on purpose.
+  const outDir = opts.out ? resolve(opts.out) : `${abs}-2x`;
   mkdirSync(outDir, { recursive: true });
   console.log(`Upscaling ${files.length} images from ${abs}...`);
 
   const { loadSharp, upscale2x } = await import("../src/upscale.mjs");
   const sharpMod = await loadSharp();
   if (!sharpMod) {
-    console.warn("[WARN] 'sharp' is not installed. To enable hardware 2x upscaling, run: npm install sharp");
+    console.error("[ERROR] 'sharp' is not installed. To enable 2x upscaling, run: npm install sharp");
+    process.exitCode = 1;
     return;
   }
 
