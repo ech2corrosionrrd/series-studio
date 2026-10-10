@@ -10,9 +10,9 @@ process.env.SERIES_DATA_DIR = dir;
 process.env.AUTH_SESSION_SECRET = "decision-test";
 process.env.WELCOME_REQUIRE_BALANCE = "0";
 
-const { closeAll, openDb } = await import("../src/platform/db.mjs");
+const { closeAll, openDb, nowIso } = await import("../src/platform/db.mjs");
 const { completeWalletSignIn, recordPayment } = await import("../src/platform/billing.mjs");
-const { decisionConfig, decisionRule, weeklyNumbers, buildWeeklyReport } = await import("../src/platform/decision.mjs");
+const { decisionConfig, decisionRule, weeklyNumbers, buildWeeklyReport, resourceAlertLines } = await import("../src/platform/decision.mjs");
 
 const W = (n) => `0x${String(n).padStart(40, "0")}`;
 const OPERATOR = W(1);
@@ -83,5 +83,18 @@ describe("decision rule and weekly report", () => {
     assert.match(text, /Дохід: \$24\.97/);
     assert.match(text, /Платників: 2 з 10; повторних: 1 з 2/);
     assert.ok(!/[*_`]/.test(text.replace(/_/g, "")), "plain text: nothing Telegram Markdown could choke on");
+  });
+
+  test("the report adds provider balances that need attention", () => {
+    const db = openDb(join(dir, "users.db"));
+    const st = db.prepare("INSERT INTO transactions (wallet_address, kind, credits, engine, note, created_at) VALUES (?, 'debit', -8, 'OpenAI gpt-image-1', '', ?)");
+    for (let i = 0; i < 30; i++) st.run(W(2), nowIso(new Date(Date.now() - 2 * 86_400_000)));
+    const env2 = { ...env(), OPENAI_API_KEY: "x" };
+    const unknown = resourceAlertLines({ db, env: env2 });
+    assert.ok(unknown.some((l) => /Не введено баланс/.test(l)), unknown.join(" | "));
+    db.prepare("INSERT OR REPLACE INTO resource_balances (provider, balance_usd, updated_at, note) VALUES ('openai', 1, ?, '')").run(nowIso());
+    const low = resourceAlertLines({ db, env: env2 });
+    assert.ok(low.some((l) => /OpenAI: критично/.test(l) && /поповнити на \$/.test(l)), low.join(" | "));
+    assert.match(buildWeeklyReport({ db, env: env2 }), /Ресурси \(баланси провайдерів\):/);
   });
 });

@@ -47,6 +47,12 @@ const SCHEMA = [
      created_at TEXT NOT NULL,
      rewarded_at TEXT,
      reward_credits INTEGER NOT NULL DEFAULT 0)`,
+  // Manual balances of API providers that have no balance endpoint (Admin → Ресурси).
+  `CREATE TABLE IF NOT EXISTS resource_balances (
+     provider TEXT PRIMARY KEY,
+     balance_usd REAL NOT NULL,
+     updated_at TEXT NOT NULL,
+     note TEXT NOT NULL DEFAULT '')`,
   `CREATE TABLE IF NOT EXISTS referral_codes (
      code TEXT PRIMARY KEY,
      wallet_address TEXT NOT NULL,

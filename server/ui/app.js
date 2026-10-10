@@ -5493,8 +5493,86 @@ function setupKits() {
 }
 
 
+/* ---------- Resources: recommended balance per provider ---------- */
+async function renderResourcePlan({ probe = false } = {}) {
+  const box = $("res-plan");
+  if (!box) return;
+  let plan;
+  try {
+    plan = await api(`/api/admin/resources/plan${probe ? "?probe=1" : ""}`);
+  } catch (e) {
+    box.innerHTML = `<p class="err-msg">${escapeHtml(e.message)}</p>`;
+    return;
+  }
+  const status = (p) => {
+    const label =
+      p.status === "ok" ? t("res.plan.status.ok")
+        : p.status === "low" ? t("res.plan.status.low")
+          : p.status === "critical" ? t("res.plan.status.critical")
+            : p.status === "unknown" ? t("res.plan.status.unknown")
+              : t("res.plan.status.off");
+    const cls = p.status === "ok" ? "on" : p.status === "critical" ? "fail" : "off";
+    return `<span class="prov-badge ${cls}">${escapeHtml(label)}</span>`;
+  };
+  const rows = plan.providers
+    .filter((p) => p.recommended_usd > 0 || p.balance_usd != null)
+    .map((p) => {
+      const bal = p.balance_usd != null ? p.balance_usd : "";
+      const srcNote = p.balance_source === "api"
+        ? t("res.plan.src.api")
+        : p.balance_source === "manual"
+          ? (p.balance_stale ? t("res.plan.src.stale") : t("res.plan.src.manual"))
+          : "";
+      const trendTxt = p.trend > 1.05 ? `↑ ×${p.trend}` : p.trend < 0.95 ? `↓ ×${p.trend}` : "→";
+      return `<tr>
+        <td><a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a>${p.low_data ? ` <em class="muted small">${escapeHtml(t("res.plan.lowData"))}</em>` : ""}</td>
+        <td class="num">${fmtUsd(p.spend_7d_usd)} / ${fmtUsd(p.spend_30d_usd)}<br><em class="muted small">${escapeHtml(t("res.plan.external", { usd: fmtUsd(p.spend_30d_external_usd) }))}</em></td>
+        <td class="num">${fmtUsd(p.projected_per_day_usd)}<br><em class="muted small">${escapeHtml(trendTxt)}</em></td>
+        <td class="num">${fmtUsd(p.reserve_usd)}</td>
+        <td class="num"><b>${fmtUsd(p.recommended_usd, 0)}</b></td>
+        <td class="num"><input type="number" min="0" step="1" class="res-plan-input" data-provider="${escapeHtml(p.id)}" value="${bal}" placeholder="—" aria-label="${escapeHtml(t("res.plan.balanceOf", { name: p.name }))}"> <button type="button" class="btn small res-plan-save" data-provider="${escapeHtml(p.id)}">${escapeHtml(t("res.plan.save"))}</button><br><em class="muted small">${escapeHtml(srcNote)}</em></td>
+        <td class="num">${p.runway_days == null ? "—" : escapeHtml(t("res.plan.days", { n: Math.floor(p.runway_days) }))}</td>
+        <td>${status(p)}</td>
+        <td class="num">${p.top_up_usd > 0 ? `<b>${fmtUsd(p.top_up_usd, 0)}</b>` : "—"}</td>
+      </tr>`;
+    })
+    .join("");
+  box.innerHTML = `<table class="econ-table res-plan-table"><thead><tr>
+      <th>${escapeHtml(t("res.plan.col.provider"))}</th>
+      <th class="num">${escapeHtml(t("res.plan.col.spend"))}</th>
+      <th class="num">${escapeHtml(t("res.plan.col.perDay"))}</th>
+      <th class="num">${escapeHtml(t("res.plan.col.reserve"))}</th>
+      <th class="num">${escapeHtml(t("res.plan.col.rec"))}</th>
+      <th class="num">${escapeHtml(t("res.plan.col.balance"))}</th>
+      <th class="num">${escapeHtml(t("res.plan.col.runway"))}</th>
+      <th>${escapeHtml(t("res.plan.col.status"))}</th>
+      <th class="num">${escapeHtml(t("res.plan.col.topup"))}</th>
+    </tr></thead><tbody>${rows || `<tr><td colspan="9" class="muted">${escapeHtml(t("res.plan.empty"))}</td></tr>`}</tbody></table>
+    <p class="econ-note">${escapeHtml(t("res.plan.total", { rec: fmtUsd(plan.totals.recommended_usd, 0), topup: fmtUsd(plan.totals.top_up_usd, 0), unknown: plan.totals.unknown_balances }))}</p>
+    <p class="econ-note">${escapeHtml(t("res.plan.method", { days: plan.settings.cover_days, share: Math.round(plan.settings.liability_share * 100), min: plan.settings.min_usd, credits: fmtNum(plan.outstanding_credits) }))}</p>`;
+  box.querySelectorAll(".res-plan-save").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.provider;
+      const input = box.querySelector(`.res-plan-input[data-provider="${id}"]`);
+      const raw = String(input?.value ?? "").trim();
+      btn.disabled = true;
+      try {
+        await api("/api/admin/resources/balance", {
+          method: "POST",
+          body: JSON.stringify({ provider: id, balance_usd: raw === "" ? null : Number(raw) }),
+        });
+        await renderResourcePlan();
+      } catch (e) {
+        box.insertAdjacentHTML("beforeend", `<p class="err-msg">${escapeHtml(e.message)}</p>`);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
 /* ---------- Resources ---------- */
 async function renderResources({ probe = false } = {}) {
+  renderResourcePlan({ probe });
   const grid = $("res-grid");
   const provBox = $("res-providers");
   const tgBox = $("res-telegram");
@@ -5635,6 +5713,7 @@ async function testTelegramNotify() {
 
 function setupResources() {
   $("res-probe")?.addEventListener("click", () => renderResources({ probe: true }));
+  $("res-plan-refresh")?.addEventListener("click", () => renderResourcePlan({ probe: true }));
   $("res-telegram")?.addEventListener("click", (e) => {
     if (e.target?.id === "res-tg-test") testTelegramNotify();
   });
