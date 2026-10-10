@@ -5696,6 +5696,18 @@ async function renderEconomy() {
     const m = d.model || {};
     const be = d.break_even || {};
     const f = d.funnel_30d || {};
+    const fe = d.funnel_30d_external || {};
+    const ft = d.funnel_total_external || {};
+    // One row of funnel KPIs: sign-up → welcome (granted / refused for good) → opened payment → paid → repeat.
+    const funnelRow = (x, title) => `<h5 class="econ-sub">${escapeHtml(title)}</h5><div class="econ-kpis">
+          ${econKpi(t("econ.funnel.new"), x.new_users ?? "—")}
+          ${econKpi(t("econ.funnel.granted"), x.welcome_granted_wallets ?? "—")}
+          ${econKpi(t("econ.funnel.denied"), x.welcome_denied_lost_wallets ?? "—", { sub: t("econ.funnel.deniedSub", { n: x.welcome_denied_wallets ?? 0 }) })}
+          ${econKpi(t("econ.funnel.started"), x.pay_started_wallets ?? "—")}
+          ${econKpi(t("econ.funnel.paying"), x.paying_wallets ?? "—", { sub: fmtPct(x.conversion_started_to_paid_pct) })}
+          ${econKpi(t("econ.funnel.repeat"), x.repeat_paying_wallets ?? "—")}
+          ${econKpi(t("econ.funnel.export"), x.exported_wallets ?? "—", { sub: fmtPct(x.conversion_generate_to_export_pct) })}
+        </div>`;
 
     const marginCls = g.gross_margin_pct != null && g.gross_margin_pct < 50 ? "warn" : g.gross_margin_pct != null ? "ok" : "";
     const packs = (m.packages || []).map((p) => `
@@ -5892,12 +5904,10 @@ async function renderEconomy() {
       </section>
       <section class="econ-section">
         <h4>${escapeHtml(t("econ.funnel"))}</h4>
-        <div class="econ-kpis">
-          ${econKpi(t("econ.funnel.new"), f.new_users ?? "—")}
-          ${econKpi(t("econ.funnel.verified"), f.new_verified ?? "—")}
-          ${econKpi(t("econ.funnel.paying"), f.paying_wallets ?? "—", { sub: fmtPct(f.conversion_verified_to_paying_pct) })}
-          ${econKpi(t("econ.funnel.export"), f.exported_wallets ?? "—", { sub: fmtPct(f.conversion_generate_to_export_pct) })}
-        </div>
+        ${funnelRow(f, t("econ.funnel.all30"))}
+        ${funnelRow(fe, t("econ.funnel.ext30"))}
+        ${funnelRow(ft, t("econ.funnel.extTotal"))}
+        <p class="econ-note">${escapeHtml(t("econ.funnel.note"))}</p>
       </section>`;
   } catch (e) {
     out.innerHTML = `<p class="err-msg">${escapeHtml(t("econ.fail", { err: e.message }))}</p>`;
