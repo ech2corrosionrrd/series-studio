@@ -183,7 +183,7 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     await waitFor(async () => (await page.inputValue("#x-file")) === "e2e-second.json", { what: "Export follows the second series" });
     await page.selectOption("#r-preset", "e2e-series.json");
     await waitFor(async () => (await page.inputValue("#x-file")) === "e2e-series.json", { what: "Export follows the switch back" });
-    await page.selectOption("#r-preset", "e2e-series.json");
+    await waitFor(async () => (await page.inputValue("#o-id")) === "e2e-series", { what: "Overview follows the switch too" });
     await tab("gallery");
     const srcs = await page.$$eval("#v-grid img", (imgs) => imgs.map((i) => i.getAttribute("src")));
     assert.ok(srcs.length > 0 && srcs.every((s) => /\?v=\d+$/.test(s)), `frame URLs: ${srcs.slice(0, 2)}`);
@@ -192,13 +192,13 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
   it("after a reload the studio reopens on the series the user was working on", async () => {
     await page.waitForTimeout(1200); // the studio saves the workspace 400 ms after a change
     const ws = (await studio.call("GET", "/api/workspace")).json?.workspace;
-    assert.equal(ws?.presetId, "e2e-second", `workspace: ${JSON.stringify(ws)}`);
+    assert.equal(ws?.presetId, "e2e-series", `workspace: ${JSON.stringify(ws)}`);
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForSelector("#o-id", { state: "attached" }); // the studio reopens on the last tab, Overview may be hidden
     await page.waitForTimeout(2500);
-    assert.equal(await page.inputValue("#o-id"), "e2e-second", "the series edited last is restored, not the alphabetical first");
-    assert.equal(await page.inputValue("#r-preset"), "e2e-second.json");
-    assert.equal(await page.inputValue("#x-file"), "e2e-second.json", "no stale archive in the Export selector");
+    assert.equal(await page.inputValue("#o-id"), "e2e-series", "the series chosen last is restored, not the alphabetical first");
+    assert.equal(await page.inputValue("#r-preset"), "e2e-series.json");
+    assert.equal(await page.inputValue("#x-file"), "e2e-series.json", "no stale archive in the Export selector");
   });
 
   it("switches the interface language", async () => {
