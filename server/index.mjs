@@ -882,7 +882,8 @@ function listSetImages(setName) {
       file: f,
       edition,
       versions: edition != null ? vcounts[String(edition)] || 1 : 1,
-      url: `/out/${dirName}/${f}`,
+      // The version in the URL makes the browser re-fetch a frame that was re-rendered or re-composed.
+      url: `/out/${dirName}/${f}?v=${Math.round(statSync(abs).mtimeMs)}`,
       path: `out/${dirName}/${f}`,
       qa: {
         ok: qa.ok,
