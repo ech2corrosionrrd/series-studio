@@ -48,8 +48,8 @@ def chart_opex_breakeven():
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.2), dpi=160)
 
     ax0 = axes[0]
-    items = ["VPS", "Домен/DNS", "Бекапи S3/B2"]
-    vals = [3960, 580, 720]
+    items = ["VPS", "Домен/DNS", "Копія Hetzner"]
+    vals = [3960, 580, 3960]
     bars = ax0.bar(items, vals, color=["#4C6EF5", "#12B886", "#FD7E14"])
     ax0.set_ylabel("грн / рік")
     ax0.set_title("Постійні витрати інфраструктури")
@@ -59,13 +59,13 @@ def chart_opex_breakeven():
 
     ax1 = axes[1]
     packs = ["Старт\n(4,99$)", "Креатор\n(14,99$)", "Профі\n(29,99$)"]
-    need = [9, 3, 2]  # approx packs/month to cover ~438 грн/міс
+    need = [15, 5, 3]  # approx packs/month to cover ~708 грн/міс (8 500 грн/рік)
     bars1 = ax1.bar(packs, need, color=["#7950F2", "#BE4BDB", "#E64980"])
     ax1.set_ylabel("пакетів / місяць")
     ax1.set_title("Орієнтовна точка беззбитковості")
     for b, v in zip(bars1, need):
         ax1.text(b.get_x() + b.get_width() / 2, v + 0.15, str(v), ha="center", fontsize=10)
-    ax1.set_ylim(0, 11)
+    ax1.set_ylim(0, 17)
 
     fig.suptitle("Експлуатаційні витрати та окупність сервісу", fontsize=12)
     fig.tight_layout()
