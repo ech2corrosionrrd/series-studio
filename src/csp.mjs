@@ -6,12 +6,9 @@
  * `POST /api/csp-report` і логуються без дублікатів. Спершу збираємо звіти в `report`,
  * і лише коли вони чисті кілька днів, вмикаємо `enforce`.
  *
- * Дві політики:
- * - сторінка входу (`/login`): скрипт в окремому файлі `/login.js`, тому `script-src` без `'unsafe-inline'`;
- *   лишаються шрифти Google (style-src і font-src);
- * - решта: скрипти лише свої. Сторонніх CDN бібліотек більше немає: web3.js і перевірка адреси EVM
- * збираються в server/ui/vendor/ (npm run vendor).
- * Обидві дозволяють Cloudflare Web Analytics (скрипт вставляє сам Cloudflare на проксі-сторінки;
+ * Одна політика для всіх сторінок: скрипти лише свої (сторонніх CDN бібліотек немає: web3.js і перевірка
+ * адреси EVM збираються в server/ui/vendor/, `npm run vendor`), шрифти сторінки входу лежать у
+ * server/site/fonts/. Cloudflare Web Analytics дозволено (скрипт вставляє сам Cloudflare на проксі-сторінки;
  * перший живий звіт 10.10.2026), інакше `enforce` його б блокував.
  */
 
@@ -31,18 +28,8 @@ const COMMON = [
   `report-uri ${CSP_REPORT_PATH}`,
 ];
 
-export function buildCsp(pathname = "/") {
-  if (pathname === "/login" || pathname === "/login/") {
-    return [
-      "default-src 'self'",
-      "script-src 'self' https://static.cloudflareinsights.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com data:",
-      "img-src 'self' data: blob: https:",
-      "connect-src 'self' https://cloudflareinsights.com",
-      ...COMMON,
-    ].join("; ");
-  }
+/** Одна політика для всіх сторінок (шлях лишено в сигнатурі, якщо знову знадобиться окрема політика). */
+export function buildCsp(_pathname = "/") {
   return [
     "default-src 'self'",
     "script-src 'self' https://static.cloudflareinsights.com",
