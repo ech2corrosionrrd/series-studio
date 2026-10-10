@@ -2430,6 +2430,7 @@ function setupRender() {
   });
   $("g-engine")?.addEventListener("change", () => {
     reLockPlan();
+    renderLocalGpuPanel();
     state.licenseAck = false;
     paintStrengthNote("g-strength-note", $("g-engine")?.value);
     paintLicenseWarning();
@@ -2469,6 +2470,7 @@ function setupRender() {
           pilot: Number($("g-pilot")?.value),
           first: Number($("g-first")?.value),
           only: $("g-only")?.value,
+          force: Boolean($("g-force")?.checked),
         }),
       });
       if ($("g-plan-out")) {
@@ -2689,7 +2691,22 @@ async function loadGalleryDir2(dir2) {
   }
 }
 
+/** Quality and triage results belong to one set: never show or apply them on another set. */
+function resetSetScopedPanels() {
+  state.galleryTriage = {};
+  const out = $("v-quality-out");
+  if (out) {
+    out.hidden = true;
+    out.innerHTML = "";
+  }
+  const status = $("v-triage-status");
+  if (status) status.textContent = "";
+  const applyBtn = $("v-triage-apply");
+  if (applyBtn) applyBtn.style.display = "none";
+}
+
 async function loadGalleryDir(dir) {
+  if (dir !== state.galleryDir) resetSetScopedPanels();
   const empty = $("v-empty");
   const grid = $("v-grid");
   if (!dir) {
@@ -3200,11 +3217,13 @@ function renderLocalGpuPanel() {
   if (!box) return;
   const me = state.account;
   const gpu = me?.localGpu;
-  box.hidden = false;
-  if (!gpu) {
+  const engine = $("g-engine")?.value || "";
+  // Only the engines that need a local GPU explain it; cloud engines show nothing here.
+  if (!gpu || (engine !== "comfyui" && engine !== "a1111")) {
     box.hidden = true;
     return;
   }
+  box.hidden = false;
   if (!gpu.enabled) {
     box.className = "local-gpu-panel off";
     box.innerHTML = `
@@ -3944,6 +3963,8 @@ function renderQuality(data) {
     parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.sim", { mean: data.similarity.mean, min: data.similarity.min, warn: data.similarity.warnBelow }))}</p>`);
   } else if (!data.hasBase) {
     parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.noBase"))}</p>`);
+  } else if (data.baseUnusable) {
+    parts.push(`<p class="warn-note"><b>${escapeHtml(t("gallery.quality.simSkipped"))}</b></p>`);
   }
   out.innerHTML = parts.join("");
   out.hidden = false;
