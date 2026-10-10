@@ -7,7 +7,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { openDb } from "../src/platform/db.mjs";
-import { completeWalletSignIn, getBalance, normalizeWallet, recordReferral, resolveReferrer, welcomeOffer } from "../src/platform/billing.mjs";
+import { PACKAGES, completeWalletSignIn, getBalance, normalizeWallet, recordReferral, resolveReferrer, welcomeOffer } from "../src/platform/billing.mjs";
 import { syncGenesisMints, walletGenesisCount } from "../src/platform/holders.mjs";
 import { engineStatus, generateImage, ENGINE_FLUX } from "../src/platform/imagegen.mjs";
 import { licenseWarning, platformFluxModel } from "../src/license.mjs";
@@ -141,7 +141,9 @@ export function selfHostLoginImports(html) {
 function loginPage() {
   const p = siteFile("login.html");
   if (!existsSync(p)) return null;
-  return readFileSync(p, "utf8");
+  // The entry price comes from the real pack table, never typed into the page by hand.
+  const start = PACKAGES.start;
+  return readFileSync(p, "utf8").replace("{{PACK_USD}}", String(start.usd)).replace("{{PACK_CREDITS}}", String(start.credits));
 }
 
 /** Login script (kept out of the HTML so the CSP needs no 'unsafe-inline'). */
@@ -172,7 +174,7 @@ async function routes(req, res, url) {
   }
 
   // HEAD answers the same static pages as GET (uptime monitors probe /login with HEAD); it never reaches /auth/nonce and the like.
-  const headStatic = method === "HEAD" && /^\/(login|login\.js|favicon\.ico|og-card\.png|sitemap\.xml|robots\.txt)$/.test(path);
+  const headStatic = method === "HEAD" && /^\/(login|login\.js|img\/showcase-lion\.jpg|favicon\.ico|og-card\.png|sitemap\.xml|robots\.txt)$/.test(path);
   if (method === "GET" || headStatic) {
     if (path === "/og-card.png" || path === "/sitemap.xml" || path === "/robots.txt") {
       const file = siteFile(path.slice(1));
@@ -210,6 +212,12 @@ async function routes(req, res, url) {
       const page = loginPage();
       if (!page) throw new HttpError(404, "login.html не знайдено");
       send(res, 200, page, "text/html; charset=utf-8");
+      return true;
+    }
+    if (/^\/(fonts\/[a-z0-9-]+\.woff2|img\/[a-z0-9-]+\.jpg)$/.test(path)) {
+      const file = siteFile(path.slice(1));
+      if (!existsSync(file)) throw new HttpError(404, "image not found");
+      send(res, 200, readFileSync(file), path.endsWith(".jpg") ? "image/jpeg" : "font/woff2", { "Cache-Control": CACHE.asset });
       return true;
     }
     if (path === "/login.js") {

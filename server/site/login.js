@@ -28,8 +28,10 @@ const I18N = {
     st34t: "Конструктор і рецепти", st34d: "Промпт, риси, тексти без рендеру",
     st56t: "Генерація і відбір", st56d: "Пілоти, keep / redo, версії",
     st7t: "Експорт", st7d: "Архів випуску OpenSea / launchpad",
-    hero: "Серія від пресету<br>до архіву випуску.",
-    "hero.p": "Один гаманець — ваші пресети, набори й кредити. Підпис лише для входу: без gas і без доступу до коштів.",
+    hero: "З однієї базової картинки<br>вся серія.",
+    "hero.p": "Для авторів колекцій: з базової картинки серії — узгоджені кадри й архів, готовий до випуску.",
+    "sc.cap": "Базова картинка серії (ліворуч) і 4 кадри: той самий герой, інші шарф, фон, вираз. Реальний тест.",
+    price: "Далі: від ${usd} за {credits} кредитів, USDC у Solana, без підписки. Ціну видно до запуску.",
     "pill.sign": "Лише підпис", "pill.nc": "Non-custodial", "pill.credits": "Кредити за кадри",
     ms1: "1–2 Огляд", ms2: "3–4 Рецепти", ms3: "5–6 Кадри", ms4: "7 ZIP",
     back: "← На старт",
@@ -51,7 +53,7 @@ const I18N = {
     "modal.note": "EVM · MetaMask / Coinbase · Solana · Phantom",
     woEarly: "{n} безкоштовних кредитів — перші {limit} (лишилось {left})",
     woNormal: "{n} безкоштовних кредитів при першому вході",
-    woCond: "Умова: гаманець не порожній — щонайменше {sol} SOL або {eth} ETH на Base. Антибот-перевірка; нічого не списується.",
+    woCond: "Захист від ботів: потрібен активний гаманець (щонайменше {sol} SOL або {eth} ETH на Base). Нічого не списується.",
     woFree: "Без умов — нарахування одразу після підпису.",
     woScale: "Приблизно на {n} кадрів бюджетним рушієм у Series Lab.",
     stNonce: "Запитуємо nonce…",
@@ -68,6 +70,10 @@ const I18N = {
     "mw.phantom": "Відкрити у Phantom (Solana)",
     "mw.metamask": "Відкрити у MetaMask",
     "mw.coinbase": "Відкрити у Coinbase Wallet",
+    "dw.hint": "Гаманця в цьому браузері немає. Встановіть розширення, потім оновіть сторінку:",
+    "dw.phantom": "Встановити Phantom (Solana)",
+    "dw.metamask": "Встановити MetaMask",
+    "dw.coinbase": "Встановити Coinbase Wallet",
     chainEvm: "EVM",
     chainSol: "Solana",
     docTitle: "Series Lab — вхід",
@@ -95,8 +101,10 @@ const I18N = {
     st34t: "Constructor & recipes", st34d: "Prompt, traits, texts without render",
     st56t: "Generate & review", st56d: "Pilots, keep / redo, versions",
     st7t: "Export", st7d: "Release archive for OpenSea / launchpad",
-    hero: "From preset<br>to release archive.",
-    "hero.p": "One wallet — your presets, sets and credits. Signature is for sign-in only: no gas, no access to funds.",
+    hero: "One base image,<br>the whole series.",
+    "hero.p": "For collection authors: from the series base image to consistent frames and a release-ready archive.",
+    "sc.cap": "The series base image (left) and 4 frames: same hero, different scarf, background, expression. A real test.",
+    price: "After that: from ${usd} for {credits} credits, USDC on Solana, no subscription. You see the price before you run.",
     "pill.sign": "Signature only", "pill.nc": "Non-custodial", "pill.credits": "Credits per frame",
     ms1: "1–2 Overview", ms2: "3–4 Recipes", ms3: "5–6 Frames", ms4: "7 ZIP",
     back: "← Home",
@@ -118,7 +126,7 @@ const I18N = {
     "modal.note": "EVM · MetaMask / Coinbase · Solana · Phantom",
     woEarly: "{n} free credits — first {limit} users ({left} left)",
     woNormal: "{n} free credits on your first sign-in",
-    woCond: "Condition: the wallet must not be empty — at least {sol} SOL or {eth} ETH on Base. Anti-bot check; nothing is charged.",
+    woCond: "Bot protection: the wallet must be active (at least {sol} SOL or {eth} ETH on Base). Nothing is charged.",
     woFree: "No conditions — credited right after the signature.",
     woScale: "About {n} frames on a budget engine in Series Lab.",
     stNonce: "Requesting nonce…",
@@ -135,6 +143,10 @@ const I18N = {
     "mw.phantom": "Open in Phantom (Solana)",
     "mw.metamask": "Open in MetaMask",
     "mw.coinbase": "Open in Coinbase Wallet",
+    "dw.hint": "No wallet in this browser. Install an extension, then reload the page:",
+    "dw.phantom": "Install Phantom (Solana)",
+    "dw.metamask": "Install MetaMask",
+    "dw.coinbase": "Install Coinbase Wallet",
     chainEvm: "EVM",
     chainSol: "Solana",
     docTitle: "Series Lab — sign in",
@@ -213,6 +225,7 @@ function applyLocale() {
   });
   if (!$("connect").disabled) $("connect-label").textContent = t("connect");
   fillWelcome();
+  fillPrice();
 }
 
 function fillWelcome() {
@@ -226,6 +239,12 @@ function fillWelcome() {
     : t("woFree");
   $("wo-scale").textContent = t("woScale", { n: Math.floor(o.credits / 4) });
   $("welcome-offer").classList.add("on");
+}
+
+function fillPrice() {
+  const el = $("price-note");
+  const usd = Number(el.dataset.usd), credits = Number(el.dataset.credits);
+  el.textContent = usd > 0 && credits > 0 ? t("price", { usd, credits }) : "";
 }
 
 document.querySelectorAll(".lang button").forEach((b) => {
@@ -372,6 +391,7 @@ function connect(entry) {
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const showMobileWallets = () => { if (isMobile) $("mobile-wallets").classList.add("on"); };
+const showDesktopWallets = () => { if (!isMobile) $("desktop-wallets").classList.add("on"); };
 (() => {
   const url = location.href;
   $("mw-phantom").href = `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(location.origin)}`;
@@ -382,7 +402,13 @@ const showMobileWallets = () => { if (isMobile) $("mobile-wallets").classList.ad
 
 $("connect").onclick = () => {
   const providers = detectProviders();
-  if (!providers.length) { showMobileWallets(); setStatus(t("errNoWallet"), "err"); return; }
+  if (!providers.length) {
+    showMobileWallets();
+    showDesktopWallets();
+    // The install block already says it on desktop; keep the red line for phones, where the block is the app links.
+    setStatus(isMobile ? t("errNoWallet") : "", "err");
+    return;
+  }
   if (providers.length === 1 && providers[0].id !== "injected") { connect(providers[0]); return; }
   openModal(providers);
 };
