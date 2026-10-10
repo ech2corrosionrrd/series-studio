@@ -114,7 +114,7 @@ node bin/series.mjs render presets/demo-series.json --engine mock --limit 5
 node bin/series.mjs triage out/mock-s0.45 --provider heuristic --apply
 node bin/series.mjs provenance out/fal-s0.45 -o out/provenance.json
 node bin/series.mjs dataset out/demo-archive.json --images out/fal-s0.45 --trigger my_hero -o out/dataset.zip
-node bin/series.mjs upscale out/fal-s0.45
+node bin/series.mjs upscale out/fal-s0.45            # результат в out/fal-s0.45-2x, оригінали не чіпає
 node bin/series.mjs repair-png out/pollinations-s0.45 --dry-run
 node bin/series.mjs c2pa out/fal-s0.45 --cert signer-chain.pem --key signer-key.pem
 node bin/series.mjs pin out/fal-s0.45 --dry-run
@@ -156,7 +156,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 | `bin/series.mjs` | CLI |
 | `scripts/` | Перевірки документів, збір сайту, `build-vendor.mjs` (бібліотеки для браузера) |
 | `server/ui/vendor/` | Зібрані з наших залежностей `solana-tx.js` і `evm-address.js` (`npm run vendor`) |
-| `test/` | Автотести (`npm test`) |
+| `test/` | Автотести (`npm test`; `npm run coverage` — з порогом покриття `src/`; `npm run test:repeat` — пошук нестабільних) |
 | `docs/` | Документація, індекс [docs/README.md](docs/README.md) |
 | `diploma/` | Пакет документів дипломної роботи (не входить до npm-пакета й Docker) |
 

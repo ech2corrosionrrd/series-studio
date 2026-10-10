@@ -548,7 +548,7 @@ async function primaryBasePng() {
 function safeJsonName(file, fallback = "demo-series.json") {
   const base = basename(String(file || fallback)).replace(/[/\\]/g, "");
   if (!base.endsWith(".json")) throw new Error("file must be *.json");
-  if (base.includes("..")) throw new Error("bad path");
+  if (base.includes("..")) throw httpError(400, "bad path");
   return base;
 }
 
@@ -814,7 +814,7 @@ function setDirName(engine, strength) {
 function safeSetName(name) {
   const base = basename(String(name || "")).replace(/[/\\]/g, "");
   if (!base || base.includes("..") || !/^[a-z0-9._-]+$/i.test(base)) {
-    throw new Error("bad set name");
+    throw httpError(400, "bad set name");
   }
   return base;
 }
@@ -1261,7 +1261,7 @@ async function resourcesPayloadLive() {
 
 async function runPrimaryGenerate({ wish, engine, strength, useRef = false, makePrimary = true, seed }) {
   const text = String(wish || "").trim();
-  if (!text) throw new Error("wish text required");
+  if (!text) throw httpError(400, "wish text required");
   const ctx = engineCtx(process.env);
   mkdirSync(P().input, { recursive: true });
 
@@ -1677,7 +1677,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/preset/save" && req.method === "POST") {
     const body = await readBody(req);
     const preset = body.preset;
-    if (!preset || typeof preset !== "object") throw new Error("preset required");
+    if (!preset || typeof preset !== "object") throw httpError(400, "preset required");
     const checked = checkPreset(preset);
     if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
     const id = String(preset.id || "").replace(/[^a-zA-Z0-9._-]/g, "-");
@@ -1944,7 +1944,7 @@ async function handleApi(req, res, url) {
 
   if (pathname === "/api/base/upload" && req.method === "POST") {
     const body = await readBody(req);
-    if (!body.data) throw new Error("data (base64) required");
+    if (!body.data) throw httpError(400, "data (base64) required");
     mkdirSync(P().input, { recursive: true });
     const orig = basename(String(body.filename || "primary.png"));
     const ext = extname(orig).toLowerCase() || ".png";
@@ -2001,7 +2001,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/base/primary" && req.method === "POST") {
     const body = await readBody(req);
     const file = basename(String(body.file || ""));
-    if (!file) throw new Error("file required");
+    if (!file) throw httpError(400, "file required");
     const src = join(P().input, file);
     if (!existsSync(src)) throw new Error("file not found");
     const ext = extname(file).toLowerCase() || ".png";
@@ -2019,7 +2019,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/base/delete" && req.method === "POST") {
     const body = await readBody(req);
     const file = basename(String(body.file || ""));
-    if (!file || file.includes("..")) throw new Error("bad file");
+    if (!file || file.includes("..")) throw httpError(400, "bad file");
     const path = join(P().input, file);
     if (!existsSync(path)) throw new Error("not found");
     const trashed = toTrash([path], "base image deleted");
@@ -2033,7 +2033,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/base/wish" && req.method === "POST") {
     const body = await readBody(req);
     const text = String(body.wish || "").trim();
-    if (!text) throw new Error("wish text required");
+    if (!text) throw httpError(400, "wish text required");
     mkdirSync(P().input, { recursive: true });
     const wish = {
       wish: text,
@@ -2048,7 +2048,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/base/generate" && req.method === "POST") {
     const body = await readBody(req);
     const text = String(body.wish || readWish()?.wish || "").trim();
-    if (!text) throw new Error("wish text required");
+    if (!text) throw httpError(400, "wish text required");
     {
       const assembled = buildWishPrompt(text);
       const blocked = blockedPrompts([`${assembled}\n${text}`]);
