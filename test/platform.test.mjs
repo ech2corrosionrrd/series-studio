@@ -275,6 +275,19 @@ describe("public site", () => {
     assert.match(site.renderCollectionHtml(slug), /<style>[\s\S]*\.grid\{/);
     assert.match(site.renderDemoSection(), /\/c\/my-cool-collection/);
   });
+
+  test("collections from the previous platform are neither served nor listed (only Series Lab images)", () => {
+    const dir = join(site.publicDir(), "old-platform-set");
+    mkdirSync(join(dir, "img"), { recursive: true });
+    writeFileSync(join(dir, "img", "1.png"), "png");
+    writeFileSync(join(dir, "manifest.json"), JSON.stringify({ slug: "old-platform-set", title: "Old Platform Set", images: ["1.png"], created_at: "2026-06-24T18:23:06.092094+00:00" }));
+    assert.equal(site.loadCollection("old-platform-set"), null);
+    assert.equal(site.renderCollectionHtml("old-platform-set"), null);
+    assert.equal(site.collectionImagePath("old-platform-set", "1.png"), null);
+    assert.ok(!site.listCollections(50).some((c) => c.slug === "old-platform-set"));
+    writeFileSync(join(dir, "manifest.json"), JSON.stringify({ slug: "old-platform-set", title: "No Date", images: ["1.png"] }));
+    assert.equal(site.loadCollection("old-platform-set"), null, "no created_at means not provably made in Series Lab");
+  });
 });
 
 describe("vault", () => {
