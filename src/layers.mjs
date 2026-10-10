@@ -4,6 +4,7 @@
  *
  * Files: `<layers>/<trait key>/<value>.png`, or `option.layer` relative to that directory.
  * `None` paints nothing. `skipDna` still paints; it only stays out of the DNA string.
+ * Paint order: by the optional trait field `z` (low = bottom), else by position in the preset.
  *
  * Two modes: `composeArchive` stacks every trait from layers on the base image (all layers must
  * exist); `overlaySet` is the hybrid: frames the model already drew are the bottom, and only the
@@ -90,6 +91,26 @@ function assertInside(root, file) {
   return target;
 }
 
+/** Numeric `z` of a trait, or null when it is not set / not a finite number. */
+export function traitZ(trait) {
+  const raw = trait?.z;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Paint order of the traits: ascending `z`, bottom first. A trait without `z` takes its position in
+ * the preset, so a preset with no `z` anywhere paints in the old order. Ties keep the preset order.
+ * Only the painting order changes: DNA keys and trait order in the preset are untouched.
+ */
+export function paintOrder(items) {
+  return (items || [])
+    .map((trait, index) => ({ trait, index, z: traitZ(trait) ?? index }))
+    .sort((a, b) => a.z - b.z || a.index - b.index)
+    .map((x) => x.trait);
+}
+
 /**
  * Stack base + trait PNGs for one recipe.
  * @returns {{ png: Buffer, dna: string, prompt: string, edition: number, sha256: string, layers: string[] }}
@@ -101,7 +122,7 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
   const used = ["base"];
   const skipped = [];
   const onlySet = Array.isArray(only) && only.length ? new Set(only.map(String)) : null;
-  for (const trait of items) {
+  for (const trait of paintOrder(items)) {
     if (onlySet && !onlySet.has(trait.key)) continue;
     const value = recipe?.traits?.[trait.key] ?? NONE;
     if (!value || value === NONE) continue;
