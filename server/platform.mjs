@@ -141,6 +141,13 @@ export function selfHostLoginImports(html) {
 function loginPage() {
   const p = siteFile("login.html");
   if (!existsSync(p)) return null;
+  return readFileSync(p, "utf8");
+}
+
+/** Login script (kept out of the HTML so the CSP needs no 'unsafe-inline'). */
+function loginScript() {
+  const p = siteFile("login.js");
+  if (!existsSync(p)) return null;
   // Series Lab opens the studio on this origin.
   return selfHostLoginImports(
     readFileSync(p, "utf8").replace("const APP_URL = 'https://ai.w3ir.io';", `const APP_URL = ${JSON.stringify(process.env.AUTH_APP_URL || "/studio/")};`),
@@ -165,7 +172,7 @@ async function routes(req, res, url) {
   }
 
   // HEAD answers the same static pages as GET (uptime monitors probe /login with HEAD); it never reaches /auth/nonce and the like.
-  const headStatic = method === "HEAD" && /^\/(login|favicon\.ico|og-card\.png|sitemap\.xml|robots\.txt)$/.test(path);
+  const headStatic = method === "HEAD" && /^\/(login|login\.js|favicon\.ico|og-card\.png|sitemap\.xml|robots\.txt)$/.test(path);
   if (method === "GET" || headStatic) {
     if (path === "/og-card.png" || path === "/sitemap.xml" || path === "/robots.txt") {
       const file = siteFile(path.slice(1));
@@ -203,6 +210,12 @@ async function routes(req, res, url) {
       const page = loginPage();
       if (!page) throw new HttpError(404, "login.html не знайдено");
       send(res, 200, page, "text/html; charset=utf-8");
+      return true;
+    }
+    if (path === "/login.js") {
+      const script = loginScript();
+      if (!script) throw new HttpError(404, "login.js not found");
+      send(res, 200, script, "text/javascript; charset=utf-8", { "Cache-Control": "private, no-cache" });
       return true;
     }
     if (path === "/auth/welcome-offer") {
