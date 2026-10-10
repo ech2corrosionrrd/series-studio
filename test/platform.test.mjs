@@ -145,17 +145,20 @@ describe("billing ledger", () => {
   });
 
   test("credit cost margin floor and overrides", () => {
-    assert.equal(billing.creditCost("kontext", { reference: true, costUsd: 0.04 }), 2);
+    assert.equal(billing.creditCost("kontext", { reference: true, costUsd: 0.04 }), 3, "Kontext Pro keeps a 3-credit minimum");
     assert.equal(billing.creditCost("openai", { reference: true, costUsd: 0.07 }), 6);
-    assert.equal(billing.creditCost("kontext", { reference: false, costUsd: 0.04 }), 2, "margin floor lifts 1 → 2");
+    assert.equal(billing.creditCost("kontext", { reference: false, costUsd: 0.04 }), 3, "engine minimum lifts 2 → 3");
+    assert.equal(billing.creditCost("pollinations", { reference: true, costUsd: 0.02 }), 2, "cheaper Flux engines stay at 2");
+    assert.equal(billing.creditCost("fal", { reference: false, costUsd: 0.025 }), 2, "margin floor lifts 1 → 2");
     assert.equal(billing.creditCost("mock"), 0);
     assert.equal(billing.creditCost("comfyui"), 1, "local GPU support fee");
     assert.equal(billing.creditCost("a1111"), 1);
     process.env.LOCAL_GPU_CREDIT_COST = "2";
     assert.equal(billing.creditCost("comfyui"), 2);
     delete process.env.LOCAL_GPU_CREDIT_COST;
-    process.env.ENGINE_CREDIT_COSTS = '{"mock":3}';
+    process.env.ENGINE_CREDIT_COSTS = '{"mock":3,"kontext":2}';
     assert.equal(billing.creditCost("mock"), 3);
+    assert.equal(billing.creditCost("kontext", { reference: true, costUsd: 0.04 }), 2, "an explicit override beats the engine minimum");
     delete process.env.ENGINE_CREDIT_COSTS;
   });
 

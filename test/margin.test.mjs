@@ -32,8 +32,11 @@ process.env.LOCAL_GPU_CREDIT_COST = "1";
 
 describe("margin / unit economics", () => {
   test("apiUsdPerOp uses tariff table by credits", () => {
-    assert.equal(apiUsdPerOp("kontext", 1), 0.003);
-    assert.equal(apiUsdPerOp("kontext", 2), 0.025);
+    assert.equal(apiUsdPerOp("fal", 1), 0.003);
+    assert.equal(apiUsdPerOp("fal", 2), 0.025);
+    // Kontext Pro is priced by engine ($0.04), not by the cheaper Flux family table
+    assert.equal(apiUsdPerOp("kontext", 1), 0.04);
+    assert.equal(apiUsdPerOp("kontext", 3), 0.04);
     assert.equal(apiUsdPerOp("openai", 4), 0.042);
     assert.equal(apiUsdPerOp("openai", 8), 0.167);
     assert.equal(apiUsdPerOp("comfyui", 1), 0);
@@ -73,7 +76,7 @@ describe("margin / unit economics", () => {
     assert.equal(recordPayment("tx-m1", wallet, 100, 4.99, { db }), true);
     // Mark verified already done; debit 10 flux ops at 1 credit each.
     for (let i = 0; i < 10; i++) {
-      assert.equal(deductCredits(wallet, 1, { engine: "kontext", db }), true);
+      assert.equal(deductCredits(wallet, 1, { engine: "fal", db }), true);
     }
     const gross = grossMarginReport(null, db);
     assert.equal(gross.revenue_usd, 4.99);
@@ -89,6 +92,9 @@ describe("margin / unit economics", () => {
     assert.equal(net.fixed_monthly_usd, 18);
     assert.equal(net.hosting_monthly_usd, 8);
     assert.equal(net.saas_monthly_usd, 10);
+    // external-only view: never better than the all-payments view, and its revenue matches the gross report
+    assert.equal(net.revenue_usd_external, gross.revenue_usd_external);
+    assert.ok(net.net_profit_external_usd <= net.net_profit_usd);
     const be = breakEvenSummary({ db });
     assert.ok(be.contribution_usd > 0);
     assert.ok(be.break_even_count >= 1);
@@ -97,7 +103,7 @@ describe("margin / unit economics", () => {
 
   test("estimatedApiCostUsd weights by per-op credits", () => {
     const cost = estimatedApiCostUsd([
-      { engine: "kontext", count: 10, credits_spent: 10 },
+      { engine: "fal", count: 10, credits_spent: 10 },
       { engine: "openai", count: 2, credits_spent: 8 },
     ]);
     assert.equal(Math.round(cost * 1000) / 1000, Math.round((10 * 0.003 + 2 * 0.042) * 1000) / 1000);

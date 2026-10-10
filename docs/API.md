@@ -140,7 +140,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 | POST | `/api/holder/claim` | отримати разовий бонус холдера |
 | GET | `/api/local-gpu` | політика Local GPU (доступність loopback / `SERIES_LOCAL_GPU`) |
 | GET | `/api/engines` | рушії + `creditCosts` (кредити за кадр) |
-| GET | `/api/admin/economy?days=` | `7` \| `30` \| `all` — маржа, накладні, сценарії (адмін) |
+| GET | `/api/admin/economy?days=` | `7` \| `30` \| `all` — маржа, накладні, сценарії (адмін); у `net` є `net_profit_external_usd` і `revenue_usd_external`: чистий прибуток лише за платежами зовнішніх платників |
 | POST | `/api/notifications/test` | тест Telegram (адмін) |
 
 ## Додаткові маршрути

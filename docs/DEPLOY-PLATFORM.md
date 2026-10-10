@@ -47,12 +47,16 @@
 Копії лежать на тому ж диску, що й жива база. Вивантаження назовні вмикає одноразовий скрипт (на сервері, від root):
 
 ```bash
-ENDPOINT=fsn1.your-objectstorage.com PROVIDER=Other REGION=fsn1 BUCKET=<назва-bucket> bash /opt/series-lab/src/deploy/series-lab/setup-offsite.sh
+# Cloudflare R2 (безкоштовні 10 ГБ), ключ на один bucket:
+REMOTE=series-r2 PROVIDER=Cloudflare ENDPOINT=https://<account-id>.r2.cloudflarestorage.com REGION=auto NO_CHECK_BUCKET=1 BUCKET=<назва-bucket> bash /opt/series-lab/src/deploy/series-lab/setup-offsite.sh
+# Hetzner Object Storage (платно, до $7.99/міс): ENDPOINT=fsn1.your-objectstorage.com PROVIDER=Other REGION=fsn1 BUCKET=<назва-bucket> ...
 ```
 
-Для Hetzner потрібен `REGION` (`fsn1`, `nbg1`, `hel1`: збігається з локацією bucket, інакше `LocationConstraintConflict`). `rclone` 1.60 з Ubuntu 24.04 не знає провайдера `Hetzner`, тож `PROVIDER=Other`. Bucket створюють у консолі (Object Storage, від $7.99/міс), ключі S3 — у Security → S3 credentials; вони діють на всі bucket проєкту. Щойно створені ключі й щойно записаний об'єкт кілька секунд можуть віддавати 403: скрипт повторює читання назад.
+**Cloudflare R2** (використовується на хості з 10.10.2026): підписка R2 на акаунті ($0 за межі 10 ГБ/міс, потрібна картка), bucket класу Standard, API-токен «Object Read & Write» лише на цей bucket (Access Key ID і Secret показуються один раз). Токен на один bucket не може створювати чи перелічувати bucket'и, тому `NO_CHECK_BUCKET=1`; `KEEP_PASSPHRASE=1` лишає чинний пароль шифрування при зміні сховища. Новоактивований акаунт кілька хвилин відхиляє TLS на своєму S3-домені (`handshake failure`): зачекайте й повторіть. `rclone` 1.60 на першій спробі завантаження отримує `501 NotImplemented` від R2, повторна спроба проходить (`--retries 3`).
 
-Він приховано питає ключі S3, створює remote `series-offsite`, перевіряє досяжність (невдалий remote видаляється), заливає зашифрований знімок, завантажує його назад, розшифровує й лише тоді записує `BACKUP_RCLONE_REMOTE` та випадкову `BACKUP_PASSPHRASE` у `backup.env`. **Збережіть фразу в менеджері паролів:** без неї хмарні копії не розшифрувати. Підходить будь-яке S3-сховище з ключами API (Hetzner Object Storage, Backblaze B2, Cloudflare R2); OAuth-сховища (Proton, Drive) не беріть: токен спливає, і бекап мовчки зупиняється. Cloudflare R2 вимагає окремої підписки на картку (безкоштовно в межах 10 ГБ), тому типовий вибір — Hetzner Object Storage у тому ж дата-центрі.
+**Hetzner Object Storage** (до 10.10.2026): потрібен `REGION` (`fsn1`, `nbg1`, `hel1`; інакше `LocationConstraintConflict`), `PROVIDER=Other` (rclone 1.60 не знає «Hetzner»), базова плата до $7.99/міс. Щойно створені ключі й об'єкти кілька секунд відповідають 403: скрипт повторює читання назад. Переїзд на R2 зекономив ≈ $96 на рік.
+
+Він приховано питає ключі S3, створює remote (`REMOTE`, типово `series-offsite`, на хості `series-r2`), перевіряє досяжність (невдалий remote видаляється), заливає зашифрований знімок, завантажує його назад, розшифровує й лише тоді записує `BACKUP_RCLONE_REMOTE` та випадкову `BACKUP_PASSPHRASE` у `backup.env`. **Збережіть фразу в менеджері паролів:** без неї хмарні копії не розшифрувати. Підходить будь-яке S3-сховище з ключами API (Hetzner Object Storage, Backblaze B2, Cloudflare R2); OAuth-сховища (Proton, Drive) не беріть: токен спливає, і бекап мовчки зупиняється. Cloudflare R2 вимагає окремої підписки на картку (безкоштовно в межах 10 ГБ), тому типовий вибір — Hetzner Object Storage у тому ж дата-центрі.
 
 Хмарні копії `users-*.tar.gz.enc` старші за `BACKUP_REMOTE_KEEP_DAYS` (60; `0` = не чистити, змінна в `backup.env`) `backup.sh` видаляє сам, але лише після вдалого завантаження свіжої копії й лише файли з таким іменем. Статус для адмінки (`data-next/backup-status.json`) тепер має поле `offsiteAt` (час останньої вдалої хмарної копії); погодинний запуск його не скидає (раніше щогодини «Зовнішня копія» ставала «Ні»).
 
