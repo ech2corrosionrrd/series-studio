@@ -164,7 +164,9 @@ async function routes(req, res, url) {
     return true;
   }
 
-  if (method === "GET") {
+  // HEAD answers the same static pages as GET (uptime monitors probe /login with HEAD); it never reaches /auth/nonce and the like.
+  const headStatic = method === "HEAD" && /^\/(login|favicon\.ico|og-card\.png|sitemap\.xml|robots\.txt)$/.test(path);
+  if (method === "GET" || headStatic) {
     if (path === "/og-card.png" || path === "/sitemap.xml" || path === "/robots.txt") {
       const file = siteFile(path.slice(1));
       if (!existsSync(file)) throw new HttpError(404, `${path.slice(1)} not found`);
