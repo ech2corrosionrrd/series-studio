@@ -550,7 +550,7 @@ export default {
   "ctor.options.warn.promptShort": "prompt recommended",
   "help.doc.traits": "trait packs and the option editor",
   "ctor.styleLockTitle": "Style lock",
-  "ctor.styleLock.help": "Optional. Locks angle / light / mood / framing into every prompt. Saved with the preset on Save.",
+  "ctor.styleLock.help": "Optional. Locks angle / light / mood / framing into every prompt. Saved with the preset on Save. Light works reliably, but engines keep the angle and framing of the base: for another angle, pick a base that has it.",
   "ctor.styleLock.angle": "Angle",
   "ctor.styleLock.angle.ph": "chest-up centered",
   "ctor.styleLock.light": "Light",
