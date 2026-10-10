@@ -73,6 +73,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `SOLANA_PAY_USDC_MINT`, `SOLANA_PAY_COMMITMENT` | Mint USDC і рівень підтвердження (типово mainnet; міняти лише для тесту) |
 | `TUNNEL_HOST`, `TUNNEL_NAME`, `TUNNEL_PORT`, `TUNNEL_WELCOME_REQUIRE_BALANCE` | Зовнішнє тестування через тунель (`npm run lab:tunnel`, [docs/HOSTING.md](docs/HOSTING.md)) |
 | `HOLDER_SYNC_INTERVAL_SECONDS`, `SUGAR_PROJECT_PATH` | Синхронізація власників і шлях до проєкту Sugar |
+| `PUBLIC_COLLECTIONS_SINCE` | Дата, раніше якої колекції не показуються на `/c/<назва>` і в галереї (типово `2026-10-04T00:00:00Z`): лише зображення, створені в Series Lab; старі колекції з попередньої платформи лишаються на диску, але не віддаються |
 | `SERIES_CSP` | Content-Security-Policy: `report` (типово: лише звіти порушень у журнал), `enforce` (блокує), `off`; див. docs/HOSTING.md |
 | `SERIES_SPEND_CAP_USD` | Денна межа витрат, $ (або `off`); на публічному хості типово `off` |
 | `SERIES_MAX_CONSECUTIVE_FAILURES` | Автостоп batch (5) |

@@ -29,12 +29,24 @@ export function slugify(text) {
 
 export const mediaType = (filename) => MEDIA[extname(filename).toLowerCase()] || "application/octet-stream";
 
+/**
+ * Only images made with Series Lab are shown. Collections older than this date come from the previous platform
+ * (ai.w3ir.io, June–September 2026) and are neither listed nor served; the files stay on disk, nothing is deleted.
+ */
+export const collectionsSince = () => {
+  const t = Date.parse(process.env.PUBLIC_COLLECTIONS_SINCE || "2026-10-04T00:00:00Z");
+  return Number.isFinite(t) ? t : Date.parse("2026-10-04T00:00:00Z");
+};
+
 export function loadCollection(slug) {
   const p = join(publicDir(), slugify(slug), "manifest.json");
   if (!existsSync(p)) return null;
   try {
     const data = JSON.parse(readFileSync(p, "utf8"));
-    return data && typeof data === "object" && !Array.isArray(data) ? data : null;
+    if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+    const made = Date.parse(String(data.created_at || ""));
+    if (!Number.isFinite(made) || made < collectionsSince()) return null;
+    return data;
   } catch {
     return null;
   }
@@ -132,7 +144,7 @@ export function renderCollectionHtml(slug) {
   const walletShort = escHtml(m.wallet_short || "");
   const images = m.images || [];
   const s = slugify(slug);
-  const og = images.length ? `${PUBLIC_BASE}/c/${s}/img/${images[0]}` : `${PUBLIC_BASE}/og-card.png`;
+  const og = images.length ? `${PUBLIC_BASE}/c/${s}/img/${images[0]}` : `${PUBLIC_BASE}/img/og-series-lab.jpg`;
   const pageUrl = `${PUBLIC_BASE}/c/${s}`;
   const tiles = images.map((name, i) =>
     `        <img src="/c/${s}/img/${escHtml(name)}" alt="${title} #${i + 1}" loading="lazy" decoding="async" />`).join("\n");
