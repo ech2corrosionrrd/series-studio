@@ -26,11 +26,26 @@
       "Bash(curl -s*https://studio.w3ir.io*)",
       "Bash(curl -sS*https://studio.w3ir.io*)",
       "Edit(CLAUDE.md)",
-      "Edit(CHANGELOG.md)"
+      "Edit(CHANGELOG.md)",
+      "Bash(ssh root@2.28.7.128 docker ps*)",
+      "Bash(ssh root@2.28.7.128 docker logs*)",
+      "Bash(ssh root@2.28.7.128 ls*)",
+      "Bash(ssh root@2.28.7.128 grep*)",
+      "Bash(ssh root@2.28.7.128 BACKUP_MODE=hourly bash /opt/series-lab/backup.sh*)"
     ]
   },
   "hooks": {
     "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/docs-check.mjs",
+            "timeout": 30
+          }
+        ]
+      },
       {
         "matcher": "Edit|Write",
         "hooks": [
@@ -48,6 +63,18 @@
             "type": "command",
             "command": "node .claude/hooks/deploy-watch.mjs",
             "timeout": 300
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-bash.mjs",
+            "timeout": 10
           }
         ]
       }
