@@ -1502,6 +1502,8 @@ async function handleApi(req, res, url) {
     const days = raw === "7" || raw === "7d" ? 7 : raw === "30" || raw === "30d" ? 30 : null;
     const report = economyReport(days);
     report.funnel_30d = funnel(30);
+    report.funnel_30d_external = funnel(30, { scope: "external" });
+    report.funnel_total_external = funnel(36500, { scope: "external" });
     return send(res, 200, report);
   }
 
