@@ -174,6 +174,7 @@ if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 import { testEngineConnection } from "../src/connectors.mjs";
 import { allowedHostnames, checkApiRequest, hostedConfigError, hostedConfigWarning, openAccessError } from "./guard.mjs";
 import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
+import { send, writeSse, attachStopOnDisconnect, readBody, httpError } from "./http.mjs";
 import { PACKAGES, checkGenerationRate, creditCost, deductCredits, getBalance,
   listTransactions, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost,
 } from "../src/platform/billing.mjs";
@@ -246,41 +247,6 @@ function nowIsoKyiv() {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}${offset}`;
 }
 
-function send(res, status, body, type = "application/json; charset=utf-8", extraHeaders = {}) {
-  const data = typeof body === "string" || Buffer.isBuffer(body) ? body : JSON.stringify(body);
-  res.writeHead(status, {
-    "Content-Type": type,
-    "Cache-Control": "no-store",
-    ...extraHeaders,
-  });
-  res.end(data);
-}
-
-function writeSse(res, payload) {
-  if (!res || res.writableEnded || res.destroyed) return false;
-  try {
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Abort the batch when the browser drops the live stream (Stop). */
-function attachStopOnDisconnect(res, stop) {
-  const onGone = () => {
-    if (res.writableEnded || stop.signal.aborted) return;
-    stop.abort(new Error("stopped"));
-  };
-  res.on("close", onGone);
-  res.on("error", onGone);
-  const req = res.req;
-  if (req) {
-    req.on("aborted", onGone);
-    req.on("error", onGone);
-  }
-}
-
 /** Raw (binary) request body with its own cap; JSON bodies keep readBody's 25 MB. */
 function readRawBody(req, max) {
   return new Promise((resolveBody, reject) => {
@@ -299,37 +265,6 @@ function readRawBody(req, max) {
     req.on("end", () => resolveBody(Buffer.concat(chunks)));
     req.on("error", reject);
   });
-}
-
-function readBody(req) {
-  return new Promise((resolveBody, reject) => {
-    const chunks = [];
-    let size = 0;
-    const MAX = 25 * 1024 * 1024;
-    req.on("data", (c) => {
-      size += c.length;
-      if (size > MAX) {
-        reject(new Error("body too large"));
-        req.destroy();
-        return;
-      }
-      chunks.push(c);
-    });
-    req.on("end", () => {
-      const raw = Buffer.concat(chunks).toString("utf8");
-      if (!raw) return resolveBody({});
-      try {
-        resolveBody(JSON.parse(raw));
-      } catch (e) {
-        reject(e);
-      }
-    });
-    req.on("error", reject);
-  });
-}
-
-function httpError(status, message, extra = {}) {
-  return Object.assign(new Error(message), { status, extra });
 }
 
 /** Moves files to out/trash instead of deleting them. */
