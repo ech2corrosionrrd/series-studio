@@ -45,7 +45,7 @@ const ENGINE_FAMILY = {
   stability: "stability",
   kontext: "flux", fal: "flux", schnell: "flux", runware: "flux", pollinations: "flux",
   comfyui: "local", a1111: "local",
-  vision: "vision", LLM: "LLM",
+  vision: "vision", LLM: "LLM", llm: "LLM", "llm-polish": "LLM", // engineFamily() lower-cases the label
 };
 
 export function engineFamily(engine) {
