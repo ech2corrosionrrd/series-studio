@@ -192,6 +192,7 @@ import { setManualBalance } from "../src/platform/resources.mjs";
 import { resourceCatalog, setAlertThreshold, setResourceNote } from "../src/platform/resource-catalog.mjs";
 import { decisionRule } from "../src/platform/decision.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
+import { admitProject, describeProjects, loadProjects, projectQuota, projectsConfig, registerProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
@@ -543,6 +544,46 @@ async function primaryBasePng() {
   }
   const { buffer } = await ensurePng(raw);
   return { exists: true, buf: imageFormat(buffer) === "png" ? buffer : null, raw };
+}
+
+/** File names of the template presets shipped with Series Lab: they are not projects until saved under the user's own id. */
+function templatePresetFiles() {
+  try {
+    return new Set(readdirSync(LOCAL_PATHS.presets).filter((f) => f.endsWith(".json")));
+  } catch {
+    return new Set();
+  }
+}
+
+const walletProjects = () => loadProjects(P(), templatePresetFiles());
+
+/**
+ * Creating a project is free within PROJECTS_FREE and costs PROJECT_EXTRA_CREDITS once beyond it (admins are exempt;
+ * local mode has no credits). Editing an existing project never costs anything.
+ * → { isNew, charge: the reservation to refund if the save fails, or null }
+ */
+function admitNewProject(file, body = {}) {
+  const list = walletProjects();
+  const cfg = projectsConfig();
+  const verdict = admitProject(list, file, cfg);
+  if (!verdict.isNew) return { isNew: false, charge: null, credits: 0 };
+  const wallet = currentWallet();
+  const exempt = !PUBLIC_MODE || !wallet || isAdmin(wallet);
+  if (exempt || verdict.charge <= 0) return { isNew: true, charge: null, credits: 0 };
+  const q = projectQuota(list, cfg);
+  if (body.confirmCharge !== true) {
+    throw httpError(402, `Project limit: ${q.used} of ${q.free} free projects are used; a new project costs ${verdict.charge} credits. Confirm to continue.`, {
+      code: "project_charge", cost: verdict.charge, free: q.free, used: q.used, balance: getBalance(wallet),
+    });
+  }
+  const note = `New project #${q.used + 1} beyond ${q.free} free`;
+  if (!deductCredits(wallet, verdict.charge, { engine: "project", note })) throw insufficient(wallet, verdict.charge);
+  return { isNew: true, charge: { wallet, amount: verdict.charge, engine: "project", note }, credits: verdict.charge };
+}
+
+function commitNewProject(file, admission) {
+  if (!admission.isNew) return;
+  registerProject(P(), walletProjects(), file, { charge: admission.credits });
 }
 
 function safeJsonName(file, fallback = "demo-series.json") {
@@ -1390,6 +1431,10 @@ async function handleApi(req, res, url) {
       admin: isAdmin(wallet),
       wallet,
       balance: getBalance(wallet),
+      projects: (() => {
+        const q = projectQuota(walletProjects(), projectsConfig());
+        return isAdmin(wallet) ? { ...q, needsCharge: false, exempt: true } : { ...q, exempt: false };
+      })(),
       packages: Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p })),
       solPay: solPayInfo(process.env, { admin: isAdmin(wallet) }),
       referral: code ? { code, link: `${process.env.AUTH_URI || "https://ai.w3ir.io"}/login?ref=${code}` } : null,
@@ -1687,8 +1732,15 @@ async function handleApi(req, res, url) {
     // strip UI-only meta if saving as real preset (keep _meta optional)
     const outName = `${id}.json`;
     const outPath = join(P().presets, outName);
-    writeJsonAtomic(outPath, preset);
-    return send(res, 200, { ok: true, file: outName, path: `presets/${outName}`, id });
+    const admission = admitNewProject(outName, body);
+    try {
+      writeJsonAtomic(outPath, preset);
+      commitNewProject(outName, admission);
+    } catch (e) {
+      refundCharge(admission.charge);
+      throw e;
+    }
+    return send(res, 200, { ok: true, file: outName, path: `presets/${outName}`, id, project: { new: admission.isNew, charged: admission.credits } });
   }
 
   if (pathname === "/api/build" && req.method === "POST") {
@@ -1883,8 +1935,23 @@ async function handleApi(req, res, url) {
     }
     mkdirSync(P().presets, { recursive: true });
     const file = `${next.id}.json`;
-    writeJsonAtomic(join(P().presets, file), next);
-    return send(res, 200, { ok: true, file, preset: next });
+    const admission = admitNewProject(file, body);
+    try {
+      writeJsonAtomic(join(P().presets, file), next);
+      commitNewProject(file, admission);
+    } catch (e) {
+      refundCharge(admission.charge);
+      throw e;
+    }
+    return send(res, 200, { ok: true, file, preset: next, project: { new: true, charged: admission.credits } });
+  }
+
+  if (pathname === "/api/projects" && req.method === "GET") {
+    const list = walletProjects();
+    const cfg = projectsConfig();
+    const quota = projectQuota(list, cfg);
+    const exempt = !PUBLIC_MODE || isAdmin(currentWallet());
+    return send(res, 200, { projects: describeProjects(P(), list), quota: { ...quota, needsCharge: exempt ? false : quota.needsCharge, exempt } });
   }
 
   if (pathname === "/api/archive/list" && req.method === "GET") {

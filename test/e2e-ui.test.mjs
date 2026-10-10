@@ -46,7 +46,7 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
   const failedRequests = [];
 
   before(async () => {
-    studio = await startStudio({ adminWallet: false });
+    studio = await startStudio({ adminWallet: false, extraEnv: { WELCOME_CREDITS: "100", EARLY_WELCOME_CREDITS: "100", PROJECTS_FREE: "2", PROJECT_EXTRA_CREDITS: "30" } });
     const cookie = await studio.signIn();
     browser = await chromium.launch({ executablePath: CHROME, headless: true });
     const context = await browser.newContext({ locale: "uk-UA", viewport: { width: 1400, height: 900 } });
@@ -201,6 +201,28 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     assert.equal(await page.inputValue("#x-file"), "e2e-series.json", "no stale archive in the Export selector");
   });
 
+  it("projects: the card lists them, a new one beyond the free ones asks first and charges only on the second click", async () => {
+    await tab("home");
+    await waitFor(async () => (await page.$$("#projects-list li")).length === 2, { what: "two projects listed" });
+    assert.match(await page.textContent("#projects-quota"), /2/);
+    const before = await balance();
+    await page.fill("#o-name", "E2E Third");
+    await page.fill("#o-id", "e2e-third");
+    await page.fill("#o-size", "4");
+    await page.click("#o-save");
+    await waitFor(async () => /30/.test(await page.textContent("#o-msg")), { what: "confirmation notice" });
+    assert.equal(await balance(), before, "nothing is charged by the first click");
+    assert.equal((await page.$$("#projects-list li")).length, 2);
+    await page.click("#o-save");
+    await waitFor(async () => /e2e-third\.json/.test(await page.textContent("#o-msg")), { what: "third project saved" });
+    assert.equal(before - (await balance()), 30, "the second click charges once");
+    await waitFor(async () => (await page.$$("#projects-list li")).length === 3, { what: "three projects listed" });
+    assert.equal((await page.$$("#projects-list .badge.paid")).length, 1);
+    await page.click("#o-save");
+    await waitFor(async () => /e2e-third\.json/.test(await page.textContent("#o-msg")), { what: "resave" });
+    assert.equal(before - (await balance()), 30, "saving the same project again is free");
+  });
+
   it("switches the interface language", async () => {
     await page.click('button:has-text("EN")');
     await waitFor(async () => (await page.getAttribute("html", "lang")) === "en", { what: "html lang=en" });
@@ -208,7 +230,10 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
   });
 
   it("the whole session produced no console errors, page exceptions or failed requests", () => {
-    assert.deepEqual(failedRequests, [], "no request of a normal session may fail");
-    assert.deepEqual(consoleErrors, []);
+    // the one expected refusal is the "confirm the paid project" answer (402) that the projects test provoked on purpose
+    const expected = failedRequests.filter((r) => r === "402 POST /api/preset/save");
+    assert.equal(expected.length, 1);
+    assert.deepEqual(failedRequests.filter((r) => r !== "402 POST /api/preset/save"), [], "no other request of a normal session may fail");
+    assert.deepEqual(consoleErrors.filter((m) => !/status of 402/.test(m)), [], "the browser logs the deliberate 402 itself; nothing else may be logged");
   });
 });
