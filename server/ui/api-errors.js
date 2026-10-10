@@ -80,6 +80,7 @@ const EXACT = {
   "preset traits are required to compose layers": "api.composeTraits",
   "layers directory must stay inside the project": "api.composeLayersEscape",
   "bad set name": "api.badSetName",
+  "preview must be an edition number": "api.previewBad",
 };
 
 const PATTERNS = [
@@ -90,6 +91,8 @@ const PATTERNS = [
   [/^Duplicate DNA with edition #(\S+)$/, "api.dupDnaEdition", (m) => ({ n: m[1] })],
   [/^Duplicate DNA before render: (.+)$/, "api.dupDnaRender", (m) => ({ list: m[1] })],
   [/^set directory not found: (.+)$/, "api.setDirMissing", (m) => ({ name: m[1] })],
+  [/^frame not found: (.+)$/, "api.previewFrameMissing", (m) => ({ name: m[1] })],
+  [/^preview: edition (S+) is not in the archive$/, "api.previewNoEdition", (m) => ({ n: m[1] })],
   [/^layers directory not found: (.+)$/, "api.composeLayersMissing", (m) => ({ path: m[1] })],
   [/^base image not found: (.+)$/, "api.composeBaseMissing", (m) => ({ path: m[1] })],
   [/^set not found: (.+)$/, "api.setMissingNamed", (m) => ({ name: m[1] })],
