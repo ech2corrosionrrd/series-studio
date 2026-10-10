@@ -192,7 +192,7 @@ import { setManualBalance } from "../src/platform/resources.mjs";
 import { resourceCatalog, setAlertThreshold, setResourceNote } from "../src/platform/resource-catalog.mjs";
 import { decisionRule } from "../src/platform/decision.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
-import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, projectAssetStats, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
+import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, moveSetBetweenProjects, projectAssetStats, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
@@ -1990,6 +1990,20 @@ async function handleApi(req, res, url) {
     if (!isProject(list, file)) return send(res, 404, { error: "project not found" });
     writeActiveProject(P(), file); // every asset route now works on this project (base, layers, sets, archive)
     return send(res, 200, { ok: true, active: file });
+  }
+
+  if (pathname === "/api/projects/move-set" && req.method === "POST") {
+    const body = await readBody(req);
+    const from = String(body.from || readActiveProject(P()) || "");
+    const to = String(body.to || "");
+    const list = walletProjects();
+    if (!PUBLIC_MODE) throw httpError(400, "projects keep separate sets only on the hosted studio");
+    if (!isProject(list, from) || !isProject(list, to)) return send(res, 404, { error: "project not found" });
+    try {
+      return send(res, 200, { ok: true, ...moveSetBetweenProjects(P(), from, to, safeSetName(body.dir || "")) });
+    } catch (e) {
+      throw e.status ? httpError(e.status, e.message) : e;
+    }
   }
 
   if (pathname === "/api/projects/delete" && req.method === "POST") {

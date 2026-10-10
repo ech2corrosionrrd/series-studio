@@ -189,6 +189,23 @@ function moveEntry(src, dst) {
 }
 
 /**
+ * Move one frame set (its folder, with marks, triage and shelved editions) from one project to another.
+ * Nothing is copied or priced: the set simply changes owner. Refuses to overwrite a set of the same name.
+ * @returns {{ set: string, from: string, to: string }}
+ */
+export function moveSetBetweenProjects(user, fromFile, toFile, setName) {
+  const fail = (status, message) => Object.assign(new Error(message), { status });
+  if (fromFile === toFile) throw fail(400, "source and target project are the same");
+  if (!setName || setName.includes("..") || !/^[a-z0-9._-]+$/i.test(setName)) throw fail(400, "bad set name");
+  const src = join(projectPaths(user, fromFile).out, setName);
+  const dst = join(projectPaths(user, toFile).out, setName);
+  if (!existsSync(src) || !statSync(src).isDirectory()) throw fail(404, "set not found");
+  if (existsSync(dst)) throw fail(409, "target project already has a set with this name");
+  moveEntry(src, dst);
+  return { set: setName, from: fromFile, to: toFile };
+}
+
+/**
  * One-time move of the assets that were shared by the whole wallet into the projects:
  * recipe archives go to the project of the same name, everything else (base image, layers, frame sets, bundles,
  * trash) to the project that is active now. Safe to repeat: a marker is written last and moves skip what is gone.
