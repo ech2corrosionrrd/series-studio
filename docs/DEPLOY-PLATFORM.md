@@ -38,6 +38,7 @@
 | кожні 6 год (:25) | `verify-backup.sh disk`: диск з даними заповнений менше ніж на `DISK_WARN_PCT` (80%); алерт у Telegram інакше. Потрібен, бо гаманці завантажують шари PNG і генерують картинки | — |
 | неділя 05:00 | `verify-backup.sh drill` — найновіша добова копія відкривається, `integrity_check` ок, є таблиці `users`, `payments`, `transactions`, `wallet_nonces` | — |
 | щодня 04:40 | `verify-backup.sh offsite` — нічний повний запуск дійшов до хмари і не старший за `VERIFY_OFFSITE_MAX_HOURS` (30); інакше алерт у Telegram. Мовчить, якщо `BACKUP_RCLONE_REMOTE` порожній | — |
+| кожні 6 год (:15) | сповіщення про низький баланс провайдера (`node src/platform/resource-catalog.mjs --alerts`, `/etc/cron.d/series-lab-report`): лише для введених балансів нижче порога | — |
 | понеділок 08:00 | тижневий звіт у Telegram (`/etc/cron.d/series-lab-report`: `docker exec serieslab node src/platform/decision.mjs --report`): платники, повторні, дохід зовнішніх, прогрес правила рішення | — |
 | неділя 05:30 | `verify-backup.sh cloud` — найновіша хмарна копія скачується, розшифровується `BACKUP_PASSPHRASE` і проходить той самий drill (доводить, що копія в хмарі справді відкривається); алерт, якщо вона старша за `VERIFY_CLOUD_MAX_AGE_HOURS` (50) | — |
 

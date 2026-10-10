@@ -12,6 +12,8 @@
 | GET | `/api/health` | ok, product, port, base status, keysFile path, engines |
 | GET | `/api/admin/resources/plan` | Рекомендований баланс по провайдерах (лише адмін). `?probe=1` додатково читає баланс Stability з API. Відповідь: `providers[]` (`id`, `name`, `spend_7d_usd`, `spend_30d_usd`, `spend_30d_external_usd`, `trend`, `projected_per_day_usd`, `exposure_usd`, `reserve_usd`, `recommended_usd`, `balance_usd`, `balance_source` api/manual, `balance_stale`, `runway_days`, `top_up_usd`, `status` ok/low/critical/unknown/off), `totals`, `settings`, `outstanding_credits` |
 | POST | `/api/admin/resources/balance` | Поточний баланс провайдера без API балансу (лише адмін). Тіло `{ provider, balance_usd, note? }`; `balance_usd: null` стирає запис. Невідомий провайдер чи від'ємне число — 400 |
+| POST | `/api/admin/resources/alert` | Поріг сповіщення про баланс провайдера (лише адмін). Тіло `{ provider, below_usd }`; `below_usd: null` вимикає сповіщення (навіть типове для Replicate, 5 $). Невідомий провайдер чи від'ємне число: 400 |
+| POST | `/api/admin/resources/note` | Нотатка про сервіс у Адмін → Ресурси (квота, план, зауваження; до 300 символів). Тіло `{ provider, note }`, порожня нотатка стирає запис. Працює для платних API й для сервісів без балансу (Alchemy, RPC, Irys, Telegram, локальний GPU) |
 | GET | `/api/resources` | наявність ключів (presence only) |
 
 ## Presets / templates / trait packs
