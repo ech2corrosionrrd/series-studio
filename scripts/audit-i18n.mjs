@@ -142,7 +142,7 @@ const landing = readFileSync("server/site/landing.html", "utf8");
 const ukLanding = dictKeys(landing, "UK");
 if (ukLanding) requireDict("server/site/landing.html", stripBlocks(landing), ukLanding, "UK");
 
-const login = readFileSync("server/site/login.html", "utf8");
+const login = [readFileSync("server/site/login.html", "utf8"), readFileSync("server/site/login.js", "utf8")].join("\n");
 // I18N.uk / I18N.en live inside one object. Slice each branch.
 function sliceBranch(src, name) {
   const marker = `${name}: {`;
