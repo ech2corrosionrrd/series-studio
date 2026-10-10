@@ -45,8 +45,10 @@
 Копії лежать на тому ж диску, що й жива база. Вивантаження назовні вмикає одноразовий скрипт (на сервері, від root):
 
 ```bash
-ENDPOINT=fsn1.your-objectstorage.com PROVIDER=Hetzner bash /opt/series-lab/src/deploy/series-lab/setup-offsite.sh
+ENDPOINT=fsn1.your-objectstorage.com PROVIDER=Other REGION=fsn1 BUCKET=<назва-bucket> bash /opt/series-lab/src/deploy/series-lab/setup-offsite.sh
 ```
+
+Для Hetzner потрібен `REGION` (`fsn1`, `nbg1`, `hel1`: збігається з локацією bucket, інакше `LocationConstraintConflict`). `rclone` 1.60 з Ubuntu 24.04 не знає провайдера `Hetzner`, тож `PROVIDER=Other`. Bucket створюють у консолі (Object Storage, від $7.99/міс), ключі S3 — у Security → S3 credentials; вони діють на всі bucket проєкту. Щойно створені ключі й щойно записаний об'єкт кілька секунд можуть віддавати 403: скрипт повторює читання назад.
 
 Він приховано питає ключі S3, створює remote `series-offsite`, перевіряє досяжність (невдалий remote видаляється), заливає зашифрований знімок, завантажує його назад, розшифровує й лише тоді записує `BACKUP_RCLONE_REMOTE` та випадкову `BACKUP_PASSPHRASE` у `backup.env`. **Збережіть фразу в менеджері паролів:** без неї хмарні копії не розшифрувати. Підходить будь-яке S3-сховище з ключами API (Hetzner Object Storage, Backblaze B2, Cloudflare R2); OAuth-сховища (Proton, Drive) не беріть: токен спливає, і бекап мовчки зупиняється. Cloudflare R2 вимагає окремої підписки на картку (безкоштовно в межах 10 ГБ), тому типовий вибір — Hetzner Object Storage у тому ж дата-центрі.
 
