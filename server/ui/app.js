@@ -2004,6 +2004,13 @@ function setupRecipes() {
   $("r-preset")?.addEventListener("change", async () => {
     const file = $("r-preset").value;
     if (!file) return;
+    // Choosing a series here switches the whole studio to it (Overview, Constructor), and the workspace remembers it.
+    try {
+      const data = await api(`/api/preset?file=${encodeURIComponent(file)}`);
+      fillConstructor(data.preset);
+    } catch {
+      /* the archive may exist without the preset file; the selectors still follow */
+    }
     if (state.archives?.some((a) => a.file === file)) await loadRecipesArchive(file).catch(() => syncActiveSeries(file));
     else syncActiveSeries(file);
     scheduleWorkspaceSave();
