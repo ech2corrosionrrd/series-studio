@@ -5773,6 +5773,7 @@ async function renderEconomy() {
           ${econKpi(t("econ.kpi.api"), fmtUsd(g.estimated_api_usd, 4), { sub: t("econ.creditsDebited", { n: fmtNum(g.credits_debited ?? 0) }) })}
           ${econKpi(t("econ.kpi.util"), fmtPct(g.credits_utilization_pct), { sub: t("econ.avgPerCr", { usd: fmtUsd(g.avg_usd_per_credit, 4) }) })}
           ${econKpi(t("econ.kpi.net"), fmtUsd(n.net_profit_usd), { cls: n.net_profit_usd >= 0 ? "ok" : "warn", sub: fmtPct(n.net_margin_pct) })}
+          ${econKpi(t("econ.kpi.netExt"), fmtUsd(n.net_profit_external_usd), { cls: n.net_profit_external_usd >= 0 ? "ok" : "warn", sub: t("econ.netExtSub", { rev: fmtUsd(n.revenue_usd_external) }) })}
         </div>
         <p class="econ-note">${escapeHtml(t("econ.arpuLine", { arpu, n: g.payments_count ?? 0, avg: g.avg_usd_per_credit ?? 0, welcome: g.welcome_credits_net ?? 0 }))}</p>
         <p class="econ-note">${escapeHtml(t("econ.netLine", {

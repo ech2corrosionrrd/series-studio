@@ -22,6 +22,10 @@ export const API_USD_BY_TARIFF = {
   flux: { 1: 0.003, 2: 0.025, 3: 0.025 },
   local: { 1: 0, 2: 0, 3: 0 },
 };
+/** Real API cost of engines whose price differs from the rest of their family (wins over the tariff table). */
+export const API_USD_BY_ENGINE = {
+  kontext: 0.04, // Flux Kontext Pro on Replicate; the family table below is the cheaper fal/schnell mix
+};
 export const API_USD_PER_OP = {
   openai: 0.042,
   stability: 0.03,
@@ -57,6 +61,8 @@ export function engineFamily(engine) {
 export function apiUsdPerOp(engine, creditsPerOp = null) {
   const family = engineFamily(engine);
   if (family === "local") return 0;
+  const byEngine = API_USD_BY_ENGINE[String(engine || "").toLowerCase()];
+  if (byEngine != null) return byEngine;
   if (creditsPerOp != null) {
     const table = API_USD_BY_TARIFF[family];
     const price = table?.[Number(creditsPerOp)];
@@ -260,8 +266,18 @@ export function netMarginReport(days = null, { gross, db = openDb() } = {}) {
     (revenue - apiCost - paymentFee - fxFee - fixedCost - resourceFx) * 100,
   ) / 100;
   const netMarginPct = revenue > 0 ? Math.round((1000 * netProfit) / revenue) / 10 : null;
+  // The honest view: payments from the operator's own / team wallets are a transfer to yourself, not
+  // income. Count only external payers' revenue against ALL costs (testing spend is a real cost).
+  const revenueExt = r.revenue_usd_external ?? revenue;
+  const netProfitExt = Math.round(
+    (revenueExt - apiCost - (revenueExt * payPct) / 100 - (revenueExt * fxPct) / 100 - fixedCost - resourceFx) * 100,
+  ) / 100;
+  const netMarginExtPct = revenueExt > 0 ? Math.round((1000 * netProfitExt) / revenueExt) / 10 : null;
   return {
     revenue_usd: Math.round(revenue * 100) / 100,
+    revenue_usd_external: Math.round(revenueExt * 100) / 100,
+    net_profit_external_usd: netProfitExt,
+    net_margin_external_pct: netMarginExtPct,
     api_cost_usd: Math.round(apiCost * 10000) / 10000,
     payment_fee_usd: paymentFee,
     fx_fee_usd: fxFee,
@@ -435,7 +451,7 @@ export function unitEconomicsModel() {
   if (lgCr < 1) warnings.push("LOCAL_GPU_CREDIT_COST < 1 — підтримка Lab занадто низька");
 
   return {
-    target_gross_margin_pct: "≥25% на найжорсткіших (kontext ~33%); blended ~45–60%",
+    target_gross_margin_pct: "≥25% на найжорсткіших (stability ~42%, kontext 3 кр ~56%); blended ~45–60%",
     target_net_margin_pct: "невелика додатна після фіксу; ~15%+ уже з ~5× Pro/міс при lean overhead",
     cheapest_usd_per_credit: cheapest,
     margin_floor_rule: "ceil(costUsd × 50) so 1 credit @ $0.03 covers ≥ 1.5 × provider $",
