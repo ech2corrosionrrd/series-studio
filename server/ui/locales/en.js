@@ -1609,6 +1609,7 @@ export default {
   "gallery.quality.run": "Check quality",
   "gallery.quality.running": "Checking…",
   "gallery.quality.hint": "Free and local: file format, exact copies, similarity to the primary base image. It does not check whether the requested traits (background, scarf) are visible: use AI Triage below for that.",
+  "gallery.quality.simSkipped": "Similarity to the base was NOT checked: the primary base image could not be read (PNG is needed; JPEG and WebP are converted automatically when sharp is installed on the server). So “all good” here does not confirm that frames resemble the base.",
   "gallery.quality.noBase": "There is no primary base image, so similarity is not computed.",
   "gallery.quality.allGood": "All good: {total} frames without problems.",
   "gallery.quality.summary": "{problem} of {total} frames need attention.",
