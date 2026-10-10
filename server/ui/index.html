@@ -608,6 +608,14 @@
             <button type="button" id="g-compose" class="btn" data-i18n="render.layers.run">Compose layers</button>
             <span id="g-compose-msg" class="small" role="status"></span>
           </div>
+          <div class="actions" style="margin-top:8px">
+            <label class="small"><span data-i18n="render.layers.previewN">Номер кадру</span>
+              <input type="number" id="g-compose-preview-n" min="1" step="1" value="1" autocomplete="off" style="width:90px">
+            </label>
+            <button type="button" id="g-compose-preview" class="btn" data-i18n="render.layers.preview">Переглянути кадр</button>
+            <span id="g-compose-preview-msg" class="small" role="status"></span>
+          </div>
+          <img id="g-compose-preview-img" alt="" hidden style="max-width:100%; width:320px; margin-top:8px; border-radius:8px">
         </div>
       </div>
       <div class="card">
