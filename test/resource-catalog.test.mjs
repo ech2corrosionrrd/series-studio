@@ -25,15 +25,20 @@ after(() => {
 const replicate = (c) => c.providers.find((p) => p.id === "replicate");
 
 describe("resource catalog: thresholds", () => {
-  test("Replicate has a built-in $5 threshold, others have none", () => {
+  test("Replicate, OpenAI, Anthropic and fal have a built-in $5 threshold, others have none", () => {
     const db = openDb(join(dir, "users.db"));
     const c = cat.resourceCatalog({ db, env: ENV, now: NOW });
     assert.equal(replicate(c).alert_below_usd, 5);
     assert.equal(replicate(c).alert_source, "default");
     assert.equal(replicate(c).alert_triggered, false, "no balance entered, so nothing to compare");
-    const openai = c.providers.find((p) => p.id === "openai");
-    assert.equal(openai.alert_below_usd, null);
-    assert.equal(openai.alert_source, "off");
+    for (const id of ["openai", "anthropic", "fal"]) {
+      const p = c.providers.find((x) => x.id === id);
+      assert.equal(p.alert_below_usd, 5, id);
+      assert.equal(p.alert_source, "default", id);
+    }
+    const stability = c.providers.find((p) => p.id === "stability");
+    assert.equal(stability.alert_below_usd, null);
+    assert.equal(stability.alert_source, "off");
   });
 
   test("triggers at or below the threshold only when a balance is known", () => {
