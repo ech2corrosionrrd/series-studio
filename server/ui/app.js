@@ -6249,6 +6249,84 @@ function setupEngineDiagnostics() {
 }
 
 /* ---------- Boot ---------- */
+const setProjectsMsg = (text, cls = "small") => {
+  const el = $("projects-msg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.className = cls;
+};
+
+/** Deleting asks twice: the first click arms the button, the second deletes (to the trash, so it can be restored). */
+let armedDelete = null;
+async function deleteProject(btn, current) {
+  const file = btn.dataset.projectDelete;
+  if (armedDelete?.file !== file) {
+    if (armedDelete) armedDelete.btn.textContent = t("projects.delete");
+    armedDelete = { file, btn };
+    btn.textContent = t("projects.deleteSure");
+    setProjectsMsg(t("projects.deleteHint", { name: btn.dataset.name }));
+    setTimeout(() => {
+      if (armedDelete?.file === file) {
+        btn.textContent = t("projects.delete");
+        armedDelete = null;
+      }
+    }, 7000);
+    return;
+  }
+  armedDelete = null;
+  try {
+    await api("/api/projects/delete", { method: "POST", body: JSON.stringify({ file, confirm: true }) });
+  } catch (e) {
+    setProjectsMsg(e.message, "small err-msg");
+    return;
+  }
+  setProjectsMsg(t("projects.deletedMsg", { name: btn.dataset.name }), "small ok-msg");
+  await loadPresets();
+  await loadArchives().catch(() => {});
+  if (file.replace(/\.json$/, "") === current) {
+    // the open project is gone: restart the studio on another one (the saved series no longer exists)
+    state.archiveFile = null;
+    setTimeout(() => location.reload(), 900);
+    return;
+  }
+  renderProjects();
+}
+
+let armedRestore = null;
+function renderDeletedProjects(deleted) {
+  const wrap = $("projects-deleted-wrap");
+  const ul = $("projects-deleted");
+  if (!wrap || !ul) return;
+  wrap.hidden = !deleted.length;
+  ul.innerHTML = "";
+  for (const d of deleted) {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="p-name">${escapeHtml(d.file.replace(/\.json$/, ""))}</span><span class="p-meta">${escapeHtml(String(d.at || "").slice(0, 10))}</span><span class="p-actions"><button type="button" class="btn small" data-restore="${escapeHtml(d.trashId)}">${escapeHtml(t("projects.restore"))}</button></span>`;
+    ul.appendChild(li);
+  }
+  ul.querySelectorAll("[data-restore]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.restore;
+      try {
+        const data = await api("/api/projects/restore", { method: "POST", body: JSON.stringify({ id, ...(armedRestore === id ? { confirmCharge: true } : {}) }) });
+        armedRestore = null;
+        setProjectsMsg(data.charged ? t("projects.restoredCharged", { n: data.charged }) : t("projects.restoredMsg"), "small ok-msg");
+        if (data.charged) refreshAccount();
+        await loadPresets();
+        await loadArchives().catch(() => {});
+        renderProjects();
+      } catch (e) {
+        if (e.payload?.code === "project_charge") {
+          armedRestore = id;
+          setProjectsMsg(t("projects.confirm", { cost: e.payload.cost, used: e.payload.used, free: e.payload.free }), "small err-msg");
+          return;
+        }
+        setProjectsMsg(e.message, "small err-msg");
+      }
+    });
+  });
+}
+
 /** "My projects": every collection is a project you can reopen; beyond the free ones a new project costs credits once. */
 async function renderProjects() {
   const list = $("projects-list");
@@ -6272,15 +6350,20 @@ async function renderProjects() {
   list.innerHTML = "";
   if (!data.projects?.length) {
     list.innerHTML = `<li class="muted small">${escapeHtml(t("projects.empty"))}</li>`;
+    renderDeletedProjects(data.deleted || []);
     return;
   }
   for (const p of data.projects) {
     const li = document.createElement("li");
     if (p.id === current) li.classList.add("current");
     const size = p.size != null ? ` · ${escapeHtml(t("projects.frames", { n: p.size }))}` : "";
-    li.innerHTML = `<span class="p-name">${escapeHtml(p.name)}</span><span class="p-meta">${escapeHtml(p.file)}${size}</span>${p.paid ? `<span class="badge paid">${escapeHtml(t("projects.paid", { n: p.credits }))}</span>` : ""}<span class="p-actions"><button type="button" class="btn small" data-project="${escapeHtml(p.file)}">${escapeHtml(p.id === current ? t("projects.current") : t("projects.open"))}</button></span>`;
+    li.innerHTML = `<span class="p-name">${escapeHtml(p.name)}</span><span class="p-meta">${escapeHtml(p.file)}${size}</span>${p.paid ? `<span class="badge paid">${escapeHtml(t("projects.paid", { n: p.credits }))}</span>` : ""}<span class="p-actions"><button type="button" class="btn small" data-project="${escapeHtml(p.file)}">${escapeHtml(p.id === current ? t("projects.current") : t("projects.open"))}</button> <button type="button" class="btn small" data-project-delete="${escapeHtml(p.file)}" data-name="${escapeHtml(p.name)}">${escapeHtml(t("projects.delete"))}</button></span>`;
     list.appendChild(li);
   }
+  list.querySelectorAll("[data-project-delete]").forEach((btn) => {
+    btn.addEventListener("click", () => deleteProject(btn, current));
+  });
+  renderDeletedProjects(data.deleted || []);
   list.querySelectorAll("[data-project]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const sel = $("r-preset");
