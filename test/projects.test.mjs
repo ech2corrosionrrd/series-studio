@@ -354,6 +354,25 @@ describe("assets belong to the project", () => {
     assert.equal((await projects()).projects.find((p) => p.file === "beta.json").assets.frames, 2, "both frames came back");
     assert.equal((await projects()).projects.find((p) => p.file === "beta.json").assets.hasBase, true);
   });
+
+  it("a frame set moves to another project without copies, and a name clash is refused", async () => {
+    const move = (body) => s.call("POST", "/api/projects/move-set", { body });
+    await open("beta.json");
+    const dir = (await sets())[0].dir;
+    assert.equal((await move({ dir, to: "alpha.json" })).status, 409, "alpha already has a set with this name");
+    assert.equal((await move({ dir, to: "beta.json" })).status, 400, "same project");
+    assert.equal((await move({ dir, to: "nope.json" })).status, 404);
+    assert.equal((await move({ dir: "missing", to: "alpha.json" })).status, 404, "unknown set");
+    assert.equal((await save("gamma")).status, 200);
+    await open("beta.json");
+    const ok = await move({ dir, to: "gamma.json" });
+    assert.equal(ok.status, 200, ok.text);
+    assert.equal((await sets()).length, 0, "beta no longer has the set");
+    await open("gamma.json");
+    const moved = (await sets()).find((x) => x.dir === dir);
+    assert.ok(moved, "gamma owns it now");
+    assert.equal((await s.call("GET", `/api/set?dir=${encodeURIComponent(dir)}`)).json.images.length, 2, "with both frames");
+  });
 });
 
 describe("one-time move of the shared assets into the projects", () => {
