@@ -23,7 +23,7 @@ import {
   statSync,
   unlinkSync,
 } from "node:fs";
-import { dirname, extname, join, resolve, basename } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyzeSetQuality } from "../src/quality.mjs";
 import { ensurePng, imageFormat } from "../src/png-normalize.mjs";
@@ -272,6 +272,20 @@ function readRawBody(req, max) {
 /** Moves files to out/trash instead of deleting them. */
 function toTrash(paths, reason) {
   return trashFiles({ root: P().root, trashDir: trashDir() }, paths, reason);
+}
+
+/**
+ * Selection deletes frames for good: a frame removed in review or a dropped version is not kept anywhere (only whole
+ * projects have a trash). Refuses anything outside the project's `out/` folder.
+ */
+function discardSelectionFiles(paths) {
+  const root = resolve(P().out);
+  for (const p of paths) {
+    const abs = resolve(p);
+    const rel = relative(root, abs);
+    if (!rel || rel.startsWith("..") || isAbsolute(rel)) throw httpError(400, "bad path");
+    rmSync(abs, { force: true });
+  }
 }
 
 /** Throws 400 `spend_cap` when `plannedUsd` would exceed today's cap. */
@@ -2611,8 +2625,8 @@ async function handleApi(req, res, url) {
     const body = await readBody(req);
     const dir = safeSetName(body.dir || "");
     const file = dropVersion(join(P().out, dir), body.edition, body.v);
-    const trashed = toTrash([file], `${dir} #${body.edition} v${body.v} dropped`);
-    return send(res, 200, { ok: true, dir, trashId: trashed?.id ?? null, ...listVersions(join(P().out, dir), dir, body.edition) });
+    discardSelectionFiles([file]);
+    return send(res, 200, { ok: true, dir, ...listVersions(join(P().out, dir), dir, body.edition) });
   }
 
   if (pathname === "/api/trash" && req.method === "GET") {
@@ -2743,9 +2757,9 @@ async function handleApi(req, res, url) {
       return send(res, 400, { error: e.message });
     }
     if (!files.length) return send(res, 400, { error: "nothing to delete" });
-    const trashed = toTrash(files, `${dir} #${body.edition} deleted`);
+    discardSelectionFiles(files);
     clearEditionMark(dir, body.edition);
-    return send(res, 200, { ok: true, dir, edition: Number(body.edition), trashId: trashed?.id ?? null, ...setPayload(dir) });
+    return send(res, 200, { ok: true, dir, edition: Number(body.edition), ...setPayload(dir) });
   }
 
   if (pathname === "/api/set/drop" && req.method === "POST") {
