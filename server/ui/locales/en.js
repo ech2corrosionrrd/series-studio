@@ -1357,6 +1357,8 @@ export default {
   "econ.funnel.deniedSub": "unique wallets refused: {n}; some got them later",
   "econ.funnel.started": "Started payment",
   "econ.funnel.repeat": "Repeat payers",
+  "econ.funnel.projectGate": "Hit the project limit",
+  "econ.funnel.projectGateSub": "confirmed the charge: {n} ({pct})",
   "econ.funnel.all30": "All wallets, 30 days",
   "econ.funnel.ext30": "External only, 30 days",
   "econ.funnel.extTotal": "External only, all time",
