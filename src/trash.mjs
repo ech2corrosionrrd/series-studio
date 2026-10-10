@@ -78,7 +78,7 @@ export function trashFiles({ root, trashDir }, absPaths, reason = "", now = new 
 }
 
 function readItem(trashDir, id) {
-  if (!isTrashId(id)) throw new Error(`bad trash id: ${id}`);
+  if (!isTrashId(id)) throw Object.assign(new Error(`bad trash id: ${id}`), { status: 400 });
   const p = join(trashDir, id, "item.json");
   if (!existsSync(p)) throw new Error(`trash item not found: ${id}`);
   return JSON.parse(readFileSync(p, "utf8"));

@@ -13,7 +13,7 @@ if (major < 22 || (major === 22 && minor < 13)) {
 
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const steps = [
-  ["npm test", ["test"]],
+  ["npm test + поріг покриття src/", ["run", "coverage"]],
   ["docs:check", ["run", "docs:check"]],
   ["audit:i18n", ["run", "audit:i18n"]],
   ["audit:ui", ["run", "audit:ui"]],
