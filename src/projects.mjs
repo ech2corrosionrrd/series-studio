@@ -303,6 +303,54 @@ export function trashProject(user, file, { now = new Date(), legacyArchive = nul
   return id;
 }
 
+/**
+ * Projects deleted before assets belonged to projects (file-level trash items with the reason `project:<file>`, written
+ * into the then-shared or the active project's `out/trash`) become entries of the deleted-projects list, so they can be
+ * restored from the card. Runs once per wallet (marker) and keeps the files; only the old trash item is removed.
+ * @returns {string[]} converted project files
+ */
+export function convertLegacyProjectTrash(user) {
+  const marker = join(projectsDir(user), ".project-trash-v1");
+  if (existsSync(marker)) return [];
+  const converted = [];
+  const trashDirs = [join(user.out, "trash")];
+  const root = projectsDir(user);
+  if (existsSync(root)) {
+    for (const id of readdirSync(root)) trashDirs.push(join(root, id, "out", "trash"));
+  }
+  for (const dir of trashDirs) {
+    if (!existsSync(dir)) continue;
+    for (const itemId of readdirSync(dir)) {
+      const itemDir = join(dir, itemId);
+      let item;
+      try {
+        item = JSON.parse(readFileSync(join(itemDir, "item.json"), "utf8"));
+      } catch {
+        continue;
+      }
+      const reason = String(item.reason || "");
+      if (!reason.startsWith("project:")) continue;
+      const file = reason.slice("project:".length);
+      if (!/^[a-zA-Z0-9._-]+\.json$/.test(file) || file.includes("..")) continue;
+      const target = join(deletedRoot(user), itemId);
+      if (existsSync(target)) continue;
+      mkdirSync(target, { recursive: true });
+      for (const f of item.files || []) {
+        const stored = join(itemDir, f.name);
+        if (!existsSync(stored)) continue;
+        if (f.from.endsWith(`presets/${file}`)) moveEntry(stored, join(target, "preset.json"));
+        else if (f.from.endsWith(`out/${file}`)) moveEntry(stored, join(target, "archive.json"));
+      }
+      writeJsonAtomic(join(target, "meta.json"), { id: itemId, file, at: item.at || new Date().toISOString() });
+      rmSync(itemDir, { recursive: true, force: true });
+      converted.push(file);
+    }
+  }
+  mkdirSync(root, { recursive: true });
+  writeFileSync(marker, JSON.stringify({ at: new Date().toISOString(), converted }));
+  return converted;
+}
+
 export function listDeletedProjects(user) {
   const root = deletedRoot(user);
   if (!existsSync(root)) return [];
@@ -344,7 +392,9 @@ export function restoreDeletedProject(user, trashId, { legacyArchiveTarget = nul
   }
   if (existsSync(join(dir, "preset.json"))) moveEntry(join(dir, "preset.json"), target);
   if (existsSync(join(dir, "project"))) moveEntry(join(dir, "project"), assets);
-  if (legacyArchiveTarget && existsSync(join(dir, "archive.json"))) moveEntry(join(dir, "archive.json"), legacyArchiveTarget);
+  if (existsSync(join(dir, "archive.json"))) {
+    moveEntry(join(dir, "archive.json"), legacyArchiveTarget || join(assets, "out", meta.file));
+  }
   rmSync(dir, { recursive: true, force: true });
   return meta.file;
 }
