@@ -100,6 +100,7 @@ const PATTERNS = [
   [/^bad edition: (.+)$/, "api.badEdition", () => ({})],
   [/^no image files found in set: (.+)$/, "api.noImages", (m) => ({ name: m[1] })],
   [/^Unknown stage: (.+)$/, "api.unknownStage", (m) => ({ stage: m[1] })],
+  [/^Project limit: (\S+) of (\S+) free projects are used; a new project costs (\S+) credits\./, "api.projectCharge", (m) => ({ used: m[1], free: m[2], cost: m[3] })],
   [/^Not enough credits: need (\S+), balance (\S+)\b/, "api.credits", (m) => ({ needed: m[1], balance: m[2] })],
   [/^Invalid ZIP file format: (.+)$/, "api.badZip", (m) => ({ msg: m[1] })],
   [/^Security violation: dangerous path in zip: (.+)$/, "api.zipPath", (m) => ({ name: m[1] })],

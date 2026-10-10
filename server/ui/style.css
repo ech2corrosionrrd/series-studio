@@ -974,3 +974,13 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .sys-table th:first-child, .sys-table td:first-child { text-align: left; overflow-wrap: anywhere; }
 .sys-table th { color: var(--muted); font-weight: 600; }
 .econ-sub { margin: 12px 0 4px; font-size: 13px; font-weight: 600; opacity: 0.8; }
+
+/* Мої проєкти */
+.projects-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.projects-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2, transparent); }
+.projects-list li.current { border-color: var(--accent); }
+.projects-list .p-name { font-weight: 600; }
+.projects-list .p-meta { color: var(--muted); font-size: 12px; }
+.projects-list .p-actions { margin-left: auto; }
+.projects-list .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.projects-list .badge.paid { border-color: var(--accent); color: var(--accent); }
