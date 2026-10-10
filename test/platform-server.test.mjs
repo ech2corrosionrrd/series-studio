@@ -107,6 +107,14 @@ describe("public mode end-to-end", () => {
     assert.equal((await call("GET", "/api/me")).status, 401);
     assert.equal((await call("GET", "/login")).status, 200);
     assert.equal((await call("HEAD", "/login")).status, 200, "uptime monitors probe /login with HEAD");
+    const html = await call("GET", "/login", { raw: true });
+    assert.doesNotMatch(String(html.body ?? html.text ?? ""), /<script(?![^>]*src=)[^>]*>/, "login page has no inline script");
+    const js = await call("GET", "/login.js", { raw: true });
+    assert.equal(js.status, 200);
+    assert.match(String(js.headers["content-type"]), /javascript/);
+    const code = String(js.body ?? js.text ?? "");
+    assert.match(code, /\/studio\/vendor\/evm-address\.js/, "viem import is self-hosted");
+    assert.doesNotMatch(code, /ai\.w3ir\.io';|esm\.sh/);
     assert.equal((await call("HEAD", "/auth/nonce?address=0x0")).status, 404, "HEAD must not issue nonces");
     const health = await call("GET", "/health");
     assert.deepEqual(health.json, { status: "ok", service: "series-lab" });

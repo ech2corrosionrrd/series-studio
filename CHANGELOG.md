@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Сторінка входу без `unsafe-inline`
+- Скрипт сторінки входу винесено з `login.html` в окремий файл `/login.js`, тож CSP для `/login` більше не дозволяє вбудовані скрипти (`script-src 'self'` + Cloudflare Web Analytics, як у студії). Поведінка входу не змінилась. Шрифти Google на сторінці входу лишаються.
+
 ### Внутрішнє: перший крок розрізання `server/index.mjs`
 - HTTP-помічники (`send`, `writeSse`, `attachStopOnDisconnect`, `readBody`, `httpError`) винесено в `server/http.mjs`. Поведінка не змінилась (чисте перенесення; перший крок плану з `docs/QUALITY-REVIEW.md`). Видимих змін немає.
 
