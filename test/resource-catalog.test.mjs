@@ -25,7 +25,7 @@ after(() => {
 const replicate = (c) => c.providers.find((p) => p.id === "replicate");
 
 describe("resource catalog: thresholds", () => {
-  test("Replicate, OpenAI, Anthropic and fal have a built-in $5 threshold, others have none", () => {
+  test("Replicate, OpenAI, Anthropic, fal and Stability have a built-in $5 threshold, others have none", () => {
     const db = openDb(join(dir, "users.db"));
     const c = cat.resourceCatalog({ db, env: ENV, now: NOW });
     assert.equal(replicate(c).alert_below_usd, 5);
@@ -37,8 +37,13 @@ describe("resource catalog: thresholds", () => {
       assert.equal(p.alert_source, "default", id);
     }
     const stability = c.providers.find((p) => p.id === "stability");
-    assert.equal(stability.alert_below_usd, null);
-    assert.equal(stability.alert_source, "off");
+    assert.equal(stability.alert_below_usd, 5);
+    assert.equal(stability.alert_source, "default");
+    for (const id of ["runware", "pollinations"]) {
+      const p = c.providers.find((x) => x.id === id);
+      assert.equal(p.alert_below_usd, null, id);
+      assert.equal(p.alert_source, "off", id);
+    }
   });
 
   test("triggers at or below the threshold only when a balance is known", () => {

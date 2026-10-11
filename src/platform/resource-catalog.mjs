@@ -2,8 +2,8 @@
  * Admin → Ресурси: every service the project uses, balance alerts, and notes.
  *
  *   paid     OpenAI, Anthropic, Stability, Replicate, fal, Runware, Pollinations: the plan from `resources.mjs`
- *            plus an alert threshold per provider (Replicate, OpenAI, Anthropic and fal default to $5:
- *            auto-reload is off, Replicate runs dry first)
+ *            plus an alert threshold per provider (Replicate, OpenAI, Anthropic, fal and Stability default to $5:
+ *            auto-reload is off, Replicate runs dry first; Stability is read live from its API by the alert cron)
  *   infra    Alchemy, Solana RPC, Base RPC, Irys, Telegram bot, local GPU: no balance to top up, so they
  *            show whether they are configured plus a free-text note (quota usage, plan, remarks)
  *
@@ -20,7 +20,7 @@ import { getTelegramConfig, sendTelegramNotification } from "../notifications.mj
 const HOUR_MS = 3_600_000;
 
 /** Built-in thresholds ($). A stored row (even "off") overrides them. */
-export const DEFAULT_ALERT_USD = { replicate: 5, openai: 5, anthropic: 5, fal: 5 };
+export const DEFAULT_ALERT_USD = { replicate: 5, openai: 5, anthropic: 5, fal: 5, stability: 5 };
 
 export const INFRA = [
   { id: "alchemy", name: "Alchemy", kind: "quota", url: "https://dashboard.alchemy.com/settings/billing", env: ["ALCHEMY_API_KEY"] },
