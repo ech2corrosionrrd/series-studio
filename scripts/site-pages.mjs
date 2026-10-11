@@ -22,7 +22,7 @@ export const DOC_PAGES = [
       desc: "Практичний порядок вкладок Series Lab: від пресету до ZIP, мінту Core і розкриття на цьому ПК.",
       blocks: [
         { h2: "Ідіть зліва направо" },
-        { p: "Майстерня працює на вашому комп'ютері. Вкладки йдуть так: 1 → 7, далі «Деплой» і «Маркет». Повернутися назад можна будь-коли. Поля попереднього етапу тут не повторюються: щоб змінити назву, кількість чи зерно, відкрийте «Огляд»." },
+        { p: "Майстерня працює на вашому комп'ютері. Вкладки йдуть так: 1 → 7, далі «8 · Деплой» і «9 · Маркет». Повернутися назад можна будь-коли. Поля попереднього етапу тут не повторюються: щоб змінити назву, кількість чи зерно, відкрийте «Огляд»." },
         { h2: "Що зробити" },
         {
           table: {
@@ -34,7 +34,7 @@ export const DOC_PAGES = [
               ["4 · Рецепти", "«Зібрати тексти». Кредити не списуються. Перегляньте DNA і рідкість.", "Архів рецептів"],
               ["5 · Генерація", "Спершу «Порахувати» безкоштовно, потім «Згенерувати». Пілот на кілька кадрів — перед усією серією. «Скласти шари» з готових PNG кредити не списує.", "Картинки набору"],
               ["6 · Відбір", "«Лишити» або «Переробити». «Видалити» ховає кадр у кошик, «Прибрати з набору» лишає файл.", "Позначки, що йдуть у випуск"],
-              ["7 · Експорт", "«Перевірити чекліст», потім «Зібрати ZIP». Далі набір деплою і набір маркетплейсу.", "Архів випуску"],
+              ["7 · Експорт", "«Перевірити чекліст», потім «Зібрати ZIP». Далі «8 · Деплой» (набір для гаманця) і «9 · Маркет» (набір маркетплейсу).", "Архів випуску"],
             ],
           },
         },
@@ -64,7 +64,7 @@ export const DOC_PAGES = [
       desc: "The practical tab order in Series Lab: from the preset to the ZIP, a Core mint, and reveal on this PC.",
       blocks: [
         { h2: "Go left to right" },
-        { p: "The studio runs on your computer. The tabs go 1 → 7, then Deploy and Market. You can step back at any time. Earlier fields are not repeated: to change the name, supply or seed, open Overview." },
+        { p: "The studio runs on your computer. The tabs go 1 → 7, then 8 · Deploy and 9 · Market. You can step back at any time. Earlier fields are not repeated: to change the name, supply or seed, open Overview." },
         { h2: "What to do" },
         {
           table: {
@@ -76,7 +76,7 @@ export const DOC_PAGES = [
               ["4 · Recipes", "Build the texts. This does not spend credits. Check DNA and rarity.", "The recipe archive"],
               ["5 · Generate", "Count for free first, then Generate. Run a pilot of a few frames before the whole series. Compose layers from prepared PNGs does not charge credits.", "A folder of images"],
               ["6 · Review", "Keep or redo. Delete moves a frame to the trash; Drop from set keeps the file.", "The marks that go into the release"],
-              ["7 · Export", "Run the checklist, then build the ZIP. Next: the deploy kit and the marketplace kit.", "The release archive"],
+              ["7 · Export", "Run the checklist, then build the ZIP. Next: \"8 · Deploy\" (the wallet kit) and \"9 · Market\" (the marketplace kit).", "The release archive"],
             ],
           },
         },
@@ -126,7 +126,7 @@ export const DOC_PAGES = [
         { p: "Кнопка «Згенерувати» вимкнена, доки ви не натиснете «Порахувати». Почніть із пілота. Типова сила референсу — 0.45. Якщо риси вже намальовані файлами, «Скласти шари» кладе PNG з `layers/<риса>/<значення>.png` поверх базової картинки з `input/`. Промпти лишаються. Кредити за складання не списуються." },
         { h2: "6 · Відбір" },
         { p: "«Лишити» і «Переробити», версії одного номера, порівняння наборів, пошук схожих кадрів. «Видалити» переносить кадр у кошик, і тут же його можна відновити. «Прибрати з набору» лишає файл, але виймає кадр із набору. У ZIP випуску беріть лише те, що лишили." },
-        { h2: "7 · Експорт, Деплой, Маркет" },
+        { h2: "7 · Експорт, 8 · Деплой, 9 · Маркет" },
         { p: "Експорт збирає перевірений ZIP і не мінтить. Деплой збирає набір для вашого гаманця: типово Solana, Core Candy Machine, спершу devnet, з прихованими файлами і списком дозволених, якщо ви вписали адреси. Далі на цьому ПК: `series release-init`, `series upload`, `series hidden`, `series guards`, `mplx cm create`, `series verify`, `series mint`, `series reveal`. Порадник запуску рахується офлайн. Маркет збирає текст лістингу і картинки банера, аватара й обкладинки — продаж на майданчику, зі свого акаунта. Ключ у майстерню не вставляється." },
         { h2: "Довідка і Адмін" },
         { p: "«Довідка» — той самий посібник, що й сторінка «Посібник» на цьому сайті. «Адмін» бачить той, хто обслуговує майстерню: чи підключені ключі, кошик, журнал. Значення секретів там не показуються." },
@@ -156,7 +156,7 @@ export const DOC_PAGES = [
         { p: "Generate stays disabled until you press Count. Start with a pilot. The usual reference strength is 0.45. If the traits are already drawn as files, Compose layers stacks PNGs from `layers/<trait>/<value>.png` on the base image in `input/`. Prompts stay. Composing does not charge credits." },
         { h2: "6 · Review" },
         { p: "Keep and redo, versions of the same edition, compare sets, find similar frames. Delete moves a frame to the trash, and Restore on this tab puts it back. Drop from set keeps the file but takes the frame out of the set. The release ZIP should take only what you kept." },
-        { h2: "7 · Export, Deploy, Market" },
+        { h2: "7 · Export, 8 · Deploy, 9 · Market" },
         { p: "Export builds the checked ZIP and does not mint. Deploy builds a kit for your wallet: Solana by default, Core Candy Machine, devnet first, with hidden files and an allowlist when you paste addresses. Next, on this PC: `series release-init`, `series upload`, `series hidden`, `series guards`, `mplx cm create`, `series verify`, `series mint`, `series reveal`. The launch advisor works offline. Market builds listing copy and the banner, avatar and cover sizes — the sale is on the marketplace, from your own account. Do not paste a key into the studio." },
         { h2: "Help and Admin" },
         { p: "Help is the same guide as the Guide page on this site. Admin is for the person who runs the studio: whether keys are connected, the trash, the log. Secret values are not shown." },
