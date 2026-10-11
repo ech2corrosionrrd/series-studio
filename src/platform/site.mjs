@@ -274,19 +274,29 @@ export function renderLegalHtml(lang = "uk") {
   if (!existsSync(p)) return null;
   const title = l === "uk" ? "Правові документи" : "Legal";
   const [otherHref, otherLabel] = l === "uk" ? ["/legal/en", "EN"] : ["/legal", "UA"];
+  const launch = l === "uk" ? "Запустити застосунок →" : "Open the app →";
   const html = `<!DOCTYPE html>
-<html lang="uk" class="dark">
+<html lang="${l}" class="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escHtml(title)} — w3ir.io</title>
+  <title>${escHtml(title)} — Series Lab</title>
   <meta name="robots" content="all" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet" />
   <style>
+    /* Self-contained: the server CSP allows no third-party scripts, fonts or stylesheets (no Tailwind CDN, no Google Fonts). */
+    @font-face{font-family:"Onest";font-weight:400 700;font-display:swap;src:url(/fonts/onest-cyrillic.woff2) format("woff2");unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116}
+    @font-face{font-family:"Onest";font-weight:400 700;font-display:swap;src:url(/fonts/onest-latin.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
     ${SHARED_STYLE}
-    *{font-family:'Inter',system-ui,sans-serif}
-    body{margin:0;background:var(--bg);color:var(--text)}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:16px/1.5 "Onest",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:none}
+    .page{max-width:48rem;margin:0 auto;padding:0 24px}
+    header.page{display:flex;align-items:center;justify-content:space-between;padding-top:20px;padding-bottom:20px;gap:12px}
+    .brand{display:flex;align-items:center;gap:8px;font-weight:600;letter-spacing:-.01em}
+    .logo{display:grid;place-items:center;width:32px;height:32px;border-radius:8px;font-size:14px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-soft))}
+    .lang{font-size:14px;color:var(--accent-soft);min-height:44px;display:inline-flex;align-items:center}
+    .lang:hover,.foot a:hover{text-decoration:underline}
+    main.doc{padding-top:16px;padding-bottom:80px}
     .doc h1{font-size:1.9rem;font-weight:800;margin:0 0 .5rem}
     .doc h2{font-size:1.35rem;font-weight:700;margin:2rem 0 .6rem;padding-top:1rem;border-top:1px solid var(--border)}
     .doc h3{font-size:1.05rem;font-weight:600;margin:1.2rem 0 .4rem;color:var(--accent-soft)}
@@ -297,22 +307,25 @@ export function renderLegalHtml(lang = "uk") {
     .doc blockquote{border-left:3px solid var(--accent);background:var(--surface);margin:1rem 0;padding:.7rem 1rem;border-radius:0 8px 8px 0;color:var(--text)}
     .doc hr{border:0;border-top:1px solid var(--border);margin:1.5rem 0}
     .doc strong{color:var(--text)}
+    footer.page{padding-top:32px;padding-bottom:32px;font-size:12px;color:var(--lo);border-top:1px solid var(--border)}
+    .foot a{color:var(--accent-soft)}
+    a:focus-visible{outline:2px solid var(--accent-soft);outline-offset:2px}
   </style>
 </head>
-<body class="min-h-screen">
-  <header class="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
-    <a href="${PUBLIC_BASE}" class="flex items-center gap-2">
-      <div class="grid h-8 w-8 place-items-center rounded-lg text-sm font-extrabold text-white" style="background:linear-gradient(135deg,var(--accent),var(--accent-soft))">N</div>
-      <span class="font-semibold tracking-tight">NFT Prompt Builder</span>
+<body>
+  <header class="page">
+    <a href="${PUBLIC_BASE}" class="brand">
+      <span class="logo">S</span>
+      <span>Series Lab</span>
     </a>
-    <a href="${otherHref}" class="text-sm text-[var(--accent-soft)] hover:underline">${otherLabel}</a>
+    <a href="${otherHref}" class="lang">${otherLabel}</a>
   </header>
-  <main class="doc mx-auto max-w-3xl px-6 pb-20 pt-4">
+  <main class="page doc">
 ${mdToHtml(readFileSync(p, "utf8"))}
   </main>
-  <footer class="mx-auto max-w-3xl px-6 py-8 text-xs text-[var(--lo)] border-t border-[var(--border)]">
-    <a href="${APP_URL}" class="text-[var(--accent-soft)] hover:underline">Запустити застосунок →</a>
-    &nbsp;·&nbsp; <a href="${PUBLIC_BASE}" class="hover:underline">w3ir.io</a>
+  <footer class="page foot">
+    <a href="${APP_URL}">${launch}</a>
+    &nbsp;·&nbsp; <a href="${PUBLIC_BASE}">w3ir.io</a>
   </footer>
 </body>
 </html>`;
