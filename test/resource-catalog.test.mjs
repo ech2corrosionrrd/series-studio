@@ -128,6 +128,65 @@ describe("resource catalog: alerts are sent once and repeat only after the windo
   });
 });
 
+describe("resource catalog: reminder for stale hand-typed balances", () => {
+  test("one reminder per window for stale balances with a threshold; none for fresh, off or live ones", async () => {
+    const db = openDb(join(dir, "users.db"));
+    cat.setAlertThreshold("openai", 5, { db }); // an earlier test switched it off on purpose
+    db.prepare("UPDATE resource_alerts SET last_alert_at = NULL WHERE provider = '_stale_balances'").run();
+    setManualBalance("openai", 30, { db });
+    setManualBalance("replicate", 30, { db });
+    // typed 20 days before NOW; the default staleness is 14 days
+    db.prepare("UPDATE resource_balances SET updated_at = ? WHERE provider = 'openai'").run(new Date(NOW.getTime() - 20 * 86_400_000).toISOString());
+    db.prepare("UPDATE resource_balances SET updated_at = ? WHERE provider = 'replicate'").run(new Date(NOW.getTime() - 2 * 86_400_000).toISOString());
+    const sent = [];
+    const send = async (text) => {
+      sent.push(text);
+      return { ok: true };
+    };
+    const first = await cat.checkAlerts({ db, env: ENV, now: NOW, send });
+    assert.deepEqual(first.stale, ["openai"], "replicate is fresh");
+    assert.equal(first.staleReminded, true);
+    assert.equal(sent.length, 1);
+    assert.match(sent[0], /OpenAI \(20 дн\.\)/);
+    assert.doesNotMatch(sent[0], /Replicate/);
+    assert.match(sent[0], /Адмін → Ресурси/);
+
+    const inside = await cat.checkAlerts({ db, env: ENV, now: hoursLater(24), send });
+    assert.equal(inside.staleReminded, false, "inside the 7-day window");
+    assert.equal(sent.length, 1);
+
+    const dry = await cat.checkAlerts({ db, env: ENV, now: hoursLater(24 * 8), dry: true, send: async () => assert.fail("dry run must not send") });
+    assert.deepEqual(dry.stale, ["openai"]);
+
+    const after = await cat.checkAlerts({ db, env: ENV, now: hoursLater(24 * 8), send });
+    assert.equal(after.staleReminded, true, "reminds again after the window while still stale");
+    assert.equal(sent.length, 2);
+
+    // a threshold switched off means nothing depends on the number: no reminder
+    cat.setAlertThreshold("openai", null, { db });
+    db.prepare("UPDATE resource_alerts SET last_alert_at = NULL WHERE provider = '_stale_balances'").run();
+    const off = await cat.checkAlerts({ db, env: ENV, now: hoursLater(24 * 9), send });
+    assert.deepEqual(off.stale, []);
+    assert.equal(sent.length, 2);
+    cat.setAlertThreshold("openai", 5, { db });
+    // typing a fresh balance ends the reminders
+    setManualBalance("openai", 30, { db });
+    const fresh = await cat.checkAlerts({ db, env: ENV, now: new Date(Date.now() + 3_600_000), send });
+    assert.deepEqual(fresh.stale, []);
+  });
+
+  test("a failed send is reported and not marked as reminded", async () => {
+    const db = openDb(join(dir, "users.db"));
+    db.prepare("UPDATE resource_alerts SET last_alert_at = NULL WHERE provider = '_stale_balances'").run();
+    db.prepare("UPDATE resource_balances SET updated_at = ? WHERE provider = 'openai'").run(new Date(NOW.getTime() - 20 * 86_400_000).toISOString());
+    const bad = await cat.checkAlerts({ db, env: ENV, now: NOW, send: async () => ({ ok: false, error: "no network" }) });
+    assert.equal(bad.staleReminded, false);
+    assert.match(bad.failed.join(" "), /stale balances: no network/);
+    const ok = await cat.checkAlerts({ db, env: ENV, now: NOW, send: async () => ({ ok: true }) });
+    assert.equal(ok.staleReminded, true);
+  });
+});
+
 describe("resource catalog: services without a balance", () => {
   test("lists every infrastructure service with its configuration state", () => {
     const db = openDb(join(dir, "users.db"));

@@ -9,7 +9,9 @@
  *
  * Alerts: `node src/platform/resource-catalog.mjs --alerts [--dry]` (host cron, every 6 hours) sends one
  * Telegram message when a known balance is at or below its threshold, and repeats at most every
- * RESOURCE_ALERT_REPEAT_HOURS (24) until the balance recovers.
+ * RESOURCE_ALERT_REPEAT_HOURS (24) until the balance recovers. The same run sends one reminder (at most every
+ * RESOURCE_STALE_REMIND_HOURS, 168) when a balance that has an alert threshold was typed in by hand and is older than
+ * RESOURCE_BALANCE_STALE_DAYS: a threshold is only as good as the number it compares against.
  */
 import { pathToFileURL } from "node:url";
 import { openDb, nowIso } from "./db.mjs";
@@ -128,6 +130,14 @@ export function resourceCatalog({ db = openDb(), env = process.env, now = new Da
   return { ...plan, providers, infra };
 }
 
+const DAY_MS = 86_400_000;
+const STALE_MARK = "_stale_balances";
+
+export function formatStaleText(list, now = new Date()) {
+  const names = list.map((p) => `${p.name} (${Math.max(0, Math.floor((now.getTime() - Date.parse(p.balance_updated_at)) / DAY_MS))} дн.)`).join(", ");
+  return `⏰ Series Lab · ресурси\nБаланс введено вручну й він застарів: ${names}. Сповіщення про низький баланс порівнює поріг з цим числом. Зніміть баланс у кабінеті провайдера й внесіть його в Адмін → Ресурси.`;
+}
+
 export function formatAlertText(p) {
   const rec = p.recommended_usd > 0 ? ` (рекомендовано тримати $${p.recommended_usd})` : "";
   return `⚠️ Series Lab · ресурси\n${p.name}: баланс $${p.balance_usd} не вищий за поріг $${p.alert_below_usd}${rec}. Поповніть і оновіть баланс у Адмін → Ресурси.`;
@@ -142,7 +152,7 @@ export async function checkAlerts({ db = openDb(), env = process.env, now = new 
   const cat = resourceCatalog({ db, env, now, live });
   const tg = getTelegramConfig(env);
   const sender = send || (async (text) => (tg.configured ? sendTelegramNotification({ botToken: tg.botToken, chatId: tg.chatId, text, parseMode: null }) : { ok: false, message: "telegram not configured" }));
-  const out = { triggered: [], sent: [], skipped: [], failed: [] };
+  const out = { triggered: [], sent: [], skipped: [], failed: [], stale: [], staleReminded: false };
   for (const p of cat.providers) {
     if (!p.alert_triggered) {
       // recovered: forget the last alert so the next crossing alerts at once
@@ -164,6 +174,27 @@ export async function checkAlerts({ db = openDb(), env = process.env, now = new 
       out.sent.push(p.id);
     } else {
       out.failed.push(`${p.id}: ${res?.error || res?.message || "send failed"}`);
+    }
+  }
+  // One reminder for balances typed in by hand that went stale (only those whose alert threshold depends on them).
+  const stale = cat.providers.filter((p) => p.balance_stale && p.balance_source === "manual" && p.alert_below_usd != null && p.balance_updated_at);
+  out.stale = stale.map((p) => p.id);
+  const mark = db.prepare("SELECT last_alert_at FROM resource_alerts WHERE provider = ?").get(STALE_MARK);
+  if (!stale.length) {
+    if (mark?.last_alert_at && !dry) db.prepare("UPDATE resource_alerts SET last_alert_at = NULL WHERE provider = ?").run(STALE_MARK);
+  } else if (!dry) {
+    const remindMs = Math.max(1, Number.parseFloat(env.RESOURCE_STALE_REMIND_HOURS || "168") || 168) * HOUR_MS;
+    const last = mark?.last_alert_at ? Date.parse(mark.last_alert_at) : 0;
+    if (!last || now.getTime() - last >= remindMs) {
+      const res = await sender(formatStaleText(stale, now));
+      if (res?.ok) {
+        db.prepare(
+          "INSERT INTO resource_alerts (provider, below_usd, last_alert_at) VALUES (?, NULL, ?) ON CONFLICT(provider) DO UPDATE SET last_alert_at = excluded.last_alert_at",
+        ).run(STALE_MARK, nowIso(now));
+        out.staleReminded = true;
+      } else {
+        out.failed.push(`stale balances: ${res?.error || res?.message || "send failed"}`);
+      }
     }
   }
   return out;
