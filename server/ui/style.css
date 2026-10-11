@@ -817,6 +817,11 @@ main { padding: var(--space-6) var(--space-4) 120px; }
   min-height: var(--control-min);
 }
 .btn.small { padding: var(--space-1) 10px; min-height: var(--control-min); }
+/* Header controls (tabs, balance, buy, data, logout, language, hints): 44 px touch target */
+.top .btn, .top .btn.small, .top nav#tabs button, .top .lang-btn, .top .acct-balance, .top .hints-toggle { min-height: 44px; }
+.top .btn, .top .lang-btn, .top .hints-toggle { display: inline-flex; align-items: center; justify-content: center; }
+.top .lang-btn { min-width: 44px; }
+.top .hints-toggle { gap: 6px; }
 .btn.is-loading { cursor: progress; }
 .release-hub-title { color: var(--ok); }
 input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
