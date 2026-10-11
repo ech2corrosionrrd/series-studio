@@ -1573,7 +1573,6 @@ export default {
   "api.vaultEnv": "Адреса сховища не задана в середовищі.",
   "api.fileRequired": "Потрібне поле файл.",
   "api.zipOnly": "Підтримуються лише файли .zip.",
-  "api.landingMissing": "Сторінку старту не знайдено.",
   "api.legalMissing": "Юридичні документи не знайдено.",
   "api.collectionMissing": "Колекцію не знайдено.",
   "api.imageMissing": "Зображення не знайдено.",

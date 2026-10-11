@@ -1573,7 +1573,6 @@ export default {
   "api.vaultEnv": "The vault address is not configured.",
   "api.fileRequired": "The file field is required.",
   "api.zipOnly": "Only .zip files are supported.",
-  "api.landingMissing": "Landing page not found.",
   "api.legalMissing": "Legal documents not found.",
   "api.collectionMissing": "Collection not found.",
   "api.imageMissing": "Image not found.",

@@ -112,28 +112,6 @@ export function deleteCollection(slug) {
   return true;
 }
 
-export function renderDemoSection(limit = 6) {
-  const cols = listCollections(limit);
-  if (!cols.length) return "";
-  const cards = cols.map((m) => {
-    const s = slugify(m.slug);
-    const title = escHtml(m.title || "Collection");
-    return `<a href="/c/${s}" class="card group block overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">` +
-      `<img src="/c/${s}/img/${escHtml(m.images[0])}" alt="${title}" loading="lazy" class="aspect-square w-full object-cover" />` +
-      `<div class="p-3"><div class="truncate text-sm font-semibold">${title}</div><div class="text-xs text-[var(--lo)]">${(m.images || []).length} items</div></div></a>`;
-  });
-  return '<section class="mx-auto max-w-6xl px-6 pb-16">' +
-    '<h2 class="text-center text-2xl font-bold tracking-tight sm:text-3xl">Made with w3ir.io</h2>' +
-    '<p class="mx-auto mt-2 max-w-xl text-center text-[var(--muted)]">Real collections built in the app. Click any — then make your own.</p>' +
-    '<div class="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">' + cards.join("\n") + "</div></section>";
-}
-
-export function renderLanding() {
-  const p = siteFile("landing.html");
-  if (!existsSync(p)) return null;
-  return readFileSync(p, "utf8").replace("<!-- DEMO_GALLERY -->", renderDemoSection());
-}
-
 const SHARED_STYLE = ":root{--bg:#0a0b0f;--surface:#12141a;--border:#232734;--text:#ecedef;--muted:#9ba1ae;--lo:#5a6072;--accent:#6e56cf;--accent-soft:#9e8cfc;}";
 
 export function renderCollectionHtml(slug) {

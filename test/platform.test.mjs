@@ -277,7 +277,7 @@ describe("public site", () => {
     // The server CSP blocks third-party code and styles: the public page must not depend on any (it was unstyled once).
     assert.doesNotMatch(site.renderCollectionHtml(slug), /cdn\.tailwindcss|googleapis|gstatic|<script/);
     assert.match(site.renderCollectionHtml(slug), /<style>[\s\S]*\.grid\{/);
-    assert.match(site.renderDemoSection(), /\/c\/my-cool-collection/);
+    assert.ok(site.listCollections(50).some((c) => c.slug === "my-cool-collection"));
   });
 
   test("collections from the previous platform are neither served nor listed (only Series Lab images)", () => {

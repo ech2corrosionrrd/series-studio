@@ -24,7 +24,7 @@
 | `ADMIN_WALLETS`, `TEAM_WALLETS`, `OPERATOR_WALLET`, `DOGFOOD_WALLETS` | адміни й внутрішні гаманці. `ADMIN_WALLETS` і `TEAM_WALLETS` не задані — типові адреси; заданий список замінює типові (порожній `ADMIN_WALLETS=` прибирає адмінів). `OPERATOR_WALLET` і `DOGFOOD_WALLETS` лише додають внутрішні |
 | `SOLANA_RPC_URL`/`ALCHEMY_API_KEY`, `GENESIS_*`, `VAULT_*` | холдери Genesis і NFT-сейф |
 
-Додатково: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (необов'язкова; на хості типово `off`), `SERIES_ALLOWED_HOSTS` і такий самий `AUTH_DOMAIN` (обов'язково: образ слухає `0.0.0.0` і без імені не стартує), `AUTH_URI`, `LANDING_HOSTS` (на процесі майстерні порожньо), `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби). `IRYS_PRIVATE_KEY` — необов'язковий гаманець кнопки Arweave з малим балансом, не ключ творця. Staging пише `SERIES_ALLOWED_HOSTS=lab.w3ir.io` і `AUTH_DOMAIN=lab.w3ir.io`. Повний перелік — [HOSTING.md](./HOSTING.md).
+Додатково: `SERIES_MODE=public` (уже в образі), `SERIES_SPEND_CAP_USD` (необов'язкова; на хості типово `off`), `SERIES_ALLOWED_HOSTS` і такий самий `AUTH_DOMAIN` (обов'язково: образ слухає `0.0.0.0` і без імені не стартує), `AUTH_URI`, `VISION_CREDIT_COST`, `ENGINE_CREDIT_COSTS` (за потреби). `IRYS_PRIVATE_KEY` — необов'язковий гаманець кнопки Arweave з малим балансом, не ключ творця. Staging пише `SERIES_ALLOWED_HOSTS=lab.w3ir.io` і `AUTH_DOMAIN=lab.w3ir.io`. Повний перелік — [HOSTING.md](./HOSTING.md).
 
 ## Бекап
 
