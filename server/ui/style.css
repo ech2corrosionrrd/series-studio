@@ -822,8 +822,8 @@ main { padding: var(--space-6) var(--space-4) 120px; }
 .top .btn, .top .lang-btn, .top .hints-toggle { display: inline-flex; align-items: center; justify-content: center; }
 .top .lang-btn { min-width: 44px; }
 .top .hints-toggle { gap: 6px; }
-/* Below 1280 px the header wraps into several 44 px rows: it scrolls away instead of covering the screen. */
-@media (max-width: 1280px) { .top { position: static; } .help-toc { top: 12px; } }
+/* Below 1600 px the header wraps into several 44 px rows: it scrolls away instead of covering the screen. */
+@media (max-width: 1600px) { .top { position: static; } .help-toc { top: 12px; } }
 .btn.is-loading { cursor: progress; }
 .release-hub-title { color: var(--ok); }
 input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
