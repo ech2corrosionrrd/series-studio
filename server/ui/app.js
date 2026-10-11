@@ -3165,6 +3165,8 @@ const STRENGTH_KIND = {
 
 function strengthNote(engineId) {
   const kind = STRENGTH_KIND[engineId] || "ignored";
+  // Kontext and Stability have engine-specific advice from the live tests (docs/ENGINES.md); the others share their kind's note.
+  if (engineId === "kontext" || engineId === "stability") return t(`strength.note.${engineId}`);
   return t(`strength.note.${kind}`);
 }
 
