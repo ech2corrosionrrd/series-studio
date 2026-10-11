@@ -852,6 +852,13 @@ main { padding: var(--space-6) var(--space-4) 120px; }
   .top .acct-balance-label { display: none; }
   .top .btn.small { padding-left: 8px; padding-right: 8px; }
 }
+/* 320 px phones: tighter gaps and padding so the account buttons, language and hints still fit in two rows (44 px targets stay). */
+@media (max-width: 340px) {
+  .top { gap: 6px 4px; padding-left: 8px; padding-right: 8px; }
+  .top .btn.small { padding-left: 6px; padding-right: 6px; }
+  .top .lang-switch { gap: 2px; }
+  .top .hints-toggle { font-size: 12px; gap: 4px; }
+}
 .btn.is-loading { cursor: progress; }
 .release-hub-title { color: var(--ok); }
 input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
