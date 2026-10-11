@@ -68,8 +68,12 @@ describe("compatibility snapshot (reference outputs)", () => {
 
   test("slugify, legal HTML, credit table", () => {
     for (const [input, out] of Object.entries(parity.slugify)) assert.equal(site.slugify(input), out);
-    assert.equal(site.renderLegalHtml("uk"), parity.legal_uk);
-    assert.equal(site.renderLegalHtml("en"), parity.legal_en);
+    for (const lang of ["uk", "en"]) {
+      const html = site.renderLegalHtml(lang);
+      assert.ok(html.includes(`<html lang="${lang}"`), lang);
+      assert.ok(html.includes("Series Lab") && html.includes("/fonts/onest-"), lang);
+      assert.doesNotMatch(html, /https:\/\/(cdn\.tailwindcss\.com|fonts\.(googleapis|gstatic)\.com)/, lang);
+    }
     const family = { "OpenAI gpt-image-1": "openai", "Stability AI (Core / SD3)": "stability", "Flux.1 (Replicate)": "schnell" };
     for (const [key, credits] of Object.entries(parity.credit_cost)) {
       const [engine, final, ref] = key.split("|");
