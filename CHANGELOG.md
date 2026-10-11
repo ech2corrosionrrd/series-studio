@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Внутрішнє: перший шматок маршрутів винесено з `server/index.mjs`
+- Операторські маршрути (`/api/admin/system`, `/api/admin/resources/*`, `/api/admin/economy`, `/api/spend`, `/api/engines/status`, `/api/resources`) тепер у `server/routes/admin.mjs`; `handleApi` викликає `handleAdminRoutes`. Поведінка й URL не змінилися. `test/api-contract.test.mjs`, `docs:check` і `audit:api` читають і `server/routes/`, тому нові маршрути в цій теці так само потрапляють у перевірки.
+
 ### Сповіщення про баланс: Stability
 - Типовий поріг 5 $ додано й для Stability (раніше був лише в Replicate, OpenAI, Anthropic і fal). Баланс Stability cron читає з API наживо, тому сповіщення для нього найнадійніше. Runware і Pollinations лишаються без порога (немає балансу в доларах або сервіс не підключений). Поріг можна змінити чи вимкнути в Адмін → Ресурси.
 
