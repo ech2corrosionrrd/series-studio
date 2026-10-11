@@ -31,9 +31,13 @@ export async function startStudio({ mode = "public", adminWallet = false, extraE
   const dir = mkdtempSync(join(tmpdir(), "series-harness-"));
   // Chrome refuses some ports outright (ERR_UNSAFE_PORT: 6665-6669 and 6697 are IRC), which made browser tests fail by chance.
   const unsafe = (n) => (n >= 6665 && n <= 6669) || n === 6697;
-  let port;
-  do port = 6600 + Math.floor(Math.random() * 600);
-  while (unsafe(port));
+  const pickPort = () => {
+    let n;
+    do n = 6600 + Math.floor(Math.random() * 600);
+    while (unsafe(n));
+    return n;
+  };
+  let port = pickPort();
   const user = newEvmWallet();
   const env = {
     ...process.env,
@@ -59,18 +63,34 @@ export async function startStudio({ mode = "public", adminWallet = false, extraE
   };
   for (const k of ["OPENAI_API_KEY", "REPLICATE_API_TOKEN", "FAL_KEY", "STABILITY_API_KEY", "RUNWARE_API_KEY", "ANTHROPIC_API_KEY", "IRYS_PRIVATE_KEY"]) delete env[k];
 
-  const server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
-  await new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error("studio server did not start")), 20_000);
-    server.stdout.on("data", (d) => {
-      if (String(d).includes("Series Lab Studio")) {
-        clearTimeout(t);
-        resolve();
-      }
-    });
-    server.stderr.on("data", () => {});
-    server.on("exit", (c) => reject(new Error(`studio server exited ${c}`)));
-  });
+  // Test files run in parallel and each picks a random port, so two can pick the same one: the loser exits at once
+  // (EADDRINUSE). A server that dies before it is ready is retried on a fresh port instead of failing the whole file.
+  let server;
+  for (let attempt = 1; ; attempt += 1) {
+    env.PORT = String(port);
+    server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
+    try {
+      await new Promise((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error("studio server did not start")), 20_000);
+        server.stdout.on("data", (d) => {
+          if (String(d).includes("Series Lab Studio")) {
+            clearTimeout(t);
+            resolve();
+          }
+        });
+        server.stderr.on("data", () => {});
+        server.on("exit", (c) => {
+          clearTimeout(t);
+          reject(new Error(`studio server exited ${c}`));
+        });
+      });
+      break;
+    } catch (e) {
+      server.kill();
+      if (attempt >= 5 || !String(e.message).startsWith("studio server exited")) throw e;
+      port = pickPort();
+    }
+  }
 
   let cookie = "";
   function call(method, path, { body, headers = {}, raw = false, timeoutMs = 20_000, auth = true } = {}) {
