@@ -70,8 +70,12 @@ function watch(overlay) {
 }
 
 export function setupModalFocus(root = document) {
-  document.addEventListener("focusin", (e) => {
-    if (!e.target.closest?.(".overlay, .lightbox")) lastOutside = e.target;
-  }, true);
+  const remember = (e) => {
+    const el = e.target.closest?.("button, a[href], input, select, textarea, [tabindex]");
+    if (el && !el.closest(".overlay, .lightbox")) lastOutside = el;
+  };
+  // focusin covers keyboard use; click covers browsers that do not focus a button when it is clicked (Safari).
+  document.addEventListener("focusin", remember, true);
+  document.addEventListener("click", remember, true);
   root.querySelectorAll(".overlay, .lightbox").forEach(watch);
 }
