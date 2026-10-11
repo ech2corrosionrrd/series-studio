@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+---
+
+## [1.12.0] — 2026-10-11
+
 ### Внутрішнє: маршрути наборів випуску винесено в `server/routes/kits.mjs`
 - `/api/launchpads`, `/api/release/portals`, `/api/release/config`, `/api/launch-advisor`, `/api/deploy-kit` і `/api/marketplace-kit` тепер у `server/routes/kits.mjs` (`handleKitRoutes`), так само без зміни поведінки й URL, як `admin.mjs`. Функції процесу студії (шляхи, списання етапів, читання архівів) передаються в `ctx`.
 
