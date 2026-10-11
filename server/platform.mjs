@@ -21,7 +21,7 @@ import { rateLimit } from "../src/platform/ratelimit.mjs";
 import { checkSolOrders, solPayEnabled } from "../src/platform/solpay.mjs";
 import { checkPromptSafety } from "../src/platform/safety.mjs";
 import { NonceStore, SESSION_COOKIE, clearSessionCookie, issueSessionToken, readCookie, sessionCookie, SESSION_TTL_SECONDS, verifySessionToken } from "../src/platform/session.mjs";
-import { collectionImagePath, mediaType, renderCollectionHtml, renderLanding, siteFile } from "../src/platform/site.mjs";
+import { collectionImagePath, mediaType, renderCollectionHtml, siteFile } from "../src/platform/site.mjs";
 import { walletActivity } from "../src/platform/stats.mjs";
 import { loadCatalog, reconcileFulfillments, vaultConfigured, vaultRpcUrl, vaultTokenMints } from "../src/platform/vault.mjs";
 import { buildSiweMessage, buildSolanaMessage, isEvmWallet, isSolanaWallet, newNonce, normalizeAddr, verifyEvmSignature, verifySolanaSignature } from "../src/platform/wallet.mjs";
@@ -36,10 +36,9 @@ const LIMITS = {
   vault: () => envInt("VAULT_STATUS_RATE_LIMIT", 60),
   tma: () => envInt("TMA_GENERATE_RATE_LIMIT", 120),
 };
-const hostSet = (key, def) => new Set(String(process.env[key] ?? def).split(",").map((h) => h.trim().toLowerCase()).filter(Boolean));
 const FAVICON_SVG =
   "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='t' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#6e56cf'/><stop offset='1' stop-color='#4c3a9e'/></linearGradient></defs><rect width='32' height='32' rx='7' fill='url(#t)'/><path d='M16 4 L26.4 10 L26.4 22 L16 28 L5.6 22 L5.6 10 Z' fill='none' stroke='#fff' stroke-opacity='0.92' stroke-width='1.8' stroke-linejoin='round'/><g fill='#fff'><path d='M16 9.5 L21.6 12.75 L16 16 L10.4 12.75 Z' fill-opacity='0.96'/><path d='M10.4 12.75 L16 16 L16 22.5 L10.4 19.25 Z' fill-opacity='0.78'/><path d='M21.6 12.75 L16 16 L16 22.5 L21.6 19.25 Z' fill-opacity='0.6'/></g></svg>";
-const CACHE = { landing: "public, max-age=300, stale-while-revalidate=60, stale-if-error=86400", asset: "public, max-age=86400, stale-if-error=604800", seo: "public, max-age=3600, stale-if-error=604800" };
+const CACHE = { asset: "public, max-age=86400, stale-if-error=604800", seo: "public, max-age=3600, stale-if-error=604800" };
 
 const nonces = new NonceStore();
 let gremlinRunning = 0;
@@ -159,17 +158,9 @@ function loginScript() {
 async function routes(req, res, url) {
   const path = url.pathname.replace(/\/+$/, "") || "/";
   const method = req.method;
-  const host = String(req.headers.host || "").split(":")[0].toLowerCase();
 
   if (path === "/health" && (method === "GET" || method === "HEAD")) {
     send(res, 200, { status: "ok", service: "series-lab" });
-    return true;
-  }
-
-  if (path === "/" && (method === "GET" || method === "HEAD") && hostSet("LANDING_HOSTS", "w3ir.io,www.w3ir.io").has(host)) {
-    const page = renderLanding();
-    if (!page) throw new HttpError(404, "landing.html not found");
-    send(res, 200, page, "text/html; charset=utf-8", { "Cache-Control": CACHE.landing });
     return true;
   }
 

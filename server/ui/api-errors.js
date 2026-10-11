@@ -69,7 +69,6 @@ const EXACT = {
   "VAULT_WALLET_ADDRESS is not configured in environment": "api.vaultEnv",
   "multipart field 'file' is required": "api.fileRequired",
   "Only .zip files are supported": "api.zipOnly",
-  "landing.html not found": "api.landingMissing",
   "legal docs not found": "api.legalMissing",
   "collection not found": "api.collectionMissing",
   "image not found": "api.imageMissing",
