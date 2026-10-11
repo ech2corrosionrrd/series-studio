@@ -5,7 +5,7 @@
  *
  * It cannot judge prose, but it fails on the drift that happens most:
  *   1. a CLI command in `series --help` that README/GUIDE never mention;
- *   2. an /api route in server/index.mjs that docs/API.md never lists;
+ *   2. an /api route in server/index.mjs or server/routes/*.mjs that docs/API.md never lists;
  *   3. an .env.example variable that no document mentions;
  *   4. a docs/*.md file missing from docs/README.md;
  *   5. a package.json version that docs/README.md does not state;
@@ -35,7 +35,8 @@ for (const c of commands) {
 }
 
 // 2. API routes
-const server = read("server/index.mjs");
+const routeDir = join(root, "server/routes");
+const server = [read("server/index.mjs"), ...(existsSync(routeDir) ? readdirSync(routeDir).filter((f) => f.endsWith(".mjs")).map((f) => read(`server/routes/${f}`)) : [])].join("\n");
 const api = read("docs/API.md");
 const routes = [...new Set([...server.matchAll(/pathname === "(\/api\/[^"]+)"/g)].map((m) => m[1]))];
 for (const r of routes) if (!api.includes(r)) fail(`route ${r} is not listed in docs/API.md`);
