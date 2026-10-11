@@ -824,6 +824,25 @@ main { padding: var(--space-6) var(--space-4) 120px; }
 .top .hints-toggle { gap: 6px; }
 /* Below 1600 px the header wraps into several 44 px rows: it scrolls away instead of covering the screen. */
 @media (max-width: 1600px) { .top { position: static; } .help-toc { top: 12px; } }
+/* Compact header: tabs become one scrollable strip, the rest shares two rows (the wallet address and the dev label drop out). */
+@media (max-width: 1600px) {
+  .top nav#tabs { order: 5; flex-basis: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .top nav#tabs::-webkit-scrollbar { display: none; }
+  .top nav#tabs button { white-space: nowrap; }
+  .top .acct-wallet { display: none; }
+}
+@media (max-width: 900px) {
+  .top { gap: 6px 8px; padding: 8px 12px; }
+  .top .brand small, .top .lang-switch > span, .top #me { display: none; }
+  .top .acct { display: contents; }
+  .top .acct-balance, .top .acct-buy { order: 1; }
+  .top .acct-balance { margin-left: auto; }
+  .top #acct-data, .top #acct-logout, .top .lang-switch, .top .hints-toggle { order: 2; }
+}
+@media (max-width: 420px) {
+  .top .acct-balance-label { display: none; }
+  .top .btn.small { padding-left: 8px; padding-right: 8px; }
+}
 .btn.is-loading { cursor: progress; }
 .release-hub-title { color: var(--ok); }
 input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
