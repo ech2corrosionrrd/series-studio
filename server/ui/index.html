@@ -192,6 +192,8 @@
         <p class="muted small" data-i18n="base.hint.tip"></p>
       </details>
     </div>
+    <div class="hint"><p><span data-i18n="base.layerTip"></span>
+      <button type="button" class="btn small" data-goto-tab="render" data-scroll-to="g-layers" data-i18n="base.layerTip.go"></button></p></div>
 
     <div class="grid2">
       <div class="card">
@@ -609,6 +611,7 @@
         </div>
         <div class="card" id="g-layers" style="margin-top:12px">
           <h3 data-i18n="render.layers.h">PNG layers</h3>
+          <div class="hint"><p data-i18n="render.layers.critical"></p></div>
           <p class="muted small" data-i18n="render.layers.help"></p>
           <div class="actions">
             <input type="file" id="g-layers-file" accept=".zip,application/zip,application/x-zip-compressed" hidden>
@@ -708,6 +711,8 @@
         <span id="v-quality-status" class="small muted"></span>
       </div>
       <p class="muted small" style="margin:6px 0 0" data-i18n="gallery.quality.hint"></p>
+      <p class="muted small" style="margin:6px 0 0"><span data-i18n="gallery.quality.layerTip"></span>
+        <button type="button" class="btn small" data-goto-tab="render" data-scroll-to="g-layers" data-i18n="gallery.quality.layerTip.go"></button></p>
       <div id="v-quality-out" class="small" hidden></div>
     </div>
     <div class="card triage-bar" style="margin: 10px 0; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px;">

@@ -196,6 +196,14 @@ function setupTabs() {
   document.querySelectorAll("#tabs button").forEach((btn) => {
     btn.addEventListener("click", () => showTab(btn.dataset.tab));
   });
+  // In-page pointers to another tab (and a card on it), e.g. "fix a critical trait with a PNG layer".
+  document.addEventListener("click", (e) => {
+    const go = e.target.closest?.("[data-goto-tab]");
+    if (!go) return;
+    showTab(go.dataset.gotoTab);
+    const target = go.dataset.scrollTo ? $(go.dataset.scrollTo) : null;
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   document.querySelectorAll("[data-admin]").forEach((btn) => {
     btn.addEventListener("click", () => showAdminPane(btn.dataset.admin));
   });
