@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Тести: збій «studio server exited 1»
+- Тестові файли йдуть паралельно, і кожен брав випадковий порт із 600: іноді два обирали той самий, другий сервер одразу виходив з кодом 1 і валив увесь файл (так «іноді» червонів `studio in a real browser` під час пуша). Помічник тепер повторює старт на новому порту (до 5 спроб).
+
 ### Внутрішнє: перший шматок маршрутів винесено з `server/index.mjs`
 - Операторські маршрути (`/api/admin/system`, `/api/admin/resources/*`, `/api/admin/economy`, `/api/spend`, `/api/engines/status`, `/api/resources`) тепер у `server/routes/admin.mjs`; `handleApi` викликає `handleAdminRoutes`. Поведінка й URL не змінилися. `test/api-contract.test.mjs`, `docs:check` і `audit:api` читають і `server/routes/`, тому нові маршрути в цій теці так само потрапляють у перевірки.
 
