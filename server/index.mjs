@@ -173,6 +173,7 @@ if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 
 
 import { testEngineConnection } from "../src/connectors.mjs";
+import { handleAdminRoutes } from "./routes/admin.mjs";
 import { allowedHostnames, checkApiRequest, hostedConfigError, hostedConfigWarning, openAccessError } from "./guard.mjs";
 import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
 import { send, writeSse, attachStopOnDisconnect, readBody, httpError } from "./http.mjs";
@@ -186,11 +187,6 @@ import { providersSnapshot, keyHealth, providerFloatStatus } from "../src/platfo
 import { claim as claimHolderBonus, eligibility as holderEligibility } from "../src/platform/holders.mjs";
 import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs";
 import { publishCollection } from "../src/platform/site.mjs";
-import { economyReport } from "../src/platform/margin.mjs";
-import { funnel } from "../src/platform/stats.mjs";
-import { setManualBalance } from "../src/platform/resources.mjs";
-import { resourceCatalog, setAlertThreshold, setResourceNote } from "../src/platform/resource-catalog.mjs";
-import { decisionRule } from "../src/platform/decision.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
 import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, moveSetBetweenProjects, projectAssetStats, pruneWalletTrash, purgeDeletedProject, trashDaysLeft, trashRetentionDays, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
@@ -199,7 +195,7 @@ import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, 
 import { containsSecretField } from "../src/secrets.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
 import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
-import { anonymizeRenderLog, appendRenderLog, capError, engineStatsToday, recentEngineErrors, spendByEngineToday, spendCap, spentToday } from "../src/spend.mjs";
+import { anonymizeRenderLog, appendRenderLog, capError, spendCap, spentToday } from "../src/spend.mjs";
 import { failureBreaker } from "../src/pool.mjs";
 import { applySecurityHeaders } from "../src/security-headers.mjs";
 import { staticResponse } from "../src/static-cache.mjs";
@@ -1526,62 +1522,14 @@ async function handleApi(req, res, url) {
     return send(res, 200, { transactions: listTransactions(currentWallet(), 50) });
   }
 
-  if (pathname === "/api/admin/system" && req.method === "GET") {
-    if (PUBLIC_MODE && !isAdmin(currentWallet())) return send(res, 403, { error: "admin only" });
-    return send(res, 200, systemPayload());
-  }
-
-  // Recommended balance per API provider (load, demand trend, credits already sold) + manual balances.
-  if (pathname === "/api/admin/resources/plan" && req.method === "GET") {
-    const probe = url.searchParams.get("probe") === "1" || url.searchParams.get("probe") === "true";
-    const live = {};
-    if (probe) {
-      const float = await providerFloatStatus();
-      const st = float.find((f) => f.name === "Stability AI");
-      if (st && st.balance_usd != null) live.stability = st.balance_usd;
-    }
-    return send(res, 200, resourceCatalog({ live }));
-  }
-  if (pathname === "/api/admin/resources/balance" && req.method === "POST") {
-    const body = await readBody(req);
-    if (rejectSecrets(res, body)) return;
-    try {
-      return send(res, 200, { ok: true, ...setManualBalance(body.provider, body.balance_usd, { note: body.note }) });
-    } catch (e) {
-      return send(res, e.status || 400, { error: String(e.message || e) });
-    }
-  }
-
-  if (pathname === "/api/admin/resources/alert" && req.method === "POST") {
-    const body = await readBody(req);
-    if (rejectSecrets(res, body)) return;
-    try {
-      return send(res, 200, { ok: true, ...setAlertThreshold(body.provider, body.below_usd) });
-    } catch (e) {
-      return send(res, e.status || 400, { error: String(e.message || e) });
-    }
-  }
-  if (pathname === "/api/admin/resources/note" && req.method === "POST") {
-    const body = await readBody(req);
-    if (rejectSecrets(res, body)) return;
-    try {
-      return send(res, 200, { ok: true, ...setResourceNote(body.provider, body.note) });
-    } catch (e) {
-      return send(res, e.status || 400, { error: String(e.message || e) });
-    }
-  }
-
-  if (pathname === "/api/admin/economy" && req.method === "GET") {
-    if (PUBLIC_MODE && !isAdmin(currentWallet())) return send(res, 403, { error: "admin only" });
-    const raw = String(url.searchParams.get("days") || "all").toLowerCase();
-    const days = raw === "7" || raw === "7d" ? 7 : raw === "30" || raw === "30d" ? 30 : null;
-    const report = economyReport(days);
-    report.funnel_30d = funnel(30);
-    report.funnel_30d_external = funnel(30, { scope: "external" });
-    report.funnel_total_external = funnel(36500, { scope: "external" });
-    report.decision_rule = decisionRule();
-    return send(res, 200, report);
-  }
+  // Operator routes (admin system, resources, economy, spend, engine status) live in server/routes/admin.mjs.
+  if (
+    await handleAdminRoutes({
+      req, res, url, pathname, PUBLIC_MODE, readBody, rejectSecrets, systemPayload, renderLog, resourcesPayload, resourcesPayloadLive,
+      send: (...a) => { send(...a); return true; },
+      isAdminNow: () => isAdmin(currentWallet()),
+    })
+  ) return;
 
   // Direct USDC-on-Solana top-up: order → user sends the exact amount → we find it on-chain.
   if (pathname === "/api/credits/sol/order" && req.method === "POST") {
@@ -2652,16 +2600,6 @@ async function handleApi(req, res, url) {
     return send(res, 200, { ok: true, items: listTrash(trashDir()) });
   }
 
-  if (pathname === "/api/spend" && req.method === "GET") {
-    return send(res, 200, {
-      capUsd: spendCap(process.env.SERIES_SPEND_CAP_USD),
-      spentTodayUsd: spentToday(renderLog()),
-      byEngine: spendByEngineToday(renderLog()),
-      engines: engineStatsToday(renderLog()),
-      errors: recentEngineErrors(renderLog()),
-    });
-  }
-
   if (pathname === "/api/similarity" && req.method === "GET") {
     const dirName = safeSetName(url.searchParams.get("dir") || "");
     const setDir = join(P().out, dirName);
@@ -3699,14 +3637,6 @@ async function handleApi(req, res, url) {
     return send(res, 200, { ok: true, totalRecipes: recipes.length, topPairs });
   }
 
-  if (pathname === "/api/engines/status" && req.method === "GET") {
-    const list = ["fal", "comfyui", "a1111", "replicate", "openai", "stability"];
-    const statuses = await Promise.all(
-      list.map((eng) => testEngineConnection(eng, process.env, globalThis.fetch)),
-    );
-    return send(res, 200, { ok: true, engines: statuses });
-  }
-
   if (pathname === "/api/engines/test" && req.method === "POST") {
     const body = await readBody(req);
     const eng = body.engine || "fal";
@@ -3811,12 +3741,6 @@ async function handleApi(req, res, url) {
     }
     const saved = writeWorkspace(next);
     return send(res, 200, { ok: true, workspace: saved });
-  }
-
-  if (pathname === "/api/resources" && req.method === "GET") {
-    const probe = url.searchParams.get("probe") === "1" || url.searchParams.get("probe") === "true";
-    if (probe) return send(res, 200, await resourcesPayloadLive());
-    return send(res, 200, resourcesPayload());
   }
 
   return send(res, 404, { error: "not found" });

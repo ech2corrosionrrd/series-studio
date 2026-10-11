@@ -5,11 +5,12 @@
 // Routes that call paid providers or the network are listed in SKIP_EMPTY_CALL: they have dedicated tests.
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { startStudio } from "./helpers/studio-server.mjs";
 
 function routeTable() {
-  const src = ["server/index.mjs", "server/platform.mjs"].map((f) => readFileSync(f, "utf8")).join("\n");
+  const routeFiles = readdirSync("server/routes").filter((f) => f.endsWith(".mjs")).map((f) => `server/routes/${f}`);
+  const src = ["server/index.mjs", "server/platform.mjs", ...routeFiles].map((f) => readFileSync(f, "utf8")).join("\n");
   const rows = new Map();
   for (const line of src.split("\n")) {
     const m = /(?:pathname|path) === "(\/[^"]+)"/.exec(line);
