@@ -264,6 +264,23 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     assert.match(await page.textContent('[data-tab="home"]'), /Overview/i);
   });
 
+  it("modal windows keep Tab inside, Escape closes them and focus goes back to the button that opened them", async () => {
+    await page.click("#acct-data");
+    await page.waitForSelector("#data-overlay:not([hidden])");
+    const inside = () => page.evaluate(() => document.getElementById("data-overlay").contains(document.activeElement));
+    for (let i = 0; i < 12; i += 1) {
+      await page.keyboard.press("Tab");
+      assert.equal(await inside(), true, `focus left the window after ${i + 1} Tab presses`);
+    }
+    for (let i = 0; i < 12; i += 1) {
+      await page.keyboard.press("Shift+Tab");
+      assert.equal(await inside(), true, `focus left the window after ${i + 1} Shift+Tab presses`);
+    }
+    await page.keyboard.press("Escape");
+    await page.waitForSelector("#data-overlay", { state: "hidden" });
+    assert.equal(await page.evaluate(() => document.activeElement?.id), "acct-data", "focus returns to the opener");
+  });
+
   it("the whole session produced no console errors, page exceptions or failed requests", () => {
     // the one expected refusal is the "confirm the paid project" answer (402) that the projects test provoked on purpose
     const isAsk = (r) => r === "402 POST /api/preset/save" || r === "402 POST /api/projects/restore";

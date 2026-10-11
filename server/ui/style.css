@@ -1,7 +1,39 @@
 :root {
-  --bg: #120c16; --panel: #1d1424; --panel2: #261b2f; --line: #3a2c46;
-  --text: #eee4f6; --muted: #a894b8; --accent: #c77dff; --accent2: #7ad7ff;
-  --ok: #7be38a; --warn: #ffcf5a; --bad: #ff6b7d;
+  /* surface and text */
+  --bg: #110b15;
+  --panel: #1b1322;
+  --panel2: #251a2e;
+  --line: #3a2c46;
+  --line-soft: #2c2136;
+  --border: var(--line);
+  --text: #f1e9f7;
+  --muted: #ab98bb;
+  --placeholder: #b39cc4;
+  /* accent and status */
+  --accent: #c77dff;
+  --accent2: #7ad7ff;
+  --ok: #7be38a;
+  --warn: #ffcf5a;
+  --bad: #ff6b7d;
+  /* shape and effects */
+  --grad: linear-gradient(135deg, #9b4ddb 0%, #c23d8a 100%);
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 0 #ffffff08 inset, 0 8px 24px #0006;
+  --focus: 0 0 0 3px #c77dff55;
+  /* spacing, type scale, controls */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 20px;
+  --text-xl: 26px;
+  --control-min: 24px;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
@@ -480,14 +512,6 @@ tr.edited td:first-child::after { content: " ✎"; color: var(--accent); font-we
    Design refresh — tokens, navigation stepper, callouts, buttons, forms,
    help centre. Appended last so it refines the base rules above.
    ====================================================================== */
-:root {
-  --bg: #110b15; --panel: #1b1322; --panel2: #251a2e; --line: #3a2c46; --line-soft: #2c2136; --border: var(--line);
-  --text: #f1e9f7; --muted: #ab98bb; --accent: #c77dff; --accent2: #7ad7ff;
-  --grad: linear-gradient(135deg, #9b4ddb 0%, #c23d8a 100%);
-  --radius: 14px; --radius-sm: 9px;
-  --shadow: 0 1px 0 #ffffff08 inset, 0 8px 24px #0006;
-  --focus: 0 0 0 3px #c77dff55;
-}
 body {
   font: 15px/1.55 "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   background: radial-gradient(1200px 600px at 10% -10%, #2a1438 0%, transparent 60%), var(--bg);
@@ -781,21 +805,6 @@ ol.guide.field-guide li::before { width: 16px; height: 16px; top: 4px; left: 4px
 }
 
 /* Tokens, targets, focus, motion — keep the dark identity, tighten the system. */
-:root {
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-md: 15px;
-  --text-lg: 20px;
-  --text-xl: 26px;
-  --control-min: 24px;
-  --placeholder: #b39cc4;
-}
 .skip-link {
   position: absolute;
   left: var(--space-3);
@@ -1010,3 +1019,15 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .projects-list .p-actions { margin-left: auto; }
 .projects-list .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 .projects-list .badge.paid { border-color: var(--accent); color: var(--accent); }
+
+/* Utilities that replace repeated inline styles in index.html. !important keeps the old inline precedence. */
+.u-mt-4 { margin-top: 4px !important; }
+.u-mt-8 { margin-top: 8px !important; }
+.u-mt-10 { margin-top: 10px !important; }
+.u-mt-12 { margin-top: 12px !important; }
+.u-mt-16 { margin-top: 16px !important; }
+.u-col-all { grid-column: 1 / -1 !important; }
+.u-my-4 { margin: 4px 0 !important; }
+.u-m-4-0-8 { margin: 4px 0 8px !important; }
+.u-m-6-0-0 { margin: 6px 0 0 !important; }
+.u-flex-tight { margin: 0; display: flex; align-items: center; gap: 4px !important; }

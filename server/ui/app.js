@@ -6,6 +6,7 @@ import { initI18n, setLocale, getLocale, t, applyI18n, applyTips, tipText, hasKe
 import { parseSseBuffer, settleGenerateStream } from "./render-stream.js";
 import { presentApiError } from "./api-errors.js";
 import { fmtNum, fmtDate, fmtUsd as fmtUsdLocale, fmtPct as fmtPctLocale } from "./format.js";
+import { setupModalFocus } from "./focus-trap.js";
 
 function tipAttr(key) {
   const s = tipText(key);
@@ -6480,6 +6481,7 @@ async function boot() {
   initI18n();
   setupTabs();
   setupHints();
+  setupModalFocus();
   setupLang();
   setupBase();
   setupOverview();

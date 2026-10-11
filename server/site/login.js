@@ -318,9 +318,21 @@ function openModal(providers) {
     b.onclick = () => { closeModal(); connect(p); };
     wrap.appendChild(b);
   });
+  modalOpener = document.activeElement;
   $("modal").classList.add("on");
+  (modalFocusables()[0] || $("modal-close")).focus();
 }
-function closeModal() { $("modal").classList.remove("on"); }
+function closeModal() {
+  $("modal").classList.remove("on");
+  if (modalOpener?.isConnected && typeof modalOpener.focus === "function") modalOpener.focus();
+  modalOpener = null;
+}
+
+// Focus stays inside the wallet window while it is open (Tab and Shift+Tab wrap), and returns to the button that opened it.
+let modalOpener = null;
+const modalFocusables = () =>
+  [...$("modal").querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+    .filter((el) => el.getClientRects().length > 0);
 
 async function getNonce(address, chainId) {
   setStatus(t("stNonce"));
@@ -415,7 +427,30 @@ $("connect").onclick = () => {
 $("modal-close").onclick = closeModal;
 $("modal").onclick = (e) => { if (e.target === $("modal")) closeModal(); };
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && $("modal").classList.contains("on")) closeModal();
+  if (!$("modal").classList.contains("on")) return;
+  if (e.key === "Escape") {
+    closeModal();
+    return;
+  }
+  if (e.key !== "Tab") return;
+  const items = modalFocusables();
+  if (!items.length) {
+    e.preventDefault();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const active = document.activeElement;
+  if (!$("modal").contains(active)) {
+    e.preventDefault();
+    first.focus();
+  } else if (e.shiftKey && active === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && active === last) {
+    e.preventDefault();
+    first.focus();
+  }
 });
 
 fillStaticIcons();
