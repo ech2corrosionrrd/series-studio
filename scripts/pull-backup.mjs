@@ -5,7 +5,7 @@
  * tables) and keeps the last N copies.
  *
  *   npm run backup:pull
- *   node scripts/pull-backup.mjs --host root@HOST_IP --remote /opt/series-lab/backups \
+ *   node scripts/pull-backup.mjs --host user@vps-host --remote /opt/series-lab/backups \
  *        --dest backups/offsite --keep 14
  * Env: BACKUP_PULL_HOST, BACKUP_PULL_REMOTE, BACKUP_PULL_DEST, BACKUP_PULL_KEEP.
  * Needs a working non-interactive `ssh` / `scp` (key login). Exit 1 = nothing usable pulled.
@@ -32,7 +32,7 @@ export function pruneList(files, keep) {
 }
 
 function main() {
-  const host = arg("--host", "BACKUP_PULL_HOST", "root@HOST_IP");
+  const host = arg("--host", "BACKUP_PULL_HOST", "user@vps-host");
   const remote = arg("--remote", "BACKUP_PULL_REMOTE", "/opt/series-lab/backups").replace(/\/$/, "");
   const dest = resolve(arg("--dest", "BACKUP_PULL_DEST", "backups/offsite"));
   const keep = Number(arg("--keep", "BACKUP_PULL_KEEP", "14")) || 14;

@@ -44,7 +44,7 @@
 
 Копія, яку ніхто не пробував відкрити, не є бекапом, тому перевірки не пропускайте. За збою `verify-backup.sh` завершується з кодом 1 і пише в `logs/verify.log`; якщо в `backup.env` задано `SERIES_TELEGRAM_BOT_TOKEN` і `SERIES_TELEGRAM_CHAT_ID`, надсилає алерт у Telegram. Локально те саме робить `npm run backup` ([GUIDE.md](./GUIDE.md#бекап)); окрему копію перевіряє `node scripts/verify-backup.mjs --path users.db`.
 
-**Копія на ПК оператора без ключів хмари.** `npm run backup:pull` на вашому ПК по SSH забирає найновішу погодинну копію з VPS у `backups/offsite/`, перевіряє її (`integrity_check`, таблиці) і лишає 14 останніх (`BACKUP_PULL_HOST`, `BACKUP_PULL_REMOTE`, `BACKUP_PULL_DEST`, `BACKUP_PULL_KEEP`). Потрібен вхід по SSH-ключу (`ssh -o BatchMode=yes root@HOST_IP true` має проходити). Щоденний запуск у Планувальнику завдань Windows: `schtasks /Create /SC DAILY /ST 21:00 /TN "SeriesLab-Offsite-Pull" /TR "cmd /c cd /d C:\Gremlins\series-studio && npm run backup:pull >> backups\offsite.log 2>&1"`.
+**Копія на ПК оператора без ключів хмари.** `npm run backup:pull` на вашому ПК по SSH забирає найновішу погодинну копію з VPS у `backups/offsite/`, перевіряє її (`integrity_check`, таблиці) і лишає 14 останніх (`BACKUP_PULL_HOST`, `BACKUP_PULL_REMOTE`, `BACKUP_PULL_DEST`, `BACKUP_PULL_KEEP`). Потрібен вхід по SSH-ключу (`ssh -o BatchMode=yes user@<vps-host> true` має проходити). Щоденний запуск у Планувальнику завдань Windows: `schtasks /Create /SC DAILY /ST 21:00 /TN "SeriesLab-Offsite-Pull" /TR "cmd /c cd /d C:\Gremlins\series-studio && npm run backup:pull >> backups\offsite.log 2>&1"`.
 
 Копії лежать на тому ж диску, що й жива база. Вивантаження назовні вмикає одноразовий скрипт (на сервері, від root):
 
@@ -69,7 +69,7 @@ REMOTE=series-r2 PROVIDER=Cloudflare ENDPOINT=https://<account-id>.r2.cloudflare
 Усе робить один скрипт — з ПК, з кореня репозиторію:
 
 ```bash
-bash deploy/series-lab/upload.sh            # root@HOST_IP за замовчуванням
+bash deploy/series-lab/upload.sh user@<vps-host>   # або через змінну SERIES_DEPLOY_HOST
 # з власними секретами (передаються по ssh один раз і ставляться як lab.env):
 LAB_ENV_FILE=./.env SERIES_ALLOWED_WALLETS=0x…,So1… bash deploy/series-lab/upload.sh
 ```
@@ -85,7 +85,7 @@ LAB_ENV_FILE=./.env SERIES_ALLOWED_WALLETS=0x…,So1… bash deploy/series-lab/u
 7. ставить власний бекап (cron);
 8. перевіряє `next` через proxy (і, за бажанням, `SMOKE_OTHER=host/path` для іншого сайту за тим самим proxy).
 
-Повторний запуск оновлює образ і конфіг; **дані не чіпає**. Відкат: `ssh root@HOST_IP bash /tmp/series-lab-phase3-rollback.sh` (зупиняє контейнер і повертає Caddyfile; `PURGE=1` — ще й видаляє `/opt/series-lab`). Чистий аркуш (порожній леджер, свій `lab.env`): `CONFIRM=yes bash /tmp/series-lab-reset-staging.sh` — торкається лише `/opt/series-lab`.
+Повторний запуск оновлює образ і конфіг; **дані не чіпає**. Відкат: `ssh user@<vps-host> bash /tmp/series-lab-phase3-rollback.sh` (зупиняє контейнер і повертає Caddyfile; `PURGE=1` — ще й видаляє `/opt/series-lab`). Чистий аркуш (порожній леджер, свій `lab.env`): `CONFIRM=yes bash /tmp/series-lab-reset-staging.sh` — торкається лише `/opt/series-lab`.
 
 Після скрипту — DNS: запис `next` → IP сервера (proxied) у зоні `w3ir.io`.
 

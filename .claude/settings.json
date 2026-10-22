@@ -26,12 +26,7 @@
       "Bash(curl -s*https://studio.w3ir.io*)",
       "Bash(curl -sS*https://studio.w3ir.io*)",
       "Edit(CLAUDE.md)",
-      "Edit(CHANGELOG.md)",
-      "Bash(ssh root@HOST_IP docker ps*)",
-      "Bash(ssh root@HOST_IP docker logs*)",
-      "Bash(ssh root@HOST_IP ls*)",
-      "Bash(ssh root@HOST_IP grep*)",
-      "Bash(ssh root@HOST_IP BACKUP_MODE=hourly bash /opt/series-lab/backup.sh*)"
+      "Edit(CHANGELOG.md)"
     ]
   },
   "hooks": {

@@ -3,12 +3,12 @@
 # standalone staging deploy (phase3.sh).
 #
 #   [OPEN_ACCESS=1] [ENABLE_PAYMENTS=1] [ENABLE_TELEGRAM=1] [SERIES_ALLOWED_WALLETS=0x..,..] [SERIES_SPEND_CAP_USD=off|<usd>] [LAB_ENV_FILE=./.env] [SKIP_CADDY=1] \
-#     bash deploy/series-lab/upload.sh [root@HOST_IP]
+#     bash deploy/series-lab/upload.sh [user@host]
 #
 # LAB_ENV_FILE (optional) is sent over ssh once and installed as /opt/series-lab/lab.env (chmod 600).
 # Without it, put your secrets into /opt/series-lab/lab.env on the server yourself.
 set -euo pipefail
-HOST="${1:-root@HOST_IP}"
+HOST="${1:-${SERIES_DEPLOY_HOST:?Pass user@host as arg 1 or set SERIES_DEPLOY_HOST}}"
 REV=$(git rev-parse --short HEAD)
 TMP=$(mktemp -d)
 git archive --format=tar HEAD > "$TMP/src.tar"
