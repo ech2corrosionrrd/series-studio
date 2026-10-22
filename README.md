@@ -160,7 +160,6 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 | `server/ui/vendor/` | Зібрані з наших залежностей `solana-tx.js` і `evm-address.js` (`npm run vendor`) |
 | `test/` | Автотести (`npm test`; `npm run coverage` — з порогом покриття `src/`; `npm run test:repeat` — пошук нестабільних) |
 | `docs/` | Документація, індекс [docs/README.md](docs/README.md) |
-| `diploma/` | Пакет документів дипломної роботи (не входить до npm-пакета й Docker) |
 
 ---
 
@@ -178,7 +177,6 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 - [docs/HOSTING.md](docs/HOSTING.md) — перенос процесу майстерні на хост (чекліст; живий деплой не входить)
 - [docs/DEPLOY.md](docs/DEPLOY.md) — https://studio.w3ir.io (статичний сайт, без API майстерні)
 - [docs/STANDALONE.md](docs/STANDALONE.md) · [docs/DEPLOY-PLATFORM.md](docs/DEPLOY-PLATFORM.md) — окремий продукт і розгортання
-- [diploma/](diploma/README.md) — окрема структура проєкту: пакет документів дипломної роботи (не входить до npm-пакета й Docker-образу)
 
 Термінологія: **базова картинка(и) серії**; `primary` = головна базова. Мінт Solana Core — `series mint` на цьому ПК. Продаж — на майданчику. Розкриття EVM — кабінет Thirdweb.
 
