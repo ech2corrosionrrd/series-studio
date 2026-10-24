@@ -2,7 +2,7 @@
 
 > **English Overview (for Solana reviewers & international developers):**
 > **Series Lab** (`series-lab`, v1.12.0, MIT) is a non-custodial local studio and CLI for creating, quality-checking, and launching generative NFT collections (**Lab → Studio → Release**). Live web app: [lab.w3ir.io](https://lab.w3ir.io) · Documentation site (EN/UA): [studio.w3ir.io](https://studio.w3ir.io).
-> - **Verify tests locally:** `npm install && npm test` (**611 automated tests** across 102 suites) · `npm run docs:check`.
+> - **Verify tests locally:** `npm install && npm test` (**699 automated tests** across 113 suites) · `npm run docs:check`.
 > - **Solana & Metaplex Core modules** (foundation for the standalone `solana-launch-kit` package): [`src/core-flow.mjs`](src/core-flow.mjs) (Metaplex Core Candy Machine pipeline: `release-init`, `upload`, `guards`, `mint`, `reveal`, `verify`), [`src/arweave-upload.mjs`](src/arweave-upload.mjs) (permanent Arweave storage via Irys), [`src/deploy-kit.mjs`](src/deploy-kit.mjs) & [`src/release-config.mjs`](src/release-config.mjs) (`cm-config.json` generation, devnet-first defaults, royalty configuration), [`src/candy-verify.mjs`](src/candy-verify.mjs) (read-only on-chain check of a deployed Candy Machine v3 / Core Candy Machine and its Candy Guard), [`src/allowlist.mjs`](src/allowlist.mjs) (Merkle allowlist for the Core Candy Guard `allowList` guard), [`src/marketplace-kit.mjs`](src/marketplace-kit.mjs) (Tensor / Magic Eden / OpenSea listing checklists, copy and banner/avatar sizes), [`src/compress.mjs`](src/compress.mjs) (optional, shrinks frames to Metaplex's recommended ≤ 1 MB), and [`src/imageqa.mjs`](src/imageqa.mjs) / [`src/checklist.mjs`](src/checklist.mjs) (automated collection QC).
 > - **Non-custodial by design:** Private keys and seed phrases are never requested or stored by the server; all on-chain actions use local CLI keypairs or client-side Wallet Standard signing.
 
@@ -101,14 +101,14 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 
 | # | Вкладка | Що робите |
 |---|---|---|
-| 1 | **Огляд** | Назва, ID, кількість, seed → «Почати серію» / «Спін-оф» / «Зберегти пресет». |
-| 2 | **Основа** | Головна базова картинка; 🤖 Vision Assist. |
-| 3 | **Конструктор** | Пак рис, опції, keep / suffix, Style lock, Matrix Preview. |
-| 4 | **Рецепти** | «Зібрати тексти», хвилі, diff архівів, правка номера, рідкість. |
-| 5 | **Генерація** | «12 пілотів — порахувати» → оцінка → генерація. |
+| 1 | **Огляд** | Назва, ID, кількість, seed → «Почати серію» / «Спін-оф» / «Зберегти пресет». Рушій і сила референсу за замовчуванням у згорнутому «Додатково»; Генерація їх підхоплює. |
+| 2 | **Основа** | Головна базова картинка (рядок, чи призначено головну); 🤖 Vision Assist. |
+| 3 | **Конструктор** | Шість кроків: старт (шаблон або пак), варіанти рис (і PNG-шари з перевіркою покриття), що змінюється, єдиний стиль, перегляд промпту для рушія, перевірити й зберегти («Далі» зберігає незбережене). |
+| 4 | **Рецепти** | Три кроки: «Зібрати тексти», список і правка номера, рідкість; «Додатково»: diff зерна, порівняння архівів, хвилі. |
+| 5 | **Генерація** | «12 пілотів — порахувати» → оцінка → генерація. Без зібраних рецептів — плашка з переходом на «4». |
 | 6 | **Відбір** | ✓ / ↻, порівняння, Triage, схожі кадри, версії. «Видалити» стирає кадр назавжди (другий клік; кошик лише для проєктів), «Прибрати з набору» лишає файл у версіях. |
 | 7 | **Експорт** | Архів випуску → портал; інші ZIP / CSV / Arweave / вітрина / хаб. Спершу «Перевірити чекліст», потім «Зібрати ZIP». |
-| 8 | **Деплой** | «Зібрати набір деплою». Типово Solana (Core Candy Machine, спочатку devnet). Sugar — пункт «застарілий». |
+| 8 | **Деплой** | «Зібрати набір деплою». Типово Solana (Core Candy Machine, спочатку devnet). Sugar — пункт «застарілий». Підказка про окремий ключ для випуску й картка «Готові команди для вашого ПК» (копіювання). |
 | 9 | **Маркет** | «Зібрати набір маркетплейсу». Solana: Magic Eden і Tensor. EVM: OpenSea. Bitcoin: Ordinals. |
 | — | **Адмін** | **Система** (тривоги, пам'ять, диск, бекапи, запити), Ресурси, **Економіка**, статистика, помилки — лише адмін-гаманець. |
 | — | **Довідка** | Путівник, швидкий старт, словник, FAQ. |
@@ -135,6 +135,7 @@ node bin/series.mjs c2pa out/fal-s0.45 --cert signer-chain.pem --key signer-key.
 node bin/series.mjs pin out/fal-s0.45 --dry-run
 node bin/series.mjs release-init out/demo-archive.json -o release.json --creator <адреса> --price 0.2
 node bin/series.mjs upload <тека-набору> --keypair deployer.json --max-price 1
+node bin/series.mjs upload <тека-набору> --keypair deployer.json --devnet   # репетиція за тестові SOL, посилання тимчасові
 node bin/series.mjs guards release.json -o guard-config.json
 node bin/series.mjs guards release.json --allowlist wallets.txt
 node bin/series.mjs hidden <тека-набору> --uri <посилання-на-hidden.json>
