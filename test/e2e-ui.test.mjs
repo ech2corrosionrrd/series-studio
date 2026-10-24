@@ -113,11 +113,15 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
 
   it("builds the recipe texts for free", async () => {
     const before = await balance();
+    await tab("render");
+    await waitFor(async () => await page.isVisible("#g-needs-recipes"), { what: "the notice that the recipes are not built" });
     await tab("recipes");
     await page.selectOption("#r-preset", { label: /E2E Series/ }).catch(async () => page.selectOption("#r-preset", "e2e-series.json"));
     await page.click("#r-build");
     await waitFor(async () => (await page.$$("#r-table tr")).length >= 4, { what: "recipe rows" });
     assert.equal(await balance(), before, "building texts costs no credits");
+    await tab("render");
+    await waitFor(async () => !(await page.isVisible("#g-needs-recipes")), { what: "the notice is gone once the recipes exist" });
   });
 
   it("estimate and charge agree, and the regenerate switch is part of the estimate", async () => {
