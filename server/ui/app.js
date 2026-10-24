@@ -1284,6 +1284,22 @@ function applyGenerateDefaults(engine, strength) {
   }
 }
 
+/** The Constructor form as last loaded or saved: "Далі · Рецепти" saves only when it differs (the recipes read the file on disk). */
+let ctorSnapshot = null;
+function ctorSnap() {
+  try {
+    return JSON.stringify(readConstructor());
+  } catch {
+    return null;
+  }
+}
+function ctorUnsaved() {
+  const id = ($("c-id")?.value || "").trim();
+  if (!id) return false;
+  if (!state.presets?.some((p) => p.file === `${id}.json`)) return true; // never saved: there is nothing to build from
+  return ctorSnapshot !== null && ctorSnap() !== ctorSnapshot;
+}
+
 function fillConstructor(preset) {
   $("c-id").value = preset.id || "";
   $("c-name").value = preset.name || "";
@@ -1315,6 +1331,7 @@ function fillConstructor(preset) {
     state.selectedTraitKey = state.draftTraits.items[0]?.key || null;
   }
   renderOptionsEditor();
+  ctorSnapshot = ctorSnap();
 }
 
 function readConstructor() {
@@ -1510,6 +1527,7 @@ function setupOverview() {
     state.projectConfirm = null;
     state.projectOverwrite = null;
     rememberRev(data.file, data.rev);
+    ctorSnapshot = ctorSnap();
     const charged = data.project?.charged ? ` ${t("projects.charged", { n: data.project.charged })}` : "";
     $("o-msg").textContent = `${t("home.msg.saved")}: ${data.file}${charged}`;
     $("o-msg").className = "small ok-msg";
@@ -1590,10 +1608,6 @@ function setupOverview() {
 
 function setupConstructor() {
   $("ctor-goto-home")?.addEventListener("click", () => showTab("home"));
-  $("ctor-next")?.addEventListener("click", () => {
-    syncCtorFromOverview();
-    showTab("recipes");
-  });
   $("c-strength")?.addEventListener("input", () => {
     if ($("c-strength-v")) $("c-strength-v").textContent = $("c-strength").value;
   });
@@ -1639,46 +1653,66 @@ function setupConstructor() {
       $("ctor-msg").className = "small err-msg";
     }
   });
+  /** Validate and save the Constructor form as the preset. Throws with a readable message when it cannot. */
+  async function saveCtorPreset() {
+    const preset = readConstructor();
+    if (!preset.id) throw new Error(t("ctor.msg.needId"));
+    const items = preset.traits?.items || [];
+    for (const trait of items) {
+      const v = validateOptionsClient(trait.options || []);
+      if (!v.ok) throw new Error(`${trait.key}: ${v.errors.join("; ")}`);
+    }
+    const file = `${preset.id}.json`;
+    const overwrite = state.projectOverwrite === preset.id;
+    const editing = $("ctor-file")?.value === file ? file : null;
+    let data;
+    try {
+      data = await api("/api/preset/save", {
+        method: "POST",
+        body: JSON.stringify({ preset, ...(overwrite ? { overwrite: true } : {}), ...(editing ? { editing } : {}), ...saveRevField(file) }),
+      });
+    } catch (e) {
+      const code = e.payload?.code;
+      if (code === "project_exists" || code === "project_stale") {
+        state.projectOverwrite = preset.id;
+        throw new Error(t(code === "project_stale" ? "projects.stale" : "projects.exists", { name: preset.id }));
+      }
+      throw e;
+    }
+    state.projectOverwrite = null;
+    rememberRev(data.file, data.rev);
+    ctorSnapshot = ctorSnap();
+    $("ctor-msg").textContent = `${t("ctor.msg.saved")}: ${data.file}`;
+    $("ctor-msg").className = "small ok-msg";
+    await loadPresets();
+    if ($("r-preset")) $("r-preset").value = data.file;
+    if ($("ctor-file")) $("ctor-file").value = data.file;
+    renderFacts();
+    renderSteps();
+    scheduleWorkspaceSave();
+    return data;
+  }
   $("ctor-save")?.addEventListener("click", async () => {
     try {
-      const preset = readConstructor();
-      if (!preset.id) throw new Error(t("ctor.msg.needId"));
-      const items = preset.traits?.items || [];
-      for (const trait of items) {
-        const v = validateOptionsClient(trait.options || []);
-        if (!v.ok) throw new Error(`${trait.key}: ${v.errors.join("; ")}`);
-      }
-      const file = `${preset.id}.json`;
-      const overwrite = state.projectOverwrite === preset.id;
-      const editing = $("ctor-file")?.value === file ? file : null;
-      let data;
-      try {
-        data = await api("/api/preset/save", {
-          method: "POST",
-          body: JSON.stringify({ preset, ...(overwrite ? { overwrite: true } : {}), ...(editing ? { editing } : {}), ...saveRevField(file) }),
-        });
-      } catch (e) {
-        const code = e.payload?.code;
-        if (code === "project_exists" || code === "project_stale") {
-          state.projectOverwrite = preset.id;
-          throw new Error(t(code === "project_stale" ? "projects.stale" : "projects.exists", { name: preset.id }));
-        }
-        throw e;
-      }
-      state.projectOverwrite = null;
-      rememberRev(data.file, data.rev);
-      $("ctor-msg").textContent = `${t("ctor.msg.saved")}: ${data.file}`;
-      $("ctor-msg").className = "small ok-msg";
-      await loadPresets();
-      if ($("r-preset")) $("r-preset").value = data.file;
-      if ($("ctor-file")) $("ctor-file").value = data.file;
-      renderFacts();
-      renderSteps();
-      scheduleWorkspaceSave();
+      await saveCtorPreset();
     } catch (e) {
       $("ctor-msg").textContent = e.message;
       $("ctor-msg").className = "small err-msg";
     }
+  });
+  $("ctor-next")?.addEventListener("click", async () => {
+    syncCtorFromOverview();
+    if (ctorUnsaved()) {
+      // the recipes are built from the saved file: save the edits first instead of silently dropping them
+      try {
+        await saveCtorPreset();
+      } catch (e) {
+        $("ctor-msg").textContent = e.payload?.code === "project_charge" ? t("ctor.next.needSave") : e.message;
+        $("ctor-msg").className = "small err-msg";
+        return;
+      }
+    }
+    showTab("recipes");
   });
   $("ctor-save-pack-lib")?.addEventListener("click", async () => {
     const msg = $("ctor-pack-msg");
@@ -1719,7 +1753,17 @@ function fileToB64(file) {
   });
 }
 
+/** Soft readiness line next to "Далі · Конструктор": is a primary base picture set? (it never blocks the step) */
+function paintBasePrimaryStatus(files) {
+  const el = $("base-primary-status");
+  if (!el) return;
+  const primary = (files || []).find((f) => f.primary);
+  el.textContent = primary ? t("base.primary.ok", { file: primary.file }) : t("base.primary.missing");
+  el.className = primary ? "small ok-msg" : "small warn";
+}
+
 function renderBaseGallery(files) {
+  paintBasePrimaryStatus(files);
   const grid = $("base-gallery");
   if (!grid) return;
   grid.innerHTML = "";
@@ -5613,6 +5657,7 @@ function deployCommandsText() {
   if (creator) release.push("--creator", creator);
   if (symbol) release.push("--symbol", symbol);
   const lines = [
+    `# ${t("deploy.commands.c.tip")}`,
     `# ${t("deploy.commands.c.cli")}`,
     `# ${t("deploy.commands.c.folder")}`,
     `cd <${t("deploy.commands.folderPh")}>`,
