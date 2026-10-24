@@ -1460,7 +1460,7 @@ async function handleApi(req, res, url) {
       })(),
       packages: Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p })),
       solPay: solPayInfo(process.env, { admin: isAdmin(wallet) }),
-      referral: code ? { code, link: `${process.env.AUTH_URI || "https://ai.w3ir.io"}/login?ref=${code}` } : null,
+      referral: code ? { code, link: `${process.env.AUTH_URI || "https://lab.w3ir.io"}/login?ref=${code}` } : null,
       localGpu: gpu,
       creditCosts: Object.fromEntries(
         Object.keys(ENGINES).map((e) => [

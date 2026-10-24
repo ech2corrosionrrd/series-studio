@@ -31,6 +31,12 @@
 
 ---
 
+### Виправлення: прибрано адреси і назву попередньої платформи з коду
+- Картки поширення `/c/<назва>` вели `og:image`, канонічне посилання і кнопку «Запустити» на `w3ir.io` (там 404 для картинок) та `ai.w3ir.io` (інший продукт). Тепер усе йде на `AUTH_URI` (типово `https://lab.w3ir.io`).
+- Текст входу гаманцем: «Sign in to Series Lab» замість «NFT Prompt Builder» (EVM і Solana). Запасний домен `ai.w3ir.io` прибрано: порожній `AUTH_DOMAIN` на хості зупиняє запуск із поясненням, у реферальному посиланні запасне значення `https://lab.w3ir.io`.
+- `.env.example`: `AUTH_DOMAIN=lab.w3ir.io`, `AUTH_URI=https://lab.w3ir.io`. Документи `DEPLOY-PLATFORM.md` і `HOSTING.md` оновлено.
+- Тести: `test/ratelimit.test.mjs` (ліміти, вікно, IP клієнта), `test/share-pages-brand.test.mjs`, розширено `test/guard.test.mjs`.
+
 ## [1.12.0] — 2026-10-11
 
 ### Внутрішнє: маршрути наборів випуску винесено в `server/routes/kits.mjs`

@@ -78,6 +78,9 @@ test("guard: hosted studio requires a hostname and a matching sign-in domain", (
     null,
   );
   assert.equal(hostedConfigError("10.0.0.8", true, { AUTH_DOMAIN: "10.0.0.8" }), null);
+  // no legacy fallback domain: an empty AUTH_DOMAIN stops a hosted start with a clear message
+  assert.match(hostedConfigError("10.0.0.8", true, { AUTH_DOMAIN: "" }), /AUTH_DOMAIN is not set/);
+  assert.match(hostedConfigError("0.0.0.0", true, { SERIES_ALLOWED_HOSTS: "lab.w3ir.io" }), /AUTH_DOMAIN is not set/);
 });
 
 test("server refuses a public bind without a studio hostname", async () => {

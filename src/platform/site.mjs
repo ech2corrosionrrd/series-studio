@@ -11,8 +11,9 @@ import { shortWallet } from "./wallet.mjs";
 
 const SITE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "server", "site");
 export const PUBLIC_IMAGE_LIMIT = 60;
-const PUBLIC_BASE = "https://w3ir.io";
-const APP_URL = "https://ai.w3ir.io";
+// Series Lab serves its own pages and images; w3ir.io and ai.w3ir.io belong to other products.
+const PUBLIC_BASE = (process.env.AUTH_URI || "https://lab.w3ir.io").replace(/\/+$/, "");
+const APP_URL = PUBLIC_BASE;
 const APP_CTA = `${APP_URL}/?utm_source=collection_share&utm_medium=cta&utm_campaign=viral`;
 const MEDIA = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".gif": "image/gif" };
 

@@ -89,12 +89,12 @@ export const newNonce = () => randomBytes(16).toString("hex");
 const utcStamp = (d = new Date()) => d.toISOString().replace(/\.\d{3}Z$/, "Z");
 
 export const SIWE_STATEMENT =
-  "Sign in to NFT Prompt Builder. This request will not trigger an on-chain transaction or cost gas.";
+  "Sign in to Series Lab. This request will not trigger an on-chain transaction or cost gas.";
 
 /** EIP-4361 message. */
 export function buildSiweMessage(address, nonce, { domain, uri, chainId, issuedAt } = {}) {
-  domain ??= process.env.AUTH_DOMAIN || "ai.w3ir.io";
-  uri ??= process.env.AUTH_URI || "https://ai.w3ir.io";
+  domain ??= process.env.AUTH_DOMAIN || "localhost";
+  uri ??= process.env.AUTH_URI || `http://${domain}`;
   chainId ??= Number(process.env.AUTH_CHAIN_ID || 8453);
   const issued = issuedAt || utcStamp();
   return (
@@ -111,7 +111,7 @@ export function buildSiweMessage(address, nonce, { domain, uri, chainId, issuedA
 
 /** Phantom sign-in message. */
 export function buildSolanaMessage(wallet, nonce, issuedAt) {
-  return `NFT Prompt Builder — Sign-In\nWallet: ${wallet}\nNonce: ${nonce}\nIssued: ${issuedAt || utcStamp()}`;
+  return `Series Lab — Sign-In\nWallet: ${wallet}\nNonce: ${nonce}\nIssued: ${issuedAt || utcStamp()}`;
 }
 
 const hexToBytes = (hex) => Uint8Array.from(Buffer.from(hex, "hex"));
