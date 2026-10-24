@@ -157,6 +157,7 @@ function showTab(name) {
     /* ignore */
   }
   if (name === "ctor") refreshCtorLayers();
+  if (name === "deploy") paintDeployCommands();
   if (name === "render") {
     if (state.archivesLoaded) paintGenerateNotice();
     else loadArchives().catch(() => {});
@@ -508,6 +509,7 @@ function setupLang() {
 
 function refreshDynamicCopy() {
   loadLaunchAdvisor();
+  paintDeployCommands();
   renderSteps();
   renderFacts();
   renderCtorSummary();
@@ -5591,7 +5593,87 @@ async function applyLicenceTemplate() {
   }
 }
 
+/**
+ * Ready-to-paste terminal commands for the release on the author's PC (Solana, Core Candy Machine). Names the studio
+ * knows (the archive file, the creator address, the symbol, devnet or mainnet) are filled in; what it cannot know
+ * (the folder the ZIP was unpacked to, the key files) stays in angle brackets. Nothing here is run by the studio.
+ * Plain comments and single-line commands, so the same text works in PowerShell and in Bash.
+ */
+function deployCommandsText() {
+  const chain = $("d-chain")?.value || "solana";
+  if (chain !== "solana") return null;
+  const devnet = document.querySelector('input[name="d-rehearsal"]:checked')?.value !== "skip";
+  // the series that is open, when its recipes are built; otherwise whatever archive the kits use
+  const open = $("r-preset")?.value || "";
+  const archive = (open && state.archives?.some((x) => x.file === open) ? open : kitArchive()) || t("deploy.commands.archivePh");
+  const creator = ($("d-creator")?.value || "").trim();
+  const symbol = ($("d-symbol")?.value || "").trim();
+  const rpc = "https://api.devnet.solana.com";
+  const release = ["series release-init", archive, "-o release.json"];
+  if (creator) release.push("--creator", creator);
+  if (symbol) release.push("--symbol", symbol);
+  const lines = [
+    `# ${t("deploy.commands.c.cli")}`,
+    `# ${t("deploy.commands.c.folder")}`,
+    `cd <${t("deploy.commands.folderPh")}>`,
+    "",
+    `# ${t("deploy.commands.c.key")}`,
+    "solana-keygen new --outfile deployer.json",
+    ...(devnet ? ["", `# ${t("deploy.commands.c.airdrop")}`, `solana airdrop 2 --url ${rpc} --keypair deployer.json`] : []),
+    "",
+    `# ${t("deploy.commands.c.release")}`,
+    release.join(" "),
+    `# ${t("deploy.commands.c.fill")}`,
+    "",
+    `# ${t(devnet ? "deploy.commands.c.uploadDevnet" : "deploy.commands.c.upload")}`,
+    `series upload . --keypair deployer.json${devnet ? " --devnet" : ""}`,
+    "",
+    `# ${t("deploy.commands.c.guards")}`,
+    "series guards release.json",
+    "",
+    `# ${t("deploy.commands.c.machine")}`,
+    "mplx cm create --wizard",
+    "",
+    `# ${t("deploy.commands.c.verify")}`,
+    `series verify release.json${devnet ? ` --rpc ${rpc}` : ""}`,
+    "",
+    `# ${t("deploy.commands.c.mint")}`,
+    `series mint release.json --keypair <${t("deploy.commands.minterPh")}>`,
+    "",
+    `# ${t("deploy.commands.c.reveal")}`,
+    `series reveal . --keypair <${t("deploy.commands.authorityPh")}>`,
+  ];
+  return lines.join("\n");
+}
+
+function paintDeployCommands() {
+  const pre = $("d-commands-text");
+  if (!pre) return;
+  const text = deployCommandsText();
+  pre.textContent = text ?? t("deploy.commands.other");
+  if ($("d-commands-copy")) $("d-commands-copy").hidden = text == null;
+}
+
+function setupDeployCommands() {
+  for (const id of ["d-chain", "d-creator", "d-symbol", "x-file", "r-preset"]) {
+    $(id)?.addEventListener("input", paintDeployCommands);
+    $(id)?.addEventListener("change", paintDeployCommands);
+  }
+  document.querySelectorAll('input[name="d-rehearsal"]').forEach((r) => r.addEventListener("change", paintDeployCommands));
+  $("d-commands-copy")?.addEventListener("click", async () => {
+    const msg = $("d-commands-msg");
+    try {
+      await navigator.clipboard.writeText(deployCommandsText() || "");
+      if (msg) msg.textContent = t("deploy.commands.copied");
+    } catch {
+      if (msg) msg.textContent = t("deploy.commands.copyFail");
+    }
+  });
+  paintDeployCommands();
+}
+
 function setupKits() {
+  setupDeployCommands();
   $("d-chain")?.addEventListener("change", () => {
     syncNetwork("deploy");
     loadLaunchAdvisor();

@@ -263,6 +263,26 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     assert.equal(await page.isHidden("#projects-deleted-wrap"), true);
   });
 
+  it("deploy: ready commands carry the names of the series, and devnet or mainnet follows the rehearsal choice", async () => {
+    await tab("deploy");
+    await page.fill("#d-creator", "CreatorAddr1111111111111111111111111111111111");
+    const text = async () => page.textContent("#d-commands-text");
+    await waitFor(async () => /--creator CreatorAddr1111/.test(await text()), { what: "creator address in the commands" });
+    const devnet = await text();
+    const open = await page.inputValue("#r-preset"); // whichever series is open right now
+    assert.ok(devnet.includes(`release-init ${open} -o release.json`), `the archive of the open series (${open}): ${devnet}`);
+    assert.match(devnet, /--devnet/);
+    assert.match(devnet, /solana airdrop 2 --url https:\/\/api\.devnet\.solana\.com/);
+    assert.match(devnet, /mplx cm create --wizard/);
+    await page.check("#d-rehearsal-no");
+    await waitFor(async () => !/--devnet/.test(await text()), { what: "mainnet commands without --devnet" });
+    assert.ok(!/airdrop/.test(await text()), "no airdrop on mainnet");
+    await page.selectOption("#d-chain", "evm");
+    await waitFor(async () => /DEPLOY\.txt/.test(await text()), { what: "other networks point to DEPLOY.txt" });
+    assert.ok(!(await page.isVisible("#d-commands-copy")), "nothing to copy for another network");
+    await page.selectOption("#d-chain", "solana");
+  });
+
   it("switches the interface language", async () => {
     await page.click('button:has-text("EN")');
     await waitFor(async () => (await page.getAttribute("html", "lang")) === "en", { what: "html lang=en" });
