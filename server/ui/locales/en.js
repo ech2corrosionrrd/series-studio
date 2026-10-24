@@ -1578,6 +1578,8 @@ export default {
   "projects.confirm": "This is a new project beyond the {free} free ones ({used} used). It costs {cost} cr once. Press again to confirm.",
   "projects.exists": "A project named \"{name}\" already exists. Change the name, or press again to replace it: the previous version goes to the trash.",
   "projects.stale": "The project \"{name}\" was changed in another tab or on another device after you opened it. Reload to see the changes, or press again to replace it: that version goes to the trash.",
+  "projects.storage": "Disk: {used} of {limit} MB used. Frames, layers, base images and the trash all count.",
+  "projects.storageFull": "Disk is full: {used} of {limit} MB. No new frames are made until you delete old sets or projects (and empty the trash).",
   "projects.charged": "{n} cr charged for the new project.",
   "api.projectCharge": "A new project beyond the {free} free ones ({used} used) costs {cost} cr. Confirm to continue.",
   "projects.delete": "Delete",

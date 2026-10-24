@@ -180,6 +180,7 @@ import { claim as claimHolderBonus, eligibility as holderEligibility } from "../
 import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs";
 import { publishCollection } from "../src/platform/site.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
+import { diskMessage, diskStatus, noteWrite, presetLimitIssues, quotaConfig } from "../src/quota.mjs";
 import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, moveSetBetweenProjects, projectAssetStats, pruneWalletTrash, purgeDeletedProject, trashDaysLeft, trashRetentionDays, projectIdOf, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
@@ -800,6 +801,25 @@ function makeArchive(preset) {
   return { archive, dupes, traitKeys };
 }
 
+/** Quotas apply to signed-in wallets on the hosted studio; admins and the local studio are exempt. */
+const quotaApplies = () => PUBLIC_MODE && !isAdmin(currentWallet());
+const IMAGE_EST_BYTES = 6 * 1024 * 1024; // room kept for one more generated frame
+
+/** Refuse a write that would take the wallet over its disk quota (`extra` = bytes about to be written). */
+function assertWalletDisk(extra = 0) {
+  if (!quotaApplies()) return;
+  const s = diskStatus(P().root, extra);
+  if (!s.ok) throw httpError(413, diskMessage(s), { code: "disk_quota", used: s.used, limit: s.limit });
+}
+const noteDiskWrite = (bytes) => {
+  if (quotaApplies()) noteWrite(P().root, bytes);
+};
+const storageInfo = () => {
+  const exempt = !quotaApplies();
+  const s = diskStatus(P().root, 0);
+  return { used: s.used, limit: exempt ? 0 : s.limit, exempt };
+};
+
 function checkPreset(preset) {
   const schema = validatePreset(preset);
   if (!schema.ok) {
@@ -810,6 +830,10 @@ function checkPreset(preset) {
   if (!sem.ok) {
     const err = sem.errors;
     return { ok: false, errors: Array.isArray(err) ? err : [String(err)] };
+  }
+  if (quotaApplies()) {
+    const issues = presetLimitIssues(preset, quotaConfig());
+    if (issues.length) return { ok: false, errors: issues };
   }
   return { ok: true };
 }
@@ -1369,6 +1393,7 @@ async function resourcesPayloadLive() {
 async function runPrimaryGenerate({ wish, engine, strength, useRef = false, makePrimary = true, seed }) {
   const text = String(wish || "").trim();
   if (!text) throw httpError(400, "wish text required");
+  assertWalletDisk(IMAGE_EST_BYTES);
   const ctx = engineCtx(process.env);
   mkdirSync(P().input, { recursive: true });
 
@@ -1425,7 +1450,9 @@ async function runPrimaryGenerate({ wish, engine, strength, useRef = false, make
     );
     primaryFile = "primary.png";
     writeFileSync(join(P().input, primaryFile), buf);
+    noteDiskWrite(buf.length);
   }
+  noteDiskWrite(buf.length);
   return {
     ok: true,
     stub: false,
@@ -1496,6 +1523,7 @@ async function handleApi(req, res, url) {
       admin: isAdmin(wallet),
       wallet,
       balance: getBalance(wallet),
+      storage: storageInfo(),
       projects: (() => {
         const q = projectQuota(walletProjects(), projectsConfig());
         return isAdmin(wallet) ? { ...q, needsCharge: false, exempt: true } : { ...q, exempt: false };
@@ -1978,6 +2006,7 @@ async function handleApi(req, res, url) {
       trashDays: trashRetentionDays(),
       active: readActiveProject(P()),
       assetsPerProject: PUBLIC_MODE,
+      storage: storageInfo(),
       quota: { ...quota, needsCharge: exempt ? false : quota.needsCharge, exempt },
     });
   }
@@ -2129,9 +2158,11 @@ async function handleApi(req, res, url) {
     }
     const buf = Buffer.from(body.data, "base64");
     if (buf.length < 32) throw new Error("empty image");
+    assertWalletDisk(buf.length * (body.makePrimary ? 2 : 1));
     const outPath = join(P().input, name);
     if (existsSync(outPath)) toTrash([outPath], `overwritten by upload (${name})`);
     writeFileSync(outPath, buf);
+    noteDiskWrite(buf.length);
     // optional: set as primary by renaming/copying
     if (body.makePrimary && role !== "primary") {
       const primaryName = "primary" + ext;
@@ -2159,6 +2190,7 @@ async function handleApi(req, res, url) {
     const destName = "primary" + ext;
     if (file === destName) return send(res, 200, { ok: true, file: destName, path: `input/${destName}`, files: listBases() });
     const buf = readFileSync(src);
+    assertWalletDisk(buf.length);
     toTrash(
       readdirSync(P().input).filter((n) => /^(primary|mother)\./i.test(n)).map((n) => join(P().input, n)),
       `replaced primary (set ${file})`,
@@ -2342,6 +2374,7 @@ async function handleApi(req, res, url) {
       const ctx = engineCtx(process.env);
       const seed = body.seed != null ? Number(body.seed) : undefined;
       const tag = String(body.edition ?? body.index ?? Date.now()).replace(/[^a-zA-Z0-9_-]/g, "") || String(Date.now());
+      assertWalletDisk(IMAGE_EST_BYTES);
       assertSpend(eng.costUsd ?? null);
       const buf = await paidCall(
         { source: "studio", kind: "pilot", engine: engineName, edition: tag, costUsd: eng.costUsd ?? null, seed, reference: true },
@@ -2352,6 +2385,7 @@ async function handleApi(req, res, url) {
       const name = `pilot-${tag}.png`;
       if (existsSync(join(dir, name))) toTrash([join(dir, name)], `pilot ${name} regenerated`);
       writeFileSync(join(dir, name), buf);
+      noteDiskWrite(buf.length);
       return send(res, 200, {
         ok: true,
         stub: false,
@@ -2416,6 +2450,7 @@ async function handleApi(req, res, url) {
     const unitCost = eng.costUsd ?? null;
     assertSpend(unitCost == null ? null : sel.recipes.length * unitCost);
     assertEngineAllowed(engineName);
+    assertWalletDisk(IMAGE_EST_BYTES); // no room for even one more frame: stop before any call is paid
     if (PUBLIC_MODE) {
       // Check the whole batch up front so it never stops half-way for lack of credits.
       const need = sel.recipes.length * creditCost(engineName, { reference: true, costUsd: unitCost ?? 0 });
@@ -2475,6 +2510,7 @@ async function handleApi(req, res, url) {
             if (stop.signal.aborted) {
               return { ok: false, skipped: true, edition: recipe.edition, index: recipe.index, code: "stopped" };
             }
+            assertWalletDisk(IMAGE_EST_BYTES); // checked before the charge: a full disk never costs credits
             charge = chargeCredits({ engine: engineName, costUsd: unitCost ?? 0, reference: true });
             const recipeBase = resolveBaseImageForRecipe(recipe, allBases) || primary;
             const image = readFileSync(join(P().input, recipeBase.file));
@@ -2502,6 +2538,7 @@ async function handleApi(req, res, url) {
               baseSha256: sha256Hex(image),
               ...(licenseNotice ? { licenseWarning: licenseNotice } : {}),
             });
+            noteDiskWrite(buf.length);
             logRender({ source: "studio", kind: "batch", engine: engineName, set, edition: recipe.edition, v, ok: true, costUsd: unitCost, seed: recipe.seed });
             breaker.record(true);
             return {
@@ -3243,6 +3280,7 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/layers/upload" && req.method === "POST") {
     try {
       const buffer = await readRawBody(req, LAYER_LIMITS.zipBytes);
+      assertWalletDisk(buffer.length * 2); // the ZIP is unpacked into the layers folder
       const result = await importLayersZip(buffer, P().layers, {
         clear: url.searchParams.get("clear") === "1",
         // Replacing is reversible: the old layers go to the trash (Resources → Trash), like other deletions.
