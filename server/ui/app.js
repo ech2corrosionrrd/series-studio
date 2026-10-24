@@ -157,6 +157,10 @@ function showTab(name) {
     /* ignore */
   }
   if (name === "ctor") refreshCtorLayers();
+  if (name === "render") {
+    if (state.archivesLoaded) paintGenerateNotice();
+    else loadArchives().catch(() => {});
+  }
   if (name === "recipes") ensureRecipesLoaded();
   if (name === "gallery") ensureGalleryLoaded();
   if (name === "render") {
@@ -167,6 +171,16 @@ function showTab(name) {
     const current = document.querySelector(".admin-pane.on")?.id?.replace(/^admin-/, "");
     showAdminPane(adminPane || current || "sys");
   }
+}
+
+/** Generate needs the recipe texts of the series; without them "Estimate" only prints a raw server error. */
+function paintGenerateNotice() {
+  const box = $("g-needs-recipes");
+  if (!box) return;
+  if (!state.archivesLoaded) return; // not loaded yet: loadArchives paints when it is
+  const series = $("r-preset")?.value || "";
+  const built = series ? state.archives.some((a) => a.file === series) : state.archives.length > 0;
+  box.hidden = built;
 }
 
 function lockGenerate(locked) {
@@ -2044,6 +2058,8 @@ async function loadTraitCooccurrence(file) {
 async function loadArchives() {
   const data = await api("/api/archive/list");
   state.archives = data.archives || [];
+  state.archivesLoaded = true;
+  paintGenerateNotice();
   fillArchiveSelect();
   const sel = $("r-preset");
   if (sel && state.presets?.length) {
