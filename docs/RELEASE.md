@@ -16,13 +16,14 @@
 `reveal` лишається `null`, доки немає хешу. Після `series hidden` поставте `{ "enabled": true, "name": "Hidden #", "uri": "<посилання hidden.json>", "hash": "<64 hex>" }`, і `series verify` звірить hidden settings на машині.
 
 ## 2. Завантаження в Arweave (відновлюване)
-`series upload <тека-набору> --keypair <deployer.json> [--max-price 1] [--no-fund] [--dry-run]`
+`series upload <тека-набору> --keypair <deployer.json> [--max-price 1] [--no-fund] [--dry-run] [--devnet]`
 
 - Читає `assets/N.png + N.json` і `collection.*` (набір деплою з Експорту).
 - Для кожної позиції: спершу картинка, її посилання вписується в `image` і `properties.files`, потім завантажується JSON.
 - Після **кожної** позиції оновлюється `cache.json` (формат Sugar: посилання + SHA-256). Обрив — просто запустіть знову: готове пропускається.
 - Перед оплатою: оцінка в SOL, порівняння з балансом Irys, поповнення з запасом 5% (вимкнути: `--no-fund`), ліміт `--max-price`.
 - `--dry-run` без ключа рахує лише кількість і розмір.
+- **Репетиція на devnet:** `--devnet` (або `IRYS_NETWORK=devnet`) платить тестовими SOL і пише в `cache.json` посилання `https://devnet.irys.xyz/<id>`: вони **тимчасові**, для справжнього випуску завантажуйте без прапорця. Без `--rpc` береться `https://api.devnet.solana.com`; `SOLANA_RPC_URL` у репетиції не підставляється. RPC іншого кластера, ніж мережа, зупиняє команду до оплати. Серверна кнопка Arweave в Експорті завжди працює з mainnet.
 
 > Перевірено на mainnet (04.10.2026): новий клієнт `@irys/upload` завантажив тестову позицію, посилання на картинку й метадані відкриваються на `gateway.irys.xyz`. Вартість одного файлу ≈ 0.000002 SOL; мінімального поповнення Irys не вимагає.
 

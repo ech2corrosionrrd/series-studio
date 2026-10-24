@@ -78,6 +78,11 @@
 - AI-критик: ліміт відповіді піднято з 600 до 1500 токенів із тієї ж причини.
 - Перевірено в студії через UI: провайдер `anthropic (claude-sonnet-5-5)`, 7 рис із варіантами. Тести: `test/vision-model.test.mjs`.
 
+### Завантаження випуску на devnet (`--devnet`)
+- Команда завантаження набору в Arweave отримала `--devnet` (і `IRYS_NETWORK=devnet`): репетиція за тестові SOL на Irys devnet, посилання `https://devnet.irys.xyz/<id>` у `cache.json` (тимчасові). Раніше мережа була жорстко mainnet, тож пройти шлях випуску на devnet повністю було неможливо.
+- Захист від помилки: RPC іншого кластера, ніж мережа, і невідоме значення `IRYS_NETWORK` зупиняють команду до оплати; `SOLANA_RPC_URL` не підставляється в devnet-репетицію. Типова поведінка (mainnet, `gateway.irys.xyz`) і серверна кнопка Arweave не змінились.
+- Документи: `RELEASE.md`, `GUIDE.md`, `README.md`, `.env.example`. Тести: `test/upload-devnet.test.mjs`.
+
 ## [1.12.0] — 2026-10-11
 
 ### Внутрішнє: маршрути наборів випуску винесено в `server/routes/kits.mjs`

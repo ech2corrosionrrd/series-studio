@@ -13,13 +13,13 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { writeJsonAtomic } from "./fs-safe.mjs";
-import { createIrysUploader, ensureIrysFunds } from "./storage.mjs";
+import { IRYS_NETWORKS, assertRpcMatchesNetwork, createIrysUploader, ensureIrysFunds, irysNetwork } from "./storage.mjs";
 
 const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif" };
 const FUND_BUFFER = 1.05;
 
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
-const link = (id, ext) => `https://gateway.irys.xyz/${id}${ext ? `?ext=${ext}` : ""}`;
+const linkFor = (network) => (id, ext) => `${IRYS_NETWORKS[network].gateway}/${id}${ext ? `?ext=${ext}` : ""}`;
 
 /** Solana keypair file (`[1,2,…]` JSON array) → secret key bytes. */
 export function loadKeypairFile(path) {
@@ -92,22 +92,28 @@ export function planUpload(bundleDir) {
  * @param {string} p.bundleDir
  * @param {Uint8Array|string} [p.key] secret key; omit with dryRun
  * @param {string} [p.rpcUrl]
+ * @param {"mainnet"|"devnet"} [p.network="mainnet"] devnet = rehearsal with test SOL, temporary storage, devnet links
  * @param {boolean} [p.dryRun] estimate only
  * @param {boolean} [p.fund=true] top the Irys balance up from the wallet when short
  * @param {number} [p.maxPriceSol] refuse when the estimate is above this
  * @param {(msg: string) => void} [p.log]
- * @param {Function} [p.createUploader] injectable `(key, rpcUrl) => Promise<uploader>`
+ * @param {Function} [p.createUploader] injectable `(key, rpcUrl, network) => Promise<uploader>`
  */
 export async function uploadBundle({
   bundleDir,
   key,
-  rpcUrl = "https://api.mainnet-beta.solana.com",
+  rpcUrl,
+  network: networkName,
   dryRun = false,
   fund = true,
   maxPriceSol,
   log = () => {},
   createUploader = createIrysUploader,
 }) {
+  const network = irysNetwork(networkName);
+  rpcUrl = rpcUrl || IRYS_NETWORKS[network].rpc;
+  assertRpcMatchesNetwork(rpcUrl, network);
+  const link = linkFor(network);
   const plan = planUpload(bundleDir);
   const { scan, cache, todo, bytes } = plan;
   if (scan.gaps.length) log(`warning: numbering has gaps: ${scan.gaps.slice(0, 10).join(", ")}${scan.gaps.length > 10 ? " …" : ""}`);
@@ -117,7 +123,8 @@ export async function uploadBundle({
   if (dryRun) return result;
   if (!key) throw new Error("signing key required (keypair file); use dryRun to estimate without it");
 
-  const irys = await createUploader(key, rpcUrl);
+  if (network === "devnet") log("devnet rehearsal: paid in devnet SOL, links point to devnet.irys.xyz and are not permanent");
+  const irys = await createUploader(key, rpcUrl, network);
   result.priceSol = await ensureIrysFunds(irys, bytes, { fund, maxPriceSol, log });
 
   const save = () => writeJsonAtomic(result.cacheFile, cache);
