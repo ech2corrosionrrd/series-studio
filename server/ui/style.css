@@ -70,6 +70,11 @@ body.no-hints .hint { display: none; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
 /* numbered steps in Constructor and Recipes: one clear order for a beginner */
 .step-card { border-left: 4px solid var(--accent); }
+#tab-ctor, #tab-recipes { counter-reset: step; }
+#tab-ctor .step-card, #tab-recipes .step-card { counter-increment: step; }
+.step-no::before { content: counter(step); }
+/* "Шлях новачка": advanced blocks are hidden (a display:none step does not take a number) */
+body.beginner-on .adv-only { display: none !important; }
 .step-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; flex-wrap: wrap; }
 .step-head h3 { margin: 0; }
 .step-no { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; }

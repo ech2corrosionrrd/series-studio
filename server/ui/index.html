@@ -69,6 +69,7 @@
     <input type="checkbox" id="path-beginner" checked>
     <span data-i18n="path.beginner">Шлях новачка</span>
   </label>
+  <span id="path-adv-note" class="muted small" hidden data-i18n="path.advHidden"></span>
 </div>
 
 <main id="content">
@@ -127,22 +128,26 @@
             <span class="muted" style="display:block" data-i18n="home.field.genesis.hint"></span></span></label>
         <label><span data-i18n="home.field.seed">Seed</span>
           <input id="o-seed" autocomplete="off" data-i18n-placeholder="home.field.seed.ph" placeholder="my-series-v1"></label>
-        <label><span data-i18n="home.field.engine">Двигун (пізніше)</span>
-          <select id="o-engine">
-            <option value="kontext" data-i18n="engine.kontext">kontext / flux</option>
-            <option value="fal" data-i18n="engine.fal">fal.ai</option>
-            <option value="comfyui" data-i18n="engine.comfyui" data-local-gpu="1">comfyui</option>
-            <option value="a1111" data-i18n="engine.a1111" data-local-gpu="1">automatic1111</option>
-            <option value="openai" data-i18n="engine.openai">openai</option>
-            <option value="stability" data-i18n="engine.stability">stability</option>
-            <option value="pollinations" data-i18n="engine.pollinations">pollinations</option>
-            <option value="runware" data-i18n="engine.runware">runware</option>
-            <option value="mock" data-i18n="engine.mock">mock (демо)</option>
-          </select></label>
-        <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="o-strength-v">0.45</b>
-          <input type="range" id="o-strength" min="0.1" max="0.95" step="0.05" value="0.45">
-        </label>
-        <p id="o-strength-note" class="muted small" role="status"></p>
+        <details class="step-adv u-col-all" id="o-defaults">
+          <summary data-i18n="home.defaults.title">Додатково: рушій і сила референсу за замовчуванням</summary>
+          <p class="muted small u-mt-8" data-i18n="home.defaults.help"></p>
+          <label><span data-i18n="home.field.engine">Двигун (пізніше)</span>
+            <select id="o-engine">
+              <option value="kontext" data-i18n="engine.kontext">kontext / flux</option>
+              <option value="fal" data-i18n="engine.fal">fal.ai</option>
+              <option value="comfyui" data-i18n="engine.comfyui" data-local-gpu="1">comfyui</option>
+              <option value="a1111" data-i18n="engine.a1111" data-local-gpu="1">automatic1111</option>
+              <option value="openai" data-i18n="engine.openai">openai</option>
+              <option value="stability" data-i18n="engine.stability">stability</option>
+              <option value="pollinations" data-i18n="engine.pollinations">pollinations</option>
+              <option value="runware" data-i18n="engine.runware">runware</option>
+              <option value="mock" data-i18n="engine.mock">mock (демо)</option>
+            </select></label>
+          <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="o-strength-v">0.45</b>
+            <input type="range" id="o-strength" min="0.1" max="0.95" step="0.05" value="0.45">
+          </label>
+          <p id="o-strength-note" class="muted small" role="status"></p>
+          </details>
       </div>
       <div class="actions">
         <button type="button" id="o-start" class="btn primary" data-i18n="home.start">Почати серію · основа →</button>
@@ -338,7 +343,7 @@
 
     <!-- Step 1: where to start -->
     <div class="card step-card" id="ctor-start-card">
-      <div class="step-head"><span class="step-no" aria-hidden="true">1</span><h3 data-i18n="ctor.step1.title">Оберіть стартову точку</h3></div>
+      <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="ctor.step1.title">Оберіть стартову точку</h3></div>
       <p class="muted small" data-i18n="ctor.step1.help"></p>
       <h4 data-i18n="ctor.templatesTitle">Готові шаблони</h4>
       <p class="muted small" data-i18n="ctor.templates.help"></p>
@@ -355,7 +360,7 @@
 
     <!-- Step 2: variants of each trait -->
     <div class="card step-card" id="ctor-options-card">
-      <div class="step-head"><span class="step-no" aria-hidden="true">2</span><h3 data-i18n="ctor.optionsTitle">Варіанти кожної риси</h3></div>
+      <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="ctor.optionsTitle">Варіанти кожної риси</h3></div>
       <p class="muted small" data-i18n="ctor.options.help"></p>
       <p class="muted small" data-i18n="ctor.options.hint"></p>
       <div class="toolbar u-mt-8">
@@ -400,11 +405,16 @@
         </details>
       </div>
       <p id="opt-empty" class="muted small" data-i18n="ctor.options.empty"></p>
+      <div id="ctor-layers" class="card small u-mt-12">
+        <b data-i18n="ctor.layers.title">Свої готові PNG-шари (необов'язково)</b>
+        <div id="ctor-layers-status" class="u-mt-4" role="status"></div>
+        <button type="button" class="btn small u-mt-8" data-goto-tab="render" data-scroll-to="g-layers" data-i18n="ctor.layers.go">Завантажити ZIP із шарами на «5 · Генерація»</button>
+      </div>
     </div>
 
     <!-- Step 3: what changes between NFTs and what stays -->
     <div class="card step-card" id="ctor-change-card">
-      <div class="step-head"><span class="step-no" aria-hidden="true">3</span><h3 data-i18n="ctor.step3.title">Що змінюється, а що ні</h3></div>
+      <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="ctor.step3.title">Що змінюється, а що ні</h3></div>
       <p class="muted small" data-i18n="ctor.step3.help"></p>
       <div id="pack-checklist-wrap" class="pack-checklist-wrap" hidden>
         <h4 data-i18n="ctor.packs.checklistTitle">Які риси різні в кожного NFT</h4>
@@ -425,7 +435,7 @@
           <textarea id="c-suffix" rows="2" data-i18n-placeholder="ctor.suffix.ph"></textarea>
           <span class="muted small" data-i18n="ctor.suffix.explain"></span></label>
       </div>
-      <div class="toolbar u-mt-12">
+      <div class="toolbar u-mt-12 adv-only">
         <button type="button" id="ctor-save-pack-lib" class="btn" data-i18n="ctor.pack.save_lib">💾 Зберегти в бібліотеку паків</button>
         <span id="ctor-pack-msg" class="small muted"></span>
         <span class="muted small" data-i18n="ctor.pack.save_lib.help"></span>
@@ -434,7 +444,7 @@
 
     <!-- Step 4: one style for the whole series (optional) -->
     <div class="card form step-card" id="ctor-stylelock-card">
-      <div class="step-head"><span class="step-no" aria-hidden="true">4</span><h3 data-i18n="ctor.styleLockTitle">Єдиний стиль серії</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
+      <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="ctor.styleLockTitle">Єдиний стиль серії</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
       <p class="muted small" data-i18n="ctor.styleLock.help"></p>
       <div class="grid2">
         <label><span data-i18n="ctor.styleLock.angle">Angle</span>
@@ -452,8 +462,8 @@
     </div>
 
     <!-- Step 5: preview the prompt per engine (optional) -->
-    <div class="card step-card" id="ctor-matrix-card">
-      <div class="step-head"><span class="step-no" aria-hidden="true">5</span><h3 data-i18n="ctor.matrixTitle">Перегляд промпту для рушія</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
+    <div class="card step-card adv-only" id="ctor-matrix-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="ctor.matrixTitle">Перегляд промпту для рушія</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
       <p class="muted small" data-i18n="ctor.matrixHelp">Попередній перегляд оптимізованого синтаксису під різні рушії в реальному часі.</p>
       <div class="toolbar" style="margin-top:8px; gap:8px; flex-wrap:wrap">
         <button type="button" class="btn small matrix-btn primary" data-engine="flux" data-i18n-tip="ctor.matrix.flux.tip">Flux.1 LoRA</button>
@@ -467,7 +477,7 @@
 
     <!-- Step 6: check and save -->
     <div class="card step-card" id="ctor-finish-card">
-      <div class="step-head"><span class="step-no" aria-hidden="true">6</span><h3 data-i18n="ctor.step6.title">Перевірте й збережіть</h3></div>
+      <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="ctor.step6.title">Перевірте й збережіть</h3></div>
       <p class="muted small" data-i18n="ctor.step6.help"></p>
       <div class="toolbar">
         <button type="button" id="ctor-validate" class="btn" data-i18n="ctor.validate">Validate</button>
@@ -492,7 +502,7 @@
 
     <!-- Step 1: build the texts -->
     <div class="card step-card" id="r-build-card">
-      <div class="step-head"><span class="step-no" aria-hidden="true">1</span><h3 data-i18n="recipes.step1.title">Зберіть тексти рецептів</h3></div>
+      <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="recipes.step1.title">Зберіть тексти рецептів</h3></div>
       <p class="muted small" data-i18n="recipes.step1.help"></p>
       <div class="toolbar">
         <select id="r-preset" data-i18n-tip="ctrl.r-preset.tip"></select>
@@ -503,7 +513,7 @@
 
     <!-- Step 2: look through the table, fix single recipes -->
     <div class="card step-card" id="r-table-card">
-      <div class="step-head"><span class="step-no" aria-hidden="true">2</span><h3 data-i18n="recipes.step2.title">Перегляньте список і виправте, що треба</h3></div>
+      <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="recipes.step2.title">Перегляньте список і виправте, що треба</h3></div>
       <p class="muted small" data-i18n="recipes.step2.help"></p>
       <div class="toolbar">
         <input id="r-search" data-i18n-placeholder="recipes.search" data-i18n-tip="recipes.search.tip" placeholder="Search">
@@ -531,7 +541,7 @@
 
     <!-- Step 3: is the rarity what you planned (optional) -->
     <div class="card step-card" id="r-check-card">
-      <div class="step-head"><span class="step-no" aria-hidden="true">3</span><h3 data-i18n="recipes.step3.title">Перевірте рідкість</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
+      <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="recipes.step3.title">Перевірте рідкість</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
       <p class="muted small" data-i18n="recipes.step3.help"></p>
       <div class="toolbar">
         <button type="button" id="r-simulate" class="btn" data-i18n="recipes.simulate">Суха симуляція рідкості</button>
@@ -550,7 +560,7 @@
     </div>
 
     <!-- Advanced: for repeat runs and bigger series -->
-    <details class="card step-adv" id="r-advanced">
+    <details class="card step-adv adv-only" id="r-advanced">
       <summary data-i18n="recipes.advanced.title">Додатково: повторні запуски і великі серії</summary>
       <p class="muted small u-mt-8" data-i18n="recipes.advanced.help"></p>
       <h4 data-i18n="recipes.diff.title">Чи відтворюється результат</h4>
@@ -897,6 +907,7 @@
             <input id="x-uri-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.png)" data-i18n-placeholder="export.bundle.uriPrefix.ph" data-i18n-tip="export.bundle.uriPrefix.tip" style="flex:1" />
             <button type="button" id="x-pin-irys" class="btn small" data-i18n="export.bundle.pinArweave" data-i18n-tip="export.bundle.pinArweave.tip">📌 Upload to Arweave (Irys)</button>
           </div>
+          <span class="small muted" style="margin-top:2px; display:block" data-i18n="export.bundle.pinArweave.hint"></span>
           <span id="x-pin-status" class="small muted" style="margin-top:2px; display:block"></span>
         </label>
         <label class="small u-col-all" id="x-anim-wrap"><span data-i18n="export.bundle.animPrefix">Animation / Video URI Prefix</span>
@@ -912,8 +923,8 @@
         <label class="small"><input type="checkbox" id="x-zero-index" /> <span data-i18n="export.zeroIndex.label">Нумерація з нуля (0.png, 0.json)</span></label>
         <label class="small"><input type="checkbox" id="x-upscale" /> <span data-i18n="export.bundle.upscale">Збільшити 2×</span></label>
         <button type="button" id="x-bundle" class="btn primary" data-i18n="export.bundle.build">Зібрати ZIP</button>
-        <button type="button" id="x-provenance" class="btn" data-i18n="export.provenance.btn">Хеш походження (provenance)</button>
-        <button type="button" id="x-dataset" class="btn" data-i18n="export.dataset.btn">Датасет для донавчання (LoRA)</button>
+        <button type="button" id="x-provenance" class="btn adv-only" data-i18n="export.provenance.btn">Хеш походження (provenance)</button>
+        <button type="button" id="x-dataset" class="btn adv-only" data-i18n="export.dataset.btn">Датасет для донавчання (LoRA)</button>
         <button type="button" id="x-showcase" class="btn" data-i18n="export.showcase.btn">Вітрина і рідкість (HTML)</button>
         <a id="x-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">⬇ Download ZIP</a>
         <span id="x-bundle-msg" class="small" role="status"></span>
@@ -1030,6 +1041,15 @@
         <label class="row"><input type="radio" name="d-rehearsal" id="d-rehearsal-do" value="devnet" checked> <span data-i18n="deploy.rehearsal.do"></span></label>
         <label class="row"><input type="radio" name="d-rehearsal" id="d-rehearsal-no" value="skip"> <span data-i18n="deploy.rehearsal.no"></span></label>
         <p class="muted" style="margin:4px 0 0" data-i18n="deploy.rehearsal.note"></p>
+      </div>
+      <div id="d-keys" class="card small u-mt-10">
+        <b data-i18n="deploy.keys.title">Який ключ потрібен для випуску</b>
+        <ul class="guide">
+          <li data-i18n="deploy.keys.li1"></li>
+          <li data-i18n="deploy.keys.li2"></li>
+          <li data-i18n="deploy.keys.li3"></li>
+          <li data-i18n="deploy.keys.li4"></li>
+        </ul>
       </div>
       <div id="d-advisor-card" class="advisor-card">
         <h2 data-i18n="advisor.h2">Порадник запуску</h2>

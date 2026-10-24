@@ -102,6 +102,7 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     await page.fill("#o-name", "E2E Series");
     await page.fill("#o-id", "e2e-series");
     await page.fill("#o-size", "4");
+    await page.click("#o-defaults > summary"); // the default engine sits under "Додатково"
     await page.selectOption("#o-engine", "mock");
     await waitReload(() => page.click("#o-save"));
     await waitFor(async () => /e2e-series\.json/.test(await page.textContent("#o-msg")), { what: "save message after the restart" });

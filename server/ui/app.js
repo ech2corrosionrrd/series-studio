@@ -156,6 +156,7 @@ function showTab(name) {
   } catch {
     /* ignore */
   }
+  if (name === "ctor") refreshCtorLayers();
   if (name === "recipes") ensureRecipesLoaded();
   if (name === "gallery") ensureGalleryLoaded();
   if (name === "render") {
@@ -1249,6 +1250,24 @@ function renderBaseLines(preset) {
   el.textContent = lines.length ? `${t("base.lines")}: ${lines.join(", ")}` : "";
 }
 
+/**
+ * The engine and the reference strength saved with the series are the defaults of the Generate tab. They used to be
+ * separate controls that never met, so a value picked on Overview did nothing on Generate.
+ */
+function applyGenerateDefaults(engine, strength) {
+  const ge = $("g-engine");
+  if (ge && engine && ge.value !== engine && [...ge.options].some((o) => o.value === engine)) {
+    ge.value = engine;
+    ge.dispatchEvent(new Event("change"));
+  }
+  const gs = $("g-strength");
+  if (gs && strength != null && strength !== "" && Number.isFinite(Number(strength))) {
+    gs.value = String(strength);
+    if ($("g-strength-v")) $("g-strength-v").textContent = String(gs.value);
+    gs.dispatchEvent(new Event("input"));
+  }
+}
+
 function fillConstructor(preset) {
   $("c-id").value = preset.id || "";
   $("c-name").value = preset.name || "";
@@ -1259,6 +1278,10 @@ function fillConstructor(preset) {
   const str = Number(preset.engine?.strength ?? 0.45);
   $("c-strength").value = str;
   $("c-strength-v").textContent = String(str);
+  if (state.generateDefaultsFor !== preset.id) {
+    state.generateDefaultsFor = preset.id; // once per series: later edits on Generate are not overwritten
+    applyGenerateDefaults(eng, str);
+  }
   fillOverview(preset);
   const keep = preset.promptTemplate?.keep;
   $("c-keep").value = Array.isArray(keep) ? keep.join("\n") : keep || "";
@@ -1385,6 +1408,7 @@ function setupOverview() {
   $("o-strength").addEventListener("input", () => {
     $("o-strength-v").textContent = $("o-strength").value;
     syncCtorFromOverview();
+    applyGenerateDefaults(null, $("o-strength").value);
   });
   $("o-name").addEventListener("input", () => {
     const name = $("o-name").value.trim();
@@ -1420,7 +1444,10 @@ function setupOverview() {
       renderSteps();
     });
   }
-  $("o-engine")?.addEventListener("change", () => paintStrengthNote("o-strength-note", $("o-engine").value));
+  $("o-engine")?.addEventListener("change", () => {
+    paintStrengthNote("o-strength-note", $("o-engine").value);
+    applyGenerateDefaults($("o-engine").value, null);
+  });
   paintStrengthNote("o-strength-note", $("o-engine")?.value);
   async function saveOverviewPreset() {
     syncCtorFromOverview();
@@ -2385,8 +2412,7 @@ async function applyGenerateOutcome(settled, ui) {
 
 const mbText = (bytes) => fmtNum(Math.round((Number(bytes) || 0) / 104857.6) / 10);
 
-function renderLayersStatus(st) {
-  const el = $("g-layers-status");
+function renderLayersStatus(st, el = $("g-layers-status")) {
   if (!el) return;
   el.textContent = "";
   const line = (text, cls = "") => {
@@ -2408,6 +2434,25 @@ function renderLayersStatus(st) {
       const more = cov.missingCount > 6 ? ` … +${fmtNum(cov.missingCount - 6)}` : "";
       line(t("render.layers.missing", { list: shown, more }), "muted");
     }
+  }
+}
+
+/** Constructor, step 2: do the uploaded PNG layers cover the saved series? (shown once a series is saved) */
+async function refreshCtorLayers() {
+  const box = $("ctor-layers-status");
+  if (!box) return;
+  const file = $("ctor-file")?.value || "";
+  try {
+    const st = await api(`/api/layers/status${file ? `?preset=${encodeURIComponent(file)}` : ""}`);
+    if (!st?.exists) {
+      box.textContent = t("ctor.layers.none");
+      box.className = "muted u-mt-4";
+      return;
+    }
+    box.className = "u-mt-4";
+    renderLayersStatus(st, box);
+  } catch {
+    box.textContent = "";
   }
 }
 
@@ -4465,6 +4510,8 @@ function beginnerOn() {
 function renderPath(activeTab) {
   const box = $("path-steps");
   if (!box) return;
+  document.body.classList.toggle("beginner-on", beginnerOn());
+  if ($("path-adv-note")) $("path-adv-note").hidden = !beginnerOn();
   const phase = phaseForTab(activeTab);
   box.innerHTML = "";
   PATH_PHASES.forEach((p, i) => {
