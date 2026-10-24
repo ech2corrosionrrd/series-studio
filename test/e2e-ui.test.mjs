@@ -283,6 +283,38 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     await page.selectOption("#d-chain", "solana");
   });
 
+  it("Constructor: 'Далі · Рецепти' saves unsaved edits first, and an unchanged form does not write the file again", async () => {
+    await tab("ctor");
+    const file = await page.inputValue("#ctor-file");
+    const rev = async () => (await studio.call("GET", `/api/preset?file=${encodeURIComponent(file)}`)).json;
+    const before = await rev();
+    let saves = 0;
+    const count = (r) => { if (r.method() === "POST" && r.url().includes("/api/preset/save")) saves += 1; };
+    page.on("request", count);
+    // nothing edited: moving on must not write the file (a re-save of the same text would keep the same revision)
+    await page.click("#ctor-next");
+    await waitFor(async () => await page.isVisible("#tab-recipes.on"), { what: "the Recipes tab after an unchanged form" });
+    assert.equal(saves, 0, "an unchanged form sends no save");
+    // an edit without pressing Save, then "Next"
+    await tab("ctor");
+    await page.fill("#c-suffix", "UNSAVED-SUFFIX-123");
+    await page.click("#ctor-next");
+    await waitFor(async () => await page.isVisible("#tab-recipes.on"), { what: "the Recipes tab after an edit" });
+    page.off("request", count);
+    assert.equal(saves, 1, "an edited form is saved once before moving on");
+    const after = await rev();
+    assert.equal(after.preset.promptTemplate.suffix, "UNSAVED-SUFFIX-123", "the edit reached the file the recipes are built from");
+    assert.notEqual(after.rev, before.rev);
+  });
+
+  it("Base: a soft line says whether a primary base picture is set", async () => {
+    await tab("base");
+    await waitFor(async () => (await page.textContent("#base-primary-status")).trim().length > 0, { what: "the base status line" });
+    const text = await page.textContent("#base-primary-status");
+    assert.match(text, /^(✓|⚠)/);
+    assert.ok(await page.isEnabled("#base-next"), "the step is never blocked");
+  });
+
   it("switches the interface language", async () => {
     await page.click('button:has-text("EN")');
     await waitFor(async () => (await page.getAttribute("html", "lang")) === "en", { what: "html lang=en" });
