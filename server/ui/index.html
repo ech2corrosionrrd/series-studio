@@ -306,6 +306,13 @@
       <div class="actions">
         <button type="button" id="ctor-goto-home" class="btn" data-i18n="ctor.gotoHome">Змінити в 1 · Огляд</button>
       </div>
+      <div class="toolbar u-mt-10">
+        <label class="small"><span data-i18n="ctor.fromDisk">Пресет з диску</span>
+          <select id="ctor-file"></select>
+        </label>
+        <button type="button" id="ctor-load" class="btn" data-i18n="ctor.load">Завантажити</button>
+        <span class="muted small" data-i18n="ctor.fromDisk.help"></span>
+      </div>
       <!-- hidden mirrors — kept in sync from Overview; not shown -->
       <div hidden aria-hidden="true">
         <input id="c-id" autocomplete="off">
@@ -328,37 +335,26 @@
       </div>
     </div>
 
-    <div class="toolbar">
-      <label class="small"><span data-i18n="ctor.fromDisk">Пресет з диску</span>
-        <select id="ctor-file"></select>
-      </label>
-      <button type="button" id="ctor-load" class="btn" data-i18n="ctor.load">Завантажити</button>
-      <button type="button" id="ctor-validate" class="btn" data-i18n="ctor.validate">Validate</button>
-      <button type="button" id="ctor-save" class="btn primary" data-i18n="ctor.save">Зберегти промпт+трейти</button>
-      <button type="button" id="ctor-next" class="btn" data-i18n="ctor.next">Далі · Рецепти →</button>
-      <span id="ctor-msg" class="small" role="status"></span>
-    </div>
-
-
-    <div class="card" id="ctor-packs-card">
-      <h3 data-i18n="ctor.packsTitle">Оптимально · пак рис</h3>
-      <p class="muted small" data-i18n="ctor.packs.help"></p>
-      <p class="muted small" data-i18n="ctor.packs.snapshotNote"></p>
-      <div id="pack-grid" class="tpl-grid"></div>
-      <p id="pack-summary" class="muted small u-mt-12"></p>
-      <div id="pack-checklist-wrap" class="pack-checklist-wrap" hidden>
-        <h4 data-i18n="ctor.packs.checklistTitle">Які ключі крутити</h4>
-        <p class="muted small" data-i18n="ctor.packs.checklistHelp"></p>
-        <div id="pack-checklist" class="pack-checklist"></div>
-      </div>
-      <div class="toolbar" style="margin-top:12px; border-top:1px solid var(--border); padding-top:10px">
-        <button type="button" id="ctor-save-pack-lib" class="btn" data-i18n="ctor.pack.save_lib">💾 Зберегти в бібліотеку паків</button>
-        <span id="ctor-pack-msg" class="small muted"></span>
+    <!-- Step 1: where to start -->
+    <div class="card step-card" id="ctor-start-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true">1</span><h3 data-i18n="ctor.step1.title">Оберіть стартову точку</h3></div>
+      <p class="muted small" data-i18n="ctor.step1.help"></p>
+      <h4 data-i18n="ctor.templatesTitle">Готові шаблони</h4>
+      <p class="muted small" data-i18n="ctor.templates.help"></p>
+      <div id="tpl-grid" class="tpl-grid"></div>
+      <p class="muted small u-mt-12" data-i18n="ctor.traitsNote"></p>
+      <div id="ctor-packs-card">
+        <h4 class="u-mt-12" data-i18n="ctor.packsTitle">Пак рис</h4>
+        <p class="muted small" data-i18n="ctor.packs.help"></p>
+        <p class="muted small" data-i18n="ctor.packs.snapshotNote"></p>
+        <div id="pack-grid" class="tpl-grid"></div>
+        <p id="pack-summary" class="muted small u-mt-12"></p>
       </div>
     </div>
 
-    <div class="card" id="ctor-options-card">
-      <h3 data-i18n="ctor.optionsTitle">Оптимально · опції рис</h3>
+    <!-- Step 2: variants of each trait -->
+    <div class="card step-card" id="ctor-options-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true">2</span><h3 data-i18n="ctor.optionsTitle">Варіанти кожної риси</h3></div>
       <p class="muted small" data-i18n="ctor.options.help"></p>
       <p class="muted small" data-i18n="ctor.options.hint"></p>
       <div class="toolbar u-mt-8">
@@ -368,15 +364,6 @@
         <span id="opt-count" class="muted small"></span>
       </div>
       <div id="opt-editor-wrap" class="opt-editor-wrap" hidden>
-        <label class="small row">
-          <input type="checkbox" id="opt-skip-dna">
-          <span data-i18n="ctor.options.skipDna">Цей шар не входить в DNA</span>
-        </label>
-        <p class="muted small" data-i18n="ctor.options.skipDnaHelp"></p>
-        <label class="small"><span data-i18n="ctor.options.order">Порядок шару</span>
-          <input type="number" id="opt-z" step="1" autocomplete="off" data-i18n-placeholder="ctor.options.order.ph" placeholder="за пресетом">
-        </label>
-        <p class="muted small" data-i18n="ctor.options.orderHelp"></p>
         <div class="opt-table-wrap">
           <table class="opt-table" id="opt-table">
             <thead>
@@ -396,17 +383,34 @@
         </div>
         <p id="opt-msg" class="small u-mt-8"></p>
         <p id="opt-tier-summary" class="small muted u-mt-4"></p>
-        <details class="small u-mt-4">
-          <summary data-i18n="ctor.tier.hint.title">Як зробити «грааль» і 1/1</summary>
-          <p class="muted" data-i18n="ctor.tier.hint.body"></p>
+        <details class="small u-mt-8 step-adv">
+          <summary data-i18n="ctor.options.advanced">Додатково для цієї риси</summary>
+          <label class="small row">
+            <input type="checkbox" id="opt-skip-dna">
+            <span data-i18n="ctor.options.skipDna">Цей шар не входить в DNA</span>
+          </label>
+          <p class="muted small" data-i18n="ctor.options.skipDnaHelp"></p>
+          <label class="small"><span data-i18n="ctor.options.order">Порядок шару</span>
+            <input type="number" id="opt-z" step="1" autocomplete="off" data-i18n-placeholder="ctor.options.order.ph" placeholder="за пресетом">
+          </label>
+          <p class="muted small" data-i18n="ctor.options.orderHelp"></p>
+          <p class="muted small u-mt-8" data-i18n="ctor.tier.hint.title">Як зробити «грааль» і 1/1</p>
+          <p class="muted small" data-i18n="ctor.tier.hint.body"></p>
         </details>
       </div>
       <p id="opt-empty" class="muted small" data-i18n="ctor.options.empty"></p>
     </div>
 
-    <div class="grid2">
-      <div class="card form">
-        <h3 data-i18n="ctor.promptTitle">Оптимально · шаблон промпту</h3>
+    <!-- Step 3: what changes between NFTs and what stays -->
+    <div class="card step-card" id="ctor-change-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true">3</span><h3 data-i18n="ctor.step3.title">Що змінюється, а що ні</h3></div>
+      <p class="muted small" data-i18n="ctor.step3.help"></p>
+      <div id="pack-checklist-wrap" class="pack-checklist-wrap" hidden>
+        <h4 data-i18n="ctor.packs.checklistTitle">Які риси різні в кожного NFT</h4>
+        <p class="muted small" data-i18n="ctor.packs.checklistHelp"></p>
+        <div id="pack-checklist" class="pack-checklist"></div>
+      </div>
+      <div class="form u-mt-12">
         <label><span data-i18n="ctor.keepHelp"></span>
           <textarea id="c-keep" rows="5" data-i18n-placeholder="ctor.keep.ph"></textarea>
           <span class="muted small" data-i18n="ctor.keep.explain"></span></label>
@@ -420,16 +424,16 @@
           <textarea id="c-suffix" rows="2" data-i18n-placeholder="ctor.suffix.ph"></textarea>
           <span class="muted small" data-i18n="ctor.suffix.explain"></span></label>
       </div>
-      <div class="card">
-        <h3 data-i18n="ctor.templatesTitle">Широкий спектр · шаблони</h3>
-        <p class="muted small" data-i18n="ctor.templates.help"></p>
-        <div id="tpl-grid" class="tpl-grid"></div>
-        <p class="muted small u-mt-12" data-i18n="ctor.traitsNote"></p>
+      <div class="toolbar u-mt-12">
+        <button type="button" id="ctor-save-pack-lib" class="btn" data-i18n="ctor.pack.save_lib">💾 Зберегти в бібліотеку паків</button>
+        <span id="ctor-pack-msg" class="small muted"></span>
+        <span class="muted small" data-i18n="ctor.pack.save_lib.help"></span>
       </div>
     </div>
 
-    <div class="card form" id="ctor-stylelock-card">
-      <h3 data-i18n="ctor.styleLockTitle">Style lock</h3>
+    <!-- Step 4: one style for the whole series (optional) -->
+    <div class="card form step-card" id="ctor-stylelock-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true">4</span><h3 data-i18n="ctor.styleLockTitle">Єдиний стиль серії</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
       <p class="muted small" data-i18n="ctor.styleLock.help"></p>
       <div class="grid2">
         <label><span data-i18n="ctor.styleLock.angle">Angle</span>
@@ -446,8 +450,9 @@
         <span class="muted small" data-i18n="ctor.styleLock.extraKeep.explain"></span></label>
     </div>
 
-    <div class="card u-mt-16" id="ctor-matrix-card">
-      <h3 data-i18n="ctor.matrixTitle">⚡ Multi-Engine Prompt Matrix Preview</h3>
+    <!-- Step 5: preview the prompt per engine (optional) -->
+    <div class="card step-card" id="ctor-matrix-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true">5</span><h3 data-i18n="ctor.matrixTitle">Перегляд промпту для рушія</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
       <p class="muted small" data-i18n="ctor.matrixHelp">Попередній перегляд оптимізованого синтаксису під різні рушії в реальному часі.</p>
       <div class="toolbar" style="margin-top:8px; gap:8px; flex-wrap:wrap">
         <button type="button" class="btn small matrix-btn primary" data-engine="flux" data-i18n-tip="ctor.matrix.flux.tip">Flux.1 LoRA</button>
@@ -457,6 +462,18 @@
         <button type="button" class="btn small matrix-btn" data-engine="openai" data-i18n-tip="ctor.matrix.openai.tip">OpenAI Prose</button>
       </div>
       <pre id="ctor-matrix-preview" class="log small" data-i18n="ctor.matrix.empty" style="margin-top:8px; white-space:pre-wrap; max-height:160px; overflow:auto">Оберіть рушій вище, щоб побачити відформатований промпт</pre>
+    </div>
+
+    <!-- Step 6: check and save -->
+    <div class="card step-card" id="ctor-finish-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true">6</span><h3 data-i18n="ctor.step6.title">Перевірте й збережіть</h3></div>
+      <p class="muted small" data-i18n="ctor.step6.help"></p>
+      <div class="toolbar">
+        <button type="button" id="ctor-validate" class="btn" data-i18n="ctor.validate">Validate</button>
+        <button type="button" id="ctor-save" class="btn primary" data-i18n="ctor.save">Зберегти промпт+трейти</button>
+        <button type="button" id="ctor-next" class="btn" data-i18n="ctor.next">Далі · Рецепти →</button>
+        <span id="ctor-msg" class="small" role="status"></span>
+      </div>
     </div>
   </section>
 
@@ -471,70 +488,106 @@
         <p class="muted small" data-i18n="recipes.hint.tip"></p>
       </details>
     </div>
-    <div class="toolbar">
-      <select id="r-preset" data-i18n-tip="ctrl.r-preset.tip"></select>
-      <button type="button" id="r-build" class="btn primary" data-i18n="recipes.build">Зібрати тексти</button>
-      <button type="button" id="r-simulate" class="btn" data-i18n="recipes.simulate">Суха симуляція рідкості</button>
-      <span id="r-simulate-msg" class="small" role="status"></span>
-      <span class="muted small" data-i18n="recipes.textsOnly">Без рендеру і без кредитів.</span>
-      <button type="button" id="r-diff" class="btn" data-i18n="recipes.diff">Diff-seed</button>
-      <input id="r-search" data-i18n-placeholder="recipes.search" data-i18n-tip="recipes.search.tip" placeholder="Search">
-      <select id="r-line" data-i18n-tip="recipes.allLines.tip"><option value="" data-i18n="recipes.allLines">Усі лінії</option></select>
-      <span id="r-count" class="muted"></span>
-    </div>
-    <div class="card" id="r-archive-diff">
-      <h3 data-i18n="archive.diff.h3">Різниця архівів</h3>
-      <p class="muted small" data-i18n="archive.diff.hint">Порівняти промпти й DNA двох зібраних архівів до повторної генерації.</p>
-      <div class="actions">
-        <select id="r-diff-a" data-i18n-tip="archive.diff.a.tip"></select>
-        <select id="r-diff-b" data-i18n-tip="archive.diff.b.tip"></select>
-        <button type="button" id="r-archive-diff" class="btn" data-i18n="archive.diff.run">Порівняти</button>
-        <span id="r-archive-diff-msg" class="small"></span>
+
+    <!-- Step 1: build the texts -->
+    <div class="card step-card" id="r-build-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true">1</span><h3 data-i18n="recipes.step1.title">Зберіть тексти рецептів</h3></div>
+      <p class="muted small" data-i18n="recipes.step1.help"></p>
+      <div class="toolbar">
+        <select id="r-preset" data-i18n-tip="ctrl.r-preset.tip"></select>
+        <button type="button" id="r-build" class="btn primary" data-i18n="recipes.build">Зібрати тексти</button>
+        <span class="muted small" data-i18n="recipes.textsOnly">Без рендеру і без кредитів.</span>
       </div>
-      <div id="r-archive-diff-list" class="small"></div>
     </div>
-    <div class="card" id="r-waves">
-      <h3 data-i18n="waves.h3">Хвилі поставки</h3>
-      <p class="muted small" data-i18n="waves.hint">Нова хвиля отримує свій seed і номери після вже зібраних. Попередні рецепти не зсуваються.</p>
-      <div id="r-waves-list" class="small"></div>
-      <div class="actions u-mt-10">
-        <label class="small"><span data-i18n="waves.count">Кількість</span>
-          <input id="r-wave-size" type="number" min="1" value="12" style="width:5rem">
+
+    <!-- Step 2: look through the table, fix single recipes -->
+    <div class="card step-card" id="r-table-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true">2</span><h3 data-i18n="recipes.step2.title">Перегляньте список і виправте, що треба</h3></div>
+      <p class="muted small" data-i18n="recipes.step2.help"></p>
+      <div class="toolbar">
+        <input id="r-search" data-i18n-placeholder="recipes.search" data-i18n-tip="recipes.search.tip" placeholder="Search">
+        <select id="r-line" data-i18n-tip="recipes.allLines.tip"><option value="" data-i18n="recipes.allLines">Усі лінії</option></select>
+        <span id="r-count" class="muted"></span>
+      </div>
+      <div id="r-dupes" class="warn" hidden></div>
+      <div class="table-wrap"><table id="r-table"></table></div>
+      <div id="r-editor" class="card editor" hidden>
+        <h3>✎ <span data-i18n="recipes.editor.title">Edit recipe</span> <span id="r-ed-title"></span></h3>
+        <p class="muted small" data-i18n="recipes.editor.help">Change traits and optional per-image note. Save updates archive DNA + prompt. Save &amp; redo opens Generate for this edition.</p>
+        <div id="r-ed-fields" class="ed-grid"></div>
+        <label class="small"><span data-i18n="recipes.editor.note">Note for this image (English is more precise)</span>
+          <textarea id="r-ed-note" rows="2" maxlength="500" data-i18n-placeholder="recipes.editor.notePh" placeholder="optional"></textarea>
         </label>
-        <label class="small"><span data-i18n="waves.seed">Seed хвилі</span>
-          <input id="r-wave-seed" style="width:14rem">
-        </label>
-        <button type="button" id="r-wave-add" class="btn" data-i18n="waves.add">Додати хвилю</button>
-        <span id="r-wave-msg" class="small"></span>
+        <div class="actions">
+          <button type="button" id="r-ed-save" class="btn" data-i18n="recipes.editor.save">Save</button>
+          <button type="button" id="r-ed-redo" class="btn primary" data-i18n="recipes.editor.redo">Save &amp; redo…</button>
+          <button type="button" id="r-ed-reset" class="btn" data-i18n="recipes.editor.reset">Reset to original</button>
+          <span id="r-ed-msg" class="small"></span>
+        </div>
       </div>
+      <pre id="r-prompt" class="prompt" hidden></pre>
     </div>
-    <div id="r-dupes" class="warn" hidden></div>
-    <details id="r-rarity" class="card rarity-card" hidden>
-      <summary data-i18n="recipes.rarity.title">Звіт рідкості</summary>
-      <p class="muted small" data-i18n="recipes.rarity.help"></p>
-      <div class="table-wrap"><table id="r-rarity-table"></table></div>
-    </details>
-    <details id="r-cooccurrence-wrap" class="card u-mt-12" hidden>
-      <summary style="font-weight:600; cursor:pointer" data-i18n="recipes.cooccurrenceTitle">📊 Матриця взаємозв'язку та синергії рис (Trait Synergy)</summary>
-      <p class="muted small u-mt-4" data-i18n="recipes.cooccurrenceHelp"></p>
-      <div id="r-cooccurrence-list" class="grid2 small" style="margin-top:8px; max-height:220px; overflow:auto"></div>
-    </details>
-    <div class="table-wrap"><table id="r-table"></table></div>
-    <div id="r-editor" class="card editor" hidden>
-      <h3>✎ <span data-i18n="recipes.editor.title">Edit recipe</span> <span id="r-ed-title"></span></h3>
-      <p class="muted small" data-i18n="recipes.editor.help">Change traits and optional per-image note. Save updates archive DNA + prompt. Save &amp; redo opens Generate for this edition.</p>
-      <div id="r-ed-fields" class="ed-grid"></div>
-      <label class="small"><span data-i18n="recipes.editor.note">Note for this image (English is more precise)</span>
-        <textarea id="r-ed-note" rows="2" maxlength="500" data-i18n-placeholder="recipes.editor.notePh" placeholder="optional"></textarea>
-      </label>
+
+    <!-- Step 3: is the rarity what you planned (optional) -->
+    <div class="card step-card" id="r-check-card">
+      <div class="step-head"><span class="step-no" aria-hidden="true">3</span><h3 data-i18n="recipes.step3.title">Перевірте рідкість</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
+      <p class="muted small" data-i18n="recipes.step3.help"></p>
+      <div class="toolbar">
+        <button type="button" id="r-simulate" class="btn" data-i18n="recipes.simulate">Суха симуляція рідкості</button>
+        <span id="r-simulate-msg" class="small" role="status"></span>
+      </div>
+      <details id="r-rarity" class="rarity-card u-mt-8" hidden>
+        <summary data-i18n="recipes.rarity.title">Звіт рідкості</summary>
+        <p class="muted small" data-i18n="recipes.rarity.help"></p>
+        <div class="table-wrap"><table id="r-rarity-table"></table></div>
+      </details>
+      <details id="r-cooccurrence-wrap" class="u-mt-8" hidden>
+        <summary style="font-weight:600; cursor:pointer" data-i18n="recipes.cooccurrenceTitle">📊 Матриця взаємозв'язку та синергії рис (Trait Synergy)</summary>
+        <p class="muted small u-mt-4" data-i18n="recipes.cooccurrenceHelp"></p>
+        <div id="r-cooccurrence-list" class="grid2 small" style="margin-top:8px; max-height:220px; overflow:auto"></div>
+      </details>
+    </div>
+
+    <!-- Advanced: for repeat runs and bigger series -->
+    <details class="card step-adv" id="r-advanced">
+      <summary data-i18n="recipes.advanced.title">Додатково: повторні запуски і великі серії</summary>
+      <p class="muted small u-mt-8" data-i18n="recipes.advanced.help"></p>
+      <h4 data-i18n="recipes.diff.title">Чи відтворюється результат</h4>
+      <p class="muted small" data-i18n="recipes.diff.help"></p>
       <div class="actions">
-        <button type="button" id="r-ed-save" class="btn" data-i18n="recipes.editor.save">Save</button>
-        <button type="button" id="r-ed-redo" class="btn primary" data-i18n="recipes.editor.redo">Save &amp; redo…</button>
-        <button type="button" id="r-ed-reset" class="btn" data-i18n="recipes.editor.reset">Reset to original</button>
-        <span id="r-ed-msg" class="small"></span>
+        <button type="button" id="r-diff" class="btn" data-i18n="recipes.diff">Diff-seed</button>
       </div>
+      <div class="card u-mt-12" id="r-archive-diff-card">
+        <h4 data-i18n="archive.diff.h3">Різниця архівів</h4>
+        <p class="muted small" data-i18n="archive.diff.hint">Порівняти промпти й DNA двох зібраних архівів до повторної генерації.</p>
+        <div class="actions">
+          <select id="r-diff-a" data-i18n-tip="archive.diff.a.tip"></select>
+          <select id="r-diff-b" data-i18n-tip="archive.diff.b.tip"></select>
+          <button type="button" id="r-archive-diff" class="btn" data-i18n="archive.diff.run">Порівняти</button>
+          <span id="r-archive-diff-msg" class="small"></span>
+        </div>
+        <div id="r-archive-diff-list" class="small"></div>
+      </div>
+      <div class="card u-mt-12" id="r-waves">
+        <h4 data-i18n="waves.h3">Хвилі поставки</h4>
+        <p class="muted small" data-i18n="waves.hint">Нова хвиля отримує свій seed і номери після вже зібраних. Попередні рецепти не зсуваються.</p>
+        <div id="r-waves-list" class="small"></div>
+        <div class="actions u-mt-10">
+          <label class="small"><span data-i18n="waves.count">Кількість</span>
+            <input id="r-wave-size" type="number" min="1" value="12" style="width:5rem">
+          </label>
+          <label class="small"><span data-i18n="waves.seed">Seed хвилі</span>
+            <input id="r-wave-seed" style="width:14rem">
+          </label>
+          <button type="button" id="r-wave-add" class="btn" data-i18n="waves.add">Додати хвилю</button>
+          <span id="r-wave-msg" class="small"></span>
+        </div>
+      </div>
+    </details>
+
+    <div class="actions u-mt-16">
+      <button type="button" id="r-next" class="btn primary" data-goto-tab="render" data-i18n="recipes.next">Далі · Генерація →</button>
     </div>
-    <pre id="r-prompt" class="prompt" hidden></pre>
   </section>
 
   <!-- 5. GENERATE -->
