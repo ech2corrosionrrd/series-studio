@@ -2483,33 +2483,38 @@ async function refreshLayersStatus() {
   }
 }
 
-function setupLayersUpload() {
-  const file = $("g-layers-file");
-  const upload = $("g-layers-upload");
-  const picked = $("g-layers-picked");
+/**
+ * The ZIP uploader for the PNG layers. It exists twice with the same behaviour: on Generate (g-layers-*) and in the
+ * Constructor (ctor-layers-*), where the author sees the coverage of the series right after the upload.
+ * @param {{ pick: string, file: string, upload: string, picked: string, replace: string, clear: string, msg: string }} ids
+ * @param {{ query: () => Record<string, string>, onChange: (data: any) => void }} hooks
+ */
+function bindLayersUploader(ids, { query, onChange }) {
+  const file = $(ids.file);
+  const upload = $(ids.upload);
+  const picked = $(ids.picked);
   if (!file || !upload) return;
+  const say = (text) => {
+    if ($(ids.msg)) $(ids.msg).textContent = text;
+  };
   const sync = () => {
     const f = file.files?.[0];
     upload.disabled = !f;
     if (picked) picked.textContent = f ? t("render.layers.picked", { name: f.name, mb: mbText(f.size) }) : "";
   };
-  $("g-layers-pick")?.addEventListener("click", () => file.click());
-  $("x-file")?.addEventListener("change", refreshLayersStatus);
+  $(ids.pick)?.addEventListener("click", () => file.click());
   file.addEventListener("change", sync);
   upload.addEventListener("click", async () => {
     const f = file.files?.[0];
-    const msg = $("g-compose-msg");
     if (!f) {
-      if (msg) msg.textContent = t("render.layers.pickFirst");
+      say(t("render.layers.pickFirst"));
       return;
     }
     try {
       setBusy(upload, true);
-      if (msg) msg.textContent = t("ui.working");
-      const archive = kitArchive();
-      const qs = new URLSearchParams();
-      if ($("g-layers-replace")?.checked) qs.set("clear", "1");
-      if (archive) qs.set("archive", archive);
+      say(t("ui.working"));
+      const qs = new URLSearchParams(query());
+      if ($(ids.replace)?.checked) qs.set("clear", "1");
       const q = qs.toString();
       const data = await api(`/api/layers/upload${q ? `?${q}` : ""}`, {
         method: "POST",
@@ -2517,27 +2522,52 @@ function setupLayersUpload() {
         body: f,
       });
       const skipped = data.skipped?.length ? t("render.layers.skipped", { n: fmtNum(data.skipped.length) }) : "";
-      if (msg) msg.textContent = t("render.layers.uploaded", { files: fmtNum(data.files), mb: mbText(data.bytes), skipped });
-      renderLayersStatus(data.status);
+      say(t("render.layers.uploaded", { files: fmtNum(data.files), mb: mbText(data.bytes), skipped }));
       file.value = "";
       sync();
+      onChange(data);
     } catch (e) {
-      if (msg) msg.textContent = e.message;
+      say(e.message);
     } finally {
       setBusy(upload, false);
       sync();
     }
   });
-  $("g-layers-clear")?.addEventListener("click", async () => {
-    const msg = $("g-compose-msg");
+  $(ids.clear)?.addEventListener("click", async () => {
     try {
       const data = await api("/api/layers/clear", { method: "POST", body: "{}" });
-      if (msg) msg.textContent = t("render.layers.cleared", { n: fmtNum(data.removed) });
-      await refreshLayersStatus();
+      say(t("render.layers.cleared", { n: fmtNum(data.removed) }));
+      onChange(data);
     } catch (e) {
-      if (msg) msg.textContent = e.message;
+      say(e.message);
     }
   });
+}
+
+function setupLayersUpload() {
+  $("x-file")?.addEventListener("change", refreshLayersStatus);
+  bindLayersUploader(
+    { pick: "g-layers-pick", file: "g-layers-file", upload: "g-layers-upload", picked: "g-layers-picked", replace: "g-layers-replace", clear: "g-layers-clear", msg: "g-compose-msg" },
+    {
+      query: () => (kitArchive() ? { archive: kitArchive() } : {}),
+      onChange: (data) => {
+        if (data?.status) renderLayersStatus(data.status);
+        else refreshLayersStatus();
+        refreshCtorLayers();
+      },
+    },
+  );
+  // the same ZIP can be uploaded from the Constructor, against the saved preset
+  bindLayersUploader(
+    { pick: "ctor-layers-pick", file: "ctor-layers-file", upload: "ctor-layers-upload", picked: "ctor-layers-picked", replace: "ctor-layers-replace", clear: "ctor-layers-clear", msg: "ctor-layers-msg" },
+    {
+      query: () => ($("ctor-file")?.value ? { preset: $("ctor-file").value } : {}),
+      onChange: () => {
+        refreshCtorLayers();
+        refreshLayersStatus();
+      },
+    },
+  );
 }
 
 /** Список наборів для гібридного накладання шарів («база» або кадри вже згенерованого набору). */

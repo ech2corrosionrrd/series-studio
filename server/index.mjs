@@ -3275,25 +3275,21 @@ async function handleApi(req, res, url) {
   }
 
   // ---- PNG layers as a ZIP (the hosted studio gives the user no file system) ----
-  if (pathname === "/api/layers/status" && req.method === "GET") {
-    let items = null;
+  /** Traits that the coverage is measured against: the built archive's preset, or (Constructor, before any recipes) a saved preset. */
+  const layerTraitItems = () => {
     const archiveName = url.searchParams.get("archive");
     const presetName = url.searchParams.get("preset");
-    if (archiveName) {
-      try {
-        items = loadSeriesContext(archiveName).preset?.traits?.items || null;
-      } catch {
-        items = null;
-      }
-    } else if (presetName) {
-      // the Constructor asks before any recipes are built: coverage against the saved preset itself
-      try {
-        items = loadPresetByFile(presetName).preset?.traits?.items || null;
-      } catch {
-        items = null;
-      }
+    try {
+      if (archiveName) return loadSeriesContext(archiveName).preset?.traits?.items || null;
+      if (presetName) return loadPresetByFile(presetName).preset?.traits?.items || null;
+    } catch {
+      /* no such series: no coverage */
     }
-    return send(res, 200, { ok: true, limits: LAYER_LIMITS, ...layersStatus(P().layers, items) });
+    return null;
+  };
+
+  if (pathname === "/api/layers/status" && req.method === "GET") {
+    return send(res, 200, { ok: true, limits: LAYER_LIMITS, ...layersStatus(P().layers, layerTraitItems()) });
   }
 
   if (pathname === "/api/layers/upload" && req.method === "POST") {
@@ -3308,16 +3304,7 @@ async function handleApi(req, res, url) {
           if (old.length) toTrash(old, "layers replaced");
         },
       });
-      let items = null;
-      const archiveName = url.searchParams.get("archive");
-      if (archiveName) {
-        try {
-          items = loadSeriesContext(archiveName).preset?.traits?.items || null;
-        } catch {
-          items = null;
-        }
-      }
-      return send(res, 200, { ok: true, ...result, status: layersStatus(P().layers, items) });
+      return send(res, 200, { ok: true, ...result, status: layersStatus(P().layers, layerTraitItems()) });
     } catch (e) {
       if (e instanceof LayersZipError) return send(res, e.status, { error: e.message, code: `layers_${e.code}` });
       throw e;

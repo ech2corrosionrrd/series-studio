@@ -407,8 +407,18 @@
       <p id="opt-empty" class="muted small" data-i18n="ctor.options.empty"></p>
       <div id="ctor-layers" class="card small u-mt-12">
         <b data-i18n="ctor.layers.title">Свої готові PNG-шари (необов'язково)</b>
+        <p class="muted small u-my-4" data-i18n="ctor.layers.help"></p>
+        <div class="actions">
+          <input type="file" id="ctor-layers-file" accept=".zip,application/zip,application/x-zip-compressed" hidden>
+          <button type="button" id="ctor-layers-pick" class="btn small" data-i18n="render.layers.pick">Choose ZIP…</button>
+          <label class="small"><input type="checkbox" id="ctor-layers-replace"> <span data-i18n="render.layers.replace">Replace all layers</span></label>
+          <button type="button" id="ctor-layers-upload" class="btn small" disabled data-i18n="render.layers.upload">Upload ZIP</button>
+          <button type="button" id="ctor-layers-clear" class="btn small" data-i18n="render.layers.clear">Clear layers</button>
+        </div>
+        <p id="ctor-layers-picked" class="muted small"></p>
+        <p id="ctor-layers-msg" class="small" role="status"></p>
         <div id="ctor-layers-status" class="u-mt-4" role="status"></div>
-        <button type="button" class="btn small u-mt-8" data-goto-tab="render" data-scroll-to="g-layers" data-i18n="ctor.layers.go">Завантажити ZIP із шарами на «5 · Генерація»</button>
+        <button type="button" class="btn small u-mt-8" data-goto-tab="render" data-scroll-to="g-layers" data-i18n="ctor.layers.go">Накласти шари на кадри на «5 · Генерація»</button>
       </div>
     </div>
 

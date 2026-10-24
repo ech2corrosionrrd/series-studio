@@ -3,6 +3,8 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
+import JSZip from "jszip";
+import { createMockPng } from "../src/mock-image.mjs";
 import { startStudio } from "./helpers/studio-server.mjs";
 
 describe("layers status against a saved preset", () => {
@@ -39,6 +41,26 @@ describe("layers status against a saved preset", () => {
     assert.deepEqual([r.json.coverage.expected, r.json.coverage.present], [expected, 1]);
     assert.equal(r.json.coverage.missingCount, expected - 1);
     assert.ok(r.json.coverage.missing.length > 0);
+  });
+
+  it("a ZIP uploaded from the Constructor answers with the coverage of the saved preset, and clearing empties it", async () => {
+    const png = Buffer.from(createMockPng({ seed: 3, title: "layer" }));
+    const zip = new JSZip();
+    const [first, second] = trait.options;
+    zip.file(`${trait.key}/${first.value}.png`, png);
+    zip.file(`${trait.key}/${second.value}.png`, png);
+    const up = await s.call("POST", "/api/layers/upload?preset=cov-series.json&clear=1", {
+      body: await zip.generateAsync({ type: "nodebuffer" }),
+      headers: { "Content-Type": "application/zip" },
+    });
+    assert.equal(up.status, 200, up.text);
+    assert.equal(up.json.status.coverage.present, 2, "only the two uploaded files are present after the replace");
+    assert.ok(up.json.status.coverage.expected > 2);
+    const cleared = await s.call("POST", "/api/layers/clear", { body: {} });
+    assert.equal(cleared.status, 200, cleared.text);
+    const after = await s.call("GET", "/api/layers/status?preset=cov-series.json");
+    assert.equal(after.json.exists, false);
+    assert.equal(after.json.coverage.present, 0);
   });
 
   it("an unknown preset name does not fail the request", async () => {
