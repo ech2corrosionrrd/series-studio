@@ -5,6 +5,7 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
+import { anthropicModel } from "./models.mjs";
 import { checkImageFile } from "./imageqa.mjs";
 import { lintPrompt } from "./lint.mjs";
 import { mapConcurrent } from "./pool.mjs";
@@ -227,7 +228,7 @@ export async function triageImageVision({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "claude-3-5-sonnet-20241022",
+          model: anthropicModel(),
           max_tokens: 600,
           system: CRITIC_SYSTEM_PROMPT,
           messages: [

@@ -69,6 +69,10 @@
 - Без копії реєстр, як і раніше, перебудовується з пресетів, але тепер це попередження в лозі («paid flags are lost»). Перше звернення нового гаманця без повідомлень.
 - Тести: `test/projects-cache.test.mjs`.
 
+### Оновлено модель Claude для Vision Assist і AI-критика
+- Замість знятої з підтримки `claude-3-5-sonnet-20241022` (у `src/vision.mjs` і `src/critic.mjs`) використовується `claude-sonnet-5-5`; модель можна змінити змінною `ANTHROPIC_MODEL` без нового випуску. Рядок провайдера у відповіді Vision Assist показує фактичну модель. Шлях OpenAI не змінено.
+- Тести: `test/vision-model.test.mjs`, `test/critic-model.test.mjs`.
+
 ## [1.12.0] — 2026-10-11
 
 ### Внутрішнє: маршрути наборів випуску винесено в `server/routes/kits.mjs`
