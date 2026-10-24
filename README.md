@@ -67,6 +67,7 @@ npm start       # http://127.0.0.1:5344/studio/  (або /login у public)
 | `ANTHROPIC_MODEL` | Модель Claude для Vision Assist і AI-критика (типово `claude-sonnet-5-5`) |
 | `IRYS_MAX_PRICE_SOL` | Ліміт ціни серверного завантаження в Arweave, SOL (0.05); вище — відмова до оплати, нестача на Irys поповнюється з гаманця |
 | `IRYS_PRIVATE_KEY` | Серверна кнопка Arweave в Експорті (окремий гаманець з малим балансом). Для випуску краще `series upload --keypair` — ключ лишається на ПК |
+| `IRYS_NETWORK` | Мережа Irys для CLI-завантаження випуску: `mainnet` (типово) або `devnet` (репетиція за тестові SOL; те саме, що прапорець `--devnet`) |
 | `SERIES_TELEGRAM_BOT_TOKEN`, `SERIES_TELEGRAM_CHAT_ID` | Сповіщення від імені Series Lab |
 | `SOLANA_PAY_RECIPIENT` (+ `SOLANA_RPC_URL`) | Поповнення кредитів: USDC у Solana переказом напряму, без посередника; публічна адреса-отримувач, ключ не потрібен |
 | `RESOURCE_COVER_DAYS`, `RESOURCE_LIABILITY_SHARE`, `RESOURCE_MIN_USD`, `RESOURCE_BALANCE_STALE_DAYS`, `RESOURCE_ALERT_REPEAT_HOURS` | Рекомендований баланс по провайдерах (Адмін → Ресурси): дні покриття (14), частка вартості вже виданих кредитів у резерві (0,25), мінімум на провайдера ($5), днів до застарілого ручного балансу (14) |

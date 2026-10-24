@@ -81,7 +81,7 @@ Usage:
   series triage <set-dir> [options]
   series pin <set-dir> [options]
   series release-init <archive.json> [-o release.json] [options]
-  series upload <bundle-dir> --keypair <file> [--dry-run] [--max-price <sol>] [--no-fund]
+  series upload <bundle-dir> --keypair <file> [--dry-run] [--max-price <sol>] [--no-fund] [--devnet]
   series guards <release.json> [-o guard-config.json] [--allowlist <file>]
   series hidden <bundle-dir> --uri <hidden.json-link> [--uri-prefix <prefix>] [--name <text>]
   series mint <release.json> --keypair <file> [--group <label>] [--public] [--dry-run]
@@ -125,6 +125,7 @@ Options:
   --index <n>             Dry-run only: pretend itemsRedeemed is n
   --max-price <sol>       Refuse upload when the estimated cost is higher
   --no-fund               Do not top up the Irys balance automatically
+  --devnet                series upload to Irys devnet (test SOL, temporary links); also IRYS_NETWORK=devnet
   --rpc <url>             Solana RPC for upload / verify
   --allowlist <file>      Wallet list (one address per line) merged into series guards
   --uri <url>             Uploaded hidden.json link for series hidden
@@ -904,7 +905,9 @@ async function cmdUpload(bundleDir, opts = {}) {
   const res = await uploadBundle({
     bundleDir: dir,
     key: loadKeypairFile(resolve(opts.keypair)),
-    rpcUrl: opts.rpc || process.env.SOLANA_RPC_URL || undefined,
+    // devnet picks its own RPC unless --rpc is given; SOLANA_RPC_URL (usually mainnet) must not leak into a rehearsal
+    network: opts.devnet ? "devnet" : process.env.IRYS_NETWORK,
+    rpcUrl: opts.rpc || (opts.devnet || /^devnet$/i.test(String(process.env.IRYS_NETWORK || "").trim()) ? undefined : process.env.SOLANA_RPC_URL) || undefined,
     dryRun: Boolean(opts.dryRun),
     fund: !opts.noFund,
     maxPriceSol: Number.isFinite(opts.maxPrice) ? opts.maxPrice : undefined,
@@ -1198,6 +1201,7 @@ function parseOpts(args) {
     else if (a === "--tsa") opts.tsa = args[++i];
     else if (a === "--max-price") opts.maxPrice = Number(args[++i]);
     else if (a === "--no-fund") opts.noFund = true;
+    else if (a === "--devnet") opts.devnet = true;
     else if (a === "--rpc") opts.rpc = args[++i];
     else if (a === "--allowlist") opts.allowlist = args[++i];
     else if (a === "--uri") opts.uri = args[++i];

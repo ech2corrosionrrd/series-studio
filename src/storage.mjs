@@ -101,7 +101,35 @@ export function listSetImages(dir) {
     });
 }
 
-export async function createIrysUploader(privateKey, rpcUrl) {
+/**
+ * Irys networks. Mainnet is the default and the only one the server button uses. Devnet is for rehearsals of the release
+ * path with free test SOL: uploads are paid in devnet SOL and kept only for a limited time (not permanent storage).
+ */
+export const IRYS_NETWORKS = Object.freeze({
+  mainnet: { gateway: "https://gateway.irys.xyz", rpc: "https://api.mainnet-beta.solana.com" },
+  devnet: { gateway: "https://devnet.irys.xyz", rpc: "https://api.devnet.solana.com" },
+});
+
+/** "devnet" | "mainnet" (empty = mainnet); anything else is an error, so a typo never reaches mainnet by accident. */
+export function irysNetwork(value) {
+  const v = String(value ?? "").trim().toLowerCase();
+  if (!v) return "mainnet";
+  if (!(v in IRYS_NETWORKS)) throw new Error(`unknown Irys network "${value}": use mainnet or devnet`);
+  return v;
+}
+
+/** An RPC address that points at the other cluster than the network says is a mistake worth stopping on. */
+export function assertRpcMatchesNetwork(rpcUrl, network) {
+  const url = String(rpcUrl || "").toLowerCase();
+  if (network === "devnet" && url && !/devnet/.test(url) && /mainnet/.test(url)) {
+    throw new Error(`--devnet needs a devnet RPC, got ${rpcUrl}`);
+  }
+  if (network === "mainnet" && /devnet|testnet/.test(url)) {
+    throw new Error(`a devnet RPC (${rpcUrl}) needs --devnet; refusing to upload to mainnet with it`);
+  }
+}
+
+export async function createIrysUploader(privateKey, rpcUrl, network = "mainnet") {
   let Uploader;
   let Solana;
   try {
@@ -110,7 +138,8 @@ export async function createIrysUploader(privateKey, rpcUrl) {
   } catch {
     throw new Error("Arweave upload needs optional packages: npm i @irys/upload @irys/upload-solana");
   }
-  return Uploader(Solana).withWallet(privateKey).withRpc(rpcUrl).mainnet();
+  const builder = Uploader(Solana).withWallet(privateKey).withRpc(rpcUrl);
+  return network === "devnet" ? builder.devnet() : builder.mainnet();
 }
 
 /**

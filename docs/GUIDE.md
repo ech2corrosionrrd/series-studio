@@ -396,6 +396,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 | `node bin/series.mjs pin out/fal-s0.45 --dry-run` | швидка перевірка набору перед завантаженням в Arweave (без ключа) |
 | `node bin/series.mjs release-init out/demo-archive.json -o release.json` | скелет `release.json` (роялті, творці, ціна, правила мінту) |
 | `node bin/series.mjs guards release.json` | конфіг правил мінту: для Core — `guardConfig` для `mplx cm create` (лампорти), для v3 — Sugar-конфіг для `sugar guard update`. Allowlist у `release.json` або `--allowlist wallets.txt` додає групу `allowList` і `allowlist-proofs.json` |
+| `node bin/series.mjs upload <тека-набору> --keypair <файл> [--devnet]` | завантаження набору в Arweave через Irys (відновлюване, `cache.json`); `--devnet` — репетиція за тестові SOL на devnet (посилання тимчасові, `devnet.irys.xyz`) |
 | `node bin/series.mjs hidden <тека-набору> --uri <посилання>` | SHA-256 прихованих метаданих Core Candy Machine у `hidden-settings.json` (після `series upload`) |
 | `node bin/series.mjs mint release.json --keypair minter.json` | підписує мінт Core Candy Guard на цьому ПК. Гаманець зі списку дозволених іде в групу `wl`: спочатку `route` з доказом, потім `mintV1`. Адреса асета пишеться в `mints.json`. `--public` — публічний набір правил. `--dry-run` не шле транзакцію |
 | `node bin/series.mjs reveal <тека-набору> --keypair creator.json` | підписує оновлення імені й URI (`UpdateV1`) ключем оновлення колекції для асетів із `mints.json`. Без `--keypair` лише `reveal-updates.json` |
