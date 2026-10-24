@@ -5,6 +5,12 @@
  */
 import { anthropicModel } from "./models.mjs";
 
+/**
+ * Room for the whole JSON answer. The Claude 5 models write longer trait lists than the old 1500 tokens allowed: the reply
+ * was cut off in the middle of the JSON, failed to parse and silently fell back to the heuristic.
+ */
+const VISION_MAX_TOKENS = 4096;
+
 const SYSTEM_PROMPT = `You are an expert art director and generative NFT series prompt engineer.
 Analyze the provided base image and produce a structured JSON configuration for generating consistent variations of this character/subject.
 
@@ -178,7 +184,7 @@ async function callOpenAiVision(b64Image, mime, apiKey, fetchFn) {
         ],
       },
     ],
-    max_tokens: 1500,
+    max_tokens: VISION_MAX_TOKENS,
     temperature: 0.3,
     response_format: { type: "json_object" },
   };
@@ -198,6 +204,7 @@ async function callOpenAiVision(b64Image, mime, apiKey, fetchFn) {
   }
 
   const json = await res.json();
+  if (json.choices?.[0]?.finish_reason === "length") throw new Error("OpenAI Vision reply was cut off (max_tokens)");
   const content = json.choices?.[0]?.message?.content;
   return parseVisionJson(content);
 }
@@ -210,7 +217,7 @@ async function callAnthropicVision(b64Image, mime, apiKey, fetchFn, model) {
   const mediaType = mime === "image/png" ? "image/png" : mime === "image/webp" ? "image/webp" : "image/jpeg";
   const body = {
     model,
-    max_tokens: 1500,
+    max_tokens: VISION_MAX_TOKENS,
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -249,6 +256,7 @@ async function callAnthropicVision(b64Image, mime, apiKey, fetchFn, model) {
   }
 
   const json = await res.json();
+  if (json.stop_reason === "max_tokens") throw new Error("Anthropic Vision reply was cut off (max_tokens)");
   const content = json.content?.[0]?.text;
   return parseVisionJson(content);
 }
@@ -275,6 +283,7 @@ export async function analyzeBaseImage({ image, mime = "image/png" }, ctx = {}) 
       if (result) {
         return { ok: true, provider: "openai (gpt-4o)", data: result };
       }
+      console.warn("OpenAI Vision answered without usable JSON");
     } catch (e) {
       console.warn("OpenAI Vision failed:", e.message || e);
     }
@@ -288,6 +297,7 @@ export async function analyzeBaseImage({ image, mime = "image/png" }, ctx = {}) 
       if (result) {
         return { ok: true, provider: `anthropic (${model})`, data: result };
       }
+      console.warn("Anthropic Vision answered without usable JSON");
     } catch (e) {
       console.warn("Anthropic Vision failed:", e.message || e);
     }

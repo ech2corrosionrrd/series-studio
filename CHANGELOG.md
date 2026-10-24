@@ -73,6 +73,11 @@
 - Замість знятої з підтримки `claude-3-5-sonnet-20241022` (у `src/vision.mjs` і `src/critic.mjs`) використовується `claude-sonnet-5-5`; модель можна змінити змінною `ANTHROPIC_MODEL` без нового випуску. Рядок провайдера у відповіді Vision Assist показує фактичну модель. Шлях OpenAI не змінено.
 - Тести: `test/vision-model.test.mjs`, `test/critic-model.test.mjs`.
 
+### Vision Assist: відповідь Claude більше не обрізається
+- Пробний виклик із `claude-sonnet-5-5` показав: модель пише довший список рис, ніж вміщали 1500 токенів. Відповідь обривалась посеред JSON (`stop_reason: max_tokens`), не розбиралась, і Vision Assist мовчки показував «heuristic (no vision API key)» навіть із чинним ключем. Тепер ліміт 4096 токенів; обрізану (`max_tokens` / `finish_reason: length`) або не-JSON відповідь видно в лозі сервера (`Vision reply was cut off`, `answered without usable JSON`), а не проковтнуто.
+- AI-критик: ліміт відповіді піднято з 600 до 1500 токенів із тієї ж причини.
+- Перевірено в студії через UI: провайдер `anthropic (claude-sonnet-5-5)`, 7 рис із варіантами. Тести: `test/vision-model.test.mjs`.
+
 ## [1.12.0] — 2026-10-11
 
 ### Внутрішнє: маршрути наборів випуску винесено в `server/routes/kits.mjs`

@@ -229,7 +229,7 @@ export async function triageImageVision({
         },
         body: JSON.stringify({
           model: anthropicModel(),
-          max_tokens: 600,
+          max_tokens: 1500,
           system: CRITIC_SYSTEM_PROMPT,
           messages: [
             {
@@ -271,7 +271,7 @@ export async function triageImageVision({
               ],
             },
           ],
-          max_tokens: 600,
+          max_tokens: 1500,
           temperature: 0.2,
           response_format: { type: "json_object" },
         }),
