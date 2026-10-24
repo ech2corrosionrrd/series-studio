@@ -6472,6 +6472,14 @@ async function renderProjects() {
         ? t("projects.quotaFull", { used: q.used, free: q.free, cost: q.extraCredits })
         : t("projects.quota", { used: q.used, free: q.free, left: q.freeLeft, cost: q.extraCredits });
   }
+  const storage = $("projects-storage");
+  if (storage) {
+    const s = data.storage || {};
+    const mbOf = (n) => Math.round((Number(n) || 0) / (1024 * 1024));
+    storage.textContent = !s.limit
+      ? ""
+      : t(s.used >= s.limit ? "projects.storageFull" : "projects.storage", { used: mbOf(s.used), limit: mbOf(s.limit) });
+  }
   const current = state.assetsPerProject && state.activeProject
     ? state.activeProject.replace(/\.json$/, "")
     : (state.archiveFile || $("r-preset")?.value || "").replace(/\.json$/, "");
