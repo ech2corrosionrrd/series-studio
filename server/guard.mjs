@@ -44,7 +44,10 @@ export function hostedConfigError(host, publicMode, env = {}) {
   }
   const names = new Set(extras);
   if (!WILDCARD.has(h)) names.add(h);
-  const domain = String(env.AUTH_DOMAIN || "ai.w3ir.io").trim().toLowerCase();
+  const domain = String(env.AUTH_DOMAIN || "").trim().toLowerCase();
+  if (!domain) {
+    return "AUTH_DOMAIN is not set. Set it to the hostname people type in the browser (it goes into the wallet sign-in text and must be one of the studio hostnames).";
+  }
   if (!names.has(domain)) {
     return `AUTH_DOMAIN (${domain}) must be one of the studio hostnames (${[...names].join(", ")}). Wallet sign-in text has to match the address people open. The Pages site studio.w3ir.io is not this process.`;
   }
