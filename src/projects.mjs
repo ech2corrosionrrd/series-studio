@@ -30,13 +30,52 @@ export function projectsConfig(env = process.env) {
 
 const registryPath = (paths) => join(paths.workspace, "projects.json");
 
-function readRegistry(paths) {
+/**
+ * Small files that every request reads (the registry, the active project) are parsed once and reused while the file
+ * on disk is unchanged. The signature (mtime + size) is one cheap stat instead of a read and a JSON parse, and a write
+ * by this process refreshes the entry, so a changed file is never served stale.
+ */
+const fileCache = new Map(); // path → { sig, value }
+/** How many times a cached file was really parsed (tests use it to prove that an unchanged file is not read again). */
+export const fileCacheStats = { parses: 0 };
+const fileSig = (p) => {
   try {
-    const data = JSON.parse(readFileSync(registryPath(paths), "utf8"));
-    return Array.isArray(data?.projects) ? data.projects : [];
+    const st = statSync(p);
+    return `${st.mtimeMs}:${st.size}`;
   } catch {
     return null;
   }
+};
+function readJsonCached(p) {
+  const sig = fileSig(p);
+  if (!sig) {
+    fileCache.delete(p);
+    return undefined; // no file
+  }
+  const hit = fileCache.get(p);
+  if (hit?.sig === sig) return hit.value;
+  let value;
+  fileCacheStats.parses += 1;
+  try {
+    value = JSON.parse(readFileSync(p, "utf8"));
+  } catch {
+    fileCache.delete(p);
+    return null; // unreadable or corrupt
+  }
+  fileCache.set(p, { sig, value });
+  return value;
+}
+const rememberJson = (p, value) => {
+  const sig = fileSig(p);
+  if (sig) fileCache.set(p, { sig, value });
+};
+/** For tests and tools that edit the files behind the server's back. */
+export const forgetProjectFiles = () => fileCache.clear();
+
+function readRegistry(paths) {
+  const data = readJsonCached(registryPath(paths));
+  if (data === undefined || data === null) return null;
+  return Array.isArray(data?.projects) ? [...data.projects] : [];
 }
 
 /**
@@ -67,7 +106,9 @@ export function loadProjects(paths, templateFiles = new Set()) {
 
 export function saveProjects(paths, list) {
   mkdirSync(paths.workspace, { recursive: true });
-  writeJsonAtomic(registryPath(paths), { projects: list });
+  const doc = { projects: list };
+  writeJsonAtomic(registryPath(paths), doc);
+  rememberJson(registryPath(paths), JSON.parse(JSON.stringify(doc)));
 }
 
 export function isProject(list, file) {
@@ -150,12 +191,8 @@ export function ensureProjectDirs(paths) {
 }
 
 export function readActiveProject(user) {
-  try {
-    const f = JSON.parse(readFileSync(activeFile(user), "utf8"))?.file;
-    return typeof f === "string" ? f : null;
-  } catch {
-    return null;
-  }
+  const f = readJsonCached(activeFile(user))?.file;
+  return typeof f === "string" ? f : null;
 }
 
 /**
@@ -175,7 +212,9 @@ export function initialActiveProject(user, list) {
 
 export function writeActiveProject(user, file) {
   mkdirSync(user.workspace, { recursive: true });
-  writeJsonAtomic(activeFile(user), { file, at: new Date().toISOString() });
+  const doc = { file, at: new Date().toISOString() };
+  writeJsonAtomic(activeFile(user), doc);
+  rememberJson(activeFile(user), doc);
 }
 
 function moveEntry(src, dst) {

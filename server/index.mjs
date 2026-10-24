@@ -550,12 +550,23 @@ async function primaryBasePng() {
 }
 
 /** File names of the template presets shipped with Series Lab: they are not projects until saved under the user's own id. */
+let templateFilesCache = { sig: null, set: new Set() };
 function templatePresetFiles() {
+  let sig = null;
   try {
-    return new Set(readdirSync(LOCAL_PATHS.presets).filter((f) => f.endsWith(".json")));
+    sig = String(statSync(LOCAL_PATHS.presets).mtimeMs);
   } catch {
     return new Set();
   }
+  if (templateFilesCache.sig === sig) return templateFilesCache.set; // the folder is unchanged: no need to list it again
+  let set;
+  try {
+    set = new Set(readdirSync(LOCAL_PATHS.presets).filter((f) => f.endsWith(".json")));
+  } catch {
+    set = new Set();
+  }
+  templateFilesCache = { sig, set };
+  return set;
 }
 
 const walletProjects = () => loadProjects(P(), templatePresetFiles());
@@ -3685,6 +3696,7 @@ function userPaths(wallet) {
  * at user level). Before the first project exists everything is the old shared layout; the moment a project exists, the
  * assets the wallet already had move into it once (see adoptLegacyAssets).
  */
+const migratedWallets = new Set(); // wallet folders whose one-time asset migrations are done (each leaves a marker file)
 function scopedPaths(wallet) {
   const user = userPaths(wallet);
   const list = loadProjects(user, templatePresetFiles());
@@ -3694,8 +3706,13 @@ function scopedPaths(wallet) {
     active = initialActiveProject(user, list);
     writeActiveProject(user, active);
   }
-  adoptLegacyAssets(user, active, list.map((p) => p.file));
-  convertLegacyProjectTrash(user);
+  // Both migrations write a marker when done and do nothing afterwards: run them once per wallet and process,
+  // not on every request.
+  if (!migratedWallets.has(user.root)) {
+    adoptLegacyAssets(user, active, list.map((p) => p.file));
+    convertLegacyProjectTrash(user);
+    migratedWallets.add(user.root);
+  }
   const paths = projectPaths(user, active);
   ensureProjectDirs(paths);
   return paths;
