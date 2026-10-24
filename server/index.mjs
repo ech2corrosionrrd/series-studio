@@ -179,7 +179,7 @@ import { claim as claimHolderBonus, eligibility as holderEligibility } from "../
 import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs";
 import { publishCollection } from "../src/platform/site.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
-import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, moveSetBetweenProjects, projectAssetStats, pruneWalletTrash, purgeDeletedProject, trashDaysLeft, trashRetentionDays, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
+import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, moveSetBetweenProjects, projectAssetStats, pruneWalletTrash, purgeDeletedProject, trashDaysLeft, trashRetentionDays, projectIdOf, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
@@ -559,9 +559,30 @@ function templatePresetFiles() {
 const walletProjects = () => loadProjects(P(), templatePresetFiles());
 
 /**
+ * Saving under the id of ANOTHER existing project would silently replace it: the server cannot tell "save changes" from
+ * "create a new one with a taken name". Editing is the normal save: the open (active) project, or the file the client
+ * says it loaded (`editing`). Any other existing project needs `overwrite: true`, and its previous version goes to
+ * the trash first.
+ * → true when an overwrite was confirmed (the caller trashes the old file)
+ */
+function guardProjectOverwrite(file, body = {}) {
+  if (!isProject(walletProjects(), file)) return false;
+  if (readActiveProject(P()) === file || body.editing === file) return false;
+  if (body.overwrite !== true) {
+    throw httpError(409, `A project named "${projectIdOf(file)}" already exists. Pick another name or confirm the overwrite.`, {
+      code: "project_exists", file,
+    });
+  }
+  return true;
+}
+
+/**
  * Creating a project is free within PROJECTS_FREE and costs PROJECT_EXTRA_CREDITS once beyond it (admins are exempt;
  * local mode has no credits). Editing an existing project never costs anything.
- * → { isNew, charge: the reservation to refund if the save fails, or null }
+ *
+ * Nothing is debited here: the balance is only checked. The debit happens in commitNewProject AFTER the project is
+ * registered, so a crash can lose a charge (the project is then free) but never charge twice for one project.
+ * → { isNew, credits, charge: what commitNewProject debits, or null }
  */
 function admitNewProject(file, body = {}) {
   const list = walletProjects();
@@ -578,10 +599,9 @@ function admitNewProject(file, body = {}) {
       code: "project_charge", cost: verdict.charge, free: q.free, used: q.used, balance: getBalance(wallet),
     });
   }
+  if (getBalance(wallet) < verdict.charge) throw insufficient(wallet, verdict.charge);
   const note = `New project #${q.used + 1} beyond ${q.free} free`;
-  if (!deductCredits(wallet, verdict.charge, { engine: "project", note })) throw insufficient(wallet, verdict.charge);
-  recordFunnelEvent(wallet, "project_paid", { cost: verdict.charge, used: q.used });
-  return { isNew: true, charge: { wallet, amount: verdict.charge, engine: "project", note }, credits: verdict.charge };
+  return { isNew: true, charge: { wallet, amount: verdict.charge, engine: "project", note, used: q.used }, credits: verdict.charge };
 }
 
 /**
@@ -597,15 +617,27 @@ function restoreProjectFromTrash(trashId, body) {
     restoreDeletedProject(P(), trashId, { legacyArchiveTarget: PUBLIC_MODE ? null : join(P().out, file) });
     commitNewProject(file, admission);
   } catch (e) {
-    refundCharge(admission.charge);
     throw e.status ? httpError(e.status, e.message) : e;
   }
   return { file, charged: admission.credits };
 }
 
+/**
+ * Register first, debit second. If the debit is refused the registration is undone, so a failed payment leaves no
+ * free project behind.
+ */
 function commitNewProject(file, admission) {
   if (!admission.isNew) return;
-  registerProject(P(), walletProjects(), file, { charge: admission.credits });
+  const before = walletProjects();
+  registerProject(P(), before, file, { charge: admission.credits });
+  const c = admission.charge;
+  if (c) {
+    if (!deductCredits(c.wallet, c.amount, { engine: c.engine, note: c.note })) {
+      saveProjects(P(), before);
+      throw insufficient(c.wallet, c.amount);
+    }
+    recordFunnelEvent(c.wallet, "project_paid", { cost: c.amount, used: c.used });
+  }
   writeActiveProject(P(), file); // the new project is the one the user works on now
 }
 
@@ -1707,14 +1739,12 @@ async function handleApi(req, res, url) {
     // strip UI-only meta if saving as real preset (keep _meta optional)
     const outName = `${id}.json`;
     const outPath = join(P().presets, outName);
+    const overwriting = guardProjectOverwrite(outName, body);
     const admission = admitNewProject(outName, body);
-    try {
-      writeJsonAtomic(outPath, preset);
-      commitNewProject(outName, admission);
-    } catch (e) {
-      refundCharge(admission.charge);
-      throw e;
-    }
+    // an overwrite keeps the previous version in the trash, so a mistaken "new project" is not a lost one
+    if (overwriting && existsSync(outPath)) toTrash([outPath], `project overwritten: ${outName}`);
+    writeJsonAtomic(outPath, preset);
+    commitNewProject(outName, admission);
     return send(res, 200, { ok: true, file: outName, path: `presets/${outName}`, id, project: { new: admission.isNew, charged: admission.credits } });
   }
 
@@ -1911,13 +1941,8 @@ async function handleApi(req, res, url) {
     mkdirSync(P().presets, { recursive: true });
     const file = `${next.id}.json`;
     const admission = admitNewProject(file, body);
-    try {
-      writeJsonAtomic(join(P().presets, file), next);
-      commitNewProject(file, admission);
-    } catch (e) {
-      refundCharge(admission.charge);
-      throw e;
-    }
+    writeJsonAtomic(join(P().presets, file), next);
+    commitNewProject(file, admission);
     return send(res, 200, { ok: true, file, preset: next, project: { new: true, charged: admission.credits } });
   }
 

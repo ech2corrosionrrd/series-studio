@@ -103,7 +103,7 @@ describe("project gate on the server", () => {
 
   it("editing an existing project is always free, also when the limit is reached", async () => {
     const before = await balance();
-    const r = await save("p-two");
+    const r = await save("p-two", { editing: "p-two.json" });
     assert.equal(r.status, 200, r.text);
     assert.equal(r.json.project.new, false);
     assert.equal(await balance(), before);

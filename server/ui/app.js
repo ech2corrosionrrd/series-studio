@@ -1425,13 +1425,26 @@ function setupOverview() {
     const preset = readConstructor();
     if (!preset.id) throw new Error(t("home.msg.need"));
     const confirmCharge = state.projectConfirm === preset.id;
+    const overwrite = state.projectOverwrite === preset.id;
+    const file = `${preset.id}.json`;
+    // Saving the file that is loaded in the editor is an edit; any other taken name needs an explicit overwrite.
+    const editing = $("ctor-file")?.value === file ? file : null;
     let data;
     try {
       data = await api("/api/preset/save", {
         method: "POST",
-        body: JSON.stringify({ preset, ...(confirmCharge ? { confirmCharge: true } : {}) }),
+        body: JSON.stringify({
+          preset,
+          ...(confirmCharge ? { confirmCharge: true } : {}),
+          ...(overwrite ? { overwrite: true } : {}),
+          ...(editing ? { editing } : {}),
+        }),
       });
     } catch (e) {
+      if (e.payload?.code === "project_exists") {
+        state.projectOverwrite = preset.id;
+        throw new Error(t("projects.exists", { name: preset.id }));
+      }
       // A new project beyond the free ones costs credits: ask once, charge only on the second, explicit click.
       if (e.payload?.code === "project_charge") {
         state.projectConfirm = preset.id;
@@ -1440,6 +1453,7 @@ function setupOverview() {
       throw e;
     }
     state.projectConfirm = null;
+    state.projectOverwrite = null;
     const charged = data.project?.charged ? ` ${t("projects.charged", { n: data.project.charged })}` : "";
     $("o-msg").textContent = `${t("home.msg.saved")}: ${data.file}${charged}`;
     $("o-msg").className = "small ok-msg";

@@ -1555,6 +1555,7 @@ export default {
   "projects.frames": "frames: {n}",
   "projects.paid": "paid {n} cr",
   "projects.confirm": "This is a new project beyond the {free} free ones ({used} used). It costs {cost} cr once. Press again to confirm.",
+  "projects.exists": "A project named \"{name}\" already exists. Change the name, or press again to replace it: the previous version goes to the trash.",
   "projects.charged": "{n} cr charged for the new project.",
   "api.projectCharge": "A new project beyond the {free} free ones ({used} used) costs {cost} cr. Confirm to continue.",
   "projects.delete": "Delete",
