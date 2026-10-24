@@ -8,7 +8,7 @@
  * The registry lives next to the workspace (`workspace/projects.json`). Template presets seeded into every user's
  * folder (abstract-series, demo-series, pfp-portrait …) are NOT projects until the user saves one under their own id.
  */
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { writeJsonAtomic } from "./fs-safe.mjs";
 import { pruneTrash } from "./trash.mjs";
@@ -78,26 +78,69 @@ function readRegistry(paths) {
   return Array.isArray(data?.projects) ? [...data.projects] : [];
 }
 
+const backupPath = (paths) => `${registryPath(paths)}.bak`;
+
+/** The previous good registry (written by saveProjects before every change), or null. */
+function readBackup(paths) {
+  try {
+    const data = JSON.parse(readFileSync(backupPath(paths), "utf8"));
+    return Array.isArray(data?.projects) ? data.projects : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Presets in the folder that are not templates, as free "imported" projects (the first-use and last-resort rebuild). */
+function importedFromPresets(paths, templateFiles, skip = new Set()) {
+  const list = [];
+  if (!existsSync(paths.presets)) return list;
+  for (const f of readdirSync(paths.presets).sort()) {
+    if (!f.endsWith(".json") || templateFiles.has(f) || skip.has(f)) continue;
+    let createdAt = null;
+    try {
+      createdAt = statSync(join(paths.presets, f)).mtime.toISOString();
+    } catch {
+      /* keep null */
+    }
+    list.push({ file: f, createdAt, paid: false, credits: 0, imported: true });
+  }
+  return list;
+}
+
 /**
  * The wallet's projects. On first use the registry is built from the presets already in the folder, except the
  * template files shipped with Series Lab (`templateFiles`), so existing users keep what they made and templates never count.
+ *
+ * A registry that is missing after it existed, or corrupt, is restored from the backup that every save leaves
+ * (`projects.json.bak`), so paid projects keep their `paid` and `credits`. Presets the backup does not know are added as
+ * imported (free) ones. Only when there is no backup either is the registry rebuilt from the presets alone, and then the
+ * payment history is gone: that case is logged. A corrupt file is kept next to the registry as `projects.json.corrupt-<time>`.
  * @param {{ presets: string, workspace: string }} paths
  * @param {Set<string>} templateFiles file names of the shipped templates
  */
 export function loadProjects(paths, templateFiles = new Set()) {
   let list = readRegistry(paths);
   if (list) return list;
-  list = [];
-  if (existsSync(paths.presets)) {
-    for (const f of readdirSync(paths.presets).sort()) {
-      if (!f.endsWith(".json") || templateFiles.has(f)) continue;
-      let createdAt = null;
-      try {
-        createdAt = statSync(join(paths.presets, f)).mtime.toISOString();
-      } catch {
-        /* keep null */
-      }
-      list.push({ file: f, createdAt, paid: false, credits: 0, imported: true });
+  const file = registryPath(paths);
+  const corrupt = existsSync(file);
+  if (corrupt) {
+    try {
+      renameSync(file, `${file}.corrupt-${Date.now()}`);
+    } catch {
+      /* the registry is rewritten below either way */
+    }
+  }
+  const backup = readBackup(paths);
+  if (backup) {
+    // a project deleted since the backup has no preset any more (it is in the trash): do not bring it back as a ghost
+    const alive = backup.filter((p) => existsSync(join(paths.presets, p.file)));
+    const known = new Set(alive.map((p) => p.file));
+    list = [...alive, ...importedFromPresets(paths, templateFiles, known)];
+    console.warn(`[projects] registry ${corrupt ? "was corrupt" : "was missing"} in ${paths.workspace}: restored ${alive.length} project(s) from the backup`);
+  } else {
+    list = importedFromPresets(paths, templateFiles);
+    if (corrupt) {
+      console.warn(`[projects] registry was corrupt in ${paths.workspace} and there is no backup: rebuilt ${list.length} project(s) from the presets, the paid flags are lost`);
     }
   }
   saveProjects(paths, list);
@@ -106,6 +149,14 @@ export function loadProjects(paths, templateFiles = new Set()) {
 
 export function saveProjects(paths, list) {
   mkdirSync(paths.workspace, { recursive: true });
+  // keep the last good registry before replacing it (never copy a corrupt one over a good backup)
+  if (readJsonCached(registryPath(paths))?.projects) {
+    try {
+      copyFileSync(registryPath(paths), backupPath(paths));
+    } catch {
+      /* a failed backup must not block the save */
+    }
+  }
   const doc = { projects: list };
   writeJsonAtomic(registryPath(paths), doc);
   rememberJson(registryPath(paths), JSON.parse(JSON.stringify(doc)));
