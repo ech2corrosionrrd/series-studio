@@ -5,6 +5,16 @@
 
 Усі JSON-відповіді — `application/json`, якщо не зазначено інакше.
 
+**Коди помилок з полем `code`** (решта помилок мають лише `error`):
+
+| Статус | `code` | Коли |
+|---|---|---|
+| 402 | `project_charge` | новий проєкт понад безкоштовні: у відповіді `cost`, повтор із `confirmCharge: true` |
+| 402 | `credits` | не вистачає кредитів (`needed`, `balance`) |
+| 409 | `project_exists` | збереження під id іншого наявного проєкту; повтор із `overwrite: true` кладе стару версію в кошик |
+| 409 | `project_stale` | файл змінено відтоді, як клієнт його відкрив (`baseRev`); повтор із `overwrite: true` |
+| 413 | `disk_quota` | вичерпано диск гаманця (`used`, `limit`); нові кадри, бази й шари не створюються, кредити не списуються |
+
 ## Health / resources
 
 | Method | Path | Опис |
@@ -21,7 +31,7 @@
 | Method | Path | Опис |
 |--------|------|------|
 | GET | `/api/presets` | список пресетів |
-| GET | `/api/preset?file=` | повний пресет |
+| GET | `/api/preset?file=` | повний пресет і `rev` (16 символів SHA-1 вмісту файлу): клієнт повертає її як `baseRev` у `/api/preset/save`, щоб зміна з іншої вкладки не пропала мовчки |
 | POST | `/api/validate` | body `{ file }` або `{ preset }` |
 | POST | `/api/preset/save` | записати `presets/<id>.json`; новий проєкт понад безкоштовні: `402` з `code: "project_charge"` і `cost`, повтор із `confirmCharge: true` списує кредити один раз; збереження під id іншого наявного проєкту (не відкритого й не того, що передано в `editing`) дає `409` з `code: "project_exists"`, повтор із `overwrite: true` замінює його, а попередня версія йде в кошик; з `baseRev` (ревізія з `GET /api/preset`) змінений відтоді файл дає `409` з `code: "project_stale"` (повтор із `overwrite: true` замінює, стара версія йде в кошик), у відповіді нова `rev` |
 | POST | `/api/projects/open` | зробити проєкт активним: `{ file }`; далі база, шари, набори кадрів і архів усіх маршрутів це активного проєкту (у публічному режимі) |
@@ -29,7 +39,7 @@
 | POST | `/api/projects/delete` | видалити проєкт: `{ file, confirm: true }`; пресет, архів рецептів і власні база, шари й набори кадрів ідуть у кошик проєктів, слот звільняється; активним стає наступний; без `confirm` це 400 |
 | POST | `/api/projects/purge` | видалити проєкт із кошика остаточно: `{ id, confirm: true }` (без `confirm` 400, невідомий `id` 404); `GET /api/projects` у `deleted[]` віддає `daysLeft` (скільки днів до автоочищення, `null` коли `SERIES_TRASH_DAYS=0`) і `trashDays` |
 | POST | `/api/projects/restore` | відновити видалений проєкт з кошика: `{ id: <id запису кошика>, confirmCharge? }`; для ліміту це новий проєкт (понад безкоштовні `402 project_charge`) |
-| GET | `/api/projects` | проєкти гаманця й квота (`free`, `used`, `extraCredits`, `needsCharge`, `exempt`) |
+| GET | `/api/projects` | проєкти гаманця й квота (`free`, `used`, `extraCredits`, `needsCharge`, `exempt`), `storage` (`used`, `limit`, `exempt`: диск гаманця в байтах, `limit` 0 = без ліміту) |
 | GET | `/api/templates` | список шаблонів |
 | GET | `/api/templates/:id` | шаблон як пресет |
 | GET | `/api/trait-packs` | список паків (`libraries/traits/`) |
@@ -142,7 +152,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 
 | Method | Path | Опис |
 |--------|------|------|
-| GET | `/api/me` | акаунт сесії: `wallet`, `balance`, `admin`, `packages`, `referral`, `localGpu`, `creditCosts`, `solPay` (`enabled`, `recipient`, `mint`; `testPack` лише адміну з `SOLANA_PAY_TEST_PACK=1`) |
+| GET | `/api/me` | акаунт сесії: `wallet`, `balance`, `admin`, `packages`, `referral`, `localGpu`, `creditCosts`, `storage` (як у `/api/projects`), `solPay` (`enabled`, `recipient`, `mint`; `testPack` лише адміну з `SOLANA_PAY_TEST_PACK=1`) |
 | GET | `/api/credits/history` | останні операції кредитів (сесія) |
 | POST | `/api/credits/sol/order` | `{package}` → замовлення оплати USDC (Solana): точна сума з унікальними мікро-центами, адреса, `solana:` URI |
 | POST | `/api/credits/sol/check` | знайти переказ у блокчейні й зарахувати кредити → `{credited, balance, orders, error}` (ліміт `SOLANA_PAY_CHECK_RATE_LIMIT`, типово 20/хв) |
@@ -161,7 +171,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 | POST | `/api/publish` | public: публікує набір як сторінку колекції (`dir`, `title`, `onlyKeep`) |
 | POST | `/api/simulate` | сухий прогін пресету (`file` або `preset`) без витрат |
 | POST | `/api/archive/diff` | різниця двох архівів (`a`, `b`) |
-| POST | `/api/preset/spinoff` | спін-оф пресету (`file`, `suffix`) |
+| POST | `/api/preset/spinoff` | спін-оф пресету (`file`, `suffix`); відповідь має `rev` |
 | POST | `/api/set/compress` | стиснути кадри понад `maxBytes` (типово 1 МБ; `dryRun` лише перелічує); оригінал лишається версією кадру; потрібен `sharp` |
 | GET | `/api/quality?dir=` | звіт якості набору: не-PNG, замалі файли, точні копії, схожість до базової; `weakest` — найгірші кадри, `problemEditions` — усі проблемні |
 | GET | `/api/similarity?dir=` | схожість картинок набору з основною базовою (гістограми країв, `method: hog-aligned-1`; ключ `warn` нижче 0,73) |
