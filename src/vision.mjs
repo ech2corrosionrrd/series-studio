@@ -3,6 +3,7 @@
  * Inspired by W3IR Prompt vision analyzer.
  * Keys loaded from server env (OPENAI_API_KEY or ANTHROPIC_API_KEY).
  */
+import { anthropicModel } from "./models.mjs";
 
 const SYSTEM_PROMPT = `You are an expert art director and generative NFT series prompt engineer.
 Analyze the provided base image and produce a structured JSON configuration for generating consistent variations of this character/subject.
@@ -204,11 +205,11 @@ async function callOpenAiVision(b64Image, mime, apiKey, fetchFn) {
 /**
  * Call Anthropic Vision API.
  */
-async function callAnthropicVision(b64Image, mime, apiKey, fetchFn) {
+async function callAnthropicVision(b64Image, mime, apiKey, fetchFn, model) {
   const url = "https://api.anthropic.com/v1/messages";
   const mediaType = mime === "image/png" ? "image/png" : mime === "image/webp" ? "image/webp" : "image/jpeg";
   const body = {
-    model: "claude-3-5-sonnet-20241022",
+    model,
     max_tokens: 1500,
     system: SYSTEM_PROMPT,
     messages: [
@@ -282,9 +283,10 @@ export async function analyzeBaseImage({ image, mime = "image/png" }, ctx = {}) 
   // 2. Try Anthropic if key present
   if (env.ANTHROPIC_API_KEY) {
     try {
-      const result = await callAnthropicVision(b64, mime, env.ANTHROPIC_API_KEY, fetchFn);
+      const model = anthropicModel(env);
+      const result = await callAnthropicVision(b64, mime, env.ANTHROPIC_API_KEY, fetchFn, model);
       if (result) {
-        return { ok: true, provider: "anthropic (claude-3-5-sonnet)", data: result };
+        return { ok: true, provider: `anthropic (${model})`, data: result };
       }
     } catch (e) {
       console.warn("Anthropic Vision failed:", e.message || e);
