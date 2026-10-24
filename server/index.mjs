@@ -3278,9 +3278,17 @@ async function handleApi(req, res, url) {
   if (pathname === "/api/layers/status" && req.method === "GET") {
     let items = null;
     const archiveName = url.searchParams.get("archive");
+    const presetName = url.searchParams.get("preset");
     if (archiveName) {
       try {
         items = loadSeriesContext(archiveName).preset?.traits?.items || null;
+      } catch {
+        items = null;
+      }
+    } else if (presetName) {
+      // the Constructor asks before any recipes are built: coverage against the saved preset itself
+      try {
+        items = loadPresetByFile(presetName).preset?.traits?.items || null;
       } catch {
         items = null;
       }
