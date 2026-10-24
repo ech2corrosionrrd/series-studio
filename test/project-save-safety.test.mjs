@@ -99,3 +99,72 @@ describe("project save safety", () => {
     }
   });
 });
+
+describe("two tabs saving the same project", () => {
+  let s;
+  const basePreset = JSON.parse(readFileSync("presets/demo-series.json", "utf8"));
+  const preset = (id, name) => ({ ...basePreset, id, name });
+  const save = (id, name, extra = {}) => s.call("POST", "/api/preset/save", { body: { preset: preset(id, name), ...extra } });
+  const open = async (file) => (await s.call("GET", `/api/preset?file=${file}`)).json;
+  const userDir = () => join(s.dir, "users", readdirSync(join(s.dir, "users"))[0]);
+  const stored = (id) => JSON.parse(readFileSync(join(userDir(), "presets", `${id}.json`), "utf8"));
+
+  before(async () => {
+    s = await startStudio({ adminWallet: false, extraEnv: { WELCOME_CREDITS: "100", EARLY_WELCOME_CREDITS: "100" } });
+    await s.signIn();
+    assert.equal((await save("shared", "Original")).status, 200);
+  });
+  after(async () => {
+    await s?.stop();
+  });
+
+  it("opening and saving return a revision that changes with the content", async () => {
+    const a = await open("shared.json");
+    assert.match(a.rev, /^[0-9a-f]{16}$/);
+    const saved = await save("shared", "Original", { baseRev: a.rev });
+    assert.equal(saved.status, 200, saved.text);
+    assert.equal(saved.json.rev, a.rev, "same content, same revision");
+    const edited = await save("shared", "Edited by tab A", { baseRev: a.rev });
+    assert.equal(edited.status, 200, edited.text);
+    assert.notEqual(edited.json.rev, a.rev);
+    assert.equal((await open("shared.json")).rev, edited.json.rev);
+  });
+
+  it("a tab that opened the old revision cannot silently drop the other tab's change", async () => {
+    const tabB = (await open("shared.json")).rev; // both tabs open the same revision
+    const tabA = tabB;
+    const a = await save("shared", "Tab A edit", { baseRev: tabA });
+    assert.equal(a.status, 200, a.text);
+    const b = await save("shared", "Tab B edit", { baseRev: tabB });
+    assert.equal(b.status, 409, b.text);
+    assert.equal(b.json.code, "project_stale");
+    assert.equal(b.json.rev, a.json.rev, "the error carries the current revision");
+    assert.equal(stored("shared").name, "Tab A edit", "tab A's change survives");
+  });
+
+  it("after reloading, tab B saves normally; a confirmed overwrite keeps the other version in the trash", async () => {
+    const fresh = (await open("shared.json")).rev;
+    assert.equal((await save("shared", "Tab B after reload", { baseRev: fresh })).status, 200);
+    const stale = fresh; // now stale again
+    const forced = await save("shared", "Tab A forced", { baseRev: stale, overwrite: true });
+    assert.equal(forced.status, 200, forced.text);
+    assert.equal(stored("shared").name, "Tab A forced");
+    const found = [];
+    const walk = (dir) => {
+      if (!existsSync(dir)) return;
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (/shared\.json$/.test(e.name) && p.includes("trash")) found.push(JSON.parse(readFileSync(p, "utf8")).name);
+      }
+    };
+    walk(userDir());
+    assert.ok(found.includes("Tab B after reload"), `the replaced version is in the trash: ${found.join(", ")}`);
+  });
+
+  it("a client without baseRev (CLI, old page) is not checked, and a new project needs none", async () => {
+    assert.equal((await save("shared", "No revision sent")).status, 200);
+    const fresh = await save("brand-new", "Fresh", { baseRev: "0123456789abcdef" });
+    assert.equal(fresh.status, 200, "a file that does not exist yet has nothing to be stale against");
+  });
+});

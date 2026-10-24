@@ -11,6 +11,7 @@
  */
 import "../src/require-node.mjs";
 import { createServer } from "node:http";
+import { createHash } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { exec } from "node:child_process";
 import {
@@ -750,6 +751,15 @@ function loadTraitPackById(id) {
     }
   }
   throw new Error(`trait pack not found: ${clean}`);
+}
+
+/** Short content hash of a preset file: the client sends it back as `baseRev` so a stale save is detected. */
+function presetRev(path) {
+  try {
+    return createHash("sha1").update(readFileSync(path)).digest("hex").slice(0, 16);
+  } catch {
+    return null;
+  }
 }
 
 function loadPresetByFile(file) {
@@ -1645,8 +1655,8 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === "/api/preset" && req.method === "GET") {
-    const { preset, file } = loadPresetByFile(url.searchParams.get("file") || "demo-series.json");
-    return send(res, 200, { file, preset });
+    const { preset, file, path } = loadPresetByFile(url.searchParams.get("file") || "demo-series.json");
+    return send(res, 200, { file, preset, rev: presetRev(path) });
   }
 
   if (pathname === "/api/templates" && req.method === "GET") {
@@ -1739,13 +1749,23 @@ async function handleApi(req, res, url) {
     // strip UI-only meta if saving as real preset (keep _meta optional)
     const outName = `${id}.json`;
     const outPath = join(P().presets, outName);
-    const overwriting = guardProjectOverwrite(outName, body);
+    let overwriting = guardProjectOverwrite(outName, body);
+    // Optimistic concurrency: the client saw revision `baseRev`; if the file changed since (another tab, another
+    // device), saving would drop that change. A client that sends no baseRev (CLI, old page) is not checked.
+    if (existsSync(outPath) && typeof body.baseRev === "string" && body.baseRev && body.baseRev !== presetRev(outPath)) {
+      if (body.overwrite !== true) {
+        throw httpError(409, `The project "${id}" was changed elsewhere (another tab or device) after you opened it. Reload it, or confirm to replace it.`, {
+          code: "project_stale", file: outName, rev: presetRev(outPath),
+        });
+      }
+      overwriting = true;
+    }
     const admission = admitNewProject(outName, body);
     // an overwrite keeps the previous version in the trash, so a mistaken "new project" is not a lost one
     if (overwriting && existsSync(outPath)) toTrash([outPath], `project overwritten: ${outName}`);
     writeJsonAtomic(outPath, preset);
     commitNewProject(outName, admission);
-    return send(res, 200, { ok: true, file: outName, path: `presets/${outName}`, id, project: { new: admission.isNew, charged: admission.credits } });
+    return send(res, 200, { ok: true, file: outName, rev: presetRev(outPath), path: `presets/${outName}`, id, project: { new: admission.isNew, charged: admission.credits } });
   }
 
   if (pathname === "/api/build" && req.method === "POST") {
@@ -1943,7 +1963,7 @@ async function handleApi(req, res, url) {
     const admission = admitNewProject(file, body);
     writeJsonAtomic(join(P().presets, file), next);
     commitNewProject(file, admission);
-    return send(res, 200, { ok: true, file, preset: next, project: { new: true, charged: admission.credits } });
+    return send(res, 200, { ok: true, file, preset: next, rev: presetRev(join(P().presets, file)), project: { new: true, charged: admission.credits } });
   }
 
   if (pathname === "/api/projects" && req.method === "GET") {

@@ -43,6 +43,13 @@ const state = {
   rarity: null,
 };
 
+/** Revision of each preset file as this tab last saw it: sent back on save so a change made elsewhere is not lost. */
+function rememberRev(file, rev) {
+  if (!file || !rev) return;
+  state.presetRevs = { ...(state.presetRevs || {}), [file]: rev };
+}
+const saveRevField = (file) => (state.presetRevs?.[file] ? { baseRev: state.presetRevs[file] } : {});
+
 function loadMarks() {
   try {
     return JSON.parse(localStorage.getItem("series-lab-marks") || "{}");
@@ -1438,12 +1445,17 @@ function setupOverview() {
           ...(confirmCharge ? { confirmCharge: true } : {}),
           ...(overwrite ? { overwrite: true } : {}),
           ...(editing ? { editing } : {}),
+          ...saveRevField(file),
         }),
       });
     } catch (e) {
       if (e.payload?.code === "project_exists") {
         state.projectOverwrite = preset.id;
         throw new Error(t("projects.exists", { name: preset.id }));
+      }
+      if (e.payload?.code === "project_stale") {
+        state.projectOverwrite = preset.id;
+        throw new Error(t("projects.stale", { name: preset.id }));
       }
       // A new project beyond the free ones costs credits: ask once, charge only on the second, explicit click.
       if (e.payload?.code === "project_charge") {
@@ -1454,6 +1466,7 @@ function setupOverview() {
     }
     state.projectConfirm = null;
     state.projectOverwrite = null;
+    rememberRev(data.file, data.rev);
     const charged = data.project?.charged ? ` ${t("projects.charged", { n: data.project.charged })}` : "";
     $("o-msg").textContent = `${t("home.msg.saved")}: ${data.file}${charged}`;
     $("o-msg").className = "small ok-msg";
@@ -1551,6 +1564,7 @@ function setupConstructor() {
     try {
       const file = $("ctor-file").value;
       const data = await api(`/api/preset?file=${encodeURIComponent(file)}`);
+      rememberRev(file, data.rev);
       fillConstructor(data.preset);
       $("ctor-msg").textContent = `${t("ctor.msg.loaded")}: ${file}`;
       $("ctor-msg").className = "small ok-msg";
@@ -1591,7 +1605,25 @@ function setupConstructor() {
         const v = validateOptionsClient(trait.options || []);
         if (!v.ok) throw new Error(`${trait.key}: ${v.errors.join("; ")}`);
       }
-      const data = await api("/api/preset/save", { method: "POST", body: JSON.stringify({ preset }) });
+      const file = `${preset.id}.json`;
+      const overwrite = state.projectOverwrite === preset.id;
+      const editing = $("ctor-file")?.value === file ? file : null;
+      let data;
+      try {
+        data = await api("/api/preset/save", {
+          method: "POST",
+          body: JSON.stringify({ preset, ...(overwrite ? { overwrite: true } : {}), ...(editing ? { editing } : {}), ...saveRevField(file) }),
+        });
+      } catch (e) {
+        const code = e.payload?.code;
+        if (code === "project_exists" || code === "project_stale") {
+          state.projectOverwrite = preset.id;
+          throw new Error(t(code === "project_stale" ? "projects.stale" : "projects.exists", { name: preset.id }));
+        }
+        throw e;
+      }
+      state.projectOverwrite = null;
+      rememberRev(data.file, data.rev);
       $("ctor-msg").textContent = `${t("ctor.msg.saved")}: ${data.file}`;
       $("ctor-msg").className = "small ok-msg";
       await loadPresets();
@@ -2073,6 +2105,7 @@ function setupRecipes() {
     // Choosing a series here switches the whole studio to it (Overview, Constructor), and the workspace remembers it.
     try {
       const data = await api(`/api/preset?file=${encodeURIComponent(file)}`);
+      rememberRev(file, data.rev);
       fillConstructor(data.preset);
     } catch {
       /* the archive may exist without the preset file; the selectors still follow */
@@ -6547,6 +6580,7 @@ async function boot() {
   if (start.preset) {
     try {
       const data = await api(`/api/preset?file=${encodeURIComponent(start.preset)}`);
+      rememberRev(start.preset, data.rev);
       fillConstructor(data.preset);
       for (const id of ["ctor-file", "r-preset"]) if ($(id) && [...$(id).options].some((o) => o.value === start.preset)) $(id).value = start.preset;
     } catch {
