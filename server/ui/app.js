@@ -572,7 +572,7 @@ function renderSteps() {
       li.classList.add("next");
       nextSet = true;
     }
-    li.innerHTML = `<b>${t(`home.step.${s.key}`)}</b><span>${t(`home.step.${s.key}.desc`)}</span>`;
+    li.innerHTML = `<b>${escapeHtml(t(`home.step.${s.key}`))}</b><span>${escapeHtml(t(`home.step.${s.key}.desc`))}</span>`;
     li.addEventListener("click", () => showTab(s.tab));
     el.appendChild(li);
   }
@@ -1798,7 +1798,7 @@ function renderBaseGallery(files) {
   if (!grid) return;
   grid.innerHTML = "";
   if (!files?.length) {
-    grid.innerHTML = `<p class="muted small">${t("base.gallery.empty")}</p>`;
+    grid.innerHTML = `<p class="muted small">${escapeHtml(t("base.gallery.empty"))}</p>`;
     return;
   }
   for (const f of files) {
@@ -2044,7 +2044,7 @@ function renderRecipeTable() {
   if (q) rows = rows.filter((r) => JSON.stringify(r).toLowerCase().includes(q));
   if ($("r-count")) $("r-count").textContent = String(rows.length);
   const showWave = rows.some((r) => r.wave != null);
-  table.innerHTML = `<thead><tr><th scope="col">#</th>${showWave ? `<th scope="col">${t("waves.col")}</th>` : ""}<th scope="col">${t("recipes.col.line")}</th><th scope="col">${t("recipes.col.dna")}</th><th scope="col"></th></tr></thead><tbody>` +
+  table.innerHTML = `<thead><tr><th scope="col">#</th>${showWave ? `<th scope="col">${escapeHtml(t("waves.col"))}</th>` : ""}<th scope="col">${escapeHtml(t("recipes.col.line"))}</th><th scope="col">${escapeHtml(t("recipes.col.dna"))}</th><th scope="col"></th></tr></thead><tbody>` +
     rows.map((r) => `<tr data-i="${r.index}">
       <td>${r.edition}</td>${showWave ? `<td>${r.wave ?? ""}</td>` : ""}<td>${escapeHtml(r.line)}</td>
       <td class="mono small">${escapeHtml(r.dna || "")}</td>
@@ -2150,7 +2150,7 @@ function fillArchiveSelect() {
   if (!sel) return;
   const cur = sel.value;
   if (!state.archives.length) {
-    sel.innerHTML = `<option value="">${t("export.none")}</option>`;
+    sel.innerHTML = `<option value="">${escapeHtml(t("export.none"))}</option>`;
     updateJsonLink();
     return;
   }
@@ -3068,7 +3068,7 @@ function syncCompareSelect() {
   const canCompare = sets.length >= 2;
   wrap.hidden = !canCompare;
   if (!canCompare) {
-    sel2.innerHTML = `<option value="">${t("gallery.compare.none")}</option>`;
+    sel2.innerHTML = `<option value="">${escapeHtml(t("gallery.compare.none"))}</option>`;
     sel2.value = "";
     state.galleryDir2 = null;
     state.galleryImages2 = [];
@@ -3080,7 +3080,7 @@ function syncCompareSelect() {
     .filter((s) => s.dir !== primary)
     .map((s) => `<option value="${escapeHtml(s.dir)}">${escapeHtml(s.dir)} (${s.count})</option>`)
     .join("");
-  sel2.innerHTML = `<option value="">${t("gallery.compare.none")}</option>${opts}`;
+  sel2.innerHTML = `<option value="">${escapeHtml(t("gallery.compare.none"))}</option>${opts}`;
   if (keep2 && keep2 !== primary && [...sel2.options].some((o) => o.value === keep2)) {
     sel2.value = keep2;
     state.galleryDir2 = keep2;
@@ -3100,7 +3100,7 @@ async function loadGallerySets() {
     state.gallerySets = sets;
     const keep = state.galleryDir || sel.value;
     if (!sets.length) {
-      sel.innerHTML = `<option value="">${t("gallery.noSets")}</option>`;
+      sel.innerHTML = `<option value="">${escapeHtml(t("gallery.noSets"))}</option>`;
       state.galleryDir = null;
       syncCompareSelect();
       return;
@@ -4978,7 +4978,7 @@ async function fillExportSets() {
     const sets = data.sets || [];
     const cur = sel.value || state.galleryDir || state.lastSet || "";
     if (!sets.length) {
-      sel.innerHTML = `<option value="">${t("export.bundle.noSets")}</option>`;
+      sel.innerHTML = `<option value="">${escapeHtml(t("export.bundle.noSets"))}</option>`;
       return;
     }
     sel.innerHTML = sets
@@ -5059,7 +5059,6 @@ async function restoreWorkspace() {
         await loadGalleryDir(w.lastSet);
       }
     }
-    console.info(t("workspace.restored"));
   } catch {
     /* ignore */
   }
