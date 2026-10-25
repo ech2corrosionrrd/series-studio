@@ -1812,7 +1812,14 @@ async function handleApi(req, res, url) {
     const { preset } = loadPresetByFile(body.file || "demo-series.json");
     const checked = checkPreset(preset);
     if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
-    const { archive, dupes } = makeArchive(preset);
+    let built;
+    try {
+      built = makeArchive(preset);
+    } catch (e) {
+      // an impossible preset (too few unique combinations, unmet exact counts) is bad input, not a server fault
+      return send(res, 400, { ok: false, error: String(e.message || e), code: "build" });
+    }
+    const { archive, dupes } = built;
     mkdirSync(P().out, { recursive: true });
     const outName = `${preset.id || "archive"}.json`;
     writeJsonAtomic(join(P().out, outName), archive);
@@ -1857,8 +1864,14 @@ async function handleApi(req, res, url) {
     const { preset } = loadPresetByFile(body.file || "demo-series.json");
     const checked = checkPreset(preset);
     if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
-    const a = buildRecipes(preset).map((r) => r.dna);
-    const b = buildRecipes(preset).map((r) => r.dna);
+    let a;
+    let b;
+    try {
+      a = buildRecipes(preset).map((r) => r.dna);
+      b = buildRecipes(preset).map((r) => r.dna);
+    } catch (e) {
+      return send(res, 400, { ok: false, error: String(e.message || e), code: "diff-seed" });
+    }
     const ok = a.length === b.length && a.every((d, i) => d === b[i]);
     return send(res, ok ? 200 : 500, { ok, size: a.length });
   }
