@@ -205,6 +205,7 @@ export function layersStatus(layerDir, items = null) {
   if (Array.isArray(items) && items.length) {
     const have = new Set(files.map((f) => f.rel.toLowerCase()));
     const missing = [];
+    const criticalMissing = [];
     let expected = 0;
     for (const trait of items) {
       for (const o of trait.options || []) {
@@ -215,12 +216,21 @@ export function layersStatus(layerDir, items = null) {
           rel = layerFileFor("", trait, o.value, o).replaceAll("\\", "/").replace(/^\/+/, "");
         } catch {
           missing.push(`${trait.key}/${o.value}.png`);
+          if (trait.layerOnly === true) criticalMissing.push(`${trait.key}/${o.value}.png`);
           continue;
         }
-        if (!have.has(rel.toLowerCase())) missing.push(rel);
+        if (!have.has(rel.toLowerCase())) {
+          missing.push(rel);
+          if (trait.layerOnly === true) criticalMissing.push(rel);
+        }
       }
     }
     status.coverage = { expected, present: expected - missing.length, missing: missing.slice(0, 40), missingCount: missing.length };
+    // only presets with a critical trait (layerOnly) get these fields, so the shape stays the same for the rest
+    if (items.some((t) => t.layerOnly === true)) {
+      status.coverage.criticalMissing = criticalMissing.slice(0, 40);
+      status.coverage.criticalMissingCount = criticalMissing.length;
+    }
   }
   return status;
 }
