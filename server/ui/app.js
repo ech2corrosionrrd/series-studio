@@ -2416,6 +2416,22 @@ function licenseApplies() {
   return false;
 }
 
+/**
+ * A critical trait (layerOnly) is not drawn by the model, so without its layer file the frames come out without it.
+ * Before a paid run the author sees which layers are missing and confirms, like the FLUX [dev] licence warning.
+ */
+function criticalGateApplies() {
+  return Number(state.criticalMissing) > 0 && !state.criticalAck && ($("g-engine")?.value || "") !== "mock";
+}
+
+function paintCriticalGate() {
+  const box = $("g-critical-gate");
+  if (!box) return;
+  box.hidden = !criticalGateApplies();
+  const body = $("g-critical-gate-body");
+  if (body && !box.hidden) body.textContent = t("critical.gate.body", { n: fmtNum(state.criticalMissing), list: state.criticalList || "" });
+}
+
 function paintLicenseWarning() {
   const box = $("g-license");
   const wrap = $("g-flux-dev-wrap");
@@ -2521,6 +2537,12 @@ function renderLayersStatus(st, el = $("g-layers-status")) {
   };
   if (el.id === "g-layers-status") state.hasLayers = Boolean(st?.exists && st.files > 0);
   const critical = (st?.coverage?.criticalMissingCount) || 0;
+  if (el.id === "g-layers-status") {
+    if (critical !== state.criticalMissing) state.criticalAck = false;
+    state.criticalMissing = critical;
+    state.criticalList = (st?.coverage?.criticalMissing || []).slice(0, 6).join(", ");
+    paintCriticalGate();
+  }
   const criticalLine = () => {
     if (critical > 0) line(t("render.layers.criticalMissing", { n: fmtNum(critical), list: st.coverage.criticalMissing.slice(0, 6).join(", ") }), "warn");
   };
@@ -2759,6 +2781,12 @@ function setupRender() {
     state.licenseAck = false;
     paintLicenseWarning();
   });
+  $("g-engine")?.addEventListener("change", paintCriticalGate);
+  $("g-critical-proceed")?.addEventListener("click", () => {
+    state.criticalAck = true;
+    paintCriticalGate();
+    $("g-run")?.click();
+  });
   $("g-license-proceed")?.addEventListener("click", () => {
     state.licenseAck = true;
     $("g-run")?.click();
@@ -2817,6 +2845,10 @@ function setupRender() {
     try {
       if (licenseApplies() && !state.licenseAck) {
         paintLicenseWarning();
+        return;
+      }
+      if (criticalGateApplies()) {
+        paintCriticalGate();
         return;
       }
       renderAbort?.abort();
