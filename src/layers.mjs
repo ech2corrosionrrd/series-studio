@@ -13,6 +13,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve, relative } from "node:path";
+import { parseBackdropColor, tintBackdrop } from "./backdrop-tint.mjs";
 import { decodePngRgba } from "./dupes.mjs";
 import { encodeRgbaPng, resizePng } from "./png-fit.mjs";
 import { dna, dnaKeysFromItems } from "./recipes.mjs";
@@ -152,6 +153,22 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
   const used = ["base"];
   const skipped = [];
   const onlySet = Array.isArray(only) && only.length ? new Set(only.map(String)) : null;
+  // An option with `backdrop: "#rrggbb"` re-colours the frame's own backdrop first (a layer cannot: it would cover the subject).
+  // Where no smooth backdrop is found the frame is left alone and the skip is listed.
+  for (const trait of paintOrder(items)) {
+    if (onlySet && !onlySet.has(trait.key)) continue;
+    const value = recipe?.traits?.[trait.key] ?? NONE;
+    if (!value || value === NONE) continue;
+    const color = option(items, trait.key, value).backdrop;
+    if (!parseBackdropColor(color)) continue;
+    const tinted = tintBackdrop(canvas, base.width, base.height, color);
+    if (tinted.applied) {
+      canvas = tinted.rgba;
+      used.push(`tint:${trait.key}/${value}`);
+    } else {
+      skipped.push(`tint:${trait.key}/${value} (${tinted.reason})`);
+    }
+  }
   for (const trait of paintOrder(items)) {
     if (onlySet && !onlySet.has(trait.key)) continue;
     const value = recipe?.traits?.[trait.key] ?? NONE;
