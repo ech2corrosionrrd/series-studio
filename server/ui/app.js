@@ -2236,7 +2236,7 @@ function setupRecipes() {
       if (data.rarity) renderRarity(data.rarity);
       scheduleWorkspaceSave({ lastArchive: outFile });
     } catch (e) {
-      alert(e.message);
+      showToast(e.message);
     }
   });
   $("r-simulate")?.addEventListener("click", async () => {
@@ -2278,7 +2278,7 @@ function setupRecipes() {
       const data = await api("/api/diff-seed", { method: "POST", body: JSON.stringify({ file }) });
       alert(JSON.stringify(data, null, 2));
     } catch (e) {
-      alert(e.message);
+      showToast(e.message);
     }
   });
   $("r-preset")?.addEventListener("change", () => { refreshWaves(); });
@@ -4236,7 +4236,7 @@ function renderQuality(data) {
       const note = $("v-quality-marked");
       if (note) note.textContent = t("gallery.quality.marked", { n, kept });
     } catch (e) {
-      alert(e.message);
+      showToast(e.message);
     }
   });
 }
@@ -4386,7 +4386,7 @@ async function toggleMark(edition, kind) {
     renderGallery();
     scheduleWorkspaceSave({ lastSet: state.galleryDir });
   } catch (e) {
-    alert(e.message);
+    showToast(e.message);
   }
 }
 
@@ -5666,7 +5666,7 @@ async function applyLicenceTemplate() {
     area.value = data.holderTemplate || "";
     area.dataset.dirty = "";
   } catch (e) {
-    alert(e.message);
+    showToast(e.message);
   }
 }
 

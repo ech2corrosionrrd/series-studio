@@ -51,7 +51,7 @@
 
 | Method | Path | Опис |
 |--------|------|------|
-| POST | `/api/build` | зібрати архів → `out/<id>.json` |
+| POST | `/api/build` | зібрати архів → `out/<id>.json`; неможливий пресет (замало унікальних комбінацій) → 400 з причиною |
 | POST | `/api/diff-seed` | перевірка стабільності DNA |
 | GET | `/api/recipes?file=` | рецепти архіву (+ мета для таблиці) |
 | POST | `/api/recipe` | редагувати рецепт (`file`, `index`, `traits`/`note`/`reset`); conflicts → 400 |
