@@ -433,6 +433,17 @@
         <p id="ctor-layers-picked" class="muted small"></p>
         <p id="ctor-layers-msg" class="small" role="status"></p>
         <div id="ctor-layers-status" class="u-mt-4" role="status"></div>
+        <div class="u-mt-8">
+          <b data-i18n="ctor.import.title">Таблиця рис із шарів або CSV</b>
+          <p class="muted small u-my-4" data-i18n="ctor.import.help"></p>
+          <div class="actions">
+            <button type="button" id="ctor-traits-from-layers" class="btn small" data-i18n="ctor.import.fromLayers">Створити риси з шарів</button>
+            <button type="button" id="ctor-traits-csv-export" class="btn small" data-i18n="ctor.import.csvExport">Скачати таблицю рис (CSV)</button>
+            <input type="file" id="ctor-traits-csv-file" accept=".csv,text/csv,text/plain" hidden>
+            <button type="button" id="ctor-traits-csv-import" class="btn small" data-i18n="ctor.import.csvImport">Завантажити CSV</button>
+          </div>
+          <p id="ctor-traits-import-msg" class="small" role="status"></p>
+        </div>
         <button type="button" class="btn small u-mt-8" data-goto-tab="render" data-scroll-to="g-layers" data-i18n="ctor.layers.go">Накласти шари на кадри на «5 · Генерація»</button>
       </div>
     </div>

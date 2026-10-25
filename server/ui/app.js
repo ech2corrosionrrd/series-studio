@@ -2655,6 +2655,77 @@ function bindLayersUploader(ids, { query, onChange }) {
   });
 }
 
+/**
+ * "Риси з шарів" and the CSV sheet in the Constructor: the server merges them into the table that is in the editor
+ * (nothing is removed) and sends the result back; the author reviews it and saves the preset as usual.
+ */
+function setupTraitsImport() {
+  const say = (text, cls = "") => {
+    const el = $("ctor-traits-import-msg");
+    if (!el) return;
+    el.textContent = text;
+    el.className = `small ${cls}`.trim();
+  };
+  const apply = (res) => {
+    const draft = ensureDraftTraits();
+    draft.items = res.items;
+    if (state.draftFull) state.draftFull.traits = draft;
+    renderTraitChecklist();
+    renderOptionsEditor();
+    renderCtorSummary();
+  };
+  // the server names the first bad CSV row; the rest are only counted
+  const problem = (e) => (Number(e?.payload?.errorCount) > 1 ? `${e.message} (+${fmtNum(e.payload.errorCount - 1)})` : e.message);
+  $("ctor-traits-from-layers")?.addEventListener("click", async () => {
+    const btn = $("ctor-traits-from-layers");
+    try {
+      setBusy(btn, true);
+      const res = await api("/api/traits/from-layers", { method: "POST", body: JSON.stringify({ items: ensureDraftTraits().items }) });
+      apply(res);
+      say(t("ctor.import.layersOk", { traits: fmtNum(res.traitsAdded), options: fmtNum(res.optionsAdded), skipped: fmtNum(res.skippedCount || 0) }), "ok");
+    } catch (e) {
+      say(problem(e), "warn");
+    } finally {
+      setBusy(btn, false);
+    }
+  });
+  $("ctor-traits-csv-export")?.addEventListener("click", async () => {
+    try {
+      const items = ensureDraftTraits().items;
+      if (!items.length) {
+        say(t("ctor.import.noTraits"), "warn");
+        return;
+      }
+      const res = await api("/api/traits/to-csv", { method: "POST", body: JSON.stringify({ items }) });
+      const url = URL.createObjectURL(new Blob([res.csv], { type: "text/csv;charset=utf-8" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${$("ctor-file")?.value?.replace(/\.json$/i, "") || "traits"}-traits.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      say(t("ctor.import.csvSaved"), "ok");
+    } catch (e) {
+      say(problem(e), "warn");
+    }
+  });
+  $("ctor-traits-csv-import")?.addEventListener("click", () => $("ctor-traits-csv-file")?.click());
+  $("ctor-traits-csv-file")?.addEventListener("change", async (ev) => {
+    const file = ev.target.files?.[0];
+    ev.target.value = "";
+    if (!file) return;
+    try {
+      const csv = await file.text();
+      const res = await api("/api/traits/from-csv", { method: "POST", body: JSON.stringify({ csv, items: ensureDraftTraits().items }) });
+      apply(res);
+      say(t("ctor.import.csvOk", { traits: fmtNum(res.traitsAdded), options: fmtNum(res.optionsAdded), updated: fmtNum(res.optionsUpdated) }), "ok");
+    } catch (e) {
+      say(problem(e), "warn");
+    }
+  });
+}
+
 function setupLayersUpload() {
   $("x-file")?.addEventListener("change", refreshLayersStatus);
   bindLayersUploader(
@@ -2707,6 +2778,7 @@ async function fillComposeOver(prefer = "") {
 
 function setupRender() {
   setupLayersUpload();
+  setupTraitsImport();
   fillComposeOver();
   $("g-compose-over")?.addEventListener("change", (e) => {
     e.target.dataset.picked = "1";

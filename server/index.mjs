@@ -183,7 +183,8 @@ import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
 import { diskMessage, diskStatus, noteWrite, presetLimitIssues, quotaConfig } from "../src/quota.mjs";
 import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, describeProjects, ensureProjectDirs, isProject, listDeletedProjects, loadProjects, moveSetBetweenProjects, projectAssetStats, pruneWalletTrash, purgeDeletedProject, trashDaysLeft, trashRetentionDays, projectIdOf, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, trashProject, writeActiveProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
-import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
+import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layerRelPaths, layersStatus, listLayerFiles } from "../src/layers-zip.mjs";
+import { CSV_LIMITS, mergeTraitItems, traitsFromCsv, traitsFromLayerFiles, traitsToCsv } from "../src/traits-import.mjs";
 import { addVersion, dropVersion, editionAssetFiles, listShelved, listVersions, setCurrent, shelveCurrent, versionCounts } from "../src/versions.mjs";
 import { containsSecretField } from "../src/secrets.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
@@ -3329,6 +3330,36 @@ async function handleApi(req, res, url) {
     const trashed = old.length ? toTrash(old, "layers cleared") : null;
     clearLayers(P().layers);
     return send(res, 200, { ok: true, removed: old.length, trashId: trashed?.id ?? null });
+  }
+
+  // Trait table from the layers folder or a CSV sheet. Both merge into `items` (the table in the editor) and
+  // return the result; nothing is saved here, the author reviews it and saves the preset as usual.
+  if (pathname === "/api/traits/from-layers" && req.method === "POST") {
+    const body = await readBody(req);
+    if (body.items !== undefined && !Array.isArray(body.items)) return send(res, 400, { error: "items must be an array" });
+    const { items: found, skipped } = traitsFromLayerFiles(layerRelPaths(P().layers));
+    if (!found.length) return send(res, 400, { error: "no layer PNGs found: upload a ZIP of <trait>/<value>.png first", code: "no_layers" });
+    const merged = mergeTraitItems(body.items || [], found, { overwrite: false });
+    return send(res, 200, { ok: true, items: merged.items, ...merged.stats, skipped: skipped.slice(0, 20), skippedCount: skipped.length });
+  }
+
+  if (pathname === "/api/traits/from-csv" && req.method === "POST") {
+    const body = await readBody(req);
+    if (typeof body.csv !== "string" || !body.csv.trim()) return send(res, 400, { error: "csv text is required" });
+    if (body.items !== undefined && !Array.isArray(body.items)) return send(res, 400, { error: "items must be an array" });
+    if (body.csv.length > CSV_LIMITS.chars) return send(res, 413, { error: `csv is larger than ${CSV_LIMITS.chars} characters` });
+    const parsed = traitsFromCsv(body.csv);
+    if (parsed.errors.length) {
+      return send(res, 400, { error: `row ${parsed.errors[0].row}: ${parsed.errors[0].message}`, code: "csv", errors: parsed.errors.slice(0, 10), errorCount: parsed.errors.length });
+    }
+    const merged = mergeTraitItems(body.items || [], parsed.items, { overwrite: true });
+    return send(res, 200, { ok: true, items: merged.items, ...merged.stats });
+  }
+
+  if (pathname === "/api/traits/to-csv" && req.method === "POST") {
+    const body = await readBody(req);
+    if (!Array.isArray(body.items)) return send(res, 400, { error: "items must be an array" });
+    return send(res, 200, { ok: true, csv: traitsToCsv(body.items) });
   }
 
   if (pathname === "/api/compose" && req.method === "POST") {
