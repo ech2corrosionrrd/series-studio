@@ -3,15 +3,18 @@
  *
  * Layers: every first-level folder is a trait, every PNG in it an option. A file name may carry a weight after
  * `#` (`Cap#20.png` = value "Cap", weight 20); then the option keeps the real path in `layer`, so no file is renamed.
- * CSV: one row per option, columns `trait,value,weight,prompt,exact,layer` (`,` `;` or tab, UTF-8, quotes allowed).
+ * CSV: one row per option, columns `trait,value,weight,prompt,exact,layer,backdrop` (`,` `;` or tab, UTF-8, quotes
+ * allowed); `backdrop` is a `#rrggbb` backdrop colour for the frame (see backdrop-tint.mjs).
  *
  * Both are merged into the table that is already in the editor: nothing is removed, and without `overwrite`
  * what the author typed (weights, prompts) is kept.
  */
 
+import { parseBackdropColor } from "./backdrop-tint.mjs";
+
 export const DEFAULT_WEIGHT = 10;
 export const CSV_LIMITS = Object.freeze({ chars: 1_000_000, rows: 5000 });
-export const CSV_COLUMNS = Object.freeze(["trait", "value", "weight", "prompt", "exact", "layer"]);
+export const CSV_COLUMNS = Object.freeze(["trait", "value", "weight", "prompt", "exact", "layer", "backdrop"]);
 
 const WEIGHT_SUFFIX = /#(\d+(?:[.,]\d+)?)$/;
 
@@ -90,7 +93,7 @@ export function mergeTraitItems(existing, incoming, { overwrite = false } = {}) 
         continue;
       }
       let changed = false;
-      for (const field of ["weight", "prompt", "exact", "layer"]) {
+      for (const field of ["weight", "prompt", "exact", "layer", "backdrop"]) {
         if (o[field] === undefined || o[field] === null || o[field] === "") continue;
         const take = overwrite || (field === "layer" && !old.layer);
         if (take && old[field] !== o[field]) {
@@ -120,7 +123,7 @@ export function traitsToCsv(items) {
   const rows = [CSV_COLUMNS.join(",")];
   for (const t of items || []) {
     for (const o of t.options || []) {
-      rows.push([t.key, o.value, o.weight, o.prompt, o.exact, o.layer].map(csvCell).join(","));
+      rows.push([t.key, o.value, o.weight, o.prompt, o.exact, o.layer, o.backdrop].map(csvCell).join(","));
     }
   }
   return `﻿${rows.join("\r\n")}\r\n`;
@@ -220,6 +223,11 @@ export function traitsFromCsv(text) {
     if (layer !== "") {
       if (layer.startsWith("/") || /^[a-z]:/i.test(layer) || layer.split("/").includes("..")) errors.push({ row: n, message: `layer must be a relative path inside the layers folder, got "${layer}"` });
       else option.layer = layer;
+    }
+    const backdrop = get("backdrop");
+    if (backdrop !== "") {
+      if (!parseBackdropColor(backdrop)) errors.push({ row: n, message: `backdrop must be a colour like #0d9aa0, got "${backdrop}"` });
+      else option.backdrop = backdrop.toLowerCase();
     }
     const options = by.get(key) || [];
     if (options.some((o) => o.value.toLowerCase() === value.toLowerCase())) {

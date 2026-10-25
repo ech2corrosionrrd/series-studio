@@ -877,6 +877,15 @@ function normalizeOptionClient(raw) {
   return out;
 }
 
+/**
+ * The option fields the editor does not own (`layer`, `backdrop`, whatever a preset or a CSV carries) must survive
+ * an edit of weight or prompt; `normalizeOptionClient` rebuilds only the fields it knows.
+ */
+const OPTION_OWN_FIELDS = new Set(["value", "weight", "prompt", "exact", "lines", "since"]);
+function optionExtras(raw) {
+  return Object.fromEntries(Object.entries(raw && typeof raw === "object" ? raw : {}).filter(([k]) => !OPTION_OWN_FIELDS.has(k)));
+}
+
 function validateOptionsClient(list) {
   const errors = [];
   const warnings = [];
@@ -1046,7 +1055,7 @@ function updateOptionField(idx, field, value) {
   ensureDraftTraits();
   const trait = findTrait(state.selectedTraitKey);
   if (!trait || !Array.isArray(trait.options) || !trait.options[idx]) return;
-  const cur = { ...normalizeOptionClient(trait.options[idx]) };
+  const cur = { ...optionExtras(trait.options[idx]), ...normalizeOptionClient(trait.options[idx]) };
   if (field === "weight") {
     const n = Number(value);
     cur.weight = Number.isFinite(n) ? n : 0;
@@ -1191,7 +1200,7 @@ function setupOptionsEditor() {
       const idx = Number(el.dataset.idx);
       if (!trait?.options?.[idx]) return;
       const n = Number(el.value);
-      trait.options[idx] = { ...normalizeOptionClient(trait.options[idx]), weight: Number.isFinite(n) ? n : 0 };
+      trait.options[idx] = { ...optionExtras(trait.options[idx]), ...normalizeOptionClient(trait.options[idx]), weight: Number.isFinite(n) ? n : 0 };
       if (state.draftFull) state.draftFull.traits = state.draftTraits;
       refreshWeightPcts();
       return;
@@ -1201,7 +1210,7 @@ function setupOptionsEditor() {
     const trait = findTrait(state.selectedTraitKey);
     const idx = Number(el.dataset.idx);
     if (!trait?.options?.[idx]) return;
-    trait.options[idx] = { ...normalizeOptionClient(trait.options[idx]), prompt: el.value };
+    trait.options[idx] = { ...optionExtras(trait.options[idx]), ...normalizeOptionClient(trait.options[idx]), prompt: el.value };
     if (state.draftFull) state.draftFull.traits = state.draftTraits;
   });
   $("opt-tbody")?.addEventListener("click", (ev) => {
