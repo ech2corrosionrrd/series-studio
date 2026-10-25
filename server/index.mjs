@@ -43,6 +43,7 @@ import {
   duplicates,
   duplicateGroups,
   diffArchives,
+  collideArchives,
   spinoffPreset,
   loadTraitsFromPreset,
   optionsFor,
@@ -1997,6 +1998,16 @@ async function handleApi(req, res, url) {
     const left = loadArchiveFile(body.a || body.left || "");
     const right = loadArchiveFile(body.b || body.right || "");
     return send(res, 200, { a: left.file, b: right.file, ...diffArchives(left.archive, right.archive) });
+  }
+
+  // The same character in two different collections (a sequel that re-rolled an old look).
+  if (pathname === "/api/archive/collisions" && req.method === "POST") {
+    const body = await readBody(req);
+    const left = loadArchiveFile(body.a || body.left || "");
+    const right = loadArchiveFile(body.b || body.right || "");
+    if (left.file === right.file) return send(res, 400, { error: "choose two different archives" });
+    const found = collideArchives(left.archive, right.archive);
+    return send(res, 200, { a: left.file, b: right.file, ...found, collisions: found.collisions.slice(0, 200), collisionCount: found.collisions.length });
   }
 
   if (pathname === "/api/preset/spinoff" && req.method === "POST") {

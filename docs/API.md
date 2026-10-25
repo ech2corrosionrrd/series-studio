@@ -174,6 +174,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 | POST | `/api/publish` | public: публікує набір як сторінку колекції (`dir`, `title`, `onlyKeep`) |
 | POST | `/api/simulate` | сухий прогін пресету (`file` або `preset`) без витрат |
 | POST | `/api/archive/diff` | різниця двох архівів (`a`, `b`) |
+| POST | `/api/archive/collisions` | однакові NFT у двох різних колекціях (`a`, `b`): збіг значень рис незалежно від номерів і ліній, риса `None` вважається відсутньою. Відповідь: `{ a, b, countA, countB, shared, collisionCount, collisions: [{ traits, editionsA, editionsB }] }` (до 200). Той самий архів двічі → 400. |
 | POST | `/api/preset/spinoff` | спін-оф пресету (`file`, `suffix`); відповідь має `rev` |
 | POST | `/api/set/compress` | стиснути кадри понад `maxBytes` (типово 1 МБ; `dryRun` лише перелічує); оригінал лишається версією кадру; потрібен `sharp` |
 | GET | `/api/quality?dir=` | звіт якості набору: не-PNG, замалі файли, точні копії, схожість до базової; `weakest` — найгірші кадри, `problemEditions` — усі проблемні |

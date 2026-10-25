@@ -23,6 +23,7 @@ export {
   duplicates,
   duplicateGroups,
   diffArchives,
+  collideArchives,
   spinoffPreset,
 } from "./recipes.mjs";
 export {
