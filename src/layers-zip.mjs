@@ -95,6 +95,11 @@ export function listLayerFiles(layerDir) {
   return walk(layerDir).map((f) => join(layerDir, f.rel));
 }
 
+/** Paths of the PNG layers relative to the folder (`/`-separated), for building the trait table from them. */
+export function layerRelPaths(layerDir) {
+  return walk(layerDir).map((f) => f.rel).filter((rel) => /\.png$/i.test(rel));
+}
+
 export function dirBytes(dir) {
   return walk(dir).reduce((s, f) => s + f.bytes, 0);
 }
