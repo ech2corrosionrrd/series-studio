@@ -969,6 +969,8 @@ function renderOptionsEditor() {
   wrap.hidden = false;
   const skip = $("opt-skip-dna");
   if (skip) skip.checked = trait.skipDna === true;
+  const layerOnly = $("opt-layer-only");
+  if (layerOnly) layerOnly.checked = trait.layerOnly === true;
   const zInput = $("opt-z");
   if (zInput) zInput.value = Number.isFinite(Number(trait.z)) && trait.z !== "" && trait.z != null ? String(trait.z) : "";
   if (!Array.isArray(trait.options)) trait.options = [];
@@ -1141,6 +1143,14 @@ function setupOptionsEditor() {
     const trait = findTrait(state.selectedTraitKey);
     if (!trait) return;
     trait.skipDna = Boolean($("opt-skip-dna")?.checked);
+    if (state.draftFull) state.draftFull.traits = state.draftTraits;
+  });
+  $("opt-layer-only")?.addEventListener("change", () => {
+    ensureDraftTraits();
+    const trait = findTrait(state.selectedTraitKey);
+    if (!trait) return;
+    if ($("opt-layer-only")?.checked) trait.layerOnly = true;
+    else delete trait.layerOnly;
     if (state.draftFull) state.draftFull.traits = state.draftTraits;
   });
   $("opt-z")?.addEventListener("input", () => {
@@ -2490,8 +2500,13 @@ function renderLayersStatus(st, el = $("g-layers-status")) {
     el.appendChild(d);
   };
   if (el.id === "g-layers-status") state.hasLayers = Boolean(st?.exists && st.files > 0);
+  const critical = (st?.coverage?.criticalMissingCount) || 0;
+  const criticalLine = () => {
+    if (critical > 0) line(t("render.layers.criticalMissing", { n: fmtNum(critical), list: st.coverage.criticalMissing.slice(0, 6).join(", ") }), "warn");
+  };
   if (!st?.exists) {
     line(t("render.layers.empty"), "muted");
+    criticalLine();
     return;
   }
   line(t("render.layers.status", { files: fmtNum(st.files), keys: fmtNum(st.keys?.length || 0), mb: mbText(st.bytes) }));
@@ -2504,6 +2519,7 @@ function renderLayersStatus(st, el = $("g-layers-status")) {
       line(t("render.layers.missing", { list: shown, more }), "muted");
     }
   }
+  criticalLine();
 }
 
 /** Constructor, step 2: do the uploaded PNG layers cover the saved series? (shown once a series is saved) */

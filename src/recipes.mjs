@@ -55,7 +55,10 @@ export function buildPrompt(line, traits, preset, note = "") {
   const changeKeys = tpl.changeKeys ?? [];
   const extraKeys = tpl.extraKeys ?? [];
 
-  const changeBits = changeKeys.map((key) => {
+  // A critical trait (layerOnly) is painted from a PNG layer, so the model is not asked to draw it.
+  const layerOnly = new Set(items.filter((t) => t.layerOnly === true).map((t) => t.key));
+
+  const changeBits = changeKeys.filter((key) => !layerOnly.has(key)).map((key) => {
     const val = traits[key];
     if (val == null) return null;
     const opt = option(items, key, val);
@@ -68,7 +71,7 @@ export function buildPrompt(line, traits, preset, note = "") {
       : "";
 
   const extraBits = extraKeys
-    .filter((k) => traits[k] && traits[k] !== NONE)
+    .filter((k) => !layerOnly.has(k) && traits[k] && traits[k] !== NONE)
     .map((k) => option(items, k, traits[k]).prompt)
     .filter(Boolean);
   const also =
