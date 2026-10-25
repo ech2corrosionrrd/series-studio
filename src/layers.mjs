@@ -65,6 +65,36 @@ function decodeLayer(buf, width, height, label) {
 }
 
 /**
+ * Optional `layerOffset: { x, y }` of a trait: whole pixels of the frame, +x right, +y down. A model that redraws
+ * the face (Kontext at 0.45) can shift it against the base the layer was drawn on; the offset moves the layer back.
+ * Returns null when there is nothing to move (unset, zero or not numbers).
+ */
+export function traitLayerOffset(trait) {
+  const o = trait?.layerOffset;
+  if (!o || typeof o !== "object") return null;
+  const x = Math.round(Number(o.x));
+  const y = Math.round(Number(o.y));
+  const fx = Number.isFinite(x) ? x : 0;
+  const fy = Number.isFinite(y) ? y : 0;
+  return fx === 0 && fy === 0 ? null : { x: fx, y: fy };
+}
+
+/** Moves an RGBA buffer by (dx, dy); what leaves the frame is dropped, what enters is transparent. */
+export function shiftRgba(rgba, width, height, dx, dy) {
+  if (!dx && !dy) return rgba;
+  const out = Buffer.alloc(rgba.length);
+  for (let y = 0; y < height; y += 1) {
+    const sy = y - dy;
+    if (sy < 0 || sy >= height) continue;
+    const x0 = Math.max(0, dx);
+    const x1 = Math.min(width, width + dx);
+    if (x1 <= x0) continue;
+    rgba.copy(out, (y * width + x0) * 4, (sy * width + (x0 - dx)) * 4, (sy * width + (x1 - dx)) * 4);
+  }
+  return out;
+}
+
+/**
  * Path of a trait PNG inside the layers directory.
  * `option.layer` is a relative path. Otherwise `<key>/<value>.png`.
  */
@@ -141,7 +171,9 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
       }
       throw new Error(`missing layer ${trait.key}=${value} (${file})`);
     }
-    const rgba = decodeLayer(buf, base.width, base.height, `${trait.key}=${value}`);
+    let rgba = decodeLayer(buf, base.width, base.height, `${trait.key}=${value}`);
+    const move = traitLayerOffset(trait);
+    if (move) rgba = shiftRgba(rgba, base.width, base.height, move.x, move.y);
     canvas = compositeOver(canvas, rgba);
     used.push(`${trait.key}/${value}`);
   }

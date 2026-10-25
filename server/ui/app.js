@@ -971,6 +971,11 @@ function renderOptionsEditor() {
   if (skip) skip.checked = trait.skipDna === true;
   const layerOnly = $("opt-layer-only");
   if (layerOnly) layerOnly.checked = trait.layerOnly === true;
+  for (const axis of ["x", "y"]) {
+    const el = $(`opt-offset-${axis}`);
+    const v = Number(trait.layerOffset?.[axis]);
+    if (el) el.value = Number.isFinite(v) && v !== 0 ? String(Math.round(v)) : "";
+  }
   const zInput = $("opt-z");
   if (zInput) zInput.value = Number.isFinite(Number(trait.z)) && trait.z !== "" && trait.z != null ? String(trait.z) : "";
   if (!Array.isArray(trait.options)) trait.options = [];
@@ -1153,6 +1158,21 @@ function setupOptionsEditor() {
     else delete trait.layerOnly;
     if (state.draftFull) state.draftFull.traits = state.draftTraits;
   });
+  for (const axis of ["x", "y"]) {
+    $(`opt-offset-${axis}`)?.addEventListener("input", () => {
+      ensureDraftTraits();
+      const trait = findTrait(state.selectedTraitKey);
+      if (!trait) return;
+      const num = (a) => {
+        const n = Math.round(Number($(`opt-offset-${a}`)?.value));
+        return Number.isFinite(n) ? n : 0;
+      };
+      const next = { x: num("x"), y: num("y") };
+      if (next.x === 0 && next.y === 0) delete trait.layerOffset;
+      else trait.layerOffset = next;
+      if (state.draftFull) state.draftFull.traits = state.draftTraits;
+    });
+  }
   $("opt-z")?.addEventListener("input", () => {
     ensureDraftTraits();
     const trait = findTrait(state.selectedTraitKey);
