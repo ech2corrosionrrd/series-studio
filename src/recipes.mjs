@@ -389,6 +389,43 @@ export function diffArchives(a, b) {
   return { same, changed, onlyA, onlyB };
 }
 
+/**
+ * The same character in two different collections: editions of `a` and `b` whose trait values are identical.
+ * `diffArchives` compares one series with its own rebuild by edition number; this one ignores numbers and lines and
+ * looks at the traits, so a sequel that re-rolled an old look is found. A trait that is None (or missing) counts as
+ * absent, so two collections with different trait lists still compare on what they share.
+ * @returns {{ countA: number, countB: number, shared: number, collisions: { traits: Record<string, string>, editionsA: number[], editionsB: number[] }[] }}
+ */
+export function collideArchives(a, b) {
+  const fingerprint = (r) =>
+    JSON.stringify(
+      Object.entries(r?.traits || {})
+        .filter(([, v]) => v !== undefined && v !== null && v !== "" && v !== NONE)
+        .sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)),
+    );
+  const index = (archive) => {
+    const map = new Map();
+    for (const r of archive?.recipes || []) {
+      const key = fingerprint(r);
+      const row = map.get(key) || { traits: Object.fromEntries(JSON.parse(key)), editions: [] };
+      row.editions.push(r.edition);
+      map.set(key, row);
+    }
+    return map;
+  };
+  const left = index(a);
+  const right = index(b);
+  const collisions = [];
+  for (const [key, l] of left) {
+    const r = right.get(key);
+    if (!r) continue;
+    collisions.push({ traits: l.traits, editionsA: l.editions.sort((x, y) => x - y), editionsB: r.editions.sort((x, y) => x - y) });
+  }
+  collisions.sort((x, y) => x.editionsA[0] - y.editionsA[0]);
+  const shared = collisions.reduce((n, c) => n + c.editionsA.length, 0);
+  return { countA: (a?.recipes || []).length, countB: (b?.recipes || []).length, shared, collisions };
+}
+
 /** Same traits and prompt structure, new id and seed. Waves and point edits start clean. */
 export function spinoffPreset(preset, { suffix } = {}) {
   const stamp = suffix || new Date().toISOString().slice(0, 10).replace(/-/g, "");

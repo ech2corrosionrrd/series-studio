@@ -85,6 +85,7 @@ const EXACT = {
   "items must be an array": "api.itemsArray",
   "no layer PNGs found: upload a ZIP of <trait>/<value>.png first": "api.noLayerPngs",
   "csv text is required": "api.csvRequired",
+  "choose two different archives": "api.sameArchive",
   "layers directory must stay inside the project": "api.composeLayersEscape",
   "bad set name": "api.badSetName",
   "preview must be an edition number": "api.previewBad",

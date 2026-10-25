@@ -2274,6 +2274,25 @@ function setupRecipes() {
       if (msg) msg.textContent = e.message;
     }
   });
+  $("r-archive-collide")?.addEventListener("click", async () => {
+    const msg = $("r-archive-diff-msg");
+    const list = $("r-archive-diff-list");
+    try {
+      const a = $("r-diff-a")?.value;
+      const b = $("r-diff-b")?.value;
+      if (!a || !b) throw new Error(t("archive.diff.need"));
+      const data = await api("/api/archive/collisions", { method: "POST", body: JSON.stringify({ a, b }) });
+      if (msg) msg.textContent = data.collisionCount ? t("archive.collide.summary", { shared: fmtNum(data.shared), kinds: fmtNum(data.collisionCount), a: fmtNum(data.countA), b: fmtNum(data.countB) }) : "";
+      if (list) {
+        const nums = (arr) => arr.slice(0, 6).map((n) => `#${n}`).join(", ") + (arr.length > 6 ? " …" : "");
+        const rows = data.collisions.slice(0, 20).map((c) =>
+          `<div class="err-row"><b>${escapeHtml(nums(c.editionsA))}</b> ↔ <b>${escapeHtml(nums(c.editionsB))}</b> <span class="muted">${escapeHtml(Object.entries(c.traits).map(([k, v]) => `${k}: ${v}`).join(", "))}</span></div>`);
+        list.innerHTML = rows.join("") || `<p class="muted">${escapeHtml(t("archive.collide.none"))}</p>`;
+      }
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
   $("r-archive-diff")?.addEventListener("click", async () => {
     const msg = $("r-archive-diff-msg");
     const list = $("r-archive-diff-list");
