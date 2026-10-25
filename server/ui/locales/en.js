@@ -349,6 +349,7 @@ export default {
   "render.layers.overSet": "frames of set {dir} ({count}), only traits that have a layer",
   "render.layers.overHelp": "Hybrid: the model draws the frames and your PNG layers are painted over them. Only traits that have a layer file are painted; the rest stay as the model drew them. The result is a new set \"<set>-layers\"; the source set is not changed. To stop the model drawing a trait a layer will cover, remove it from the keys that change in the Constructor.",
   "render.layers.okOver": "Painted over {count} frames: {painted} changed, {left} had no layer. New set: {dir}.",
+  "render.layers.afterGen": "PNG layers are uploaded: the PNG layers card already has this set selected for painting (hybrid); press Compose layers.",
   "render.layers.preview": "Preview frame",
   "render.layers.previewN": "Frame number",
   "render.layers.previewBad": "Enter a frame number: a whole number from 1.",

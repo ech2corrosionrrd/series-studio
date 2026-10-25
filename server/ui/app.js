@@ -2458,9 +2458,15 @@ async function applyGenerateOutcome(settled, ui) {
     state.lastSet = lastDone.set;
     scheduleWorkspaceSave({ lastSet: lastDone.set });
     await loadGallerySets();
+    const over = $("g-compose-over");
+    if (over) delete over.dataset.picked;
+    await fillComposeOver(state.hasLayers ? lastDone.set : "");
   }
   if (progressText) progressText.textContent = t("render.done", { n: lastDone.count, set: lastDone.set }) || `Done: ${lastDone.count}`;
   refreshAccount();
+  if (progressText && state.hasLayers && lastDone.set && Number(lastDone.count) > 0) {
+    progressText.textContent += ` · ${t("render.layers.afterGen")}`;
+  }
   if (progressText && lastDone.stopped) {
     if (lastDone.stopped === "stopped") {
       progressText.textContent = t("render.stoppedByUser");
@@ -2483,6 +2489,7 @@ function renderLayersStatus(st, el = $("g-layers-status")) {
     d.textContent = text;
     el.appendChild(d);
   };
+  if (el.id === "g-layers-status") state.hasLayers = Boolean(st?.exists && st.files > 0);
   if (!st?.exists) {
     line(t("render.layers.empty"), "muted");
     return;
@@ -2597,8 +2604,10 @@ function setupLayersUpload() {
     {
       query: () => (kitArchive() ? { archive: kitArchive() } : {}),
       onChange: (data) => {
-        if (data?.status) renderLayersStatus(data.status);
-        else refreshLayersStatus();
+        if (data?.status) {
+          renderLayersStatus(data.status);
+          fillComposeOver();
+        } else refreshLayersStatus().then(() => fillComposeOver());
         refreshCtorLayers();
       },
     },
@@ -2616,11 +2625,15 @@ function setupLayersUpload() {
   );
 }
 
-/** Список наборів для гібридного накладання шарів («база» або кадри вже згенерованого набору). */
-async function fillComposeOver() {
+/**
+ * Список наборів для гібридного накладання шарів («база» або кадри вже згенерованого набору).
+ * Гібрид типовий, коли шари завантажені: без власного вибору автора береться найновіший набір кадрів ШІ
+ * (або `prefer` одразу після генерації).
+ */
+async function fillComposeOver(prefer = "") {
   const sel = $("g-compose-over");
   if (!sel) return;
-  const keep = sel.value;
+  const keep = prefer || sel.value;
   try {
     const data = await api("/api/sets");
     const sets = (data.sets || []).filter((x) => !String(x.dir).endsWith("-layers") && x.dir !== "layers");
@@ -2628,6 +2641,7 @@ async function fillComposeOver() {
       .concat(sets.map((x) => `<option value="${escapeHtml(x.dir)}">${escapeHtml(t("render.layers.overSet", { dir: x.dir, count: x.count }))}</option>`))
       .join("");
     if (keep && [...sel.options].some((o) => o.value === keep)) sel.value = keep;
+    else if (!keep && !sel.dataset.picked && state.hasLayers && sets.length) sel.value = sets[0].dir;
   } catch {
     sel.innerHTML = `<option value="">${escapeHtml(t("render.layers.overBase"))}</option>`;
   }
@@ -2636,6 +2650,9 @@ async function fillComposeOver() {
 function setupRender() {
   setupLayersUpload();
   fillComposeOver();
+  $("g-compose-over")?.addEventListener("change", (e) => {
+    e.target.dataset.picked = "1";
+  });
   $("g-compose")?.addEventListener("click", async () => {
     const msg = $("g-compose-msg");
     const btn = $("g-compose");
