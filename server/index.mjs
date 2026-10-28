@@ -90,6 +90,7 @@ import {
   formatEnginePrompt,
 } from "../src/index.mjs";
 import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
+import { archiveSync } from "../src/archive-sync.mjs";
 import { composeArchive, overlaySet, previewEdition } from "../src/layers.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
 import {
@@ -2104,6 +2105,25 @@ async function handleApi(req, res, url) {
 
   if (pathname === "/api/archive/list" && req.method === "GET") {
     return send(res, 200, { archives: listArchives() });
+  }
+
+  // Чи архів досі збігається з пресетом, з якого його зібрано (рецепти перебудовуються й порівнюються за DNA і промптом).
+  if (pathname === "/api/archive/sync" && req.method === "GET") {
+    const name = url.searchParams.get("file");
+    if (!name) return send(res, 400, { error: "file required" });
+    let loaded;
+    try {
+      loaded = loadArchiveFile(name);
+    } catch (e) {
+      return send(res, e.status || 404, { error: String(e.message || e) });
+    }
+    let preset = null;
+    try {
+      preset = loadPresetForArchive(loaded.archive)?.preset || null;
+    } catch {
+      preset = null;
+    }
+    return send(res, 200, { file: loaded.file, ...archiveSync(preset, loaded.archive) });
   }
 
   if (pathname === "/api/archive/latest" && req.method === "GET") {

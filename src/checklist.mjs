@@ -1,6 +1,7 @@
 /**
  * NFT quality checklist — pure checks (no I/O when inputs are passed in).
  */
+import { archiveSync, describeSync } from "./archive-sync.mjs";
 import { duplicates } from "./recipes.mjs";
 import { loadTraitsFromPreset, NONE } from "./traits.mjs";
 import { lintPrompts } from "./lint.mjs";
@@ -60,6 +61,20 @@ export function runChecklist(ctx = {}) {
         "Archive exists matching size",
         match && n > 0,
         n === 0 ? "Empty recipes" : match ? `${n} recipes` : `recipes=${n} vs size=${size}`,
+      ),
+    );
+  }
+
+  if (preset && archive) {
+    // Frames and metadata come from the archive; if the preset changed after the archive was built they no longer describe the same series.
+    const sync = archiveSync(preset, archive);
+    items.push(
+      item(
+        "sync",
+        "Archive built from the current preset",
+        sync.status === "match" ? true : null,
+        describeSync(sync),
+        sync.status === "match" ? "ok" : "warn",
       ),
     );
   }

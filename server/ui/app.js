@@ -2470,6 +2470,47 @@ function paintCriticalGate() {
   if (body && !box.hidden) body.textContent = t("critical.gate.body", { n: fmtNum(state.criticalMissing), list: state.criticalList || "" });
 }
 
+/**
+ * Before a paid run: if the preset changed after the recipes were built, the prompts in the archive are no longer what the preset says,
+ * and the frames would not match it. The server rebuilds the recipes and compares (`/api/archive/sync`); the author sees what differs and confirms.
+ * A failed check never blocks the run.
+ */
+async function syncGateCheck() {
+  const box = $("g-sync-gate");
+  if (!box || ($("g-engine")?.value || "") === "mock") return false;
+  const file = state.archiveFile || $("x-file")?.value;
+  if (!file) return false;
+  let sync;
+  try {
+    sync = await api(`/api/archive/sync?${new URLSearchParams({ file })}`);
+  } catch {
+    box.hidden = true;
+    return false;
+  }
+  if (sync.status !== "stale") {
+    box.hidden = true;
+    return false;
+  }
+  const signature = `${file}|${sync.dnaChanged}|${sync.promptChanged}|${sync.missing}|${sync.extra}`;
+  if (state.syncAck === signature) {
+    box.hidden = true;
+    return false;
+  }
+  state.syncSignature = signature;
+  const body = $("g-sync-gate-body");
+  if (body) {
+    body.textContent = t("sync.gate.body", {
+      dna: fmtNum(sync.dnaChanged),
+      prompt: fmtNum(sync.promptChanged),
+      missing: fmtNum(sync.missing),
+      extra: fmtNum(sync.extra),
+      list: (sync.editions || []).join(", "),
+    });
+  }
+  box.hidden = false;
+  return true;
+}
+
 function paintLicenseWarning() {
   const box = $("g-license");
   const wrap = $("g-flux-dev-wrap");
@@ -2901,6 +2942,11 @@ function setupRender() {
     paintCriticalGate();
     $("g-run")?.click();
   });
+  $("g-sync-proceed")?.addEventListener("click", () => {
+    state.syncAck = state.syncSignature;
+    if ($("g-sync-gate")) $("g-sync-gate").hidden = true;
+    $("g-run")?.click();
+  });
   $("g-license-proceed")?.addEventListener("click", () => {
     state.licenseAck = true;
     $("g-run")?.click();
@@ -2965,6 +3011,7 @@ function setupRender() {
         paintCriticalGate();
         return;
       }
+      if (await syncGateCheck()) return;
       renderAbort?.abort();
       renderAbort = new AbortController();
       const signal = renderAbort.signal;
