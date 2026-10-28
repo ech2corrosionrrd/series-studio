@@ -19,7 +19,23 @@ function paeth(a, b, c) {
   return c;
 }
 
-/** 8-bit non-interlaced RGB or RGBA PNG → RGBA buffer. */
+/** Samples per pixel and the bit depths the PNG spec allows for each colour type. */
+const PNG_CHANNELS = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+const PNG_DEPTHS = { 0: [1, 2, 4, 8, 16], 2: [8, 16], 3: [1, 2, 4, 8], 4: [8, 16], 6: [8, 16] };
+
+/** Sample number `n` (0-based) of a scanline at the given bit depth, as an integer of that depth. */
+function pngSample(row, n, depth) {
+  if (depth === 8) return row[n];
+  if (depth === 16) return (row[n * 2] << 8) | row[n * 2 + 1];
+  const perByte = 8 / depth;
+  const shift = 8 - depth * ((n % perByte) + 1);
+  return (row[Math.floor(n / perByte)] >> shift) & ((1 << depth) - 1);
+}
+
+/**
+ * Non-interlaced PNG → 8-bit RGBA buffer. Reads every colour type (grayscale, RGB, palette, gray+alpha, RGBA) at the
+ * bit depths the spec allows, with `tRNS` transparency; 16-bit samples keep their high byte. Interlaced files are refused.
+ */
 export function decodePngRgba(buf) {
   if (!Buffer.isBuffer(buf) || buf.length < 8 || !buf.subarray(0, 8).equals(PNG_SIG)) {
     throw new Error("not a png");
@@ -29,6 +45,8 @@ export function decodePngRgba(buf) {
   let height = 0;
   let bitDepth = 0;
   let colorType = 0;
+  let palette = null;
+  let trns = null;
   const idat = [];
   while (offset + 8 <= buf.length) {
     const len = buf.readUInt32BE(offset);
@@ -41,14 +59,20 @@ export function decodePngRgba(buf) {
       bitDepth = data[8];
       colorType = data[9];
       if (data[12] !== 0) throw new Error("interlaced png");
+    } else if (type === "PLTE") {
+      palette = data;
+    } else if (type === "tRNS") {
+      trns = data;
     } else if (type === "IDAT") {
       idat.push(data);
     } else if (type === "IEND") break;
   }
-  if (bitDepth !== 8 || (colorType !== 2 && colorType !== 6)) throw new Error("unsupported png");
+  if (!PNG_DEPTHS[colorType]?.includes(bitDepth)) throw new Error("unsupported png");
   if (!width || !height) throw new Error("empty png");
-  const bpp = colorType === 6 ? 4 : 3;
-  const stride = width * bpp;
+  if (colorType === 3 && (!palette || palette.length < 3)) throw new Error("png has no palette");
+  const channels = PNG_CHANNELS[colorType];
+  const bpp = Math.max(1, (channels * bitDepth) >> 3); // bytes per pixel for filtering; 1 below 8 bits
+  const stride = Math.ceil((width * channels * bitDepth) / 8);
   const inflated = inflateSync(Buffer.concat(idat));
   const rowSize = stride + 1;
   if (inflated.length < rowSize * height) throw new Error("truncated png");
@@ -73,13 +97,40 @@ export function decodePngRgba(buf) {
     cur.copy(raw, y * stride);
     prev = cur;
   }
-  if (bpp === 4) return { width, height, rgba: raw };
+  if (bitDepth === 8 && colorType === 6) return { width, height, rgba: raw };
   const rgba = Buffer.alloc(width * height * 4);
-  for (let i = 0, j = 0; i < raw.length; i += 3, j += 4) {
-    rgba[j] = raw[i];
-    rgba[j + 1] = raw[i + 1];
-    rgba[j + 2] = raw[i + 2];
-    rgba[j + 3] = 255;
+  const max = (1 << Math.min(bitDepth, 8)) - 1;
+  const to8 = (v) => (bitDepth === 16 ? v >> 8 : bitDepth === 8 ? v : Math.round((v * 255) / max));
+  // tRNS: per-index alpha for a palette; one colour key (16-bit values) for grayscale and RGB.
+  const keyOf = (n) => (trns && trns.length >= (n + 1) * 2 ? trns.readUInt16BE(n * 2) : null);
+  const key = colorType === 0 ? [keyOf(0)] : colorType === 2 ? [keyOf(0), keyOf(1), keyOf(2)] : null;
+  const keyed = key && key.every((k) => k !== null);
+  for (let y = 0; y < height; y++) {
+    const row = raw.subarray(y * stride, (y + 1) * stride);
+    for (let x = 0; x < width; x++) {
+      const o = (y * width + x) * 4;
+      const n = x * channels;
+      if (colorType === 3) {
+        const idx = pngSample(row, x, bitDepth);
+        if (idx * 3 + 2 >= palette.length) throw new Error("bad png palette index");
+        rgba[o] = palette[idx * 3];
+        rgba[o + 1] = palette[idx * 3 + 1];
+        rgba[o + 2] = palette[idx * 3 + 2];
+        rgba[o + 3] = trns && idx < trns.length ? trns[idx] : 255;
+      } else if (colorType === 0 || colorType === 4) {
+        const v = pngSample(row, n, bitDepth);
+        rgba[o] = rgba[o + 1] = rgba[o + 2] = to8(v);
+        rgba[o + 3] = colorType === 4 ? to8(pngSample(row, n + 1, bitDepth)) : keyed && v === key[0] ? 0 : 255;
+      } else {
+        const r = pngSample(row, n, bitDepth);
+        const g = pngSample(row, n + 1, bitDepth);
+        const b = pngSample(row, n + 2, bitDepth);
+        rgba[o] = to8(r);
+        rgba[o + 1] = to8(g);
+        rgba[o + 2] = to8(b);
+        rgba[o + 3] = colorType === 6 ? to8(pngSample(row, n + 3, bitDepth)) : keyed && r === key[0] && g === key[1] && b === key[2] ? 0 : 255;
+      }
+    }
   }
   return { width, height, rgba };
 }
