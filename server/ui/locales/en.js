@@ -752,6 +752,8 @@ export default {
   "export.dataset.ok": "LoRA Dataset ready ({n} pairs): {file}",
   "export.checklist.title": "NFT checklist",
   "export.checklist.help": "Ship readiness for the selected archive + set.",
+  "export.visibility.ack": "I know the traits on the frames are not checked by image",
+  "export.visibility.help": "The metadata takes the traits from the recipes, that is, from what the model was asked for, not from what was drawn. Only the AI check on the Review tab looks at the pictures. If it was not run, the ZIP says so in preflight and in collection.json; this checkbox records your informed decision for this set (the file visibility-ack.json in the set folder) and removes the warning.",
   "export.checklist.run": "Run checklist",
   "export.checklist.done": "Checked {n} items",
   "base.vision.btn": "🤖 Vision Assist (auto analyze)",

@@ -5157,6 +5157,13 @@ async function renderChecklist() {
       })
       .join("");
     if (msg) msg.textContent = t("export.checklist.done", { n: (data.items || []).length });
+    // The metadata lists traits from the recipes; offer the author an explicit confirmation when no vision check covers the frames.
+    const vis = (data.items || []).find((it) => it.id === "visibility")?.data;
+    const wrap = $("x-visibility-wrap");
+    if (wrap) {
+      wrap.hidden = !(vis && (vis.status === "unchecked" || vis.status === "partial"));
+      if ($("x-visibility-ack")) $("x-visibility-ack").checked = Boolean(vis?.acknowledged);
+    }
   } catch (e) {
     if (msg) msg.textContent = e.message;
     list.innerHTML = "";
@@ -5677,6 +5684,17 @@ function setupExport() {
     }
   });
   $("x-checklist")?.addEventListener("click", () => renderChecklist());
+  $("x-visibility-ack")?.addEventListener("change", async () => {
+    const set = $("x-set")?.value;
+    if (!set) return;
+    try {
+      await api("/api/qa/visibility-ack", { method: "POST", body: JSON.stringify({ dir: set, ack: Boolean($("x-visibility-ack")?.checked) }) });
+      await renderChecklist();
+    } catch (e) {
+      const msg = $("x-checklist-msg");
+      if (msg) msg.textContent = e.message;
+    }
+  });
   $("x-set")?.addEventListener("change", () => {
     updateMetadataPreview();
     scheduleWorkspaceSave();

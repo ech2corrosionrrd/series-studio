@@ -2,6 +2,7 @@
  * NFT quality checklist — pure checks (no I/O when inputs are passed in).
  */
 import { archiveSync, describeSync } from "./archive-sync.mjs";
+import { describeVisibility, traitVisibility } from "./trait-visibility.mjs";
 import { duplicates } from "./recipes.mjs";
 import { loadTraitsFromPreset, NONE } from "./traits.mjs";
 import { lintPrompts } from "./lint.mjs";
@@ -22,6 +23,8 @@ function item(id, label, ok, detail, level) {
  * @param {Record<string,string>} [ctx.marks]
  * @param {Array<{edition:number,file?:string}>} [ctx.images]
  * @param {boolean} [ctx.baseExists]
+ * @param {object} [ctx.triage] parsed triage.json of the set (vision rows tell whether the traits are on the pictures)
+ * @param {object} [ctx.visibilityAck] the author's confirmation that the traits are not checked by image
  */
 export function runChecklist(ctx = {}) {
   const preset = ctx.preset || null;
@@ -183,6 +186,19 @@ export function runChecklist(ctx = {}) {
         n > 0 ? `${n} image file(s) in set` : "No images in set yet — generate on stage 5",
         n > 0 ? "ok" : "warn",
       ),
+    );
+  }
+
+  // The metadata lists the traits from the recipes; only the vision check looks at the pictures. Say so, and show how far it got.
+  const visibility = traitVisibility({
+    triage: ctx.triage,
+    editions: keepEds.length ? keepEds : [...imageEds],
+    ack: ctx.visibilityAck,
+  });
+  if (visibility.status !== "none") {
+    const good = visibility.status === "verified" || visibility.acknowledged;
+    items.push(
+      { ...item("visibility", "Traits visible on the frames", good ? true : null, describeVisibility(visibility), good ? "ok" : "warn"), data: visibility },
     );
   }
 

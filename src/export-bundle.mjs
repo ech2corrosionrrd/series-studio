@@ -9,6 +9,7 @@ import { join } from "node:path";
 import JSZip from "jszip";
 import { NONE } from "./traits.mjs";
 import { traitsToAttributes } from "./checklist.mjs";
+import { readTriageDoc, readVisibilityAck, traitVisibility } from "./trait-visibility.mjs";
 import { upscale2x } from "./upscale.mjs";
 import { buildImageUri } from "./storage.mjs";
 import { extname } from "node:path";
@@ -579,6 +580,21 @@ export async function buildBundleZip(params) {
     preflight.checks.push({ level: "warning", code: "missing_trait", message });
     preflight.report = formatPreflightReport(preflight, locale);
   }
+  // Метадані беруть риси з рецептів. Якщо зором їх на кадрах не перевіряли і автор цього не підтвердив, ZIP про це каже (не блокує).
+  const visibility = traitVisibility({
+    triage: readTriageDoc(setDir),
+    editions: includedEditions,
+    ack: readVisibilityAck(setDir),
+  });
+  if ((visibility.status === "unchecked" || visibility.status === "partial") && !visibility.acknowledged) {
+    const uk = String(locale).toLowerCase().startsWith("uk");
+    const message = uk
+      ? `Риси в метаданих взято з рецептів, а не з картинок: зором перевірено ${visibility.checked} з ${visibility.total} кадрів. ZIP не блокується, рішення за людиною: запустіть AI-перевірку на вкладці «Відбір» або підтвердьте це в чеклісті експорту.`
+      : `The traits in the metadata come from the recipes, not from the pictures: ${visibility.checked} of ${visibility.total} frames were checked by vision. The ZIP is not blocked — a person decides: run the AI check on the Review tab or confirm this in the export checklist.`;
+    preflight.warnings.push(message);
+    preflight.checks.push({ level: "warning", code: "traits_unverified", message });
+    preflight.report = formatPreflightReport(preflight, locale);
+  }
   zip.file("preflight.json", JSON.stringify({
     ready: preflight.ready,
     status: preflight.status,
@@ -623,6 +639,13 @@ export async function buildBundleZip(params) {
   collection.sellerFeeBasisPoints = royalties.sellerFeeBasisPoints;
   collection.ready = preflight.ready;
   collection.missingTraitFrames = triageCount.frames;
+  collection.traitVisibility = {
+    status: visibility.status,
+    checkedByVision: visibility.checked,
+    frames: visibility.total,
+    acknowledged: visibility.acknowledged,
+    ...(visibility.ackAt ? { acknowledgedAt: visibility.ackAt } : {}),
+  };
   collection.preflight = {
     ready: preflight.ready,
     errors: preflight.errors.length,
