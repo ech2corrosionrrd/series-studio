@@ -91,6 +91,8 @@ import {
 } from "../src/index.mjs";
 import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
 import { archiveSync } from "../src/archive-sync.mjs";
+import { frameOffsetFor, readFrameOffsets, writeFrameOffset } from "../src/frame-offsets.mjs";
+import { readSetLineage } from "../src/set-lineage.mjs";
 import { readTriageDoc, readVisibilityAck, writeVisibilityAck } from "../src/trait-visibility.mjs";
 import { composeArchive, overlaySet, previewEdition } from "../src/layers.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
@@ -1049,6 +1051,7 @@ function setPayload(setName) {
     ...payload,
     marks: readMarks(payload.dir),
     shelved: listShelved(join(P().out, payload.dir), payload.dir),
+    lineage: readSetLineage(P().out, payload.dir),
   };
 }
 
@@ -3370,6 +3373,27 @@ async function handleApi(req, res, url) {
     }
   }
 
+  // Зсув шарів для одного кадру набору (`<набір>/layer-offsets.json`); 0/0 знімає його. Нічого не видаляє.
+  if (pathname === "/api/layers/frame-offset" && req.method === "POST") {
+    const body = await readBody(req);
+    let setName;
+    try {
+      setName = safeSetName(body.set || body.dir || "");
+    } catch {
+      return send(res, 400, { error: "bad set name" });
+    }
+    if (!setName) return send(res, 400, { error: "set required" });
+    const setDir = join(P().out, setName);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) return send(res, 404, { error: `set directory not found: ${setName}` });
+    if (!/^[1-9]\d{0,8}$/.test(String(body.edition ?? ""))) return send(res, 400, { error: "edition must be a whole number from 1" });
+    try {
+      const { offset, offsets } = writeFrameOffset(setDir, Number(body.edition), body.x, body.y);
+      return send(res, 200, { ok: true, set: setName, edition: Number(body.edition), offset, frames: Object.keys(offsets).length });
+    } catch (e) {
+      return send(res, 400, { error: String(e.message || e) });
+    }
+  }
+
   if (pathname === "/api/layers/clear" && req.method === "POST") {
     const old = listLayerFiles(P().layers);
     const trashed = old.length ? toTrash(old, "layers cleared") : null;
@@ -3460,7 +3484,8 @@ async function handleApi(req, res, url) {
           return send(res, 404, { error: `frame not found: ${setName}/${Number(body.preview)}.png` });
         }
         try {
-          const frame = previewEdition({ archive: loaded.archive, items, edition: body.preview, basePng: readFileSync(frameFile), layerDir, only, skipMissing: true, alignRef });
+          const frameOffset = frameOffsetFor(readFrameOffsets(setDir), body.preview);
+          const frame = previewEdition({ archive: loaded.archive, items, edition: body.preview, basePng: readFileSync(frameFile), layerDir, only, skipMissing: true, alignRef, frameOffset });
           return send(res, 200, {
             ok: true,
             mode: "preview",
@@ -3469,6 +3494,7 @@ async function handleApi(req, res, url) {
             layers: frame.layers.filter((l) => l !== "base"),
             skipped: frame.skipped,
             align: frame.align,
+            frameOffset,
             sha256: frame.sha256,
             png: `data:image/png;base64,${frame.png.toString("base64")}`,
           });
@@ -3486,6 +3512,7 @@ async function handleApi(req, res, url) {
           unpainted: report.unpainted,
           aligned: report.aligned,
           alignSkipped: report.alignSkipped,
+          frameOffsetFrames: report.frameOffsetFrames,
           missingFrames: report.missingFrames.slice(0, 20),
           missingFramesCount: report.missingFrames.length,
           dir: `out/${outName}`,

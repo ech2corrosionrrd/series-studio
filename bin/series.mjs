@@ -58,6 +58,7 @@ import {
   selectMintGroup,
   sendInstructions,
 } from "../src/core-flow.mjs";
+import { frameOffsetFor, readFrameOffsets } from "../src/frame-offsets.mjs";
 import { composeArchive, overlaySet, previewEdition } from "../src/layers.mjs";
 import { ENGINES, TXT2IMG, getEngine, withRetry, engineCtx } from "../src/engines.mjs";
 import { modelTitle, promptHash, sha256Hex } from "../src/creation.mjs";
@@ -838,7 +839,7 @@ function cmdCompose(archivePath, opts = {}) {
       process.exit(1);
     }
     try {
-      const frame = previewEdition({ archive, items, edition: opts.preview, basePng: readFileSync(frameIn), layerDir, only: opts.only, skipMissing: hybrid, alignRef });
+      const frame = previewEdition({ archive, items, edition: opts.preview, basePng: readFileSync(frameIn), layerDir, only: opts.only, skipMissing: hybrid, alignRef, frameOffset: hybrid ? frameOffsetFor(readFrameOffsets(resolve(opts.over)), opts.preview) : null });
       const file = resolve(opts.out || join("out", `preview-${Number(opts.preview)}.png`));
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, frame.png);
@@ -864,6 +865,7 @@ function cmdCompose(archivePath, opts = {}) {
     try {
       const report = overlaySet({ archive, items, setDir, layerDir, outDir: hybridOut, only: opts.only, limit: opts.limit, alignRef });
       console.log(`Painted layers over ${report.count} frames (${report.painted} changed, ${report.unpainted} left as drawn) → ${hybridOut}`);
+      if (report.frameOffsetFrames) console.log(`Per-frame offsets from layer-offsets.json applied on ${report.frameOffsetFrames} frames.`);
       if (report.aligned || report.alignSkipped) console.log(`Layers aligned to the frame on ${report.aligned} frames${report.alignSkipped ? `, left where drawn on ${report.alignSkipped} (weak match or no --base)` : ""}.`);
       if (report.missingFrames.length) console.log(`No frame for editions: ${report.missingFrames.slice(0, 20).join(", ")}`);
       console.log("Traits without a layer file stay as the model drew them. The source set is untouched; details are in dna.json.");
