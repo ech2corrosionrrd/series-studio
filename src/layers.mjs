@@ -6,6 +6,9 @@
  * `None` paints nothing. `skipDna` still paints; it only stays out of the DNA string.
  * Paint order: by the optional trait field `z` (low = bottom), else by position in the preset.
  *
+ * Optional trait field `layerAlign: true` (hybrid with the base given): the layer was drawn on the base image, so it is
+ * moved and zoomed by the global shift found between the base and the model's frame (`layer-align.mjs`) before it is painted.
+ *
  * Two modes: `composeArchive` stacks every trait from layers on the base image (all layers must
  * exist); `overlaySet` is the hybrid: frames the model already drew are the bottom, and only the
  * traits that have a layer file are painted over them (the rest stay as the model drew them).
@@ -15,6 +18,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve, relative } from "node:path";
 import { parseBackdropColor, tintBackdrop } from "./backdrop-tint.mjs";
 import { decodePngRgba } from "./dupes.mjs";
+import { estimateAlignment, warpRgba } from "./layer-align.mjs";
 import { encodeRgbaPng, resizePng } from "./png-fit.mjs";
 import { dna, dnaKeysFromItems } from "./recipes.mjs";
 import { NONE, option } from "./traits.mjs";
@@ -146,12 +150,14 @@ export function paintOrder(items) {
  * Stack base + trait PNGs for one recipe.
  * @returns {{ png: Buffer, dna: string, prompt: string, edition: number, sha256: string, layers: string[] }}
  */
-export function composeEdition({ recipe, items, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false }) {
+export function composeEdition({ recipe, items, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false, alignRef = null }) {
   if (!items?.length) throw new Error("compose: preset has no traits");
   const base = decodePngRgba(basePng);
   let canvas = Buffer.from(base.rgba);
   const used = ["base"];
   const skipped = [];
+  let align = null;
+  let alignFailed = null;
   const onlySet = Array.isArray(only) && only.length ? new Set(only.map(String)) : null;
   // An option with `backdrop: "#rrggbb"` re-colours the frame's own backdrop first (a layer cannot: it would cover the subject).
   // Where no smooth backdrop is found the frame is left alone and the skip is listed.
@@ -189,6 +195,17 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
       throw new Error(`missing layer ${trait.key}=${value} (${file})`);
     }
     let rgba = decodeLayer(buf, base.width, base.height, `${trait.key}=${value}`);
+    if (trait.layerAlign === true) {
+      // The move is found once per frame and shared by every aligned trait; a weak match leaves the layer where it was drawn.
+      if (alignRef && !align) align = estimateAlignment(alignRef, basePng);
+      if (align?.ok) {
+        const flat = align.scale === 1;
+        if (flat) rgba = shiftRgba(rgba, base.width, base.height, align.dx, align.dy);
+        else rgba = warpRgba(rgba, base.width, base.height, align);
+      } else if (!alignFailed) {
+        alignFailed = alignRef ? align.reason : "no_base";
+      }
+    }
     const move = traitLayerOffset(trait);
     if (move) rgba = shiftRgba(rgba, base.width, base.height, move.x, move.y);
     canvas = compositeOver(canvas, rgba);
@@ -208,6 +225,8 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
     sha256: sha256(png),
     layers: used,
     skipped,
+    // null: no trait asked for alignment; { skipped }: it asked and the match was missing or weak, the layer stayed where drawn.
+    align: align?.ok ? { dx: align.dx, dy: align.dy, scale: align.scale, score: align.score } : alignFailed ? { skipped: alignFailed } : null,
   };
 }
 
@@ -217,11 +236,11 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
  * `basePng` is either the base image (full stack) or the model-drawn frame (hybrid, pass `skipMissing`).
  * Throws an error with `status` 404 when the edition is not in the archive.
  */
-export function previewEdition({ archive, items, edition, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false }) {
+export function previewEdition({ archive, items, edition, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false, alignRef = null }) {
   const n = Number(edition);
   const recipe = Number.isInteger(n) ? (archive?.recipes || []).find((r) => Number(r.edition) === n) : null;
   if (!recipe) throw Object.assign(new Error(`preview: edition ${edition} is not in the archive`), { status: 404 });
-  return composeEdition({ recipe, items, basePng, layerDir, readFile, only, skipMissing });
+  return composeEdition({ recipe, items, basePng, layerDir, readFile, only, skipMissing, alignRef });
 }
 
 /**
@@ -279,6 +298,7 @@ export function overlaySet({
   outDir,
   only = null,
   limit,
+  alignRef = null,
   readFile = readFileSync,
   writeFile = writeFileSync,
 } = {}) {
@@ -295,7 +315,7 @@ export function overlaySet({
       missingFrames.push(recipe.edition);
       continue;
     }
-    const frame = composeEdition({ recipe, items, basePng: readFile(frameFile), layerDir, readFile, only, skipMissing: true });
+    const frame = composeEdition({ recipe, items, basePng: readFile(frameFile), layerDir, readFile, only, skipMissing: true, alignRef });
     writeFile(join(outDir, `${recipe.edition}.png`), frame.png);
     editions.push({
       edition: recipe.edition,
@@ -305,6 +325,7 @@ export function overlaySet({
       sha256: frame.sha256,
       layers: frame.layers.filter((l) => l !== "base"),
       skipped: frame.skipped,
+      ...(frame.align ? { align: frame.align } : {}),
       file: `${recipe.edition}.png`,
     });
   }
@@ -318,6 +339,8 @@ export function overlaySet({
     count: editions.length,
     painted,
     unpainted: editions.length - painted,
+    aligned: editions.filter((e) => e.align && !e.align.skipped).length,
+    alignSkipped: editions.filter((e) => e.align?.skipped).length,
     missingFrames,
     editions,
   };

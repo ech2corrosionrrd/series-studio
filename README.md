@@ -143,6 +143,7 @@ node bin/series.mjs mint release.json --keypair minter.json
 node bin/series.mjs reveal <тека-набору> --keypair creator.json
 node bin/series.mjs compose out/demo-archive.json --layers layers --base input/primary.png -o out/layers
 node bin/series.mjs compose out/demo-archive.json --layers layers --over out/fal-s0.35 --only hat,scarf
+node bin/series.mjs compose out/demo-archive.json --layers layers --over out/fal-s0.35 --base input/primary.png   # риси з layerAlign підганяються під кадр
 node bin/series.mjs compose out/demo-archive.json --layers layers --base input/primary.png --preview 7 -o out/preview-7.png
 node bin/series.mjs verify release.json
 node bin/series.mjs notify "Готово"

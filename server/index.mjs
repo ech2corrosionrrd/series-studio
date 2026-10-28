@@ -3413,13 +3413,20 @@ async function handleApi(req, res, url) {
       }
       const only = Array.isArray(body.only) ? body.only.map((k) => String(k)).filter((k) => items.some((i) => i.key === k)) : null;
       const outName = `${setName}-layers`;
+      // Підгонка шару під кадр (`layerAlign` на рисі) порівнює кадр із базою, на якій шар намальовано.
+      let alignRef = null;
+      if (items.some((i) => i.layerAlign === true)) {
+        const alignName = body.base ? basename(String(body.base)) : baseStatus().file;
+        const alignPath = alignName ? join(P().input, alignName) : "";
+        if (alignPath && existsSync(alignPath)) alignRef = readFileSync(alignPath);
+      }
       if (previewing) {
         const frameFile = join(setDir, `${Number(body.preview)}.png`);
         if (!existsSync(frameFile)) {
           return send(res, 404, { error: `frame not found: ${setName}/${Number(body.preview)}.png` });
         }
         try {
-          const frame = previewEdition({ archive: loaded.archive, items, edition: body.preview, basePng: readFileSync(frameFile), layerDir, only, skipMissing: true });
+          const frame = previewEdition({ archive: loaded.archive, items, edition: body.preview, basePng: readFileSync(frameFile), layerDir, only, skipMissing: true, alignRef });
           return send(res, 200, {
             ok: true,
             mode: "preview",
@@ -3427,6 +3434,7 @@ async function handleApi(req, res, url) {
             edition: Number(body.preview),
             layers: frame.layers.filter((l) => l !== "base"),
             skipped: frame.skipped,
+            align: frame.align,
             sha256: frame.sha256,
             png: `data:image/png;base64,${frame.png.toString("base64")}`,
           });
@@ -3435,13 +3443,15 @@ async function handleApi(req, res, url) {
         }
       }
       try {
-        const report = overlaySet({ archive: loaded.archive, items, setDir, layerDir, outDir: join(P().out, outName), only, limit: body.limit });
+        const report = overlaySet({ archive: loaded.archive, items, setDir, layerDir, outDir: join(P().out, outName), only, limit: body.limit, alignRef });
         return send(res, 200, {
           ok: true,
           mode: "overlay",
           count: report.count,
           painted: report.painted,
           unpainted: report.unpainted,
+          aligned: report.aligned,
+          alignSkipped: report.alignSkipped,
           missingFrames: report.missingFrames.slice(0, 20),
           missingFramesCount: report.missingFrames.length,
           dir: `out/${outName}`,

@@ -86,7 +86,7 @@ Usage:
   series hidden <bundle-dir> --uri <hidden.json-link> [--uri-prefix <prefix>] [--name <text>]
   series mint <release.json> --keypair <file> [--group <label>] [--public] [--dry-run]
   series reveal <bundle-dir> [--keypair <file>] [--check <revealed.json>] [--dry-run]
-  series compose <archive.json> --layers <dir> (--base <png> | --over <set-dir> [--only a,b]) [-o out/layers] [--preview <edition> [-o frame.png]]
+  series compose <archive.json> --layers <dir> (--base <png> | --over <set-dir> [--base <png>] [--only a,b]) [-o out/layers] [--preview <edition> [-o frame.png]]
   series verify <release.json> [--rpc <url>]
   series engines
   series doctor
@@ -131,7 +131,7 @@ Options:
   --uri <url>             Uploaded hidden.json link for series hidden
   --uri-prefix <prefix>   Build reveal URIs as <prefix><index>.json instead of cache.json
   --layers <dir>          PNG layers directory for series compose
-  --base <png>            Base image under the trait layers
+  --base <png>            Base image under the trait layers (with --over: the picture the layers were drawn on, for layerAlign)
   --preview <edition>     series compose: compose ONE frame into a single PNG (-o file, default out/preview-<edition>.png); no set, no dna.json
   --check <file>          Revealed name/uri list to compare in series reveal
   -h, --help              Show help
@@ -822,6 +822,8 @@ function cmdCompose(archivePath, opts = {}) {
     process.exit(1);
   }
   const layerDir = resolve(opts.layers);
+  // `layerAlign` на рисі: з `--over` базу (`--base`) беруть як картинку, на якій шар намальовано.
+  const alignRef = opts.over && opts.base && items.some((t) => t.layerAlign === true) && existsSync(resolve(opts.base)) ? readFileSync(resolve(opts.base)) : null;
   if (opts.preview !== undefined) {
     // Перегляд одного кадру: складає лише це видання в один PNG, без набору й dna.json.
     if (!/^[1-9]\d{0,8}$/.test(String(opts.preview))) {
@@ -835,12 +837,13 @@ function cmdCompose(archivePath, opts = {}) {
       process.exit(1);
     }
     try {
-      const frame = previewEdition({ archive, items, edition: opts.preview, basePng: readFileSync(frameIn), layerDir, only: opts.only, skipMissing: hybrid });
+      const frame = previewEdition({ archive, items, edition: opts.preview, basePng: readFileSync(frameIn), layerDir, only: opts.only, skipMissing: hybrid, alignRef });
       const file = resolve(opts.out || join("out", `preview-${Number(opts.preview)}.png`));
       mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, frame.png);
       const painted = frame.layers.filter((l) => l !== "base");
       console.log(`Preview of edition ${Number(opts.preview)}: ${painted.length} layers painted${frame.skipped.length ? `, ${frame.skipped.length} left as drawn` : ""} → ${file}`);
+      if (frame.align) console.log(frame.align.skipped ? `Alignment skipped (${frame.align.skipped}): the layer stays where it was drawn.` : `Layer aligned to the frame: shift ${frame.align.dx},${frame.align.dy} px, zoom ${frame.align.scale}.`);
       if (painted.length) console.log(`Layers (bottom first): ${painted.join(", ")}`);
       console.log("Only this PNG was written. Nothing was composed into a set.");
     } catch (e) {
@@ -858,8 +861,9 @@ function cmdCompose(archivePath, opts = {}) {
     }
     const hybridOut = resolve(opts.out || `${setDir.replace(/[\\/]+$/, "")}-layers`);
     try {
-      const report = overlaySet({ archive, items, setDir, layerDir, outDir: hybridOut, only: opts.only, limit: opts.limit });
+      const report = overlaySet({ archive, items, setDir, layerDir, outDir: hybridOut, only: opts.only, limit: opts.limit, alignRef });
       console.log(`Painted layers over ${report.count} frames (${report.painted} changed, ${report.unpainted} left as drawn) → ${hybridOut}`);
+      if (report.aligned || report.alignSkipped) console.log(`Layers aligned to the frame on ${report.aligned} frames${report.alignSkipped ? `, left where drawn on ${report.alignSkipped} (weak match or no --base)` : ""}.`);
       if (report.missingFrames.length) console.log(`No frame for editions: ${report.missingFrames.slice(0, 20).join(", ")}`);
       console.log("Traits without a layer file stay as the model drew them. The source set is untouched; details are in dna.json.");
     } catch (e) {
