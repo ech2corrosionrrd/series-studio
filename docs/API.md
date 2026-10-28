@@ -96,6 +96,7 @@
 | POST | `/api/set/drop` | `{ dir, edition }` — прибрати кадр із набору, файл лишається у `versions/` |
 | GET | `/api/marks?dir=` | keep/redo marks |
 | POST | `/api/marks` | оновити marks (`dir` + `edition`/`mark` або `marks`) |
+| POST | `/api/qa/visibility-ack` | Підтвердження автора, що риси на кадрах набору не перевірено зором (метадані беруться з рецептів). Тіло: `dir` (набір), `ack` (типово `true`; `false` знімає підтвердження). Пише `visibility-ack.json` у теку набору, нічого не видаляє. Немає `dir` — 400, немає набору — 404 |
 | POST | `/api/qa/triage` | AI Auto-Triage & Smart Critic (`dir`, `mode`, `provider`, `autoApplyMarks`) |
 
 ## Export / checklist / workspace / storage
@@ -108,7 +109,7 @@
 | POST | `/api/csp-report` | приймач звітів про порушення Content-Security-Policy від браузера (без авторизації, тіло до 8 КБ, відповідь 204; у журнал потрапляє перше входження кожного порушення) |
 | POST | `/api/export/bundle` | mint-ready ZIP → `out/bundles/` (ERC-721, Metaplex, Ordinals; опційно `imageUriPrefix`; опційно `aiMark` (типово `true`; `false` вимикає позначку «створено ШІ» в метаданих PNG і файл `ai-disclosure.json`); опційно `authorship`: `{ baseOrigin: hand\|photo\|ai_curated\|ai_raw, handEdited, handLayers, note }` — заява про людський внесок, пишеться в `authorship.json` і README) |
 | POST | `/api/export/preview-meta` | генерація попереднього перегляду метаданих `1.json` |
-| GET | `/api/checklist` | `?archive=&set=` — NFT readiness items |
+| GET | `/api/checklist` | `?archive=&set=` — NFT readiness items. Пункт `visibility` («Traits visible on the frames») лише коли є набір із кадрами: скільки кадрів перевірив зором AI-критик (`triage.json`, рядки `mode: "vision"`) і чи підтвердив автор, що риси не перевірено; у `data` статус (`verified`, `partial`, `unchecked`, `issues`), `checked`, `total`, `missingEditions`, `acknowledged`. Пункт `sync` показує, чи архів збігається з пресетом |
 | GET | `/api/workspace` | прочитати `workspace/current.json` |
 | POST | `/api/workspace` | зберегти / `clear` workspace |
 | GET | `/api/storage/status` | статус ключа Arweave (Irys) |

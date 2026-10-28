@@ -91,6 +91,7 @@ import {
 } from "../src/index.mjs";
 import { quoteStage, listStagePrices } from "../src/platform/stage-pricing.mjs";
 import { archiveSync } from "../src/archive-sync.mjs";
+import { readTriageDoc, readVisibilityAck, writeVisibilityAck } from "../src/trait-visibility.mjs";
 import { composeArchive, overlaySet, previewEdition } from "../src/layers.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
 import {
@@ -2869,6 +2870,19 @@ async function handleApi(req, res, url) {
     return send(res, 200, { ok: true, dir, marks });
   }
 
+  // Підтвердження автора: риси на кадрах не перевірено зором (метадані беруться з рецептів). Лише записує файл у теці набору.
+  if (pathname === "/api/qa/visibility-ack" && req.method === "POST") {
+    const body = await readBody(req);
+    const dir = safeSetName(body.dir || body.set);
+    if (!dir) return send(res, 400, { error: "dir required" });
+    const setDir = join(P().out, dir);
+    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
+      return send(res, 404, { error: `set directory not found: ${dir}` });
+    }
+    const doc = writeVisibilityAck(setDir, body.ack !== false);
+    return send(res, 200, { ok: true, dir, ack: doc.ack, at: doc.at });
+  }
+
   if (pathname === "/api/qa/triage" && req.method === "POST") {
     const body = await readBody(req);
     const dir = safeSetName(body.dir || body.set);
@@ -3692,11 +3706,15 @@ async function handleApi(req, res, url) {
     }
     let marks = {};
     let images = [];
+    let triage = null;
+    let visibilityAck = null;
     const set = setName ? safeSetName(setName) : null;
     if (set) {
       try {
         marks = readMarks(set);
         images = listSetImages(set).images;
+        triage = readTriageDoc(join(P().out, set));
+        visibilityAck = readVisibilityAck(join(P().out, set));
       } catch {
         images = [];
       }
@@ -3708,6 +3726,8 @@ async function handleApi(req, res, url) {
       marks,
       images,
       baseExists: Boolean(base.exists),
+      triage,
+      visibilityAck,
     });
     return send(res, 200, { ok: true, archive: archiveFile, set, items });
   }
