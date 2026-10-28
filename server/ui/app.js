@@ -980,6 +980,8 @@ function renderOptionsEditor() {
   if (skip) skip.checked = trait.skipDna === true;
   const layerOnly = $("opt-layer-only");
   if (layerOnly) layerOnly.checked = trait.layerOnly === true;
+  const layerAlign = $("opt-layer-align");
+  if (layerAlign) layerAlign.checked = trait.layerAlign === true;
   for (const axis of ["x", "y"]) {
     const el = $(`opt-offset-${axis}`);
     const v = Number(trait.layerOffset?.[axis]);
@@ -1165,6 +1167,14 @@ function setupOptionsEditor() {
     if (!trait) return;
     if ($("opt-layer-only")?.checked) trait.layerOnly = true;
     else delete trait.layerOnly;
+    if (state.draftFull) state.draftFull.traits = state.draftTraits;
+  });
+  $("opt-layer-align")?.addEventListener("change", () => {
+    ensureDraftTraits();
+    const trait = findTrait(state.selectedTraitKey);
+    if (!trait) return;
+    if ($("opt-layer-align")?.checked) trait.layerAlign = true;
+    else delete trait.layerAlign;
     if (state.draftFull) state.draftFull.traits = state.draftTraits;
   });
   for (const axis of ["x", "y"]) {
@@ -2857,7 +2867,11 @@ function setupRender() {
         img.alt = t("render.layers.previewAlt", { n: data.edition });
         img.hidden = false;
       }
-      if (msg) msg.textContent = t("render.layers.previewOk", { n: data.edition, painted: data.layers.length, left: data.skipped.length });
+      if (msg) {
+        msg.textContent = t("render.layers.previewOk", { n: data.edition, painted: data.layers.length, left: data.skipped.length });
+        if (data.align?.skipped) msg.textContent += ` ${t("render.layers.alignSkipped", { reason: t(`render.layers.alignWhy.${data.align.skipped}`) })}`;
+        else if (data.align) msg.textContent += ` ${t("render.layers.alignOk", { dx: String(data.align.dx), dy: String(data.align.dy), scale: String(data.align.scale) })}`;
+      }
     } catch (e) {
       if (img) img.hidden = true;
       if (msg) msg.textContent = e.message;
