@@ -34,6 +34,7 @@ const EXACT = {
   "No archive recipes available for showcase": "api.noArchiveShowcase",
   "No archive recipes available for preview": "api.noArchivePreview",
   "archive required": "api.archiveRequired",
+  "file required": "api.fileRequired",
   "archive parameter required": "api.archiveRequired",
   "set parameter required": "api.setRequired",
   "recipe object required": "api.recipeRequired",

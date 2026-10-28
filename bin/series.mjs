@@ -197,7 +197,8 @@ function cmdValidate(presetPath) {
 }
 
 function makeArchive(preset) {
-  const recipes = buildRecipes(preset);
+  // Ручні правки рецептів лежать у preset.overrides; студія їх застосовує, тож CLI мусить так само, інакше той самий пресет дає різні архіви.
+  const recipes = buildRecipes(preset, { items: preset.overrides || {} });
   const traitKeys = loadTraitsFromPreset(preset).map((t) => t.key);
   const dups = duplicates(recipes, traitKeys);
   if (dups.length) {

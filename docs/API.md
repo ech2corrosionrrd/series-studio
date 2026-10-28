@@ -58,6 +58,7 @@
 | GET | `/api/rarity?file=` | rarity report (очікуваний vs факт) |
 | POST | `/api/lint` | `{ text }` або `{ texts: [] }` — lint/blocklist |
 | GET | `/api/archive/list` | `out/*.json` |
+| GET | `/api/archive/sync` | чи архів досі збігається з пресетом, з якого його зібрано. Параметр `file` (архів у `out/`); без нього 400, немає архіву 404. Сервер перебудовує рецепти з пресета (з ручними правками `preset.overrides`) і порівнює DNA та промпт за номером видання. Відповідь: `status` (`match`, `stale` або `unknown`), `reason` (для `unknown`: `no_preset`, `no_recipes`, `preset_invalid`), `total`, `expected`, `dnaChanged`, `promptChanged`, `missing`, `extra`, `editions` (до 8 перших видань, що розійшлись). Нічого не пише, кредити не списує |
 | GET | `/api/archive/latest` | найновіший архів |
 | GET | `/api/archive/file?file=` | download JSON |
 
