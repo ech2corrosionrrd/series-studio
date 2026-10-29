@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Внутрішнє: маршрути шарів винесено з `server/index.mjs`
+- `/api/layers/*`, `/api/traits/from-layers`, `/api/traits/from-csv`, `/api/traits/to-csv` і `/api/compose` тепер у `server/routes/layers.mjs` (`handleLayerRoutes`). Без змін поведінки: ті самі маршрути й відповіді; `server/index.mjs` скоротився з 2491 до 2271 рядка.
+
 ### Внутрішнє: маршрути пресетів і рецептів винесено з `server/index.mjs`
 - `/api/presets`, `/api/preset*`, `/api/templates*`, `/api/trait-packs*`, `/api/validate` тепер у `server/routes/presets.mjs` (`handlePresetRoutes`), а `/api/build`, `/api/simulate`, `/api/diff-seed`, `/api/recipes`, `/api/rarity`, `/api/lint`, `/api/recipe`, `/api/archive/diff` і `/api/archive/collisions` у `server/routes/recipes.mjs` (`handleRecipeRoutes`). Без змін поведінки: ті самі маршрути й відповіді; `server/index.mjs` скоротився з 2814 до 2491 рядків.
 - Тести, що читали `index.mjs` напряму, читають і новий модуль; контрактний тест маршрутів запускає `POST /api/build` першим, бо наступні маршрути читають архів, який він пише.
