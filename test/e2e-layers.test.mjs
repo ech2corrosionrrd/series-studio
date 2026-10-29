@@ -122,6 +122,8 @@ describe("layers and the hybrid path in a real browser", { skip: CHROME ? false 
     });
     await page.goto(`http://127.0.0.1:${studio.port}/studio/`);
     await page.waitForSelector("#o-name");
+    // The beginner path hides the engine picker. This file switches engines, so it leaves the path.
+    await page.uncheck("#path-beginner");
   });
 
   after(async () => {
