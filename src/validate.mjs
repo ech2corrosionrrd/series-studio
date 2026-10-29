@@ -54,8 +54,14 @@ export function validateArchive(archive) {
 }
 
 /** Extra semantic checks beyond JSON Schema (quotas, trait refs, uniqueness capacity). */
+/** A preset id becomes a file name (presets/<id>.json, out/<id>.json): Latin letters, digits, dot, dash, underscore. */
+export const PRESET_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
 export function validatePresetSemantics(preset) {
   const issues = [];
+  if (typeof preset?.id === "string" && !PRESET_ID_PATTERN.test(preset.id)) {
+    issues.push(`preset id "${preset.id}" must use Latin letters, digits, dot, dash or underscore, starting with a letter or digit (no spaces, no Cyrillic)`);
+  }
   const items = preset?.traits?.items ?? [];
   const keys = new Set();
   for (const t of items) {

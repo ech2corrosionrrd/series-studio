@@ -233,5 +233,13 @@ describe("public mode end-to-end", () => {
     assert.equal(legal.status, 302, "the old legal page redirects to Series Lab's own terms");
     assert.match(String(legal.headers.location), /\/en\/terms\/$/);
     assert.equal((await call("GET", "/legal")).headers.location.endsWith("/terms/"), true);
+    // the Help and the Terms quote these paths: the Lab host forwards them to the public site, with or without the trailing slash and without a session
+    for (const [path, want] of [["/terms/", "/terms/"], ["/terms", "/terms/"], ["/privacy/", "/privacy/"], ["/en/terms/", "/en/terms/"], ["/en/privacy", "/en/privacy/"]]) {
+      const r = await call("GET", path);
+      assert.equal(r.status, 302, `${path} redirects`);
+      assert.ok(String(r.headers.location).endsWith(want), `${path} -> ${r.headers.location}`);
+      assert.match(String(r.headers.location), /^https:\/\//);
+    }
+    assert.equal((await call("GET", "/terms-and-more")).status, 404, "only the four legal paths are forwarded");
   });
 });

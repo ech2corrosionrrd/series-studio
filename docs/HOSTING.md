@@ -7,6 +7,8 @@
 | Що | Де зараз | Що це |
 |---|---|---|
 | Майстерня на ПК | `http://127.0.0.1:5344/studio/` | Той самий `server/index.mjs`. Типово `HOST=127.0.0.1`, `PORT=5344`, `npm start` |
+> Юридичні сторінки (Умови, Політика) живуть лише на публічному сайті. Хост Lab віддає `/legal`, `/terms/`, `/privacy/`, `/en/terms/` і `/en/privacy/` як **302** на `LEGAL_BASE_URL` (типово `https://studio.w3ir.io`), без сесії: так адреси з Довідки й Умов працюють і на lab.w3ir.io (29.10.2026).
+
 | Публічний сайт | https://studio.w3ir.io | **Статичний** Cloudflare Pages. Лендінг, посібник і сторінки для автора. **API майстерні тут немає** — зібрано `scripts/build-site.mjs`, виклад `deploy-site.yml`. Деталі: [DEPLOY.md](./DEPLOY.md) |
 | Процес майстерні на хості | **працює** на https://lab.w3ir.io (Hetzner, `OPEN_ACCESS=1 ENABLE_PAYMENTS=1 ENABLE_TELEGRAM=1`, без денної стелі витрат) | Той самий `server/index.mjs` у образі (`Dockerfile`, `HOST=0.0.0.0`, `PORT=5344`). Ім'я задає `SERIES_ALLOWED_HOSTS`. Це **не** studio.w3ir.io |
 

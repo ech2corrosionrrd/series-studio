@@ -178,6 +178,15 @@ async function routes(req, res, url) {
       send(res, 200, FAVICON_SVG, "image/svg+xml", { "Cache-Control": CACHE.asset });
       return true;
     }
+    // The same pages under their public names (the Help and the Terms text quote /terms/ and /privacy/): the Lab host does not own
+    // them, it forwards to the public site so that one copy of the texts is the truth.
+    const legalPath = /^(\/en)?\/(terms|privacy)$/.exec(path);
+    if (legalPath) {
+      const base = (process.env.LEGAL_BASE_URL || "https://studio.w3ir.io").replace(/\/$/, "");
+      res.writeHead(302, { Location: `${base}${path}/`, "Cache-Control": "no-cache" });
+      res.end();
+      return true;
+    }
     if (path === "/legal" || path === "/legal/en") {
       // Series Lab's own Terms and Privacy live on the public site.
       const base = (process.env.LEGAL_BASE_URL || "https://studio.w3ir.io").replace(/\/$/, "");
