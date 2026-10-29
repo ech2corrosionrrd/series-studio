@@ -516,6 +516,10 @@ export function syncCtorFromOverview() {
 }
 
 /** One text field per line of the preset: the "who" that fills {who} in the prompt. Typing updates the draft the Constructor saves. */
+export function repaintWhoLines() {
+  renderWhoLines(state.draftFull);
+}
+
 function renderWhoLines(preset) {
   const wrap = $("c-who-wrap");
   const box = $("c-who-lines");
@@ -666,6 +670,17 @@ export function fillConstructor(preset) {
   }
   renderOptionsEditor();
   ctorSnapshot = ctorSnap();
+}
+
+/** What the schema would say about the name and the size, said first and in the author's language (a size of 0 used to turn into 1 silently). */
+function identityIssues() {
+  const issues = [];
+  if (!$("c-name")?.value.trim()) issues.push(t("api.preset.nameEmpty"));
+  const raw = String($("c-size")?.value ?? "").trim();
+  const size = Number(raw);
+  if (!raw || !Number.isInteger(size)) issues.push(t("api.preset.sizeInteger"));
+  else if (size < 1) issues.push(t("api.preset.sizeMin", { min: 1 }));
+  return issues;
 }
 
 function readConstructor() {
@@ -872,6 +887,8 @@ export function setupOverview() {
     syncCtorFromOverview();
     const preset = readConstructor();
     if (!preset.id) throw new Error(t("home.msg.need"));
+    const identity = identityIssues();
+    if (identity.length) throw new Error(identity.join(" · "));
     const confirmCharge = state.projectConfirm === preset.id;
     const overwrite = state.projectOverwrite === preset.id;
     const file = `${preset.id}.json`;
@@ -1014,6 +1031,12 @@ export function setupConstructor() {
   $("ctor-validate")?.addEventListener("click", async () => {
     try {
       const preset = readConstructor();
+      const identity = identityIssues();
+      if (identity.length) {
+        $("ctor-msg").textContent = `${t("ctor.msg.invalid")}: ${identity.join(" · ")}`;
+        $("ctor-msg").className = "small err-msg";
+        return;
+      }
       const items = preset.traits?.items || [];
       const optIssues = [];
       for (const trait of items) {
@@ -1027,7 +1050,7 @@ export function setupConstructor() {
         return;
       }
       const data = await api("/api/validate", { method: "POST", body: JSON.stringify({ preset }) });
-      $("ctor-msg").textContent = `${t("ctor.msg.ok")} · ${data.id} · size=${data.size}`;
+      $("ctor-msg").textContent = `${t("ctor.msg.ok")} · ${data.id} · ${t("ctor.msg.sizeN", { n: data.size })}`;
       $("ctor-msg").className = "small ok-msg";
     } catch (e) {
       $("ctor-msg").textContent = `${t("ctor.msg.invalid")}: ${e.message}`;
@@ -1037,6 +1060,8 @@ export function setupConstructor() {
   /** Validate and save the Constructor form as the preset. Throws with a readable message when it cannot. */
   async function saveCtorPreset() {
     const preset = readConstructor();
+    const identity = identityIssues();
+    if (identity.length) throw new Error(identity.join(" · "));
     if (!preset.id) throw new Error(t("ctor.msg.needId"));
     const items = preset.traits?.items || [];
     for (const trait of items) {

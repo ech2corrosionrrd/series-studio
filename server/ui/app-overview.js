@@ -6,7 +6,7 @@
 import { fmtNum } from "./format.js";
 import { applyTips, getLocale, t } from "./i18n.js";
 import { $, api, showTab, state, tipAttr } from "./app.js";
-import { fillConstructor } from "./app-options.js";
+import { fillConstructor, syncCtorFromOverview } from "./app-options.js";
 import { refreshWaves } from "./app-recipes.js";
 
 /* ---------- Overview ---------- */
@@ -112,9 +112,11 @@ export function renderTemplates() {
   for (const tpl of state.templates) {
     const card = document.createElement("div");
     card.className = "tpl-card";
-    const title = tpl.titleUk && getLocale() === "uk" ? tpl.titleUk : tpl.name;
+    const uk = getLocale() === "uk";
+    const title = tpl.titleUk && uk ? tpl.titleUk : tpl.name;
+    const blurb = (uk ? tpl.blurb : tpl.blurbEn || tpl.blurb) || tpl.id;
     card.innerHTML = `<b>${escapeHtml(title)}</b>
-      <span class="tpl-blurb">${escapeHtml(tpl.blurb || tpl.id)}</span>
+      <span class="tpl-blurb">${escapeHtml(blurb)}</span>
       <span class="muted small">${escapeHtml(tpl.id)} · ${escapeHtml(t("base.tpl.size", { n: fmtNum(tpl.size) }))}</span>
       <button type="button" class="btn small" data-id="${escapeHtml(tpl.id)}"${tipAttr("base.use")}>${t("base.use")}</button>`;
     card.querySelector("button").addEventListener("click", () => useTemplate(tpl.id));
@@ -128,7 +130,11 @@ async function useTemplate(id) {
   const preset = data.preset;
   state.draftFull = preset;
   state.draftTraits = preset.traits;
+  // The card promises that the name, id, seed and size stay as the author set them on the Overview: a template brings traits and a prompt only.
+  const keep = ["o-name", "o-id", "o-seed", "o-size"].map((id) => [id, $(id)?.value ?? ""]);
   fillConstructor(preset);
+  for (const [id, value] of keep) if ($(id) && value !== "") $(id).value = value;
+  syncCtorFromOverview();
   if ($("o-id")) {
     delete $("o-id").dataset.touched;
     delete $("o-seed").dataset.touched;

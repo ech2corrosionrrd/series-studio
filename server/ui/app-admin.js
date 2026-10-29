@@ -5,12 +5,13 @@
  */
 import { fmtDate, fmtNum } from "./format.js";
 import { applyTips, getLocale, setLocale, t } from "./i18n.js";
-import { relabelEngineSelects, renderTopup } from "./app-account.js";
-import { $, api, showTab, state } from "./app.js";
-import { loadLaunchAdvisor, paintDeployCommands, renderPath, showCurationPrice, showStagePrice, updateReleaseHub } from "./app-export.js";
+import { refreshAccount, relabelEngineSelects, renderTopup } from "./app-account.js";
+import { $, api, renderProjects, showTab, state } from "./app.js";
+import { refreshBaseStatus } from "./app-base.js";
+import { loadLaunchAdvisor, paintDeployCommands, renderPath, repaintExportCopy, showCurationPrice, showStagePrice, updateReleaseHub } from "./app-export.js";
 import { renderGallery, syncCompareSelect } from "./app-gallery.js";
 import { renderHelp } from "./app-help.js";
-import { renderOptionsEditor } from "./app-options.js";
+import { renderOptionsEditor, repaintWhoLines } from "./app-options.js";
 import { escapeHtml, fillPresetSelects, renderCtorSummary, renderFacts, renderSteps, renderTemplates } from "./app-overview.js";
 import { renderPackSummary, renderPacks, renderTraitChecklist } from "./app-packs.js";
 import { fillArchiveSelect, renderRecipeTable } from "./app-recipes.js";
@@ -279,7 +280,13 @@ function refreshDynamicCopy() {
   renderSteps();
   renderFacts();
   renderCtorSummary();
+  repaintWhoLines();
   renderTemplates();
+  // Lists that were drawn once in the previous language: projects, base pictures, the account (credit history), the export notes.
+  renderProjects();
+  refreshBaseStatus();
+  refreshAccount();
+  repaintExportCopy();
   renderPacks();
   renderTraitChecklist();
   renderPackSummary();

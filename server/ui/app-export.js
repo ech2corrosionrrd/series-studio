@@ -958,6 +958,14 @@ export function setupExport() {
   }, 200);
 }
 
+/** Texts of the Export tab that are written once from the profile and the server status: repaint them after a language switch. */
+export function repaintExportCopy() {
+  paintGenesisNote();
+  applyProfileUi();
+  updateMetadataPreview();
+  updateReleaseHub();
+}
+
 export async function updateReleaseHub() {
   const portalBtn = $("rel-portal-btn");
   const testnetBtn = $("rel-testnet-btn");

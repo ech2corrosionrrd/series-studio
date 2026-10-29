@@ -614,6 +614,7 @@ function listTemplates() {
           name: p.name || p.id,
           titleUk: p._meta?.titleUk || p.name,
           blurb: p._meta?.blurb || p.base?.note || "",
+          blurbEn: p._meta?.blurbEn || "",
           size: p.size,
           seed: p.seed,
           engine: p.engine,
