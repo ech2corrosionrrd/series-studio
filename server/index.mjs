@@ -91,6 +91,7 @@ import { handleBaseRoutes } from "./routes/base.mjs";
 import { handleGenerateRoutes } from "./routes/generate.mjs";
 import { handleExportRoutes } from "./routes/export.mjs";
 import { handleReviewRoutes } from "./routes/review.mjs";
+import { handleCreditRoutes } from "./routes/credits.mjs";
 import { handleVersionTrashRoutes } from "./routes/versions-trash.mjs";
 import { handleLayerRoutes } from "./routes/layers.mjs";
 import { handleRecipeRoutes } from "./routes/recipes.mjs";
@@ -98,14 +99,11 @@ import { handlePresetRoutes } from "./routes/presets.mjs";
 import { allowedHostnames, checkApiRequest, hostedConfigError, hostedConfigWarning, openAccessError } from "./guard.mjs";
 import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
 import { send, readBody, httpError } from "./http.mjs";
-import { PACKAGES, checkGenerationRate, creditCost, deductCredits, getBalance,
-  listTransactions, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost,
-} from "../src/platform/billing.mjs";
+import { PACKAGES, checkGenerationRate, creditCost, deductCredits, getBalance, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost } from "../src/platform/billing.mjs";
 import { rateLimit } from "../src/platform/ratelimit.mjs";
-import { checkSolOrders, createSolOrder, listSolOrders, prepareSolPayment, solPayInfo } from "../src/platform/solpay.mjs";
-import { isAdmin, notifyOperator } from "../src/platform/ops.mjs";
+import { solPayInfo } from "../src/platform/solpay.mjs";
+import { isAdmin } from "../src/platform/ops.mjs";
 import { providersSnapshot, keyHealth, providerFloatStatus } from "../src/platform/providers.mjs";
-import { claim as claimHolderBonus, eligibility as holderEligibility } from "../src/platform/holders.mjs";
 import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs";
 import { publishCollection } from "../src/platform/site.mjs";
 import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
@@ -1517,10 +1515,12 @@ async function handleApi(req, res, url) {
     });
   }
 
-  if (pathname === "/api/credits/history" && req.method === "GET") {
-    if (!PUBLIC_MODE) return send(res, 200, { transactions: [] });
-    return send(res, 200, { transactions: listTransactions(currentWallet(), 50) });
-  }
+  // credits routes live in server/routes/credits.mjs.
+  if (
+    await handleCreditRoutes({
+      req, res, url, pathname, PUBLIC_MODE, currentWallet,
+    })
+  ) return;
 
   // Operator routes (admin system, resources, economy, spend, engine status) live in server/routes/admin.mjs.
   if (
@@ -1530,58 +1530,6 @@ async function handleApi(req, res, url) {
       isAdminNow: () => isAdmin(currentWallet()),
     })
   ) return;
-
-  // Direct USDC-on-Solana top-up: order → user sends the exact amount → we find it on-chain.
-  if (pathname === "/api/credits/sol/order" && req.method === "POST") {
-    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
-    rateLimit(req, "credits_sol_order", 20);
-    const body = await readBody(req);
-    try {
-      const wallet = currentWallet();
-      return send(res, 200, { order: createSolOrder(wallet, String(body.package || ""), { admin: isAdmin(wallet) }) });
-    } catch (e) {
-      return send(res, 400, { error: e.message });
-    }
-  }
-
-  // Build unsigned USDC transfer for Phantom confirm (payer signs in the browser).
-  if (pathname === "/api/credits/sol/prepare" && req.method === "POST") {
-    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
-    rateLimit(req, "credits_sol_prepare", 20);
-    const body = await readBody(req);
-    try {
-      const wallet = currentWallet();
-      const prepared = await prepareSolPayment(wallet, String(body.package || ""), String(body.payer || ""), {
-        admin: isAdmin(wallet),
-      });
-      return send(res, 200, prepared);
-    } catch (e) {
-      return send(res, 400, { error: e.message });
-    }
-  }
-
-  if (pathname === "/api/credits/sol/check" && req.method === "POST") {
-    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
-    rateLimit(req, "credits_sol_check", Number.parseInt(process.env.SOLANA_PAY_CHECK_RATE_LIMIT || "", 10) || 20);
-    const wallet = currentWallet();
-    const r = await checkSolOrders({ wallet, notify: notifyOperator });
-    return send(res, 200, {
-      credited: r.credited.reduce((n, c) => n + c.credits, 0),
-      balance: getBalance(wallet),
-      orders: listSolOrders(wallet),
-      error: r.error || null,
-    });
-  }
-
-  if (pathname === "/api/holder" && req.method === "GET") {
-    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
-    return send(res, 200, await holderEligibility(currentWallet()));
-  }
-
-  if (pathname === "/api/holder/claim" && req.method === "POST") {
-    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
-    return send(res, 200, await claimHolderBonus(currentWallet()));
-  }
 
   if (pathname === "/api/publish" && req.method === "POST") {
     if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
