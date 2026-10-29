@@ -18,9 +18,7 @@ function routeTable() {
     const meth = /(?:req\.)?method === "([A-Z]+)"/.exec(line);
     rows.set(`${meth ? meth[1] : "GET"} ${m[1]}`, { method: meth ? meth[1] : "GET", path: m[1] });
   }
-  // POST /api/build goes first: later routes (archive/file, recipes, rarity) read the archive it writes,
-  // so on an empty studio they would answer 5xx only because of the order the sources are listed in.
-  return [...rows.values()].sort((a, b) => Number(b.path === "/api/build") - Number(a.path === "/api/build"));
+  return [...rows.values()];
 }
 
 const ROUTES = routeTable();
@@ -77,6 +75,15 @@ describe("API contract (normal wallet)", () => {
       if (res.status >= 500 && !MAY_BE_UNAVAILABLE.has(key)) bad.push(`${key} → ${res.status} ${res.text.slice(0, 80)}`);
     }
     assert.deepEqual(bad, [], "validation problems must be 4xx, not 5xx");
+  });
+
+  it("an archive that does not exist is 404 with a stable code, not a server error", async () => {
+    await s.signIn();
+    for (const path of ["/api/archive/file?file=no-such-archive.json", "/api/recipes?file=no-such-archive.json", "/api/rarity?file=no-such-archive.json"]) {
+      const res = await s.call("GET", path, { timeoutMs: 8000 });
+      assert.equal(res.status, 404, `${path} → ${res.status} ${res.text.slice(0, 80)}`);
+      assert.match(res.text, /archive not found/);
+    }
   });
 
   it("operator routes refuse a normal wallet with 403", async () => {

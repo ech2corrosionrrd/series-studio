@@ -2,11 +2,12 @@
 // that is not in `ctx`) is a ReferenceError that only shows when that one route runs. This test reads the sources and catches it early:
 //   1. every name a module uses that the project defines or exports anywhere must be available in the module
 //      (its own imports, the `ctx` it destructures, or a local declaration);
-//   2. every name a module takes from `ctx` must be passed by the call in server/index.mjs.
+//   2. every name a module takes from `ctx` must be passed by the call in server/index.mjs;
+//   3. every relative path it imports, statically or with `import("...")`, must point at a file.
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
@@ -154,6 +155,14 @@ describe("server route modules", () => {
       const have = new Set([...importedNames(text), ...ctxNames, ...localNames(code), ...topLevelNames(text), "req", "res", "url", "pathname"]);
       const missing = [...usedNames(code)].filter((n) => universe.has(n) && !have.has(n)).sort();
       assert.deepEqual(missing, [], `${file} uses ${missing.join(", ")} but neither imports it nor receives it in ctx`);
+    });
+
+    it(`${file}: every relative import path, static or dynamic, points at a file`, () => {
+      // a path copied from index.mjs keeps one "../" too few: a static one crashes the server at start, a dynamic one only answers 500 when its route runs
+      const specs = [...text.matchAll(IMPORT)].map((m) => m[2]);
+      for (const m of text.matchAll(/\bimport\(\s*(["'])([^"']+)\1\s*\)/g)) specs.push(m[2]);
+      const broken = specs.filter((s) => s.startsWith(".") && !existsSync(resolve(dirname(join(ROOT, "server/routes", file)), s)));
+      assert.deepEqual(broken, [], `${file} imports ${broken.join(", ")}, which do not exist relative to server/routes/`);
     });
 
     it(`${file}: index.mjs passes every name the module takes from ctx`, () => {
