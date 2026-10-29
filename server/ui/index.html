@@ -158,10 +158,10 @@
           <input id="o-id" autocomplete="off" data-i18n-placeholder="home.field.id.ph" placeholder="my-series"></label>
         <label><span data-i18n="home.field.size">Кількість NFT</span>
           <input id="o-size" type="number" min="1" class="w120" value="48"></label>
-        <label class="small" style="display:flex; align-items:flex-start; gap:8px; align-self:end">
-          <input id="o-genesis" type="checkbox" style="margin-top:3px">
+        <label class="small u-check-row">
+          <input class="u-mt-3" id="o-genesis" type="checkbox">
           <span><b data-i18n="home.field.genesis">База — частина колекції (видання #0)</b>
-            <span class="muted" style="display:block" data-i18n="home.field.genesis.hint"></span></span></label>
+            <span class="muted u-block" data-i18n="home.field.genesis.hint"></span></span></label>
         <label><span data-i18n="home.field.seed">Seed</span>
           <input id="o-seed" autocomplete="off" data-i18n-placeholder="home.field.seed.ph" placeholder="my-series-v1"></label>
         <details class="step-adv u-col-all" id="o-defaults">
@@ -242,7 +242,7 @@
       <div class="card">
         <h3 data-i18n="base.upload.title">1 · Завантажити базові картинки</h3>
         <p class="muted small" data-i18n="base.upload.help"></p>
-        <div class="toolbar form" style="align-items:flex-end">
+        <div class="toolbar form u-items-end">
           <label class="small"><span data-i18n="base.role">Роль</span>
             <select id="base-role">
               <option value="primary" data-i18n="base.role.primary">Головна базова</option>
@@ -254,7 +254,7 @@
           <label class="small" id="base-line-wrap" hidden><span data-i18n="base.lineId">ID лінії</span>
             <input id="base-line-id" class="w120" placeholder="a" value="a" autocomplete="off">
           </label>
-          <label class="btn" style="display:inline-block">
+          <label class="btn u-inline-block">
             <span data-i18n="base.pick">Обрати файли</span>
             <input type="file" id="base-file" accept="image/png,image/jpeg,image/webp" multiple hidden>
           </label>
@@ -265,13 +265,13 @@
         <h3 data-i18n="base.gallery" class="u-mt-16">Галерея input/</h3>
         <div id="base-gallery" class="base-gallery"></div>
         <div id="base-lines" class="muted small u-mt-10"></div>
-        <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:12px">
+        <div class="u-sep-top-16">
           <button type="button" id="base-vision-analyze" class="btn" data-i18n="base.vision.btn">🤖 Vision Assist (авторозбір)</button>
-          <span id="base-vision-status" class="small muted" style="margin-left:8px"></span>
+          <span id="base-vision-status" class="small muted u-ml-8"></span>
           <div id="base-vision-box" class="card form u-mt-10" hidden>
             <h4 data-i18n="base.vision.done">Стиль та риси успішно вилучено!</h4>
             <p id="base-vision-summary" class="small u-my-4"></p>
-            <pre id="base-vision-out" class="log" style="max-height:160px; overflow:auto;"></pre>
+            <pre id="base-vision-out" class="log u-scroll-160"></pre>
             <div class="actions u-mt-8">
               <button type="button" id="base-vision-apply" class="btn primary" data-i18n="base.vision.apply">Застосувати до пресету</button>
             </div>
@@ -543,14 +543,14 @@
     <div class="card step-card adv-only" id="ctor-matrix-card">
       <div class="step-head"><span class="step-no" aria-hidden="true"></span><h3 data-i18n="ctor.matrixTitle">Перегляд промпту для рушія</h3><span class="step-opt" data-i18n="ctor.step.optional">необов'язково</span></div>
       <p class="muted small" data-i18n="ctor.matrixHelp">Попередній перегляд оптимізованого синтаксису під різні рушії в реальному часі.</p>
-      <div class="toolbar" style="margin-top:8px; gap:8px; flex-wrap:wrap">
+      <div class="toolbar u-row-wrap-8">
         <button type="button" class="btn small matrix-btn primary" data-engine="flux" data-i18n-tip="ctor.matrix.flux.tip">Flux.1 LoRA</button>
         <button type="button" class="btn small matrix-btn" data-engine="sdxl" data-i18n-tip="ctor.matrix.sdxl.tip">SDXL + Tags</button>
         <button type="button" class="btn small matrix-btn" data-engine="midjourney" data-i18n-tip="ctor.matrix.midjourney.tip">Midjourney v6</button>
         <button type="button" class="btn small matrix-btn" data-engine="kontext" data-i18n-tip="ctor.matrix.kontext.tip">Kontext Reference</button>
         <button type="button" class="btn small matrix-btn" data-engine="openai" data-i18n-tip="ctor.matrix.openai.tip">OpenAI Prose</button>
       </div>
-      <pre id="ctor-matrix-preview" class="log small" data-i18n="ctor.matrix.empty" style="margin-top:8px; white-space:pre-wrap; max-height:160px; overflow:auto">Оберіть рушій вище, щоб побачити відформатований промпт</pre>
+      <pre id="ctor-matrix-preview" class="log small u-pre-160" data-i18n="ctor.matrix.empty">Оберіть рушій вище, щоб побачити відформатований промпт</pre>
     </div>
 
     <!-- Step 6: check and save -->
@@ -631,7 +631,7 @@
         <div class="table-wrap"><table id="r-rarity-table"></table></div>
       </details>
       <details id="r-cooccurrence-wrap" class="u-mt-8" hidden>
-        <summary style="font-weight:600; cursor:pointer" data-i18n="recipes.cooccurrenceTitle">📊 Матриця взаємозв'язку та синергії рис (Trait Synergy)</summary>
+        <summary class="u-summary-bold" data-i18n="recipes.cooccurrenceTitle">📊 Матриця взаємозв'язку та синергії рис (Trait Synergy)</summary>
         <p class="muted small u-mt-4" data-i18n="recipes.cooccurrenceHelp"></p>
         <div id="r-cooccurrence-list" class="grid2 small u-scroll-220"></div>
       </details>
@@ -792,7 +792,7 @@
           </div>
           <p id="g-layers-picked" class="muted small"></p>
           <div id="g-layers-status" class="small" role="status"></div>
-          <label class="small" style="display:grid; gap:4px; margin-top:8px"><span data-i18n="render.layers.over">Накласти на</span>
+          <label class="small u-grid-gap-4"><span data-i18n="render.layers.over">Накласти на</span>
             <select id="g-compose-over"></select>
           </label>
           <p class="muted small" id="g-compose-over-hint" data-i18n="render.layers.overHelp"></p>
@@ -809,30 +809,30 @@
           </div>
           <div class="actions u-mt-8" id="g-frame-offset-wrap">
             <label class="small"><span data-i18n="render.layers.frameOffsetX">Зсув цього кадру по X, px</span>
-              <input type="number" id="g-frame-off-x" step="1" autocomplete="off" placeholder="0" style="width:90px">
+              <input class="w-90" type="number" id="g-frame-off-x" step="1" autocomplete="off" placeholder="0">
             </label>
             <label class="small"><span data-i18n="render.layers.frameOffsetY">по Y, px</span>
-              <input type="number" id="g-frame-off-y" step="1" autocomplete="off" placeholder="0" style="width:90px">
+              <input class="w-90" type="number" id="g-frame-off-y" step="1" autocomplete="off" placeholder="0">
             </label>
             <button type="button" id="g-frame-off-save" class="btn small" disabled data-i18n="render.layers.frameOffsetSave">Зберегти зсув кадру</button>
             <span id="g-frame-off-msg" class="small" role="status"></span>
           </div>
           <p class="muted small" data-i18n="render.layers.frameOffsetHelp"></p>
-          <img id="g-compose-preview-img" alt="" hidden style="max-width:100%; width:320px; margin-top:8px; border-radius:8px">
+          <img class="u-preview-img" id="g-compose-preview-img" alt="" hidden>
         </div>
       </div>
       <div class="card">
         <h3 data-i18n="render.plan">Plan and status</h3>
         <pre id="g-plan-out" class="log small" data-i18n="render.stub">Press Estimate first.</pre>
         <div id="g-progress-wrap" hidden class="u-mt-12">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; margin-bottom:4px">
+          <div class="u-bar-head">
             <span id="g-progress-text" class="muted" data-i18n="render.working">Генерація…</span>
-            <span style="display:flex; align-items:center; gap:8px">
+            <span class="u-row-center-8">
               <button type="button" id="g-stop" class="btn danger small" hidden data-i18n="render.stop" data-i18n-tip="render.stop.tip">Зупинити</button>
               <b id="g-progress-pct">0%</b>
             </span>
           </div>
-          <div style="width:100%; background:var(--border); border-radius:4px; height:8px; overflow:hidden">
+          <div class="u-progress-track">
             <div id="g-progress-bar" style="width:0%; height:100%; background:var(--accent); transition:width 0.2s"></div>
           </div>
         </div>
@@ -886,8 +886,8 @@
       <span id="v-publish-status" class="small muted"></span>
     </div>
     <p id="v-lineage" class="muted small" hidden role="status"></p>
-    <div id="v-quality" class="card quality-card" style="margin: 10px 0; padding: 10px 14px">
-      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px">
+    <div id="v-quality" class="card quality-card u-card-tight">
+      <div class="u-row-wrap-center-10">
         <b data-i18n="gallery.quality.title">Якість серії</b>
         <button type="button" id="v-quality-run" class="btn small primary" data-i18n="gallery.quality.run" data-i18n-tip="gallery.quality.run.tip">Перевірити якість</button>
         <span id="v-quality-status" class="small muted"></span>
@@ -897,8 +897,8 @@
         <button type="button" class="btn small" data-goto-tab="render" data-scroll-to="g-layers" data-i18n="gallery.quality.layerTip.go"></button></p>
       <div id="v-quality-out" class="small" hidden></div>
     </div>
-    <div class="card triage-bar" style="margin: 10px 0; padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px;">
-      <b style="color: var(--accent2); font-size: 13px;" data-i18n="gallery.triage.title">🤖 AI Auto-Triage &amp; Critic</b>
+    <div class="card triage-bar u-triage-bar">
+      <b class="u-accent2-13" data-i18n="gallery.triage.title">🤖 AI Auto-Triage &amp; Critic</b>
       <label class="small u-flex-tight">
         <select id="v-triage-mode" class="small" data-i18n-tip="gallery.triage.mode.unmarked.tip">
           <option value="unmarked" data-i18n="gallery.triage.mode.unmarked">Лише без мітки</option>
@@ -1000,7 +1000,7 @@
             <option value="ordinalsbot" data-i18n="export.profile.ordinalsbot">Bitcoin Ordinals / Inscriptions</option>
           </select>
         </label>
-        <p id="x-profile-hint" class="muted small" style="grid-column: 1 / -1; margin:0" data-i18n="export.profileHint.opensea"></p>
+        <p id="x-profile-hint" class="muted small u-col-all-m0" data-i18n="export.profileHint.opensea"></p>
         <label class="small"><span data-i18n="export.bundle.set">Image set</span>
           <select id="x-set"></select>
         </label>
@@ -1020,8 +1020,8 @@
           <input id="x-creator-address" type="text" placeholder="e.g. Solana / EVM wallet address" data-i18n-placeholder="export.creator.ph" />
         </label>
         <label class="small u-col-all" id="x-uri-wrap"><span data-i18n="export.bundle.uriPrefix">Image URI Prefix (Storage)</span>
-          <div style="display:flex; gap:8px">
-            <input id="x-uri-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.png)" data-i18n-placeholder="export.bundle.uriPrefix.ph" data-i18n-tip="export.bundle.uriPrefix.tip" style="flex:1" />
+          <div class="u-flex-gap-8">
+            <input class="u-flex-1" id="x-uri-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.png)" data-i18n-placeholder="export.bundle.uriPrefix.ph" data-i18n-tip="export.bundle.uriPrefix.tip" />
             <button type="button" id="x-pin-irys" class="btn small" data-i18n="export.bundle.pinArweave" data-i18n-tip="export.bundle.pinArweave.tip">📌 Upload to Arweave (Irys)</button>
           </div>
           <span class="small muted u-mt-2-block" data-i18n="export.bundle.pinArweave.hint"></span>
@@ -1031,11 +1031,11 @@
           <input id="x-anim-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.mp4)" data-i18n-placeholder="export.bundle.animPrefix.ph" />
         </label>
       </div>
-      <details id="x-preview-wrap" style="margin-top:14px; border-top:1px solid var(--border); padding-top:10px" open>
-        <summary style="font-size:13px; font-weight:600; cursor:pointer" data-i18n="export.bundle.metaPreview">Metadata Preview (1.json)</summary>
+      <details class="u-sep-top-14" id="x-preview-wrap" open>
+        <summary class="u-summary-bold-13" data-i18n="export.bundle.metaPreview">Metadata Preview (1.json)</summary>
         <pre id="x-meta-preview" class="log small u-scroll-220">{}</pre>
       </details>
-      <div class="actions" style="margin-top:12px; gap:12px; flex-wrap:wrap">
+      <div class="actions u-actions-12">
         <label class="small"><input type="checkbox" id="x-onlyKeep" checked /> <span data-i18n="export.bundle.onlyKeep">Лише позначені «Лишити»</span></label>
         <label class="small"><input type="checkbox" id="x-zero-index" /> <span data-i18n="export.zeroIndex.label">Нумерація з нуля (0.png, 0.json)</span></label>
         <label class="small"><input type="checkbox" id="x-upscale" /> <span data-i18n="export.bundle.upscale">Збільшити 2×</span></label>
@@ -1047,7 +1047,7 @@
         <span id="x-bundle-msg" class="small" role="status"></span>
       </div>
       <div id="x-prov-result" class="card small" style="margin-top:10px; display:none; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2)">
-        <span style="font-weight:600" data-i18n="export.provenance.hashLabel">Хеш походження (SHA-256)</span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
+        <span class="u-bold" data-i18n="export.provenance.hashLabel">Хеш походження (SHA-256)</span><code class="u-code-wrap" id="x-prov-hash"></code>
       </div>
       <div id="x-prov-check" class="small u-mt-8" hidden></div>
       <div id="x-aimark" class="card small u-grid-gap-6">
@@ -1076,7 +1076,7 @@
       <div id="x-size" class="card small u-mt-10">
         <b data-i18n="export.size.title">Розмір файлів</b>
         <p class="muted u-m-4-0-8" data-i18n="export.size.hint"></p>
-        <div class="actions" style="gap:8px; flex-wrap:wrap; align-items:center">
+        <div class="actions u-actions-center">
           <button type="button" id="x-size-scan" class="btn small" data-i18n="export.size.scan" data-i18n-tip="export.size.scan.tip">Знайти завеликі</button>
           <button type="button" id="x-size-run" class="btn small" data-i18n="export.size.run" data-i18n-tip="export.size.run.tip">Стиснути до 1 МБ</button>
           <span id="x-size-msg" class="small" role="status"></span>
@@ -1084,7 +1084,7 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:16px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.03);">
+    <div class="card u-card-green">
       <h2 class="release-hub-title" data-i18n="release.hub.title">Центр випуску</h2>
       <p class="muted small" data-i18n="release.hub.help"></p>
       <div class="actions u-row-wrap-12">
@@ -1092,9 +1092,9 @@
         <a id="rel-testnet-btn" class="btn" href="https://testnets.opensea.io/studio/create" target="_blank" rel="noopener noreferrer" data-i18n="release.hub.testnetBtn">🧪 Testnet Portal</a>
         <button type="button" id="rel-config-btn" class="btn" data-i18n="release.hub.configBtn">⬇ Download Deploy Config</button>
       </div>
-      <div id="rel-guide-box" class="card" style="margin-top:12px; background: var(--bg); border: 1px solid var(--border);">
-        <h3 style="font-size:13px; margin-bottom:6px" data-i18n="release.hub.guideTitle">Step-by-Step Release Checklist</h3>
-        <ol id="rel-tips-list" class="guide" style="margin:0; padding-left:18px"></ol>
+      <div id="rel-guide-box" class="card u-card-guide">
+        <h3 class="u-h-13" data-i18n="release.hub.guideTitle">Step-by-Step Release Checklist</h3>
+        <ol id="rel-tips-list" class="guide u-list-tight"></ol>
       </div>
     </div>
 
@@ -1134,7 +1134,7 @@
       <div id="d-commands" class="card small u-mt-10">
         <b data-i18n="deploy.commands.title">Готові команди для вашого ПК</b>
         <p class="muted u-my-4" data-i18n="deploy.commands.help"></p>
-        <pre id="d-commands-text" class="log small" style="white-space:pre-wrap; max-height:340px; overflow:auto"></pre>
+        <pre id="d-commands-text" class="log small u-pre-340"></pre>
         <div class="actions">
           <button type="button" id="d-commands-copy" class="btn small" data-i18n="deploy.commands.copy">Копіювати все</button>
           <span id="d-commands-msg" class="small muted" role="status"></span>
@@ -1181,7 +1181,7 @@
         </ul>
         <label class="row"><input type="radio" name="d-rehearsal" id="d-rehearsal-do" value="devnet" checked> <span data-i18n="deploy.rehearsal.do"></span></label>
         <label class="row"><input type="radio" name="d-rehearsal" id="d-rehearsal-no" value="skip"> <span data-i18n="deploy.rehearsal.no"></span></label>
-        <p class="muted" style="margin:4px 0 0" data-i18n="deploy.rehearsal.note"></p>
+        <p class="muted u-m-4-0-0" data-i18n="deploy.rehearsal.note"></p>
       </div>
       <div id="d-keys" class="card small u-mt-10">
         <b data-i18n="deploy.keys.title">Який ключ потрібен для випуску</b>
@@ -1200,7 +1200,7 @@
           <input type="checkbox" id="d-holder-on" checked>
           <span data-i18n="advisor.holder.include">Додати заяву для власників у набір</span>
         </label>
-        <div class="actions" style="gap:8px; flex-wrap:wrap; align-items:end">
+        <div class="actions u-actions-end">
           <label class="small"><span data-i18n="advisor.licence.label">Модель ліцензії на зображення</span>
             <select id="d-licence">
               <option value="statement" data-i18n="advisor.licence.statement">Коротка заява (за замовчуванням)</option>
@@ -1350,11 +1350,11 @@
         <div id="admin-errors-list" class="small"></div>
       </div>
       <div class="card u-mt-16">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px">
+        <div class="u-head-row">
           <h3 data-i18n="admin.engines.h3">⚡ Підключення рушіїв</h3>
           <button type="button" id="btn-test-engines" class="btn small primary" data-i18n="admin.engines.test">Перевірити всі підключення</button>
         </div>
-        <p class="muted small" style="margin:6px 0 12px 0" data-i18n="admin.engines.help"></p>
+        <p class="muted small u-m-6-0-12" data-i18n="admin.engines.help"></p>
         <div id="engines-status-table" class="small"></div>
       </div>
     </div>

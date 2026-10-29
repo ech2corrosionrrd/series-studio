@@ -104,6 +104,26 @@ describe("help, captions and sizes in a real browser", { skip: CHROME ? false : 
     assert.ok(heights.every((h) => h >= 44), `primary buttons: ${heights}`);
   });
 
+  it("on a touch screen the secondary buttons and tabs are 44 px too, a mouse keeps the dense layout", async () => {
+    const cookie = await studio.signIn();
+    const [name, ...rest] = cookie.split("=");
+    const touch = await browser.newContext({ locale: "uk-UA", viewport: { width: 420, height: 900 }, hasTouch: true, isMobile: true });
+    await touch.addCookies([{ name, value: rest.join("="), url: `http://127.0.0.1:${studio.port}` }]);
+    const tp = await touch.newPage();
+    try {
+      await tp.goto(`http://127.0.0.1:${studio.port}/studio/`);
+      await tp.waitForSelector("nav#tabs button");
+      assert.equal(await tp.evaluate(() => matchMedia("(pointer: coarse)").matches), true, "the emulated device is a touch screen");
+      const sizes = await tp.$$eval("button.btn:not(.primary), nav#tabs button", (els) => els.filter((e) => e.offsetParent !== null).map((e) => Math.round(e.getBoundingClientRect().height)));
+      assert.ok(sizes.length > 3, "there are secondary buttons and tabs to measure");
+      assert.ok(sizes.every((h) => h >= 44), `touch targets: ${sizes}`);
+    } finally {
+      await touch.close();
+    }
+    const mouse = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--control-min").trim());
+    assert.equal(mouse, "24px", "a mouse keeps the 24 px minimum");
+  });
+
   it("the Overview slider says when its value is not the product default", async () => {
     await tab("home");
     if (await page.isHidden("#o-strength")) await page.click("#o-defaults > summary"); // the strength sits under "Додатково"
