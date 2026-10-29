@@ -66,9 +66,26 @@ export function tList(prefix) {
   return out;
 }
 
-const esc = (key) => escapeHtml(t(key));
+/** The public support address (also on the Terms page). One place, so a change is one line. */
+export const SUPPORT_EMAIL = "w3ir@pm.me";
+
+/** Escapes a help text and turns `inline code` into <code>: the texts quote commands in backticks. */
+export const rich = (s) => escapeHtml(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+const esc = (key) => rich(t(key));
 const helpList = (prefix, tag = "ul") =>
-  `<${tag}>${tList(prefix).map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</${tag}>`;
+  `<${tag}>${tList(prefix).map((s) => `<li>${rich(s)}</li>`).join("")}</${tag}>`;
+
+/** Where to write and where the legal pages are. The legal paths are served by the Lab host (a redirect to the public site). */
+function supportSection() {
+  const mail = `<a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>`;
+  const en = getLocale() === "en" ? "/en" : "";
+  return `<div class="help-item"><p>${esc("help.support.desc").replace("{email}", mail)}</p></div>
+    <div class="help-item"><p>${esc("help.support.legalDesc")}</p>
+      <ul class="help-docs">
+        <li><a href="${en}/terms/" target="_blank" rel="noopener">${esc("help.support.terms")}</a></li>
+        <li><a href="${en}/privacy/" target="_blank" rel="noopener">${esc("help.support.privacy")}</a></li>
+      </ul></div>`;
+}
 
 function helpSections() {
   const isAdmin = Boolean(state.account?.admin);
@@ -77,6 +94,7 @@ function helpSections() {
     <details class="help-step help-item" ${i === 0 ? "open" : ""}>
       <summary><span class="help-step-n">${id === "s8" ? "⚙" : (i + 1)}</span>${escapeHtml(t(`help.${id}.title`).replace(/^(\d+\s*·|💰|⚙)\s*/u, ""))}</summary>
       <div class="help-step-body">
+        ${id === "s9" ? `<p class="help-note">${esc("help.s9.intro")}</p>` : ""}
         <p class="help-why"><b>${esc("help.label.why")}:</b> ${esc(`help.${id}.why`)}</p>
         <h4>${esc("help.label.do")}</h4>${helpList(`help.${id}.do`, "ol")}
         <p class="help-get"><b>${esc("help.label.get")}:</b> ${esc(`help.${id}.get`)}</p>
@@ -87,11 +105,11 @@ function helpSections() {
 
   const glossary = tList("help.gl").map((s) => {
     const [term, ...rest] = s.split(" — ");
-    return `<div class="help-item gl-row"><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(rest.join(" — "))}</dd></div>`;
+    return `<div class="help-item gl-row"><dt>${rich(term)}</dt><dd>${rich(rest.join(" — "))}</dd></div>`;
   }).join("");
 
   const faq = tList("help.faq.q").map((q, i) => `
-    <details class="help-item faq-item"><summary>${escapeHtml(q)}</summary><p>${esc(`help.faq.a${i + 1}`)}</p></details>`).join("");
+    <details class="help-item faq-item"><summary>${rich(q)}</summary><p>${esc(`help.faq.a${i + 1}`)}</p></details>`).join("");
 
   const cli = HELP_CLI.map(([k, cmd]) =>
     `<div class="help-item cli-row"><code>node bin/series.mjs ${escapeHtml(cmd)}</code><span>${esc(`help.cli.${k}`)}</span></div>`).join("");
@@ -118,6 +136,7 @@ function helpSections() {
       <p class="help-note">${esc("help.localgpu.note")}</p>`],
     ["glossary", `<p>${esc("help.glossary.desc")}</p><dl class="help-gl">${glossary}</dl>`],
     ["faq", `<p>${esc("help.faq.desc")}</p>${faq}`],
+    ["support", supportSection()],
   ];
   sections.push(["docs", `<div class="help-item"><p>${esc("help.docs.desc")}</p><ul class="help-docs">${docs}</ul></div>`]);
   if (isAdmin) {

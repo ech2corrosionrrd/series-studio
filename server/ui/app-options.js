@@ -4,6 +4,7 @@
  * every import is a function or a binding that is only used after all modules have loaded.
  */
 import { t } from "./i18n.js";
+import { ID_PATTERN, slugifyId } from "./slug.js";
 import { paintStrengthNote, refreshAccount } from "./app-account.js";
 import { $, api, reloadStudio, rememberRev, renderProjects, saveRevField, showTab, state, tipAttr } from "./app.js";
 import { scheduleWorkspaceSave } from "./app-export.js";
@@ -759,15 +760,6 @@ function readStyleLock() {
   return { angle, light, mood, framing, extraKeep };
 }
 
-function slugifyId(name) {
-  return String(name || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 64);
-}
-
 /**
  * The product default of the reference strength; the same number as DEFAULT_STRENGTH in src/reference.mjs (a test pins them).
  * A saved or chosen preset brings its own value, so the Overview slider can honestly show 0.35; the note says that is the preset's choice.
@@ -835,6 +827,20 @@ export function setupOverview() {
     renderFacts();
     renderCtorSummary();
     renderSteps();
+  });
+  // An id typed with Cyrillic or spaces is turned into a valid one when the field is left, and the author is told what happened.
+  $("o-id").addEventListener("change", () => {
+    const el = $("o-id");
+    const raw = el.value.trim();
+    if (!raw || ID_PATTERN.test(raw)) return;
+    const fixed = slugifyId(raw);
+    el.value = fixed;
+    syncCtorFromOverview();
+    renderFacts();
+    renderCtorSummary();
+    renderSteps();
+    const msg = $("o-msg");
+    if (msg) msg.textContent = fixed ? t("home.id.fixed", { from: raw, to: fixed }) : t("home.id.unusable", { from: raw });
   });
   $("o-seed").addEventListener("input", () => {
     $("o-seed").dataset.touched = "1";
