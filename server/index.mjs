@@ -802,7 +802,7 @@ function listArchives() {
 function loadArchiveFile(file) {
   const base = safeJsonName(file);
   const path = join(P().out, base);
-  if (!existsSync(path)) throw new Error(`archive not found: ${base}`);
+  if (!existsSync(path)) throw httpError(404, `archive not found: ${base}`, { code: "archive_not_found" });
   return { path, file: base, archive: JSON.parse(readFileSync(path, "utf8")) };
 }
 
