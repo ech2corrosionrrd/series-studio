@@ -2,13 +2,13 @@
 
 > **English Overview (for Solana reviewers & international developers):**
 > **Series Lab** (`series-lab`, v1.23.1, MIT) is a non-custodial local studio and CLI for creating, quality-checking, and launching generative NFT collections (**Lab → Studio → Release**). Live web app: [lab.w3ir.io](https://lab.w3ir.io) · Documentation site (EN/UA): [studio.w3ir.io](https://studio.w3ir.io).
-> - **Verify tests locally:** `npm install && npm test` (**699 automated tests** across 113 suites) · `npm run docs:check`.
+> - **Verify tests locally:** `npm install && npm test` (**837 automated tests** in 133 test files, including browser end-to-end runs in real Chrome) · `npm run docs:check`.
 > - **Solana & Metaplex Core modules** (foundation for the standalone `solana-launch-kit` package): [`src/core-flow.mjs`](src/core-flow.mjs) (Metaplex Core Candy Machine pipeline: `release-init`, `upload`, `guards`, `mint`, `reveal`, `verify`), [`src/arweave-upload.mjs`](src/arweave-upload.mjs) (permanent Arweave storage via Irys), [`src/deploy-kit.mjs`](src/deploy-kit.mjs) & [`src/release-config.mjs`](src/release-config.mjs) (`cm-config.json` generation, devnet-first defaults, royalty configuration), [`src/candy-verify.mjs`](src/candy-verify.mjs) (read-only on-chain check of a deployed Candy Machine v3 / Core Candy Machine and its Candy Guard), [`src/allowlist.mjs`](src/allowlist.mjs) (Merkle allowlist for the Core Candy Guard `allowList` guard), [`src/marketplace-kit.mjs`](src/marketplace-kit.mjs) (Tensor / Magic Eden / OpenSea listing checklists, copy and banner/avatar sizes), [`src/compress.mjs`](src/compress.mjs) (optional, shrinks frames to Metaplex's recommended ≤ 1 MB), and [`src/imageqa.mjs`](src/imageqa.mjs) / [`src/checklist.mjs`](src/checklist.mjs) (automated collection QC).
 > - **Non-custodial by design:** Private keys and seed phrases are never requested or stored by the server; all on-chain actions use local CLI keypairs or client-side Wallet Standard signing.
 
 **Series Lab** від [W3IR](https://w3ir.io) — майстерня для генеративних NFT-серій і LoRA-датасетів: **Lab → Studio → Release**.
 
-- **Версія**: `1.12.0` — шапка студії (кнопки 44 px, компактна до 320 px), вкладки `8 · Деплой` і `9 · Маркет` (у студії та на `studio.w3ir.io`), пастка фокуса в модальних вікнах (`focus-trap.js`), поради щодо узгодженості серії та критичних рис шаром PNG, нагадування про застарілі баланси провайдерів, винесення маршрутів у `server/routes/`; з 1.11.0: проєкти (власні активи, кошик проєктів, перенесення наборів, воронка), видалення кадру у Відборі без кошика (другий клік), сторінка `/legal` без сторонніх шрифтів і CDN; з 1.10.0: позначка «створено ШІ» й підпис C2PA, CSP і заголовки безпеки, власні бібліотеки замість CDN, гібридні шари «ШІ + ручні», вкладка адмінки «Система»; з 1.9.0: пакет перевірки й панелі якості, провенанс, стиснення; з 1.8.0: публічний хост lab.w3ir.io (вхід гаманцем, оплата USDC, бекапи); з 1.7.0: Arweave (Irys), шлях випуску `upload → guards → verify`, підказки за вибором; з 1.6.1: зведення запитів #1–#9: перевірений архів, Core Candy Machine, маркет без Magic Eden для EVM і Ordinals, порадник запуску ([CHANGELOG](CHANGELOG.md) · [бачення](docs/PRODUCT.md))
+- **Версія**: `1.23.1` — з 1.20.0: підгонка шару PNG під обличчя на кадрі моделі (`layerAlign`), зсув шару на кадр, походження набору з шарами у Відборі, перевірка «архів збігається з пресетом» перед платною генерацією, чекліст «риси видно на кадрах» із підтвердженням автора, довідка по одному розділу, розбиття `server/index.mjs` і `server/ui/app.js` на модулі; з 1.12.0: проєкти (власні активи, кошик, перенесення наборів), позначка «створено ШІ» й підпис C2PA, CSP і власні бібліотеки замість CDN, гібридні шари «ШІ + ручні», вкладки `8 · Деплой` і `9 · Маркет`, Arweave (Irys) і шлях випуску `upload → guards → verify`, публічний хост lab.w3ir.io (вхід гаманцем, оплата USDC, бекапи) ([CHANGELOG](CHANGELOG.md) · [бачення](docs/PRODUCT.md))
 - **Папка на диску**: `series-studio` · npm-пакет `series-lab` · ліцензія MIT
 - **Розміщення розробки**: `127.0.0.1`. Ключі API не потрапляють у браузер; приватні ключі гаманців і сид-фрази майстерня не запитує й не зберігає.
 
@@ -167,7 +167,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 | `data/` | Леджер, дані гаманців і (у public) `render-log.jsonl` (gitignored) |
 | `workspace/` | Автозбереження UI |
 | `src/` | Ядро + `platform/` (вхід, кредити) |
-| `server/` | HTTP, `/login`, Studio UI, guard, `routes/` (`admin.mjs`, `kits.mjs`) |
+| `server/` | HTTP, `/login`, guard; `routes/` (`admin`, `kits`, `review`, `export`, `generate`, `base`, `projects`); Studio UI: `ui/app.js` (стан, `boot()`) і модулі вкладок `ui/app-*.js` |
 | `deploy/series-lab/` | Staging / бекап (за командою хостингу) |
 | `.github/workflows/` | `health.yml`, `deploy-site.yml` (тестів у GitHub немає: `npm run ci`) |
 | `bin/series.mjs` | CLI |
