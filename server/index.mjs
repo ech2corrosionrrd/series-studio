@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync
 import { dirname, extname, isAbsolute, join, relative, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensurePng, imageFormat } from "../src/png-normalize.mjs";
-import { buildRecipes, appendSupplyWave, describeSupply, dna, duplicates, loadTraitsFromPreset, validatePreset, validatePresetSemantics, validateArchive, lintPrompt, lintPrompts, computeRarity, collectConflicts, checkImageFile, runChecklist, filterRedoEditions, checkStorageStatus, uploadToIrys, sendTelegramNotification, sendTelegramTest, getTelegramConfig, formatEnginePrompt } from "../src/index.mjs";
+import { buildRecipes, appendSupplyWave, describeSupply, dna, duplicates, loadTraitsFromPreset, validatePreset, validatePresetSemantics, validateArchive, lintPrompt, lintPrompts, computeRarity, collectConflicts, checkImageFile, runChecklist, filterRedoEditions, sendTelegramNotification, sendTelegramTest, getTelegramConfig, formatEnginePrompt } from "../src/index.mjs";
 import { quoteStage } from "../src/platform/stage-pricing.mjs";
 import { archiveSync } from "../src/archive-sync.mjs";
 import { readSetLineage } from "../src/set-lineage.mjs";
@@ -91,6 +91,7 @@ import { handleBaseRoutes } from "./routes/base.mjs";
 import { handleGenerateRoutes } from "./routes/generate.mjs";
 import { handleExportRoutes } from "./routes/export.mjs";
 import { handleReviewRoutes } from "./routes/review.mjs";
+import { handleStorageRoutes } from "./routes/storage.mjs";
 import { handlePlatformRoutes } from "./routes/platform.mjs";
 import { handleCreditRoutes } from "./routes/credits.mjs";
 import { handleVersionTrashRoutes } from "./routes/versions-trash.mjs";
@@ -1574,34 +1575,12 @@ async function handleApi(req, res, url) {
     return send(res, 200, { ok: true, file: loaded.file, size: preset.size, waves: describeSupply(preset), preset });
   }
 
-  if (pathname === "/api/storage/status" && req.method === "GET") {
-    loadKeys();
-    return send(res, 200, checkStorageStatus(process.env));
-  }
-
-  if (pathname === "/api/storage/pin" && req.method === "POST") {
-    loadKeys();
-    const body = await readBody(req);
-    const dir = safeSetName(body.dir || body.set);
-    if (!dir) return send(res, 400, { error: "dir required" });
-    const setDir = join(P().out, dir);
-    if (!existsSync(setDir) || !statSync(setDir).isDirectory()) {
-      return send(res, 400, { error: `set not found: ${dir}` });
-    }
-    const name = body.name || `series-${dir}`;
-    const paid = chargeStage("archive", { storage: true, zip: false });
-    let result;
-    try {
-      result = await uploadToIrys({
-        dir: setDir,
-      });
-    } catch (e) {
-      refundStage(paid);
-      throw e;
-    }
-    if (result && result.ok === false) refundStage(paid);
-    return send(res, 200, { ...result, quote: paid.quote, chargedCredits: paid.charge?.amount || 0 });
-  }
+  // storage routes live in server/routes/storage.mjs.
+  if (
+    await handleStorageRoutes({
+      req, res, url, pathname, P, chargeStage, refundStage, safeSetName,
+    })
+  ) return;
 
   // Release kits: launchpad profiles, portals and config, launch advisor, deploy kit and marketplace kit.
   if (
