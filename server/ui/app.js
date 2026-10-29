@@ -2519,6 +2519,15 @@ function paintLicenseWarning() {
   if (box) box.hidden = !licenseApplies();
 }
 
+/** Per-frame offset of the layers: shown for the frame in the preview, editable only when painting over a set (it is kept with the set). */
+function paintFrameOffset(offset, overSet) {
+  if ($("g-frame-off-x")) $("g-frame-off-x").value = offset?.x ? String(offset.x) : "";
+  if ($("g-frame-off-y")) $("g-frame-off-y").value = offset?.y ? String(offset.y) : "";
+  if ($("g-frame-off-save")) $("g-frame-off-save").disabled = !overSet;
+  const wrap = $("g-frame-offset-wrap");
+  if (wrap) wrap.hidden = !overSet;
+}
+
 /* ---------- Render / Generate ---------- */
 let renderAbort = null;
 
@@ -2887,6 +2896,22 @@ function setupRender() {
       setBusy(btn, false);
     }
   });
+  $("g-frame-off-save")?.addEventListener("click", async () => {
+    const msg = $("g-frame-off-msg");
+    const set = $("g-compose-over")?.value || "";
+    const edition = Number($("g-compose-preview-n")?.value);
+    try {
+      if (!set || !Number.isInteger(edition) || edition < 1) throw new Error(t("render.layers.previewBad"));
+      if (msg) msg.textContent = t("ui.working");
+      const x = Math.round(Number($("g-frame-off-x")?.value) || 0);
+      const y = Math.round(Number($("g-frame-off-y")?.value) || 0);
+      await api("/api/layers/frame-offset", { method: "POST", body: JSON.stringify({ set, edition, x, y }) });
+      if (msg) msg.textContent = t("render.layers.frameOffsetSaved", { n: String(edition) });
+      $("g-compose-preview")?.click();
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
   $("g-compose-preview")?.addEventListener("click", async () => {
     const msg = $("g-compose-preview-msg");
     const img = $("g-compose-preview-img");
@@ -2908,6 +2933,7 @@ function setupRender() {
         img.alt = t("render.layers.previewAlt", { n: data.edition });
         img.hidden = false;
       }
+      paintFrameOffset(data.over ? data.frameOffset : null, Boolean(data.over));
       if (msg) {
         msg.textContent = t("render.layers.previewOk", { n: data.edition, painted: data.layers.length, left: data.skipped.length });
         if (data.align?.skipped) msg.textContent += ` ${t("render.layers.alignSkipped", { reason: t(`render.layers.alignWhy.${data.align.skipped}`) })}`;
@@ -3246,6 +3272,8 @@ async function loadGalleryDir(dir) {
     state.galleryImages = data.images || [];
     state.galleryMarks = data.marks || {};
     state.galleryShelved = data.shelved || [];
+    state.galleryLineage = data.lineage || null;
+    paintLineage();
     await loadGalleryDir2($("v-dir2")?.value || state.galleryDir2);
     renderGallery();
   } catch (e) {
@@ -3255,6 +3283,22 @@ async function loadGalleryDir(dir) {
     }
     if (grid) grid.innerHTML = "";
   }
+}
+
+/** Where the open set came from: painted over another set, or a layers version of it exists (read from dna.json by the server). */
+function paintLineage() {
+  const el = $("v-lineage");
+  if (!el) return;
+  const lin = state.galleryLineage;
+  const parts = [];
+  if (lin?.derivedFrom) {
+    parts.push(t("gallery.lineage.from", { set: lin.derivedFrom.set, painted: fmtNum(lin.derivedFrom.painted), count: fmtNum(lin.derivedFrom.count) }));
+  }
+  if (lin?.derived?.length) {
+    parts.push(t("gallery.lineage.to", { sets: lin.derived.map((d) => d.set).join(", ") }));
+  }
+  el.textContent = parts.join(" ");
+  el.hidden = parts.length === 0;
 }
 
 function sideHtml(img, dirLabel) {

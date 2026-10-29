@@ -291,6 +291,46 @@ describe("layers and the hybrid path in a real browser", { skip: CHROME ? false 
     assert.deepEqual([1, 2, 3, 4].map((n) => sha(join(ctx.setDir, `${n}.png`))), before, "the source set is untouched");
   });
 
+  it("Review says which set the layers version came from, and the original says which versions exist", async () => {
+    await tab("gallery");
+    await waitFor(async () => (await page.$$eval("#v-dir option", (os) => os.map((o) => o.value))).includes(`${ctx.set}-layers`), { what: "the layers set in the selector" });
+    await page.selectOption("#v-dir", `${ctx.set}-layers`);
+    await waitFor(async () => /змінено|changed/i.test(await text("#v-lineage")), { what: "the origin line of the layers set" });
+    const from = await text("#v-lineage");
+    assert.ok(from.includes(ctx.set), `names the source set: ${from}`);
+    assert.match(from, new RegExp(`${ctx.withLayer.length}`), "says how many frames were changed");
+    await page.selectOption("#v-dir", ctx.set);
+    await waitFor(async () => (await text("#v-lineage")).includes(`${ctx.set}-layers`), { what: "the versions line on the source set" });
+  });
+
+  it("a frame can have its own layer offset, saved with the set, applied in the preview and cleared again", async () => {
+    const edition = ctx.withLayer[0];
+    const base = await preview(edition);
+    assert.ok(base.box?.found, base.msg);
+    assert.equal(await page.isEnabled("#g-frame-off-save"), true, "painting over a set: the offset can be saved");
+    await page.fill("#g-frame-off-x", "6");
+    await page.fill("#g-frame-off-y", "4");
+    await page.click("#g-frame-off-save");
+    await waitFor(async () => /\S/.test(await text("#g-frame-off-msg")) && !/Зачекайте|please wait|working/i.test(await text("#g-frame-off-msg")), { what: "the saved message" });
+    const stored = JSON.parse(readFileSync(join(ctx.setDir, "layer-offsets.json"), "utf8"));
+    assert.deepEqual(stored[String(edition)], { x: 6, y: 4 }, "kept with the set, not with the preset");
+    const moved = await preview(edition);
+    assert.ok(Math.abs(moved.box.cx - base.box.cx - 6) <= 1 && Math.abs(moved.box.cy - base.box.cy - 4) <= 1, `the layer moved by (6, 4): ${JSON.stringify(base.box)} -> ${JSON.stringify(moved.box)}`);
+    assert.equal(await page.inputValue("#g-frame-off-x"), "6", "the preview shows the offset it applied");
+    const other = ctx.withLayer[1];
+    if (other) {
+      const untouched = await preview(other);
+      assert.ok(Math.abs(untouched.box.cx - base.box.cx) <= 1 && Math.abs(untouched.box.cy - base.box.cy) <= 1, "another frame is not moved");
+    }
+    await preview(edition);
+    await page.fill("#g-frame-off-x", "0");
+    await page.fill("#g-frame-off-y", "0");
+    await page.click("#g-frame-off-save");
+    await waitFor(async () => !("" + readFileSync(join(ctx.setDir, "layer-offsets.json"), "utf8")).includes(`"${edition}"`), { what: "the offset cleared" });
+    const back = await preview(edition);
+    assert.ok(Math.abs(back.box.cx - base.box.cx) <= 1 && Math.abs(back.box.cy - base.box.cy) <= 1, "0/0 puts the layer back");
+  });
+
   it("painting over the base needs a layer for every trait: the preview says so instead of drawing half a frame", async () => {
     await tab("render");
     await page.selectOption("#g-compose-over", "");
