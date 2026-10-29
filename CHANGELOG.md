@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Внутрішнє: маршрути акаунта, здоров'я, публікації та цін етапів винесено з `server/index.mjs`
+- `/api/account/delete-data`, `/api/me`, `/api/local-gpu`, `/api/publish`, `/api/health`, `/api/stages/quotes` і `/api/stages/quote` тепер у `server/routes/platform.mjs` (`handlePlatformRoutes`). Без змін поведінки: ті самі маршрути, перевірки й відповіді. `server/index.mjs` скоротився з 2189 до 2029 рядків.
+
 ### Внутрішнє: маршрути кредитів винесено з `server/index.mjs`
 - `/api/credits/history`, `/api/credits/sol/order`, `/api/credits/sol/prepare`, `/api/credits/sol/check`, `/api/holder` і `/api/holder/claim` тепер у `server/routes/credits.mjs` (`handleCreditRoutes`). Без змін поведінки: ті самі маршрути, перевірки `PUBLIC_MODE`, ліміти запитів і відповіді; оплата й ключі не змінювались. `server/index.mjs` скоротився з 2241 до 2189 рядків.
 
