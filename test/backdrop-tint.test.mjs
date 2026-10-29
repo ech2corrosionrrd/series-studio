@@ -1,6 +1,7 @@
 // tintBackdrop re-colours a smooth studio backdrop found from the frame border and never guesses: a textured, bright
 // or whole-frame "backdrop" leaves the frame alone and says why. An option with `backdrop` does it inside composeEdition.
 import { describe, it } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { composeEdition } from "../src/layers.mjs";
@@ -101,7 +102,7 @@ describe("CSV and the editor carry backdrop", () => {
   });
 
   it("editing weight or prompt keeps the option fields the editor does not own", () => {
-    const app = readFileSync(new URL("../server/ui/app.js", import.meta.url), "utf8");
+    const app = readUiSource();
     assert.match(app, /function optionExtras\(raw\)/);
     assert.equal((app.match(/\.\.\.optionExtras\(trait\.options\[idx\]\), \.\.\.normalizeOptionClient/g) || []).length, 3, "weight, prompt and updateOptionField");
   });

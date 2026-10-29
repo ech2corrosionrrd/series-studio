@@ -1,6 +1,7 @@
 // layerOffset moves a trait's PNG layer in frame pixels, so a layer drawn on the base can be put back onto a face
 // the model redrew a little higher or lower. No offset = the old bytes.
 import { describe, it } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { composeEdition, shiftRgba, traitLayerOffset } from "../src/layers.mjs";
@@ -86,7 +87,7 @@ describe("composeEdition with layerOffset", () => {
 });
 
 describe("the editor wiring", () => {
-  const app = readFileSync(new URL("../server/ui/app.js", import.meta.url), "utf8");
+  const app = readUiSource();
   it("both offset fields are read into and written from trait.layerOffset, and cleared at 0/0", () => {
     assert.match(app, /trait\.layerOffset\?\.\[axis\]/);
     assert.match(app, /else trait\.layerOffset = next;/);

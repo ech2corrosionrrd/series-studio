@@ -1,10 +1,11 @@
 // The workspace save is debounced (400 ms): closing the tab inside that window must still send it.
 // Source-level contract (the browser path cannot be driven deterministically: saving a project restarts the studio).
 import { test } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const src = readFileSync(new URL("../server/ui/app.js", import.meta.url), "utf8");
+const src = readUiSource();
 
 test("a pending workspace save is flushed with keepalive when the tab is hidden or closed", () => {
   assert.match(src, /window\.addEventListener\("pagehide", flushWorkspace\)/);

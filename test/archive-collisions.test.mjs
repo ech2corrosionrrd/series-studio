@@ -1,6 +1,7 @@
 // The same character in two different collections. diffArchives compares one series with its own rebuild by
 // edition number; collideArchives ignores numbers and lines and looks at the trait values.
 import { describe, it } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { collideArchives } from "../src/recipes.mjs";
@@ -45,7 +46,7 @@ describe("collideArchives", () => {
 
 describe("wiring", () => {
   const server = readFileSync(new URL("../server/index.mjs", import.meta.url), "utf8");
-  const ui = readFileSync(new URL("../server/ui/app.js", import.meta.url), "utf8");
+  const ui = readUiSource();
   it("the route refuses the same archive twice and the button reuses the diff selects", () => {
     assert.match(server, /pathname === "\/api\/archive\/collisions"/);
     assert.match(server, /left\.file === right\.file\) return send\(res, 400/);

@@ -1,11 +1,12 @@
 // QUALITY-REVIEW item 12: the Overview slider note compares the preset's strength with the product default. The browser keeps its own copy of
 // that number (it cannot import src/), so this pins it to the one the server and the engines use.
 import { describe, it } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DEFAULT_STRENGTH } from "../src/reference.mjs";
 
-const app = readFileSync(new URL("../server/ui/app.js", import.meta.url), "utf8");
+const app = readUiSource();
 const html = readFileSync(new URL("../server/ui/index.html", import.meta.url), "utf8");
 
 describe("reference strength default", () => {

@@ -5,6 +5,7 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { readUiSource } from "./ui-source.mjs";
 import uk from "../server/ui/locales/uk.js";
 import en from "../server/ui/locales/en.js";
 import tips from "../server/ui/locales/tips.mjs";
@@ -163,7 +164,7 @@ for (const k of loginEnKeys) if (!loginUkKeys.has(k)) fail(`login uk missing ${k
 requireDict("server/site/login.html", stripBlocks(login), loginUkKeys, "I18N.uk");
 requireDict("server/site/login.html", stripBlocks(login), loginEnKeys, "I18N.en");
 
-const app = readFileSync("server/ui/app.js", "utf8");
+const app = readUiSource();
 for (const m of app.matchAll(/\bt\(\s*"([^"]+)"/g)) {
   if (!ukKeys.has(m[1])) fail(`app.js t() missing key ${m[1]}`);
 }

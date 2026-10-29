@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
@@ -100,7 +101,7 @@ test("local studio docs are the creator pages, in both languages, without the pu
   assert.equal(studioDocsResponse("/studio/docs/en/roadmap/").status, 404);
   assert.equal(studioDocsResponse("/api/health"), null);
 
-  const app = readFileSync(join(root, "server/ui/app.js"), "utf8");
+  const app = readUiSource();
   assert.match(app, /\/studio\/docs\/\$\{getLocale\(\) === "en" \? "en\/" : ""\}/);
   for (const slug of SLUGS) assert.match(app, new RegExp(`"${slug}"`));
   assert.doesNotMatch(app, /docs\/API\.md|docs\/ROADMAP\.md|docs\/GUIDE\.md|docs\/STAGES\.md|README\.md/);

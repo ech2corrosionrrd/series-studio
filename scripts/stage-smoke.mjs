@@ -406,8 +406,8 @@ async function main() {
     await signIn(user);
     const studio = await call("GET", "/studio/", { raw: true });
     ok("10", "GET /studio/", studio.status === 200 || studio.status === 302, `${studio.status}`);
-    const app = await call("GET", "/studio/app.js", { raw: true });
-    ok("10", "GET /studio/app.js", app.status === 200 && app.text.includes("helpSections"), `bytes=${app.text.length}`);
+    const app = await call("GET", "/studio/app-help.js", { raw: true });
+    ok("10", "GET /studio/app-help.js", app.status === 200 && app.text.includes("helpSections"), `bytes=${app.text.length}`);
     const login = await call("GET", "/login", { raw: true });
     ok("10", "GET /login", login.status === 200);
   }

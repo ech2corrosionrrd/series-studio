@@ -2,10 +2,11 @@
 // draw it, so the frames would come out without it and still be charged. Same pattern as the FLUX [dev] licence warning.
 // Source-level contract: the page itself cannot be driven without a paid engine.
 import { test } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const app = readFileSync(new URL("../server/ui/app.js", import.meta.url), "utf8");
+const app = readUiSource();
 const html = readFileSync(new URL("../server/ui/index.html", import.meta.url), "utf8");
 const loc = (lang) => readFileSync(new URL(`../server/ui/locales/${lang}.js`, import.meta.url), "utf8");
 

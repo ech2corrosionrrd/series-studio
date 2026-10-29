@@ -1,6 +1,7 @@
 // A critical trait (trait.layerOnly) is painted from a PNG layer: it stays out of the model prompt,
 // DNA and rarity are untouched, and the layers status names the layer files that are still missing.
 import { describe, it } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -77,7 +78,7 @@ describe("layersStatus and critical traits", () => {
 });
 
 describe("the editor wiring", () => {
-  const app = readFileSync(join(ROOT, "server", "ui", "app.js"), "utf8");
+  const app = readUiSource();
   it("the checkbox reads and writes trait.layerOnly, and removes the field when off", () => {
     assert.match(app, /layerOnly\.checked = trait\.layerOnly === true/);
     assert.match(app, /trait\.layerOnly = true;\r?\n\s*else delete trait\.layerOnly;/);
