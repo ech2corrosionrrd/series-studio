@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
+import { readUiSource } from "./ui-source.mjs";
 
-const app = readFileSync("./server/ui/app.js", "utf8");
+const app = readUiSource();
 const server = [readFileSync("./server/index.mjs", "utf8"), ...readdirSync("./server/routes").filter((f) => f.endsWith(".mjs")).map((f) => readFileSync(`./server/routes/${f}`, "utf8"))].join("\n");
 
 // Extract POST bodies near known endpoints in UI and compare required fields in server

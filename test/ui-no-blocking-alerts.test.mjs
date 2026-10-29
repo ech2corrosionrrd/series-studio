@@ -2,10 +2,11 @@
 // Errors must reach the author as a non-blocking toast, and an impossible preset must be a 4xx, not a 500.
 // Source-level contract: the alert path itself cannot be driven without a real dialog.
 import { test } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const ui = readFileSync(new URL("../server/ui/app.js", import.meta.url), "utf8");
+const ui = readUiSource();
 const server = readFileSync(new URL("../server/index.mjs", import.meta.url), "utf8");
 
 test("no error is shown through a blocking alert()", () => {

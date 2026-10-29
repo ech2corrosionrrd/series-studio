@@ -1,9 +1,10 @@
 // Source-level guards for the studio's generation tab (no browser): these were real defects found in a live run.
 import { test } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const app = readFileSync("server/ui/app.js", "utf8");
+const app = readUiSource();
 
 test("the estimate request carries the regenerate switch, so it matches what Generate charges", () => {
   const est = app.slice(app.indexOf('$("g-estimate")?.addEventListener'), app.indexOf('$("g-stop")?.addEventListener'));

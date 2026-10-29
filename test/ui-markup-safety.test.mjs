@@ -2,10 +2,11 @@
 // markup that ever lands in a translation (or a value a translation is filled with) cannot run in the studio.
 // The restore path must not write to the console on success. Source-level contract.
 import { test } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const src = readFileSync(new URL("../server/ui/app.js", import.meta.url), "utf8");
+const src = readUiSource();
 
 test("no innerHTML line interpolates a bare t(...) call", () => {
   const bad = src

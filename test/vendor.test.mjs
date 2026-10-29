@@ -1,4 +1,5 @@
 import test from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -47,7 +48,7 @@ test("the bundled Transaction decodes what the real web3.js serializes", async (
 });
 
 test("no page loads code from a third-party CDN any more", () => {
-  const app = readFileSync("server/ui/app.js", "utf8");
+  const app = readUiSource();
   assert.doesNotMatch(app, /esm\.sh/);
   assert.match(app, /\.\/vendor\/solana-tx\.js/);
   for (const f of readdirSync("server/ui/vendor")) assert.doesNotMatch(readFileSync(`server/ui/vendor/${f}`, "utf8"), /https?:\/\/esm\.sh/);

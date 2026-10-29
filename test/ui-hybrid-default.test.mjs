@@ -2,10 +2,11 @@
 // Source-level contract: the select picks the newest set by itself, a manual pick is never overridden,
 // and a finished generation points the author at the layers card.
 import { test } from "node:test";
+import { readUiSource } from "../scripts/ui-source.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const src = readFileSync(new URL("../server/ui/app.js", import.meta.url), "utf8");
+const src = readUiSource();
 const loc = (lang) => readFileSync(new URL(`../server/ui/locales/${lang}.js`, import.meta.url), "utf8");
 
 test("with layers uploaded the overlay select defaults to the newest set unless the author picked one", () => {

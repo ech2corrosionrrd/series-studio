@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { readUiSource } from "./ui-source.mjs";
 
 const html = readFileSync("./server/ui/index.html", "utf8");
-const app = readFileSync("./server/ui/app.js", "utf8");
+const app = readUiSource();
 const idx = readFileSync("./server/index.mjs", "utf8");
 
 const htmlIds = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map((m) => m[1]);

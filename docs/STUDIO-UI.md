@@ -5,7 +5,7 @@
 - **URL**: http://127.0.0.1:5344/studio/ (також `/`; у public без сесії — `/login`). На хості адреса інша; ім'я задає `SERIES_ALLOWED_HOSTS` ([HOSTING.md](./HOSTING.md)). studio.w3ir.io — статичний сайт, не ця сторінка
 - **Адреса сервера**: типово `127.0.0.1:5344` (`HOST` / `PORT`)
 - **Ключі**: `.env` / `SERIES_KEYS_FILE` — у браузер лише «є / немає». Поля приватного ключа немає; `series mint` і `series reveal` лишаються CLI з локальним keypair
-- **Файли**: `server/ui/index.html`, `app.js`, `style.css`, `i18n.js`, `locales/uk.js`, `locales/en.js`, `locales/tips.mjs`
+- **Файли**: `server/ui/index.html`, `app.js` (стан, помічники, `boot()`) і модулі вкладок `app-*.js` (admin, overview, packs, options, base, recipes, generate, gallery, help, account, versions, export, resources), `style.css`, `i18n.js`, `locales/uk.js`, `locales/en.js`, `locales/tips.mjs`
 - **Вхід**: лише гаманець (MetaMask / Coinbase / Phantom)
 
 ---
