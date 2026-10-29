@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Внутрішнє: маршрути кредитів винесено з `server/index.mjs`
+- `/api/credits/history`, `/api/credits/sol/order`, `/api/credits/sol/prepare`, `/api/credits/sol/check`, `/api/holder` і `/api/holder/claim` тепер у `server/routes/credits.mjs` (`handleCreditRoutes`). Без змін поведінки: ті самі маршрути, перевірки `PUBLIC_MODE`, ліміти запитів і відповіді; оплата й ключі не змінювались. `server/index.mjs` скоротився з 2241 до 2189 рядків.
+
 ### Внутрішнє: маршрути версій кадрів і кошика винесено з `server/index.mjs`
 - `/api/versions/current`, `/api/versions/drop` і `/api/trash*` тепер у `server/routes/versions-trash.mjs` (`handleVersionTrashRoutes`). Без змін поведінки: ті самі маршрути й відповіді; `server/index.mjs` скоротився з 2271 до 2241 рядка.
 
