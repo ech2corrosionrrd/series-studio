@@ -18,11 +18,9 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync
 import { dirname, extname, isAbsolute, join, relative, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ensurePng, imageFormat } from "../src/png-normalize.mjs";
-import { buildRecipes, appendSupplyWave, describeSupply, dna, duplicates, loadTraitsFromPreset, validatePreset, validatePresetSemantics, validateArchive, lintPrompt, lintPrompts, computeRarity, collectConflicts, checkImageFile, runChecklist, filterRedoEditions, sendTelegramNotification, sendTelegramTest, getTelegramConfig, formatEnginePrompt } from "../src/index.mjs";
+import { buildRecipes, dna, duplicates, loadTraitsFromPreset, validatePreset, validatePresetSemantics, validateArchive, lintPrompt, lintPrompts, computeRarity, collectConflicts, checkImageFile, filterRedoEditions, getTelegramConfig } from "../src/index.mjs";
 import { quoteStage } from "../src/platform/stage-pricing.mjs";
-import { archiveSync } from "../src/archive-sync.mjs";
 import { readSetLineage } from "../src/set-lineage.mjs";
-import { readTriageDoc, readVisibilityAck } from "../src/trait-visibility.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
 import { ENGINES, engineCtx, getEngine, getTxt2Img, planPrimaryGenerate, primaryGenerateArgs, withRetry } from "../src/engines.mjs";
 import { imagesDirName } from "../src/reference.mjs";
@@ -83,7 +81,6 @@ const ALLOWED_HOSTS = allowedHostnames(HOST, process.env.SERIES_ALLOWED_HOSTS);
 if (EXTRA_KEYS.length) console.log(`Also merged: ${EXTRA_KEYS.join(", ")}`);
 
 
-import { testEngineConnection } from "../src/connectors.mjs";
 import { handleAdminRoutes } from "./routes/admin.mjs";
 import { handleKitRoutes } from "./routes/kits.mjs";
 import { handleProjectRoutes } from "./routes/projects.mjs";
@@ -91,6 +88,8 @@ import { handleBaseRoutes } from "./routes/base.mjs";
 import { handleGenerateRoutes } from "./routes/generate.mjs";
 import { handleExportRoutes } from "./routes/export.mjs";
 import { handleReviewRoutes } from "./routes/review.mjs";
+import { handleToolRoutes } from "./routes/tools.mjs";
+import { handleArchiveRoutes } from "./routes/archives.mjs";
 import { handleStorageRoutes } from "./routes/storage.mjs";
 import { handlePlatformRoutes } from "./routes/platform.mjs";
 import { handleCreditRoutes } from "./routes/credits.mjs";
@@ -1461,72 +1460,12 @@ async function handleApi(req, res, url) {
     })
   ) return;
 
-  if (pathname === "/api/archive/list" && req.method === "GET") {
-    return send(res, 200, { archives: listArchives() });
-  }
-
-  // Чи архів досі збігається з пресетом, з якого його зібрано (рецепти перебудовуються й порівнюються за DNA і промптом).
-  if (pathname === "/api/archive/sync" && req.method === "GET") {
-    const name = url.searchParams.get("file");
-    if (!name) return send(res, 400, { error: "file required" });
-    let loaded;
-    try {
-      loaded = loadArchiveFile(name);
-    } catch (e) {
-      return send(res, e.status || 404, { error: String(e.message || e) });
-    }
-    let preset = null;
-    try {
-      preset = loadPresetForArchive(loaded.archive)?.preset || null;
-    } catch {
-      preset = null;
-    }
-    return send(res, 200, { file: loaded.file, ...archiveSync(preset, loaded.archive) });
-  }
-
-  if (pathname === "/api/archive/latest" && req.method === "GET") {
-    const list = listArchives();
-    if (!list.length) return send(res, 404, { error: "no archives" });
-    const { archive, file } = loadArchiveFile(list[0].file);
-    return send(res, 200, { file, archive });
-  }
-
-  if (pathname === "/api/archive/file" && req.method === "GET") {
-    const { path, file } = loadArchiveFile(url.searchParams.get("file"));
-    return send(res, 200, readFileSync(path), "application/json; charset=utf-8", {
-      "Content-Disposition": `attachment; filename="${file}"`,
-    });
-  }
-
-  if (pathname === "/api/export/csv" && req.method === "GET") {
-    let file = url.searchParams.get("file");
-    if (!file) {
-      const list = listArchives();
-      if (!list.length) return send(res, 404, { error: "no archives" });
-      file = list[0].file;
-    }
-    const { archive } = loadArchiveFile(file);
-    const csv = archiveToCsv(archive);
-    const outName = String(file).replace(/\.json$/i, "") + "-prompts.csv";
-    return send(res, 200, csv, "text/csv; charset=utf-8", {
-      "Content-Disposition": `attachment; filename="${outName}"`,
-    });
-  }
-
-  if (pathname === "/api/export/txt" && req.method === "GET") {
-    let file = url.searchParams.get("file");
-    if (!file) {
-      const list = listArchives();
-      if (!list.length) return send(res, 404, { error: "no archives" });
-      file = list[0].file;
-    }
-    const { archive } = loadArchiveFile(file);
-    const txt = archiveToTxt(archive);
-    const outName = String(file).replace(/\.json$/i, "") + "-prompts.txt";
-    return send(res, 200, txt, "text/plain; charset=utf-8", {
-      "Content-Disposition": `attachment; filename="${outName}"`,
-    });
-  }
+  // archives routes live in server/routes/archives.mjs.
+  if (
+    await handleArchiveRoutes({
+      req, res, url, pathname, archiveToCsv, archiveToTxt, checkPreset, listArchives, loadArchiveFile, loadPresetByFile, loadPresetForArchive,
+    })
+  ) return;
 
   // base routes live in server/routes/base.mjs.
   if (
@@ -1556,25 +1495,6 @@ async function handleApi(req, res, url) {
     })
   ) return;
 
-  if (pathname === "/api/waves" && req.method === "GET") {
-    const { preset, file } = loadPresetByFile(url.searchParams.get("file") || "demo-series.json");
-    return send(res, 200, { file, size: preset.size, waves: describeSupply(preset) });
-  }
-
-  if (pathname === "/api/waves/append" && req.method === "POST") {
-    const body = await readBody(req);
-    const loaded = loadPresetByFile(body.file || "");
-    const preset = appendSupplyWave(loaded.preset, {
-      size: body.size,
-      seed: body.seed,
-      name: body.name,
-    });
-    const checked = checkPreset(preset);
-    if (!checked.ok) return send(res, 400, { ok: false, errors: checked.errors });
-    writeJsonAtomic(loaded.path, preset);
-    return send(res, 200, { ok: true, file: loaded.file, size: preset.size, waves: describeSupply(preset), preset });
-  }
-
   // storage routes live in server/routes/storage.mjs.
   if (
     await handleStorageRoutes({
@@ -1603,162 +1523,12 @@ async function handleApi(req, res, url) {
     })
   ) return;
 
-  if (pathname === "/api/notifications/test" && req.method === "POST") {
-    if (PUBLIC_MODE && !isAdmin(currentWallet())) return send(res, 403, { error: "admin only" });
-    const body = await readBody(req);
-    // Optional override for one-off tests; otherwise Series Lab config (SERIES_TELEGRAM_* / TELEGRAM_*).
-    if (body.botToken && body.chatId) {
-      const text = body.message || "🔔 *Series Lab*\nТестове сповіщення успішно надіслано!";
-      const resNotify = await sendTelegramNotification({ botToken: body.botToken, chatId: body.chatId, text });
-      return send(res, resNotify.ok ? 200 : 400, { ...resNotify, project: "Series Lab" });
-    }
-    const resNotify = await sendTelegramTest();
-    return send(res, resNotify.ok ? 200 : 400, { ...resNotify, project: "Series Lab" });
-  }
-
-  if (pathname === "/api/matrix/preview" && req.method === "POST") {
-    const body = await readBody(req);
-    const recipe = body.recipe;
-    const engine = body.engine || "flux";
-    const preset = body.preset || {};
-    if (!recipe) return send(res, 400, { error: "recipe object required" });
-    const formatted = formatEnginePrompt(recipe, engine, preset);
-    return send(res, 200, { ok: true, engine, prompt: formatted });
-  }
-
-  if (pathname === "/api/traits/matrix" && req.method === "GET") {
-    const archiveName = url.searchParams.get("archive") || url.searchParams.get("file");
-    if (!archiveName) return send(res, 400, { error: "archive parameter required" });
-    const { archive } = loadArchiveFile(archiveName);
-    const cooccurrence = {};
-    const recipes = archive.recipes || [];
-    for (const r of recipes) {
-      const traits = Object.entries(r.traits || {}).filter(([, v]) => v && v !== "None");
-      for (let i = 0; i < traits.length; i++) {
-        for (let j = i + 1; j < traits.length; j++) {
-          const pairKey = `${traits[i][0]}:${traits[i][1]} | ${traits[j][0]}:${traits[j][1]}`;
-          cooccurrence[pairKey] = (cooccurrence[pairKey] || 0) + 1;
-        }
-      }
-    }
-    const topPairs = Object.entries(cooccurrence)
-      .map(([pair, count]) => ({ pair, count, percentage: Math.round((count / (recipes.length || 1)) * 100) }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 50);
-    return send(res, 200, { ok: true, totalRecipes: recipes.length, topPairs });
-  }
-
-  if (pathname === "/api/engines/test" && req.method === "POST") {
-    const body = await readBody(req);
-    const eng = body.engine || "fal";
-    const result = await testEngineConnection(eng, process.env, globalThis.fetch);
-    return send(res, 200, { ok: true, ...result });
-  }
-
-  if (pathname === "/api/comfyui/workflow" && req.method === "GET") {
-    const wfPath = join(ROOT, "templates", "comfyui-workflow.json");
-    if (!existsSync(wfPath)) return send(res, 404, { error: "comfyui-workflow.json not found" });
-    const json = JSON.parse(readFileSync(wfPath, "utf8"));
-    return send(res, 200, json);
-  }
-
-  if (pathname === "/api/doctor" && req.method === "GET") {
-    const { runDoctorDiagnostics } = await import("../src/doctor.mjs");
-    const report = await runDoctorDiagnostics({ rootDir: ROOT, env: process.env });
-    return send(res, 200, report);
-  }
-
-  if (pathname === "/api/checklist" && req.method === "GET") {
-    const archiveName = url.searchParams.get("archive") || url.searchParams.get("file");
-    const setName = url.searchParams.get("set") || url.searchParams.get("dir");
-    let archive = null;
-    let archiveFile = null;
-    if (archiveName) {
-      try {
-        const loaded = loadArchiveFile(archiveName);
-        archive = loaded.archive;
-        archiveFile = loaded.file;
-      } catch (e) {
-        return send(res, 404, { error: String(e.message || e) });
-      }
-    } else {
-      const list = listArchives();
-      if (list.length) {
-        const loaded = loadArchiveFile(list[0].file);
-        archive = loaded.archive;
-        archiveFile = loaded.file;
-      }
-    }
-    let preset = null;
-    if (archive) {
-      try {
-        preset = loadPresetForArchive(archive)?.preset || null;
-      } catch {
-        preset = loadPresetFileSafe(`${archive.presetId || "x"}.json`)?.preset || null;
-      }
-    }
-    if (!preset && url.searchParams.get("preset")) {
-      preset = loadPresetFileSafe(url.searchParams.get("preset"))?.preset || null;
-    }
-    let marks = {};
-    let images = [];
-    let triage = null;
-    let visibilityAck = null;
-    const set = setName ? safeSetName(setName) : null;
-    if (set) {
-      try {
-        marks = readMarks(set);
-        images = listSetImages(set).images;
-        triage = readTriageDoc(join(P().out, set));
-        visibilityAck = readVisibilityAck(join(P().out, set));
-      } catch {
-        images = [];
-      }
-    }
-    const base = baseStatus();
-    const items = runChecklist({
-      preset,
-      archive,
-      marks,
-      images,
-      baseExists: Boolean(base.exists),
-      triage,
-      visibilityAck,
-    });
-    return send(res, 200, { ok: true, archive: archiveFile, set, items });
-  }
-
-  if (pathname === "/api/workspace" && req.method === "GET") {
-    const data = readWorkspace();
-    return send(res, 200, { ok: true, workspace: data, exists: Boolean(data) });
-  }
-
-  if (pathname === "/api/workspace" && req.method === "POST") {
-    const body = await readBody(req);
-    const prev = readWorkspace() || {};
-    if (body.clear) {
-      const cleared = writeWorkspace({
-        presetId: null,
-        locale: body.locale || prev.locale || null,
-        lastArchive: null,
-        lastSet: null,
-        overview: {},
-      });
-      return send(res, 200, { ok: true, workspace: cleared });
-    }
-    const next = {
-      ...prev,
-      presetId: body.presetId ?? prev.presetId ?? null,
-      locale: body.locale ?? prev.locale ?? null,
-      lastArchive: body.lastArchive ?? prev.lastArchive ?? null,
-      lastSet: body.lastSet ?? prev.lastSet ?? null,
-    };
-    if (body.overview && typeof body.overview === "object") {
-      next.overview = { ...(prev.overview || {}), ...body.overview };
-    }
-    const saved = writeWorkspace(next);
-    return send(res, 200, { ok: true, workspace: saved });
-  }
+  // tools routes live in server/routes/tools.mjs.
+  if (
+    await handleToolRoutes({
+      req, res, url, pathname, P, PUBLIC_MODE, ROOT, baseStatus, currentWallet, listArchives, listSetImages, loadArchiveFile, loadPresetFileSafe, loadPresetForArchive, readMarks, readWorkspace, safeSetName, writeWorkspace,
+    })
+  ) return;
 
   return send(res, 404, { error: "not found" });
 }
