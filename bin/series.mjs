@@ -90,7 +90,7 @@ Usage:
   series compose <archive.json> --layers <dir> (--base <png> | --over <set-dir> [--base <png>] [--only a,b]) [-o out/layers] [--preview <edition> [-o frame.png]]
   series verify <release.json> [--rpc <url>]
   series engines
-  series doctor
+  series doctor [--release] [--keypair <file>] [--cache <file>]
   series upscale <images-dir> [options]
   series repair-png <set-dir> [--dry-run]
   series c2pa <set-dir> --cert <chain.pem> --key <key.pem> [-o <out-dir>] [--alg es256] [--tsa <url>] [--dry-run]
@@ -1263,13 +1263,25 @@ async function cmdEngines() {
   }
 }
 
-async function cmdDoctor() {
+async function cmdDoctor(argv = []) {
   loadKeys();
-  const { runDoctorDiagnostics, formatDoctorReport } = await import("../src/doctor.mjs");
+  const { runDoctorDiagnostics, formatDoctorReport, checkReleaseReadiness } = await import("../src/doctor.mjs");
+  let release = false;
+  let keypair = "";
+  let cache = "";
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--release") release = true;
+    else if (a === "--keypair") keypair = argv[++i] || "";
+    else if (a === "--cache") cache = argv[++i] || "";
+    else usage(1);
+  }
   console.log("Running Series Lab diagnostic checks...\n");
   const report = await runDoctorDiagnostics({ rootDir: resolve("."), env: process.env });
+  if (release) report.release = checkReleaseReadiness({ keypair, cache, env: process.env });
   console.log(formatDoctorReport(report));
   if (!report.ok) process.exitCode = 1;
+  if (release && !report.release.ready) process.exitCode = 1;
 }
 
 async function cmdUpscale(dirPath, opts = {}) {
@@ -1365,7 +1377,7 @@ async function main(argv) {
     return;
   }
   if (cmd === "doctor") {
-    await cmdDoctor();
+    await cmdDoctor(args.slice(1));
     return;
   }
   if (cmd === "repair-png") {

@@ -395,6 +395,7 @@ Series Lab — майстерня на вашому комп'ютері для �
 | Команда | Що робить |
 |---|---|
 | `node bin/series.mjs doctor` | перевірка системи й налаштувань |
+| `node bin/series.mjs doctor --release --keypair deployer.json` | перед випуском: Node ≥ 22.13, чи є `mplx`, чи існує файл ключа. Вміст ключа не читається. `--cache cache.json` — після upload, якщо треба перевірити точку відновлення |
 | `node bin/series.mjs engines` | список двигунів і цін |
 | `node bin/series.mjs validate presets/demo-series.json` | перевірка пресету |
 | `node bin/series.mjs build presets/demo-series.json -o out/demo-archive.json` | зібрати архів рецептів |

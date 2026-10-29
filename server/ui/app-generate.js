@@ -10,7 +10,7 @@ import { paintStrengthNote, refreshAccount, renderLocalGpuPanel } from "./app-ac
 import { $, api, lockGenerate, playCompletionChime, showTab, state } from "./app.js";
 import { kitArchive, scheduleWorkspaceSave, setBusy } from "./app-export.js";
 import { loadGallerySets } from "./app-gallery.js";
-import { ensureDraftTraits, renderOptionsEditor } from "./app-options.js";
+import { ensureDraftTraits, paintGenerateEcho, renderOptionsEditor } from "./app-options.js";
 import { escapeHtml, renderCtorSummary } from "./app-overview.js";
 import { renderTraitChecklist } from "./app-packs.js";
 import { criticalGateApplies, licenseApplies, paintCriticalGate, paintFrameOffset, paintLicenseWarning, syncGateCheck } from "./app-recipes.js";
@@ -436,6 +436,7 @@ export function setupRender() {
   const reLockPlan = () => lockGenerate(true);
   $("g-strength")?.addEventListener("input", () => {
     if ($("g-strength-v")) $("g-strength-v").textContent = $("g-strength").value;
+    paintGenerateEcho();
     reLockPlan();
   });
   $("g-engine")?.addEventListener("change", () => {
@@ -444,6 +445,7 @@ export function setupRender() {
     state.licenseAck = false;
     paintStrengthNote("g-strength-note", $("g-engine")?.value);
     paintLicenseWarning();
+    paintGenerateEcho();
   });
   $("g-flux-dev")?.addEventListener("change", () => {
     state.licenseAck = false;
