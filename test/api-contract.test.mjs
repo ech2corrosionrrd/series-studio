@@ -18,7 +18,9 @@ function routeTable() {
     const meth = /(?:req\.)?method === "([A-Z]+)"/.exec(line);
     rows.set(`${meth ? meth[1] : "GET"} ${m[1]}`, { method: meth ? meth[1] : "GET", path: m[1] });
   }
-  return [...rows.values()];
+  // POST /api/build goes first: later routes (archive/file, recipes, rarity) read the archive it writes,
+  // so on an empty studio they would answer 5xx only because of the order the sources are listed in.
+  return [...rows.values()].sort((a, b) => Number(b.path === "/api/build") - Number(a.path === "/api/build"));
 }
 
 const ROUTES = routeTable();

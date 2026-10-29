@@ -45,7 +45,7 @@ describe("collideArchives", () => {
 });
 
 describe("wiring", () => {
-  const server = readFileSync(new URL("../server/index.mjs", import.meta.url), "utf8");
+  const server = readFileSync(new URL("../server/routes/recipes.mjs", import.meta.url), "utf8");
   const ui = readUiSource();
   it("the route refuses the same archive twice and the button reuses the diff selects", () => {
     assert.match(server, /pathname === "\/api\/archive\/collisions"/);
