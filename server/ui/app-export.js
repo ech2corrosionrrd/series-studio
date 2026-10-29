@@ -227,7 +227,31 @@ export function setupPath() {
   renderPath(document.querySelector(".tab.on")?.id?.replace(/^tab-/, "") || "home");
 }
 
+/** With the base as edition #0 (Genesis) a series of N ships N + 1 items: say so next to the ZIP button, where "25 шт" appears. */
+function paintGenesisNote() {
+  const note = $("x-genesis-note");
+  if (!note) return;
+  const on = Boolean($("o-genesis")?.checked);
+  note.hidden = !on;
+  if (!on) return;
+  const n = Number($("o-size")?.value) || 0;
+  note.textContent = t("export.genesisNote", { n, total: n + 1 });
+}
+
+/** The NFT name prefix follows the series name until the author types their own ("Series #" is only the untouched default). */
+function syncNamePrefixDefault() {
+  const el = $("x-namePrefix");
+  const series = $("o-name")?.value?.trim();
+  if (!el || !series || el.dataset.touched === "1") return;
+  if (!el.value || el.value === "Series #" || el.dataset.auto === el.value) {
+    el.value = `${series} #`;
+    el.dataset.auto = el.value;
+  }
+}
+
 export async function fillExportSets() {
+  paintGenesisNote();
+  syncNamePrefixDefault();
   const sel = $("x-set");
   if (!sel) return;
   try {
@@ -536,7 +560,12 @@ export function setupExport() {
   $("x-zero-index")?.addEventListener("change", updateMetadataPreview);
   $("x-uri-prefix")?.addEventListener("input", updateMetadataPreview);
   $("x-anim-prefix")?.addEventListener("input", updateMetadataPreview);
-  $("x-namePrefix")?.addEventListener("input", updateMetadataPreview);
+  $("x-namePrefix")?.addEventListener("input", () => {
+    $("x-namePrefix").dataset.touched = "1";
+    updateMetadataPreview();
+  });
+  $("o-genesis")?.addEventListener("change", paintGenesisNote);
+  $("o-size")?.addEventListener("input", paintGenesisNote);
   $("x-symbol")?.addEventListener("input", updateMetadataPreview);
   $("x-fee")?.addEventListener("input", updateMetadataPreview);
   $("x-desc")?.addEventListener("input", updateMetadataPreview);

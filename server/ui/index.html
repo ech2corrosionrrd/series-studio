@@ -405,6 +405,7 @@
           <select id="opt-trait-key"></select>
         </label>
         <span id="opt-count" class="muted small"></span>
+        <button type="button" id="opt-trait-del" class="btn small danger" data-i18n="ctor.options.delTrait"></button>
       </div>
       <div id="opt-editor-wrap" class="opt-editor-wrap" hidden>
         <div class="opt-table-wrap">
@@ -503,6 +504,11 @@
         <label><span data-i18n="ctor.keepHelp"></span>
           <textarea id="c-keep" rows="5" data-i18n-placeholder="ctor.keep.ph"></textarea>
           <span class="muted small" data-i18n="ctor.keep.explain"></span></label>
+        <div id="c-who-wrap" hidden>
+          <span data-i18n="ctor.whoHelp"></span>
+          <div id="c-who-lines" class="u-flex-gap-8 u-row-wrap-8"></div>
+          <span class="muted small" data-i18n="ctor.who.explain"></span>
+        </div>
         <label><span data-i18n="ctor.changeHelp"></span>
           <input id="c-change" autocomplete="off" data-i18n-placeholder="ctor.change.ph">
           <span class="muted small" data-i18n="ctor.change.explain"></span></label>
@@ -1046,6 +1052,7 @@
         <a id="x-download" class="btn" href="#" download hidden data-i18n="export.bundle.download">⬇ Download ZIP</a>
         <span id="x-bundle-msg" class="small" role="status"></span>
       </div>
+      <p id="x-genesis-note" class="muted small u-mt-8" role="status" hidden></p>
       <div id="x-prov-result" class="card small" style="margin-top:10px; display:none; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2)">
         <span class="u-bold" data-i18n="export.provenance.hashLabel">Хеш походження (SHA-256)</span><code class="u-code-wrap" id="x-prov-hash"></code>
       </div>

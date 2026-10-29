@@ -98,6 +98,7 @@ export function renderOptionsEditor() {
 
   const items = state.draftTraits?.items || [];
   const keys = items.map((t) => t.key).filter(Boolean);
+  if ($("opt-trait-del")) $("opt-trait-del").hidden = !keys.length; // deleting a trait needs one
   const prev = state.selectedTraitKey;
   sel.innerHTML = "";
   if (!keys.length) {
@@ -245,6 +246,52 @@ function addOptionRow() {
   renderOptionsEditor();
 }
 
+let delTraitTimer = null;
+
+/** Two clicks, no native confirm(): the first arms the button for four seconds, the second deletes the trait with all its options. */
+function deleteSelectedTrait() {
+  ensureDraftTraits();
+  const key = state.selectedTraitKey;
+  const btn = $("opt-trait-del");
+  if (!key || !findTrait(key)) return;
+  if (btn && btn.dataset.armed !== key) {
+    btn.dataset.armed = key;
+    btn.textContent = t("ctor.options.delTraitSure", { key });
+    clearTimeout(delTraitTimer);
+    delTraitTimer = setTimeout(() => disarmDeleteTrait(), 4000);
+    return;
+  }
+  disarmDeleteTrait();
+  const items = state.draftTraits.items;
+  const idx = items.findIndex((x) => x.key === key);
+  items.splice(idx, 1);
+  // a trait that is gone must not stay in the "what changes" lists
+  for (const id of ["c-change", "c-extra"]) {
+    const el = $(id);
+    if (!el) continue;
+    el.value = el.value
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s && s !== key)
+      .join(", ");
+  }
+  state.selectedTraitKey = items[Math.min(idx, items.length - 1)]?.key || null;
+  if (state.draftFull) state.draftFull.traits = state.draftTraits;
+  renderPackSummary();
+  renderTraitChecklist();
+  renderOptionsEditor();
+  const msg = $("opt-msg");
+  if (msg) msg.textContent = t("ctor.options.traitDeleted", { key });
+}
+
+function disarmDeleteTrait() {
+  clearTimeout(delTraitTimer);
+  const btn = $("opt-trait-del");
+  if (!btn) return;
+  delete btn.dataset.armed;
+  btn.textContent = t("ctor.options.delTrait");
+}
+
 function removeOptionRow(idx) {
   ensureDraftTraits();
   const trait = findTrait(state.selectedTraitKey);
@@ -298,6 +345,12 @@ function setupOptionsEditor() {
     selectTraitKey(sel.value || null);
   });
   $("opt-add")?.addEventListener("click", () => addOptionRow());
+  $("opt-trait-del")?.addEventListener("click", () => deleteSelectedTrait());
+  $("c-who-lines")?.addEventListener("input", (ev) => {
+    const lid = ev.target?.dataset?.whoLine;
+    if (!lid || !state.draftFull?.lines?.[lid]) return;
+    state.draftFull.lines[lid] = { ...state.draftFull.lines[lid], who: ev.target.value.trim() };
+  });
   $("opt-tbody")?.addEventListener("change", (ev) => {
     const el = ev.target;
     if (!el || !el.dataset || el.dataset.idx == null) return;
@@ -461,6 +514,21 @@ export function syncCtorFromOverview() {
   $("c-strength-v").textContent = String($("o-strength").value);
 }
 
+/** One text field per line of the preset: the "who" that fills {who} in the prompt. Typing updates the draft the Constructor saves. */
+function renderWhoLines(preset) {
+  const wrap = $("c-who-wrap");
+  const box = $("c-who-lines");
+  if (!wrap || !box) return;
+  const lines = preset?.lines && typeof preset.lines === "object" ? Object.entries(preset.lines) : [];
+  wrap.hidden = !lines.length;
+  box.innerHTML = lines
+    .map(
+      ([lid, line]) =>
+        `<label class="small">${escapeHtml(t("ctor.who.line", { line: lid }))} <input type="text" data-who-line="${escapeHtml(lid)}" value="${escapeHtml(line?.who || "")}" autocomplete="off"></label>`,
+    )
+    .join("");
+}
+
 function renderBaseLines(preset) {
   const el = $("base-lines");
   if (!el) return;
@@ -588,6 +656,7 @@ export function fillConstructor(preset) {
   state.draftTraits = preset.traits;
   state.draftFull = preset;
   renderBaseLines(preset);
+  renderWhoLines(preset);
   renderCtorSummary();
   renderPackSummary();
   renderTraitChecklist();

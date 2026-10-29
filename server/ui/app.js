@@ -94,6 +94,16 @@ export function playCompletionChime() {
   } catch {}
 }
 
+// A paid step (base, triage, ZIP, pin, kits ...) changes the balance, so the header re-reads it after any write.
+// Writes that never charge and fire often (autosave, previews, marks) are skipped; bursts collapse into one read.
+const NO_BALANCE_REFRESH_PREFIXES = ["/api/me", "/api/workspace", "/api/marks", "/api/validate", "/api/simulate", "/api/lint", "/api/diff-seed", "/api/recipe", "/api/layers/frame-offset", "/api/qa/"];
+const NO_BALANCE_REFRESH = { test: (path) => NO_BALANCE_REFRESH_PREFIXES.some((p) => String(path).startsWith(p)) };
+let balanceTimer = null;
+function scheduleBalanceRefresh() {
+  clearTimeout(balanceTimer);
+  balanceTimer = setTimeout(() => refreshAccount(), 800);
+}
+
 export async function api(path, opts = {}) {
   const res = await fetch(path, {
     headers: {
@@ -132,6 +142,7 @@ export async function api(path, opts = {}) {
     error.payload = data;
     throw error;
   }
+  if (opts.method && opts.method !== "GET" && !NO_BALANCE_REFRESH.test(path)) scheduleBalanceRefresh();
   return data;
 }
 
