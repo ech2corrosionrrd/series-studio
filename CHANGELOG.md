@@ -9,6 +9,8 @@
 
 ## [Unreleased]
 
+## [1.24.0] — 2026-10-29
+
 ### Внутрішнє: решту маршрутів винесено з `server/index.mjs`
 - `/api/archive/*`, `/api/export/csv`, `/api/export/txt`, `/api/waves` і `/api/waves/append` тепер у `server/routes/archives.mjs` (`handleArchiveRoutes`); `/api/notifications/test`, `/api/matrix/preview`, `/api/traits/matrix`, `/api/engines/test`, `/api/comfyui/workflow`, `/api/doctor`, `/api/checklist` і `/api/workspace` у `server/routes/tools.mjs` (`handleToolRoutes`). Без змін поведінки: ті самі маршрути й відповіді. У `server/index.mjs` лишилися сервер, сесія, шляхи гаманця та спільні помічники; він скоротився з 2008 до 1778 рядків.
 
