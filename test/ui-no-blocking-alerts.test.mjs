@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const ui = readUiSource();
-const server = readFileSync(new URL("../server/index.mjs", import.meta.url), "utf8");
+const server = ["index.mjs", "routes/recipes.mjs"].map((f) => readFileSync(new URL(`../server/${f}`, import.meta.url), "utf8")).join("\n");
 
 test("no error is shown through a blocking alert()", () => {
   assert.ok(!/alert\(e\.message\)/.test(ui), "alert(e.message) is back");
