@@ -109,6 +109,29 @@
         <ul id="projects-deleted" class="projects-list"></ul>
       </div>
     </div>
+    <div class="card" id="series-mode-card">
+      <h3 data-i18n="mode.title">Як робити серію</h3>
+      <p class="muted small" data-i18n="mode.help"></p>
+      <fieldset class="sel-box">
+        <legend class="visually-hidden" data-i18n="mode.legend">Сценарій серії</legend>
+        <label class="row"><input type="radio" name="series-mode" id="mode-hybrid" value="hybrid" checked> <span data-i18n="mode.hybrid">Гібрид — типовий шлях</span></label>
+        <label class="row"><input type="radio" name="series-mode" id="mode-ai" value="ai"> <span data-i18n="mode.ai">Лише ШІ</span></label>
+        <label class="row"><input type="radio" name="series-mode" id="mode-layers" value="layers"> <span data-i18n="mode.layers">Лише шари PNG</span></label>
+      </fieldset>
+      <ol id="mode-hybrid-steps" class="guide">
+        <li data-i18n="mode.step.base"></li>
+        <li data-i18n="mode.step.critical"></li>
+        <li data-i18n="mode.step.frame"></li>
+        <li data-i18n="mode.step.preview"></li>
+      </ol>
+      <div class="actions">
+        <button type="button" id="mode-apply" class="btn" data-i18n="mode.apply">Застосувати рекомендацію гібриду</button>
+        <button type="button" class="btn small" data-goto-tab="base" data-i18n="mode.go.base">Основа</button>
+        <button type="button" class="btn small" data-goto-tab="ctor" data-i18n="mode.go.ctor">Конструктор</button>
+        <button type="button" class="btn small" data-goto-tab="render" data-i18n="mode.go.render">Генерація</button>
+      </div>
+      <p id="mode-note" class="small" role="status"></p>
+    </div>
     <div class="hint">
       <p data-i18n="home.hint">💡 …</p>
       <details open>
@@ -674,6 +697,8 @@
     </div>
     <div class="grid2">
       <div class="card form">
+        <p id="g-run-echo" class="small" role="status"></p>
+        <div id="g-run-advanced" class="adv-only">
         <label><span data-i18n="render.engine">Двигун</span>
           <select id="g-engine">
             <option value="fal" data-i18n="engine.fal">fal.ai</option>
@@ -692,6 +717,19 @@
           <input type="range" id="g-strength" min="0.1" max="0.95" step="0.05" value="0.45">
         </label>
         <p id="g-strength-note" class="muted small" role="status"></p>
+        <div class="scale small">
+          <span data-i18n="scale.free"></span>
+          <span data-i18n="scale.balance"></span>
+          <span data-i18n="scale.copy"></span>
+        </div>
+        <label class="u-mt-8"><span data-i18n="render.concurrency">Паралельність (швидкість)</span>
+          <select id="g-concurrency">
+            <option value="2" selected data-i18n="render.concurrency.2">2x · Оптимально (2 потоки)</option>
+            <option value="1" data-i18n="render.concurrency.1">1x · Послідовно</option>
+            <option value="3" data-i18n="render.concurrency.3">3x · Турбо (3 потоки)</option>
+          </select>
+        </label>
+        </div>
         <div id="g-license" class="license-warn" hidden role="status">
           <b data-i18n="license.warnTitle">Ліцензія FLUX.1 [dev]</b>
           <p data-i18n="license.body"></p>
@@ -710,18 +748,6 @@
         <label id="g-flux-dev-wrap" class="small row" hidden>
           <input type="checkbox" id="g-flux-dev">
           <span data-i18n="license.fluxDevMark">Я використовую ваги FLUX.1 dev</span>
-        </label>
-        <div class="scale small">
-          <span data-i18n="scale.free"></span>
-          <span data-i18n="scale.balance"></span>
-          <span data-i18n="scale.copy"></span>
-        </div>
-        <label class="u-mt-8"><span data-i18n="render.concurrency">Паралельність (швидкість)</span>
-          <select id="g-concurrency">
-            <option value="2" selected data-i18n="render.concurrency.2">2x · Оптимально (2 потоки)</option>
-            <option value="1" data-i18n="render.concurrency.1">1x · Послідовно</option>
-            <option value="3" data-i18n="render.concurrency.3">3x · Турбо (3 потоки)</option>
-          </select>
         </label>
         <fieldset class="sel-box">
           <legend data-i18n="render.sel.legend">What to generate</legend>
@@ -747,6 +773,15 @@
         <div class="card u-mt-12" id="g-layers">
           <h3 data-i18n="render.layers.h">PNG layers</h3>
           <div class="hint"><p data-i18n="render.layers.critical"></p></div>
+          <div id="g-hybrid-preview" class="small" hidden>
+            <p data-i18n="render.hybridPreview"></p>
+            <div class="actions">
+              <button type="button" class="btn small" id="g-preview-1" data-preview-n="1" data-i18n="render.preview1">Кадр 1</button>
+              <button type="button" class="btn small" id="g-preview-2" data-preview-n="2" data-i18n="render.preview2">Кадр 2</button>
+              <button type="button" class="btn small" id="g-preview-3" data-preview-n="3" data-i18n="render.preview3">Кадр 3</button>
+              <span id="g-hybrid-preview-done" class="small" role="status"></span>
+            </div>
+          </div>
           <p class="muted small" data-i18n="render.layers.help"></p>
           <div class="actions">
             <input type="file" id="g-layers-file" accept=".zip,application/zip,application/x-zip-compressed" hidden>
@@ -823,7 +858,7 @@
       <label class="small"><span data-i18n="gallery.set">Set</span>
         <select id="v-dir"></select>
       </label>
-      <label class="small" id="v-dir2-wrap" hidden>
+      <label class="small adv-only" id="v-dir2-wrap" hidden>
         <span data-i18n="gallery.compare">Порівняти з</span>
         <select id="v-dir2" title="" data-i18n-title="gallery.compare.title">
           <option value="">—</option>
@@ -1089,6 +1124,23 @@
   <section id="tab-deploy" class="tab">
     <h1 data-i18n="deploy.h1">Набір деплою</h1>
     <div class="hint"><p data-i18n="deploy.hint"></p></div>
+    <div class="card" id="d-pc">
+      <h2 data-i18n="deploy.pc.title">Далі на цьому ПК</h2>
+      <p class="muted small" data-i18n="deploy.pc.help"></p>
+      <ol class="guide">
+        <li data-i18n="deploy.pc.li1"></li>
+        <li data-i18n="deploy.pc.li2"></li>
+      </ol>
+      <div id="d-commands" class="card small u-mt-10">
+        <b data-i18n="deploy.commands.title">Готові команди для вашого ПК</b>
+        <p class="muted u-my-4" data-i18n="deploy.commands.help"></p>
+        <pre id="d-commands-text" class="log small" style="white-space:pre-wrap; max-height:340px; overflow:auto"></pre>
+        <div class="actions">
+          <button type="button" id="d-commands-copy" class="btn small" data-i18n="deploy.commands.copy">Копіювати все</button>
+          <span id="d-commands-msg" class="small muted" role="status"></span>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <p class="muted small" data-i18n="deploy.help"></p>
       <p id="d-price" class="small muted"></p>
@@ -1140,16 +1192,7 @@
           <li data-i18n="deploy.keys.li4"></li>
         </ul>
       </div>
-      <div id="d-commands" class="card small u-mt-10">
-        <b data-i18n="deploy.commands.title">Готові команди для вашого ПК</b>
-        <p class="muted u-my-4" data-i18n="deploy.commands.help"></p>
-        <pre id="d-commands-text" class="log small" style="white-space:pre-wrap; max-height:340px; overflow:auto"></pre>
-        <div class="actions">
-          <button type="button" id="d-commands-copy" class="btn small" data-i18n="deploy.commands.copy">Копіювати все</button>
-          <span id="d-commands-msg" class="small muted" role="status"></span>
-        </div>
-      </div>
-      <div id="d-advisor-card" class="advisor-card">
+      <div id="d-advisor-card" class="advisor-card adv-only">
         <h2 data-i18n="advisor.h2">Порадник запуску</h2>
         <p class="advisor-note" data-i18n="advisor.offline"></p>
         <div id="d-advisor" class="advisor" aria-live="polite"></div>

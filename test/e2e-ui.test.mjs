@@ -62,6 +62,8 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     });
     await page.goto(`http://127.0.0.1:${studio.port}/studio/`);
     await page.waitForSelector("#o-name");
+    // The beginner path hides the engine and strength. This file drives those controls, so it leaves the path.
+    await page.uncheck("#path-beginner");
   });
 
   after(async () => {
@@ -273,14 +275,33 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     assert.ok(devnet.includes(`release-init ${open} -o release.json`), `the archive of the open series (${open}): ${devnet}`);
     assert.match(devnet, /--devnet/);
     assert.match(devnet, /solana airdrop 2 --url https:\/\/api\.devnet\.solana\.com/);
+    assert.match(devnet, /series doctor --release --keypair deployer\.json --cache cache\.json/);
+    assert.match(devnet, /series hidden \. --uri </);
+    assert.match(devnet, /series guards release\.json -o guard-config\.json/);
     assert.match(devnet, /mplx cm create --wizard/);
+    assert.ok(devnet.indexOf("series upload") < devnet.indexOf("series hidden"), "hidden comes after upload");
+    assert.ok(devnet.indexOf("series hidden") < devnet.indexOf("series guards"), "guards come after hidden");
+    assert.ok(devnet.indexOf("series guards") < devnet.indexOf("mplx cm create --wizard"), "the machine is created after the guard file");
     await page.check("#d-rehearsal-no");
     await waitFor(async () => !/--devnet/.test(await text()), { what: "mainnet commands without --devnet" });
     assert.ok(!/airdrop/.test(await text()), "no airdrop on mainnet");
+    assert.match(await text(), /series hidden \. --uri </);
     await page.selectOption("#d-chain", "evm");
     await waitFor(async () => /DEPLOY\.txt/.test(await text()), { what: "other networks point to DEPLOY.txt" });
     assert.ok(!(await page.isVisible("#d-commands-copy")), "nothing to copy for another network");
     await page.selectOption("#d-chain", "solana");
+  });
+
+  it("the beginner path hides the engine picker and still shows the release commands", async () => {
+    await page.check("#path-beginner");
+    await tab("render");
+    assert.equal(await page.isVisible("#g-engine"), false, "the engine picker is an advanced control");
+    assert.equal(await page.isVisible("#g-run-echo"), true, "the current engine and strength stay visible");
+    assert.equal(await page.$("#g-run-advanced #g-critical-gate"), null, "the critical-trait warning stays outside the hidden block");
+    await tab("deploy");
+    assert.equal(await page.isVisible("#d-commands-text"), true);
+    assert.match(await page.textContent("#d-commands-text"), /series hidden \. --uri </);
+    await page.uncheck("#path-beginner");
   });
 
   it("Constructor: 'Далі · Рецепти' saves unsaved edits first, and an unchanged form does not write the file again", async () => {

@@ -432,7 +432,11 @@ export function fillOverview(preset) {
   $("o-engine").value = eng;
   const str = Number(preset.engine?.strength ?? 0.45);
   $("o-strength").value = str;
+  delete $("o-strength").dataset.hybridApplied;
+  const note = $("mode-note");
+  if (note) delete note.dataset.applied;
   paintOverviewStrength();
+  paintSeriesMode();
 }
 
 function syncOverviewFromCtor() {
@@ -481,6 +485,67 @@ function applyGenerateDefaults(engine, strength) {
     if ($("g-strength-v")) $("g-strength-v").textContent = String(gs.value);
     gs.dispatchEvent(new Event("input"));
   }
+  paintGenerateEcho();
+}
+
+const HYBRID_ENGINE = "kontext";
+const HYBRID_STRENGTH = "0.35";
+const MODE_KEY = "series-lab-mode";
+
+export function paintGenerateEcho() {
+  const el = $("g-run-echo");
+  if (!el) return;
+  const engine = $("g-engine")?.value || $("o-engine")?.value || "—";
+  const strength = $("g-strength")?.value || $("o-strength")?.value || "—";
+  el.textContent = t("render.defaultsEcho", { engine, strength });
+}
+
+function currentSeriesMode() {
+  return document.querySelector('input[name="series-mode"]:checked')?.value || "hybrid";
+}
+
+export function paintSeriesMode() {
+  const mode = currentSeriesMode();
+  document.body.dataset.seriesMode = mode;
+  const steps = $("mode-hybrid-steps");
+  if (steps) steps.hidden = mode !== "hybrid";
+  const apply = $("mode-apply");
+  if (apply) apply.hidden = mode !== "hybrid";
+  const preview = $("g-hybrid-preview");
+  if (preview) preview.hidden = mode !== "hybrid";
+  const note = $("mode-note");
+  if (note) {
+    if (mode !== "hybrid") delete note.dataset.applied;
+    note.textContent = note.dataset.applied === "1" && mode === "hybrid" ? t("mode.applied") : t(`mode.note.${mode}`);
+  }
+  paintGenerateEcho();
+}
+
+function applyHybridRecommendation() {
+  const eng = $("o-engine");
+  const str = $("o-strength");
+  if (eng && [...eng.options].some((o) => o.value === HYBRID_ENGINE)) eng.value = HYBRID_ENGINE;
+  if (str) {
+    str.value = HYBRID_STRENGTH;
+    str.dataset.hybridApplied = "1";
+  }
+  paintOverviewStrength();
+  syncCtorFromOverview();
+  applyGenerateDefaults(HYBRID_ENGINE, HYBRID_STRENGTH);
+  paintStrengthNote("o-strength-note", $("o-engine")?.value || HYBRID_ENGINE);
+  const note = $("mode-note");
+  if (note) note.dataset.applied = "1";
+  paintSeriesMode();
+}
+
+function revertHybridIfApplied() {
+  const str = $("o-strength");
+  if (!str || str.dataset.hybridApplied !== "1" || str.value !== HYBRID_STRENGTH) return;
+  delete str.dataset.hybridApplied;
+  str.value = String(DEFAULT_STRENGTH);
+  paintOverviewStrength();
+  syncCtorFromOverview();
+  applyGenerateDefaults($("o-engine")?.value, str.value);
 }
 
 /** The Constructor form as last loaded or saved: "Далі · Рецепти" saves only when it differs (the recipes read the file on disk). */
@@ -655,10 +720,33 @@ function paintOverviewStrength() {
 
 export function setupOverview() {
   if (!$("o-name")) return;
+  try {
+    const saved = localStorage.getItem(MODE_KEY);
+    const input = saved && document.querySelector(`input[name="series-mode"][value="${saved}"]`);
+    if (input) input.checked = true;
+  } catch { /* ignore */ }
+  document.querySelectorAll('input[name="series-mode"]').forEach((el) => {
+    el.addEventListener("change", () => {
+      try { localStorage.setItem(MODE_KEY, el.value); } catch { /* ignore */ }
+      const note = $("mode-note");
+      if (note) delete note.dataset.applied;
+      if (el.value !== "hybrid") revertHybridIfApplied();
+      paintSeriesMode();
+    });
+  });
+  $("mode-apply")?.addEventListener("click", () => applyHybridRecommendation());
+  window.addEventListener("series-lab:locale", () => paintSeriesMode());
+  paintSeriesMode();
   $("o-strength").addEventListener("input", () => {
+    if ($("o-strength").value !== HYBRID_STRENGTH) {
+      delete $("o-strength").dataset.hybridApplied;
+      const note = $("mode-note");
+      if (note) delete note.dataset.applied;
+    }
     paintOverviewStrength();
     syncCtorFromOverview();
     applyGenerateDefaults(null, $("o-strength").value);
+    paintSeriesMode();
   });
   $("o-name").addEventListener("input", () => {
     const name = $("o-name").value.trim();

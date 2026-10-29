@@ -2,7 +2,8 @@
  * System Doctor & Health Diagnostics for Series Lab.
  * Verifies environment, presets, trait packs, base images, and generation engines.
  */
-import { existsSync, readdirSync, readFileSync, mkdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, readdirSync, readFileSync, mkdirSync, statSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { validatePreset } from "./validate.mjs";
 import { validateTraitPack } from "./traits.mjs";
@@ -175,6 +176,99 @@ export function formatDoctorReport(report) {
     lines.push(`  • ${eng.engine.toUpperCase().padEnd(10)} | ${badge.padEnd(11)}${ping}${local} | ${eng.message}`);
   }
 
+  if (report.release) {
+    const rel = report.release;
+    lines.push("\n--- Release on this PC ---");
+    lines.push(`• Node.js for release: ${rel.node} (${rel.nodeOk ? "✓ OK" : "✗ need >= 22.13"})`);
+    lines.push(`• mplx: ${rel.mplx.found ? "✓ on PATH" : "✗ not found — install the Metaplex CLI before creating a Candy Machine"}`);
+    if (rel.keypair.checked) {
+      lines.push(`• Keypair file (${rel.keypair.path}): ${rel.keypair.exists ? "✓ exists" : "✗ missing"} — contents were not read`);
+    } else {
+      lines.push("• Keypair file: not checked (pass --keypair <file>; the file is never opened)");
+    }
+    if (rel.cache.checked) {
+      lines.push(`• cache.json (${rel.cache.path}): ${rel.cache.exists ? "✓ exists" : "✗ missing"}`);
+    } else {
+      lines.push("• cache.json: not checked (pass --cache <file> after an upload, to see that a resume point exists)");
+    }
+    lines.push(`Release ready: ${rel.ready ? "✓ YES" : "✗ NO"}`);
+  }
+
   lines.push(`\nOverall Health: ${report.ok ? "✓ ALL CORE SYSTEMS OPERATIONAL" : "⚠ ISSUES DETECTED"}`);
   return lines.join("\n");
+}
+
+/** Node required to release (`package.json` engines). Studio health stays at the older floor. */
+export function nodeMeetsRelease(version = process.versions.node) {
+  const [maj, min] = String(version).replace(/^v/, "").split(".").map((n) => Number(n) || 0);
+  if (maj > 22) return true;
+  if (maj < 22) return false;
+  return min >= 13;
+}
+
+/**
+ * Is `name` on PATH? `runner` is injectable so tests do not depend on a real mplx install.
+ * The runner is `spawnSync(finder, [name], …)`.
+ */
+export function commandOnPath(name, { env = process.env, runner = spawnSync, platform = process.platform } = {}) {
+  const finder = platform === "win32" ? "where" : "which";
+  let found = false;
+  try {
+    const result = runner(finder, [name], { env, encoding: "utf8", timeout: 4000, windowsHide: true });
+    found = result?.status === 0 && Boolean(String(result.stdout || "").trim());
+  } catch {
+    found = false;
+  }
+  return { name, found };
+}
+
+/**
+ * Whether a keypair path exists. The file is never opened: a release check must not load a secret into the process.
+ */
+export function keypairFileStatus(filePath) {
+  if (!filePath) return { checked: false, exists: false, read: false, path: "" };
+  const path = resolve(filePath);
+  let exists = false;
+  let bytes = null;
+  try {
+    exists = existsSync(path);
+    if (exists) bytes = statSync(path).size;
+  } catch {
+    exists = false;
+  }
+  return { checked: true, exists, bytes, read: false, path };
+}
+
+export function cacheFileStatus(filePath) {
+  if (!filePath) return { checked: false, exists: false, path: "" };
+  const path = resolve(filePath);
+  return { checked: true, exists: existsSync(path), path };
+}
+
+/**
+ * Checks for the author's PC before `series upload` / `mplx`. Does not change studio `report.ok`.
+ * A missing optional path is simply not checked. A given path that is absent makes `ready` false.
+ */
+export function checkReleaseReadiness({
+  keypair = "",
+  cache = "",
+  env = process.env,
+  runner,
+  platform,
+  nodeVersion = process.versions.node,
+} = {}) {
+  const nodeOk = nodeMeetsRelease(nodeVersion);
+  const mplx = commandOnPath("mplx", { env, runner, platform });
+  const key = keypairFileStatus(keypair);
+  const cacheStatus = cacheFileStatus(cache);
+  const keyOk = !key.checked || key.exists;
+  const cacheOk = !cacheStatus.checked || cacheStatus.exists;
+  return {
+    node: String(nodeVersion),
+    nodeOk,
+    mplx,
+    keypair: key,
+    cache: cacheStatus,
+    ready: Boolean(nodeOk && mplx.found && keyOk && cacheOk),
+  };
 }

@@ -10,7 +10,7 @@ import { paintStrengthNote, refreshAccount, renderLocalGpuPanel } from "./app-ac
 import { $, api, lockGenerate, playCompletionChime, showTab, state } from "./app.js";
 import { kitArchive, scheduleWorkspaceSave, setBusy } from "./app-export.js";
 import { loadGallerySets } from "./app-gallery.js";
-import { ensureDraftTraits, renderOptionsEditor } from "./app-options.js";
+import { ensureDraftTraits, paintGenerateEcho, renderOptionsEditor } from "./app-options.js";
 import { escapeHtml, renderCtorSummary } from "./app-overview.js";
 import { renderTraitChecklist } from "./app-packs.js";
 import { criticalGateApplies, licenseApplies, paintCriticalGate, paintFrameOffset, paintLicenseWarning, syncGateCheck } from "./app-recipes.js";
@@ -399,6 +399,27 @@ export function setupRender() {
       if (msg) msg.textContent = e.message;
     }
   });
+  const hybridSeen = new Set();
+  function paintHybridSeen() {
+    for (const n of ["1", "2", "3"]) {
+      const btn = document.querySelector(`[data-preview-n="${n}"]`);
+      if (btn) btn.setAttribute("aria-pressed", hybridSeen.has(n) ? "true" : "false");
+    }
+    const done = $("g-hybrid-preview-done");
+    if (!done) return;
+    const left = ["1", "2", "3"].filter((n) => !hybridSeen.has(n));
+    done.textContent = left.length ? t("render.hybridLeft", { n: left.join(", ") }) : t("render.hybridDone");
+  }
+  document.querySelectorAll("[data-preview-n]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = $("g-compose-preview-n");
+      if (input) input.value = btn.dataset.previewN || "1";
+      $("g-compose-preview")?.click();
+    });
+  });
+  window.addEventListener("series-lab:locale", () => {
+    if (hybridSeen.size) paintHybridSeen();
+  });
   $("g-compose-preview")?.addEventListener("click", async () => {
     const msg = $("g-compose-preview-msg");
     const img = $("g-compose-preview-img");
@@ -421,6 +442,10 @@ export function setupRender() {
         img.hidden = false;
       }
       paintFrameOffset(data.over ? data.frameOffset : null, Boolean(data.over));
+      if ([1, 2, 3].includes(Number(data.edition))) {
+        hybridSeen.add(String(data.edition));
+        paintHybridSeen();
+      }
       if (msg) {
         msg.textContent = t("render.layers.previewOk", { n: data.edition, painted: data.layers.length, left: data.skipped.length });
         if (data.align?.skipped) msg.textContent += ` ${t("render.layers.alignSkipped", { reason: t(`render.layers.alignWhy.${data.align.skipped}`) })}`;
@@ -436,6 +461,7 @@ export function setupRender() {
   const reLockPlan = () => lockGenerate(true);
   $("g-strength")?.addEventListener("input", () => {
     if ($("g-strength-v")) $("g-strength-v").textContent = $("g-strength").value;
+    paintGenerateEcho();
     reLockPlan();
   });
   $("g-engine")?.addEventListener("change", () => {
@@ -444,6 +470,7 @@ export function setupRender() {
     state.licenseAck = false;
     paintStrengthNote("g-strength-note", $("g-engine")?.value);
     paintLicenseWarning();
+    paintGenerateEcho();
   });
   $("g-flux-dev")?.addEventListener("change", () => {
     state.licenseAck = false;
