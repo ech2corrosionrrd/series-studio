@@ -91,6 +91,7 @@ import { handleBaseRoutes } from "./routes/base.mjs";
 import { handleGenerateRoutes } from "./routes/generate.mjs";
 import { handleExportRoutes } from "./routes/export.mjs";
 import { handleReviewRoutes } from "./routes/review.mjs";
+import { handleVersionTrashRoutes } from "./routes/versions-trash.mjs";
 import { handleLayerRoutes } from "./routes/layers.mjs";
 import { handleRecipeRoutes } from "./routes/recipes.mjs";
 import { handlePresetRoutes } from "./routes/presets.mjs";
@@ -112,9 +113,9 @@ import { diskMessage, diskStatus, noteWrite, presetLimitIssues, quotaConfig } fr
 import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, ensureProjectDirs, isProject, loadProjects, pruneWalletTrash, trashRetentionDays, projectIdOf, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, writeActiveProject } from "../src/projects.mjs";
 import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LayersZipError } from "../src/layers-zip.mjs";
-import { dropVersion, listShelved, listVersions, setCurrent, versionCounts } from "../src/versions.mjs";
+import { listShelved, versionCounts } from "../src/versions.mjs";
 import { containsSecretField } from "../src/secrets.mjs";
-import { listTrash, pruneTrash, purgeTrash, restoreTrash, trashFiles } from "../src/trash.mjs";
+import { pruneTrash, trashFiles } from "../src/trash.mjs";
 import { anonymizeRenderLog, appendRenderLog, capError, spendCap, spentToday } from "../src/spend.mjs";
 import { applySecurityHeaders } from "../src/security-headers.mjs";
 import { staticResponse } from "../src/static-cache.mjs";
@@ -1718,43 +1719,12 @@ async function handleApi(req, res, url) {
     })
   ) return;
 
-  if (pathname === "/api/versions/current" && req.method === "POST") {
-    const body = await readBody(req);
-    const dir = safeSetName(body.dir || "");
-    setCurrent(join(P().out, dir), body.edition, body.v);
-    return send(res, 200, { ok: true, dir, ...listVersions(join(P().out, dir), dir, body.edition) });
-  }
-
-  if (pathname === "/api/versions/drop" && req.method === "POST") {
-    const body = await readBody(req);
-    const dir = safeSetName(body.dir || "");
-    const file = dropVersion(join(P().out, dir), body.edition, body.v);
-    discardSelectionFiles([file]);
-    return send(res, 200, { ok: true, dir, ...listVersions(join(P().out, dir), dir, body.edition) });
-  }
-
-  if (pathname === "/api/trash" && req.method === "GET") {
-    return send(res, 200, { items: listTrash(trashDir()) });
-  }
-
-  if (pathname === "/api/trash/restore" && req.method === "POST") {
-    const body = await readBody(req);
-    const trashId = String(body.id || "");
-    let item;
-    try {
-      item = restoreTrash({ root: P().root, trashDir: trashDir() }, trashId);
-    } catch (e) {
-      if (/already exists/.test(String(e.message))) throw httpError(409, "A file with this name already exists: move or delete it first.");
-      throw e;
-    }
-    return send(res, 200, { ok: true, restored: item, items: listTrash(trashDir()) });
-  }
-
-  if (pathname === "/api/trash/purge" && req.method === "POST") {
-    const body = await readBody(req);
-    purgeTrash(trashDir(), String(body.id || ""));
-    return send(res, 200, { ok: true, items: listTrash(trashDir()) });
-  }
+  // versions-trash routes live in server/routes/versions-trash.mjs.
+  if (
+    await handleVersionTrashRoutes({
+      req, res, url, pathname, P, discardSelectionFiles, safeSetName, trashDir,
+    })
+  ) return;
 
   // review routes live in server/routes/review.mjs.
   if (

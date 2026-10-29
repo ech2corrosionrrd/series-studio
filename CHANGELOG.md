@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Внутрішнє: маршрути версій кадрів і кошика винесено з `server/index.mjs`
+- `/api/versions/current`, `/api/versions/drop` і `/api/trash*` тепер у `server/routes/versions-trash.mjs` (`handleVersionTrashRoutes`). Без змін поведінки: ті самі маршрути й відповіді; `server/index.mjs` скоротився з 2271 до 2241 рядка.
+
 ### Внутрішнє: маршрути шарів винесено з `server/index.mjs`
 - `/api/layers/*`, `/api/traits/from-layers`, `/api/traits/from-csv`, `/api/traits/to-csv` і `/api/compose` тепер у `server/routes/layers.mjs` (`handleLayerRoutes`). Без змін поведінки: ті самі маршрути й відповіді; `server/index.mjs` скоротився з 2491 до 2271 рядка.
 
