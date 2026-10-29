@@ -293,7 +293,7 @@ function sysRouteTable(rows, withErrors = false) {
   const body = rows
     .map((r) => `<tr><td><code>${escapeHtml(r.route)}</code></td><td>${fmtNum(r.count)}</td><td>${fmtNum(r.p50)}</td><td>${fmtNum(r.p95)}</td><td>${fmtNum(r.max)}</td>${withErrors ? `<td>${fmtNum(r.errors)}</td>` : ""}</tr>`)
     .join("");
-  return `<table class="sys-table">${head}${body}</table>`;
+  return `<table class="sys-table"><caption class="visually-hidden">${escapeHtml(t("table.caption.sysRoutes"))}</caption>${head}${body}</table>`;
 }
 
 function renderSystemPayload(j) {
@@ -1282,7 +1282,7 @@ function fillOverview(preset) {
   $("o-engine").value = eng;
   const str = Number(preset.engine?.strength ?? 0.45);
   $("o-strength").value = str;
-  $("o-strength-v").textContent = String(str);
+  paintOverviewStrength();
 }
 
 function syncOverviewFromCtor() {
@@ -1293,7 +1293,7 @@ function syncOverviewFromCtor() {
   $("o-size").value = $("c-size").value;
   $("o-engine").value = $("c-engine").value;
   $("o-strength").value = $("c-strength").value;
-  $("o-strength-v").textContent = $("c-strength-v").textContent;
+  paintOverviewStrength();
 }
 
 function syncCtorFromOverview() {
@@ -1485,10 +1485,29 @@ function slugifyId(name) {
     .slice(0, 64);
 }
 
+/**
+ * The product default of the reference strength; the same number as DEFAULT_STRENGTH in src/reference.mjs (a test pins them).
+ * A saved or chosen preset brings its own value, so the Overview slider can honestly show 0.35; the note says that is the preset's choice.
+ */
+const DEFAULT_STRENGTH = 0.45;
+
+function paintOverviewStrength() {
+  const slider = $("o-strength");
+  if (!slider) return;
+  const value = Number(slider.value);
+  if ($("o-strength-v")) $("o-strength-v").textContent = String(slider.value);
+  const note = $("o-strength-default");
+  if (note) {
+    const differs = Number.isFinite(value) && Math.abs(value - DEFAULT_STRENGTH) > 1e-9;
+    note.hidden = !differs;
+    note.textContent = differs ? t("home.strength.default", { value: String(DEFAULT_STRENGTH) }) : "";
+  }
+}
+
 function setupOverview() {
   if (!$("o-name")) return;
   $("o-strength").addEventListener("input", () => {
-    $("o-strength-v").textContent = $("o-strength").value;
+    paintOverviewStrength();
     syncCtorFromOverview();
     applyGenerateDefaults(null, $("o-strength").value);
   });
@@ -1531,6 +1550,7 @@ function setupOverview() {
     applyGenerateDefaults($("o-engine").value, null);
   });
   paintStrengthNote("o-strength-note", $("o-engine")?.value);
+  paintOverviewStrength();
   async function saveOverviewPreset() {
     syncCtorFromOverview();
     const name = $("o-name").value.trim();
@@ -2039,7 +2059,7 @@ function renderRarity(rarity) {
     box.innerHTML = "";
     return;
   }
-  let html = `<table class="table"><thead><tr>
+  let html = `<table class="table"><caption class="visually-hidden">${escapeHtml(t("recipes.rarity.title"))}</caption><thead><tr>
     <th>${t("recipes.rarity.th.trait")}</th><th>${t("recipes.rarity.th.value")}</th>
     <th>${t("recipes.rarity.th.count")}</th><th>${t("recipes.rarity.th.actual")}</th>
     <th>${t("recipes.rarity.th.expected")}</th></tr></thead><tbody>`;
@@ -2063,7 +2083,7 @@ function renderRecipeTable() {
   if (q) rows = rows.filter((r) => JSON.stringify(r).toLowerCase().includes(q));
   if ($("r-count")) $("r-count").textContent = String(rows.length);
   const showWave = rows.some((r) => r.wave != null);
-  table.innerHTML = `<thead><tr><th scope="col">#</th>${showWave ? `<th scope="col">${escapeHtml(t("waves.col"))}</th>` : ""}<th scope="col">${escapeHtml(t("recipes.col.line"))}</th><th scope="col">${escapeHtml(t("recipes.col.dna"))}</th><th scope="col"></th></tr></thead><tbody>` +
+  table.innerHTML = `<caption class="visually-hidden">${escapeHtml(t("table.caption.recipes"))}</caption><thead><tr><th scope="col">#</th>${showWave ? `<th scope="col">${escapeHtml(t("waves.col"))}</th>` : ""}<th scope="col">${escapeHtml(t("recipes.col.line"))}</th><th scope="col">${escapeHtml(t("recipes.col.dna"))}</th><th scope="col"></th></tr></thead><tbody>` +
     rows.map((r) => `<tr data-i="${r.index}">
       <td>${r.edition}</td>${showWave ? `<td>${r.wave ?? ""}</td>` : ""}<td>${escapeHtml(r.line)}</td>
       <td class="mono small">${escapeHtml(r.dna || "")}</td>
@@ -2519,6 +2539,15 @@ function paintLicenseWarning() {
   if (box) box.hidden = !licenseApplies();
 }
 
+/** Per-frame offset of the layers: shown for the frame in the preview, editable only when painting over a set (it is kept with the set). */
+function paintFrameOffset(offset, overSet) {
+  if ($("g-frame-off-x")) $("g-frame-off-x").value = offset?.x ? String(offset.x) : "";
+  if ($("g-frame-off-y")) $("g-frame-off-y").value = offset?.y ? String(offset.y) : "";
+  if ($("g-frame-off-save")) $("g-frame-off-save").disabled = !overSet;
+  const wrap = $("g-frame-offset-wrap");
+  if (wrap) wrap.hidden = !overSet;
+}
+
 /* ---------- Render / Generate ---------- */
 let renderAbort = null;
 
@@ -2887,6 +2916,22 @@ function setupRender() {
       setBusy(btn, false);
     }
   });
+  $("g-frame-off-save")?.addEventListener("click", async () => {
+    const msg = $("g-frame-off-msg");
+    const set = $("g-compose-over")?.value || "";
+    const edition = Number($("g-compose-preview-n")?.value);
+    try {
+      if (!set || !Number.isInteger(edition) || edition < 1) throw new Error(t("render.layers.previewBad"));
+      if (msg) msg.textContent = t("ui.working");
+      const x = Math.round(Number($("g-frame-off-x")?.value) || 0);
+      const y = Math.round(Number($("g-frame-off-y")?.value) || 0);
+      await api("/api/layers/frame-offset", { method: "POST", body: JSON.stringify({ set, edition, x, y }) });
+      if (msg) msg.textContent = t("render.layers.frameOffsetSaved", { n: String(edition) });
+      $("g-compose-preview")?.click();
+    } catch (e) {
+      if (msg) msg.textContent = e.message;
+    }
+  });
   $("g-compose-preview")?.addEventListener("click", async () => {
     const msg = $("g-compose-preview-msg");
     const img = $("g-compose-preview-img");
@@ -2908,6 +2953,7 @@ function setupRender() {
         img.alt = t("render.layers.previewAlt", { n: data.edition });
         img.hidden = false;
       }
+      paintFrameOffset(data.over ? data.frameOffset : null, Boolean(data.over));
       if (msg) {
         msg.textContent = t("render.layers.previewOk", { n: data.edition, painted: data.layers.length, left: data.skipped.length });
         if (data.align?.skipped) msg.textContent += ` ${t("render.layers.alignSkipped", { reason: t(`render.layers.alignWhy.${data.align.skipped}`) })}`;
@@ -3246,6 +3292,8 @@ async function loadGalleryDir(dir) {
     state.galleryImages = data.images || [];
     state.galleryMarks = data.marks || {};
     state.galleryShelved = data.shelved || [];
+    state.galleryLineage = data.lineage || null;
+    paintLineage();
     await loadGalleryDir2($("v-dir2")?.value || state.galleryDir2);
     renderGallery();
   } catch (e) {
@@ -3255,6 +3303,22 @@ async function loadGalleryDir(dir) {
     }
     if (grid) grid.innerHTML = "";
   }
+}
+
+/** Where the open set came from: painted over another set, or a layers version of it exists (read from dna.json by the server). */
+function paintLineage() {
+  const el = $("v-lineage");
+  if (!el) return;
+  const lin = state.galleryLineage;
+  const parts = [];
+  if (lin?.derivedFrom) {
+    parts.push(t("gallery.lineage.from", { set: lin.derivedFrom.set, painted: fmtNum(lin.derivedFrom.painted), count: fmtNum(lin.derivedFrom.count) }));
+  }
+  if (lin?.derived?.length) {
+    parts.push(t("gallery.lineage.to", { sets: lin.derived.map((d) => d.set).join(", ") }));
+  }
+  el.textContent = parts.join(" ");
+  el.hidden = parts.length === 0;
 }
 
 function sideHtml(img, dirLabel) {
@@ -3521,6 +3585,7 @@ function renderHelp() {
   const toc = $("help-toc");
   if (!body || !toc) return;
   const sections = helpSections();
+  if (!sections.some(([id]) => id === state.helpActive)) state.helpActive = sections[0]?.[0] || "";
   body.innerHTML = sections.map(([id, html]) =>
     `<section class="help-sec card" id="help-${id}" data-help-id="${id}"><h2>${esc(`help.${id}.title`)}</h2>${html}</section>`).join("");
   toc.innerHTML = `<b>${esc("help.toc.title")}</b>` + sections.map(([id]) =>
@@ -3528,6 +3593,8 @@ function renderHelp() {
   body.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
   toc.querySelectorAll("a").forEach((a) => a.addEventListener("click", (e) => {
     e.preventDefault();
+    state.helpActive = a.dataset.sec;
+    filterHelp($("help-search")?.value || "");
     $(`help-${a.dataset.sec}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }));
   filterHelp($("help-search")?.value || "");
@@ -3536,6 +3603,14 @@ function renderHelp() {
 function filterHelp(query) {
   const q = query.trim().toLowerCase();
   let shown = 0;
+  // Without a search the help is one section at a time (the whole text is over ten thousand characters); "show all" and the search lift that.
+  const single = !q && !state.helpAll;
+  document.querySelectorAll("#help-toc a").forEach((a) => a.classList.toggle("active", single && a.dataset.sec === state.helpActive));
+  const toggle = $("help-all");
+  if (toggle) {
+    toggle.setAttribute("aria-pressed", state.helpAll ? "true" : "false");
+    toggle.textContent = t(state.helpAll ? "help.all.off" : "help.all.on");
+  }
   document.querySelectorAll("#help-body .help-sec").forEach((sec) => {
     const items = sec.querySelectorAll(".help-item");
     let secHit = !q || sec.querySelector("h2").textContent.toLowerCase().includes(q);
@@ -3549,7 +3624,7 @@ function filterHelp(query) {
       }
     });
     const visible = !q || secHit || itemHits > 0 || sec.textContent.toLowerCase().includes(q);
-    sec.hidden = !visible;
+    sec.hidden = !visible || (single && sec.dataset.helpId !== state.helpActive);
     if (visible) shown++;
   });
   const count = $("help-search-count");
@@ -3559,6 +3634,10 @@ function filterHelp(query) {
 function setupHelp() {
   renderHelp();
   $("help-search")?.addEventListener("input", (e) => filterHelp(e.target.value));
+  $("help-all")?.addEventListener("click", () => {
+    state.helpAll = !state.helpAll;
+    filterHelp($("help-search")?.value || "");
+  });
 }
 
 /* ---------- Account (public mode: wallet, credits, top-up) ---------- */
@@ -6173,7 +6252,7 @@ async function renderResourcePlan({ probe = false } = {}) {
       </tr>`;
     })
     .join("");
-  box.innerHTML = `<table class="econ-table res-plan-table"><thead><tr>
+  box.innerHTML = `<table class="econ-table res-plan-table"><caption class="visually-hidden">${escapeHtml(t("res.plan.caption"))}</caption><thead><tr>
       <th>${escapeHtml(t("res.plan.col.provider"))}</th>
       <th class="num">${escapeHtml(t("res.plan.col.spend"))}</th>
       <th class="num">${escapeHtml(t("res.plan.col.perDay"))}</th>
@@ -6190,7 +6269,7 @@ async function renderResourcePlan({ probe = false } = {}) {
     <p class="econ-note">${escapeHtml(t("res.plan.method", { days: plan.settings.cover_days, share: Math.round(plan.settings.liability_share * 100), min: plan.settings.min_usd, credits: fmtNum(plan.outstanding_credits) }))}</p>
     <p class="econ-note">${escapeHtml(t("res.plan.alertNote"))}</p>
     <h4 class="econ-sub">${escapeHtml(t("res.infra.h4"))}</h4>
-    <table class="econ-table res-plan-table"><thead><tr>
+    <table class="econ-table res-plan-table"><caption class="visually-hidden">${escapeHtml(t("res.infra.h4"))}</caption><thead><tr>
       <th>${escapeHtml(t("res.infra.col.service"))}</th>
       <th>${escapeHtml(t("res.infra.col.role"))}</th>
       <th>${escapeHtml(t("res.infra.col.state"))}</th>
@@ -6540,7 +6619,7 @@ async function renderEconomy() {
         }))}</p>
         ${stabWarn}
         <div class="table-wrap" style="max-height:220px;margin-top:8px">
-          <table class="econ-table">
+          <table class="econ-table"><caption class="visually-hidden">${escapeHtml(t("econ.caption.costs"))}</caption>
             <thead><tr><th>${escapeHtml(t("econ.col.engine"))}</th><th class="num">${escapeHtml(t("econ.col.ops"))}</th><th class="num">${escapeHtml(t("econ.col.spent"))}</th><th class="num">${escapeHtml(t("econ.col.api"))}</th></tr></thead>
             <tbody>${costRows}</tbody>
           </table>
@@ -6548,7 +6627,7 @@ async function renderEconomy() {
         <h4 style="margin-top:14px">${escapeHtml(t("econ.stages"))}</h4>
         <p class="econ-note">${escapeHtml(t("econ.stageHint"))} · ${escapeHtml(d.stages?.usd_per_credit_basis || "")} ${escapeHtml(t("econ.perCr", { usd: fmtUsd(d.stages?.usd_per_credit, 4) }))}</p>
         <div class="table-wrap">
-          <table class="econ-table">
+          <table class="econ-table"><caption class="visually-hidden">${escapeHtml(t("econ.stages"))}</caption>
             <thead><tr>
               <th>${escapeHtml(t("econ.col.engine"))}</th>
               <th class="num">${escapeHtml(t("econ.col.ops"))}</th>
@@ -6587,7 +6666,7 @@ async function renderEconomy() {
         <h4 style="margin-top:14px">${escapeHtml(t("econ.scenarios"))}</h4>
         <p class="econ-note">${escapeHtml(t("econ.scenHint", { api: m.blended_api_per_credit ?? 0 }))}</p>
         <div class="table-wrap">
-          <table class="econ-table">
+          <table class="econ-table"><caption class="visually-hidden">${escapeHtml(t("econ.scenarios"))}</caption>
             <thead><tr>
               <th>${escapeHtml(t("econ.col.volume"))}</th>
               <th class="num">${escapeHtml(t("econ.col.rev"))}</th>
@@ -6615,7 +6694,7 @@ async function renderEconomy() {
         <div class="econ-packs">${packs}</div>
         <h4 style="margin-top:14px">${escapeHtml(t("econ.tariff"))}</h4>
         <div class="table-wrap">
-          <table class="econ-table">
+          <table class="econ-table"><caption class="visually-hidden">${escapeHtml(t("econ.tariff"))}</caption>
             <thead><tr>
               <th>${escapeHtml(t("econ.col.family"))}</th>
               <th class="num">${escapeHtml(t("econ.col.draft"))}</th>
@@ -6627,7 +6706,7 @@ async function renderEconomy() {
         </div>
         <h4 style="margin-top:14px">${escapeHtml(t("econ.engines"))}</h4>
         <div class="table-wrap" style="max-height:260px">
-          <table class="econ-table">
+          <table class="econ-table"><caption class="visually-hidden">${escapeHtml(t("econ.engines"))}</caption>
             <thead><tr>
               <th>${escapeHtml(t("econ.col.engine"))}</th>
               <th class="num">${escapeHtml(t("econ.col.cogs"))}</th>

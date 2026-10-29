@@ -18,6 +18,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve, relative } from "node:path";
 import { parseBackdropColor, tintBackdrop } from "./backdrop-tint.mjs";
 import { decodePngRgba } from "./dupes.mjs";
+import { frameOffsetFor, readFrameOffsets } from "./frame-offsets.mjs";
 import { estimateAlignment, warpRgba } from "./layer-align.mjs";
 import { encodeRgbaPng, resizePng } from "./png-fit.mjs";
 import { dna, dnaKeysFromItems } from "./recipes.mjs";
@@ -150,7 +151,7 @@ export function paintOrder(items) {
  * Stack base + trait PNGs for one recipe.
  * @returns {{ png: Buffer, dna: string, prompt: string, edition: number, sha256: string, layers: string[] }}
  */
-export function composeEdition({ recipe, items, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false, alignRef = null }) {
+export function composeEdition({ recipe, items, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false, alignRef = null, frameOffset = null }) {
   if (!items?.length) throw new Error("compose: preset has no traits");
   const base = decodePngRgba(basePng);
   let canvas = Buffer.from(base.rgba);
@@ -206,8 +207,11 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
         alignFailed = alignRef ? align.reason : "no_base";
       }
     }
+    // The trait's own offset and this frame's offset (from the set) add up; both come after the alignment.
     const move = traitLayerOffset(trait);
-    if (move) rgba = shiftRgba(rgba, base.width, base.height, move.x, move.y);
+    const dx = (move?.x || 0) + (frameOffset?.x || 0);
+    const dy = (move?.y || 0) + (frameOffset?.y || 0);
+    if (dx || dy) rgba = shiftRgba(rgba, base.width, base.height, dx, dy);
     canvas = compositeOver(canvas, rgba);
     used.push(`${trait.key}/${value}`);
   }
@@ -236,11 +240,11 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
  * `basePng` is either the base image (full stack) or the model-drawn frame (hybrid, pass `skipMissing`).
  * Throws an error with `status` 404 when the edition is not in the archive.
  */
-export function previewEdition({ archive, items, edition, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false, alignRef = null }) {
+export function previewEdition({ archive, items, edition, basePng, layerDir, readFile = readFileSync, only = null, skipMissing = false, alignRef = null, frameOffset = null }) {
   const n = Number(edition);
   const recipe = Number.isInteger(n) ? (archive?.recipes || []).find((r) => Number(r.edition) === n) : null;
   if (!recipe) throw Object.assign(new Error(`preview: edition ${edition} is not in the archive`), { status: 404 });
-  return composeEdition({ recipe, items, basePng, layerDir, readFile, only, skipMissing, alignRef });
+  return composeEdition({ recipe, items, basePng, layerDir, readFile, only, skipMissing, alignRef, frameOffset });
 }
 
 /**
@@ -309,13 +313,15 @@ export function overlaySet({
   mkdirSync(outDir, { recursive: true });
   const editions = [];
   const missingFrames = [];
+  // `<set>/layer-offsets.json`: a correction measured on one frame of this set (see frame-offsets.mjs)
+  const frameOffsets = readFrameOffsets(setDir);
   for (const recipe of take) {
     const frameFile = join(setDir, `${recipe.edition}.png`);
     if (!existsSync(frameFile)) {
       missingFrames.push(recipe.edition);
       continue;
     }
-    const frame = composeEdition({ recipe, items, basePng: readFile(frameFile), layerDir, readFile, only, skipMissing: true, alignRef });
+    const frame = composeEdition({ recipe, items, basePng: readFile(frameFile), layerDir, readFile, only, skipMissing: true, alignRef, frameOffset: frameOffsetFor(frameOffsets, recipe.edition) });
     writeFile(join(outDir, `${recipe.edition}.png`), frame.png);
     editions.push({
       edition: recipe.edition,
@@ -326,6 +332,7 @@ export function overlaySet({
       layers: frame.layers.filter((l) => l !== "base"),
       skipped: frame.skipped,
       ...(frame.align ? { align: frame.align } : {}),
+      ...(frameOffsetFor(frameOffsets, recipe.edition) ? { frameOffset: frameOffsetFor(frameOffsets, recipe.edition) } : {}),
       file: `${recipe.edition}.png`,
     });
   }
@@ -339,6 +346,7 @@ export function overlaySet({
     count: editions.length,
     painted,
     unpainted: editions.length - painted,
+    frameOffsetFrames: editions.filter((e) => e.frameOffset).length,
     aligned: editions.filter((e) => e.align && !e.align.skipped).length,
     alignSkipped: editions.filter((e) => e.align?.skipped).length,
     missingFrames,

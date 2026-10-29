@@ -143,7 +143,7 @@
               <option value="runware" data-i18n="engine.runware">runware</option>
               <option value="mock" data-i18n="engine.mock">mock (демо)</option>
             </select></label>
-          <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="o-strength-v">0.45</b>
+          <label><span data-i18n="home.field.strength">Сила референсу</span>: <b id="o-strength-v">0.45</b> <span id="o-strength-default" class="muted small" hidden></span>
             <input type="range" id="o-strength" min="0.1" max="0.95" step="0.05" value="0.45">
           </label>
           <p id="o-strength-note" class="muted small" role="status"></p>
@@ -373,6 +373,7 @@
       <div id="opt-editor-wrap" class="opt-editor-wrap" hidden>
         <div class="opt-table-wrap">
           <table class="opt-table" id="opt-table">
+            <caption class="visually-hidden" data-i18n="table.caption.options"></caption>
             <thead>
               <tr>
                 <th data-i18n="ctor.options.colValue">value</th>
@@ -413,10 +414,10 @@
           <p class="muted small" data-i18n="ctor.options.orderHelp"></p>
           <div class="row">
             <label class="small"><span data-i18n="ctor.options.offsetX">Зсув шару по X, px</span>
-              <input type="number" id="opt-offset-x" step="1" autocomplete="off" placeholder="0" style="width:90px">
+              <input class="w-90" type="number" id="opt-offset-x" step="1" autocomplete="off" placeholder="0">
             </label>
             <label class="small"><span data-i18n="ctor.options.offsetY">Зсув шару по Y, px</span>
-              <input type="number" id="opt-offset-y" step="1" autocomplete="off" placeholder="0" style="width:90px">
+              <input class="w-90" type="number" id="opt-offset-y" step="1" autocomplete="off" placeholder="0">
             </label>
           </div>
           <p class="muted small" data-i18n="ctor.options.offsetHelp"></p>
@@ -596,7 +597,7 @@
       <details id="r-cooccurrence-wrap" class="u-mt-8" hidden>
         <summary style="font-weight:600; cursor:pointer" data-i18n="recipes.cooccurrenceTitle">📊 Матриця взаємозв'язку та синергії рис (Trait Synergy)</summary>
         <p class="muted small u-mt-4" data-i18n="recipes.cooccurrenceHelp"></p>
-        <div id="r-cooccurrence-list" class="grid2 small" style="margin-top:8px; max-height:220px; overflow:auto"></div>
+        <div id="r-cooccurrence-list" class="grid2 small u-scroll-220"></div>
       </details>
     </div>
 
@@ -627,10 +628,10 @@
         <div id="r-waves-list" class="small"></div>
         <div class="actions u-mt-10">
           <label class="small"><span data-i18n="waves.count">Кількість</span>
-            <input id="r-wave-size" type="number" min="1" value="12" style="width:5rem">
+            <input class="w-5r" id="r-wave-size" type="number" min="1" value="12">
           </label>
           <label class="small"><span data-i18n="waves.seed">Seed хвилі</span>
-            <input id="r-wave-seed" style="width:14rem">
+            <input class="w-14r" id="r-wave-seed">
           </label>
           <button type="button" id="r-wave-add" class="btn" data-i18n="waves.add">Додати хвилю</button>
           <span id="r-wave-msg" class="small"></span>
@@ -753,11 +754,22 @@
           </div>
           <div class="actions u-mt-8">
             <label class="small"><span data-i18n="render.layers.previewN">Номер кадру</span>
-              <input type="number" id="g-compose-preview-n" min="1" step="1" value="1" autocomplete="off" style="width:90px">
+              <input class="w-90" type="number" id="g-compose-preview-n" min="1" step="1" value="1" autocomplete="off">
             </label>
             <button type="button" id="g-compose-preview" class="btn" data-i18n="render.layers.preview">Переглянути кадр</button>
             <span id="g-compose-preview-msg" class="small" role="status"></span>
           </div>
+          <div class="actions u-mt-8" id="g-frame-offset-wrap">
+            <label class="small"><span data-i18n="render.layers.frameOffsetX">Зсув цього кадру по X, px</span>
+              <input type="number" id="g-frame-off-x" step="1" autocomplete="off" placeholder="0" style="width:90px">
+            </label>
+            <label class="small"><span data-i18n="render.layers.frameOffsetY">по Y, px</span>
+              <input type="number" id="g-frame-off-y" step="1" autocomplete="off" placeholder="0" style="width:90px">
+            </label>
+            <button type="button" id="g-frame-off-save" class="btn small" disabled data-i18n="render.layers.frameOffsetSave">Зберегти зсув кадру</button>
+            <span id="g-frame-off-msg" class="small" role="status"></span>
+          </div>
+          <p class="muted small" data-i18n="render.layers.frameOffsetHelp"></p>
           <img id="g-compose-preview-img" alt="" hidden style="max-width:100%; width:320px; margin-top:8px; border-radius:8px">
         </div>
       </div>
@@ -825,6 +837,7 @@
       <button type="button" id="v-publish" class="btn small public-only" hidden data-i18n="publish.btn">🌐 Опублікувати колекцію</button>
       <span id="v-publish-status" class="small muted"></span>
     </div>
+    <p id="v-lineage" class="muted small" hidden role="status"></p>
     <div id="v-quality" class="card quality-card" style="margin: 10px 0; padding: 10px 14px">
       <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px">
         <b data-i18n="gallery.quality.title">Якість серії</b>
@@ -917,7 +930,7 @@
       <label class="small"><span data-i18n="export.archive">Архів</span>
         <select id="x-file"></select>
       </label>
-      <div class="actions" style="margin-top:12px; gap:8px; flex-wrap:wrap">
+      <div class="actions u-row-wrap-12">
         <a id="x-json" class="btn" href="#" download data-i18n="export.json">⬇ Архів JSON</a>
         <button type="button" id="x-csv" class="btn" data-i18n="export.csv">⬇ Промпти CSV</button>
         <button type="button" id="x-txt" class="btn" data-i18n="export.txt">⬇ Промпти TXT</button>
@@ -963,8 +976,8 @@
             <input id="x-uri-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.png)" data-i18n-placeholder="export.bundle.uriPrefix.ph" data-i18n-tip="export.bundle.uriPrefix.tip" style="flex:1" />
             <button type="button" id="x-pin-irys" class="btn small" data-i18n="export.bundle.pinArweave" data-i18n-tip="export.bundle.pinArweave.tip">📌 Upload to Arweave (Irys)</button>
           </div>
-          <span class="small muted" style="margin-top:2px; display:block" data-i18n="export.bundle.pinArweave.hint"></span>
-          <span id="x-pin-status" class="small muted" style="margin-top:2px; display:block"></span>
+          <span class="small muted u-mt-2-block" data-i18n="export.bundle.pinArweave.hint"></span>
+          <span id="x-pin-status" class="small muted u-mt-2-block"></span>
         </label>
         <label class="small u-col-all" id="x-anim-wrap"><span data-i18n="export.bundle.animPrefix">Animation / Video URI Prefix</span>
           <input id="x-anim-prefix" type="text" placeholder="e.g. ipfs://Qm.../ or ar://.../ (empty = 1.mp4)" data-i18n-placeholder="export.bundle.animPrefix.ph" />
@@ -972,7 +985,7 @@
       </div>
       <details id="x-preview-wrap" style="margin-top:14px; border-top:1px solid var(--border); padding-top:10px" open>
         <summary style="font-size:13px; font-weight:600; cursor:pointer" data-i18n="export.bundle.metaPreview">Metadata Preview (1.json)</summary>
-        <pre id="x-meta-preview" class="log small" style="margin-top:8px; max-height:220px; overflow:auto">{}</pre>
+        <pre id="x-meta-preview" class="log small u-scroll-220">{}</pre>
       </details>
       <div class="actions" style="margin-top:12px; gap:12px; flex-wrap:wrap">
         <label class="small"><input type="checkbox" id="x-onlyKeep" checked /> <span data-i18n="export.bundle.onlyKeep">Лише позначені «Лишити»</span></label>
@@ -989,12 +1002,12 @@
         <span style="font-weight:600" data-i18n="export.provenance.hashLabel">Хеш походження (SHA-256)</span><code id="x-prov-hash" style="user-select:all; word-break:break-all"></code>
       </div>
       <div id="x-prov-check" class="small u-mt-8" hidden></div>
-      <div id="x-aimark" class="card small" style="margin-top:10px; display:grid; gap:6px">
+      <div id="x-aimark" class="card small u-grid-gap-6">
         <b data-i18n="export.aiMark.title">Позначка «створено ШІ»</b>
         <p class="muted u-m-4-0-8" data-i18n="export.aiMark.hint"></p>
         <label class="small row"><input type="checkbox" id="x-ai-mark" checked> <span data-i18n="export.aiMark.label">Записати позначку «створено ШІ» в метадані PNG</span></label>
       </div>
-      <div id="x-auth" class="card small" style="margin-top:10px; display:grid; gap:6px">
+      <div id="x-auth" class="card small u-grid-gap-6">
         <b data-i18n="export.auth.title">Людський внесок (за бажанням)</b>
         <p class="muted u-m-4-0-8" data-i18n="export.auth.hint"></p>
         <label class="small"><span data-i18n="export.auth.base">Базова картинка</span>
@@ -1026,7 +1039,7 @@
     <div class="card" style="margin-top:16px; border: 1px solid rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.03);">
       <h2 class="release-hub-title" data-i18n="release.hub.title">Центр випуску</h2>
       <p class="muted small" data-i18n="release.hub.help"></p>
-      <div class="actions" style="margin-top:12px; gap:8px; flex-wrap:wrap">
+      <div class="actions u-row-wrap-12">
         <a id="rel-portal-btn" class="btn primary" href="https://opensea.io/studio/create" target="_blank" rel="noopener noreferrer" data-i18n="release.hub.portalBtn">🌐 Open Launch Portal</a>
         <a id="rel-testnet-btn" class="btn" href="https://testnets.opensea.io/studio/create" target="_blank" rel="noopener noreferrer" data-i18n="release.hub.testnetBtn">🧪 Testnet Portal</a>
         <button type="button" id="rel-config-btn" class="btn" data-i18n="release.hub.configBtn">⬇ Download Deploy Config</button>
@@ -1142,7 +1155,7 @@
             </select>
           </label>
           <label class="small" id="d-licence-cap-wrap" hidden><span data-i18n="advisor.licence.cap">Ліміт доходу, USD на рік</span>
-            <input id="d-licence-cap" type="number" min="1" step="1" style="width:130px">
+            <input class="w-130" id="d-licence-cap" type="number" min="1" step="1">
           </label>
           <button type="button" id="d-licence-apply" class="btn small" data-i18n="advisor.licence.apply" data-i18n-tip="advisor.licence.apply.tip">Підставити шаблон</button>
         </div>
@@ -1301,6 +1314,7 @@
     <div class="help-tools card">
       <input type="search" id="help-search" data-i18n-placeholder="help.search.ph" data-i18n-tip="ctrl.help-search.tip" autocomplete="off">
       <span id="help-search-count" class="muted small"></span>
+      <button type="button" id="help-all" class="btn small" aria-pressed="false" data-i18n="help.all.on">Показати всі розділи</button>
     </div>
     <nav id="help-toc" class="help-toc" data-i18n-aria="help.toc.title"></nav>
     <div id="help-body" class="help-body"></div>
