@@ -1050,4 +1050,14 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .u-my-4 { margin: 4px 0 !important; }
 .u-m-4-0-8 { margin: 4px 0 8px !important; }
 .u-m-6-0-0 { margin: 6px 0 0 !important; }
+.w-90 { width: 90px; }
+.w-5r { width: 5rem; }
+.w-14r { width: 14rem; }
+.w-130 { width: 130px; }
+.u-row-wrap-12 { margin-top: 12px; gap: 8px; flex-wrap: wrap; }
+.u-grid-gap-6 { margin-top: 10px; display: grid; gap: 6px; }
+.u-mt-2-block { margin-top: 2px; display: block; }
+.u-scroll-220 { margin-top: 8px; max-height: 220px; overflow: auto; }
+.btn.primary { min-height: 44px; min-width: 44px; }
+.help-toc a.active { background: var(--panel2); color: var(--accent); font-weight: 600; }
 .u-flex-tight { margin: 0; display: flex; align-items: center; gap: 4px !important; }
