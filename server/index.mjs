@@ -24,7 +24,7 @@ import { archiveSync } from "../src/archive-sync.mjs";
 import { readSetLineage } from "../src/set-lineage.mjs";
 import { readTriageDoc, readVisibilityAck } from "../src/trait-visibility.mjs";
 import { loadKeys, loadKeysExtra } from "../src/keys.mjs";
-import { ENGINES, TXT2IMG, engineCtx, getEngine, getTxt2Img, pickAvailableEngine, listSelectableEngines, planPrimaryGenerate, primaryGenerateArgs, withRetry } from "../src/engines.mjs";
+import { ENGINES, engineCtx, getEngine, getTxt2Img, planPrimaryGenerate, primaryGenerateArgs, withRetry } from "../src/engines.mjs";
 import { imagesDirName } from "../src/reference.mjs";
 import { licenseWarning, engineModelId } from "../src/license.mjs";
 import { studioDocsResponse } from "../scripts/site-html.mjs";
@@ -91,6 +91,7 @@ import { handleBaseRoutes } from "./routes/base.mjs";
 import { handleGenerateRoutes } from "./routes/generate.mjs";
 import { handleExportRoutes } from "./routes/export.mjs";
 import { handleReviewRoutes } from "./routes/review.mjs";
+import { handlePlatformRoutes } from "./routes/platform.mjs";
 import { handleCreditRoutes } from "./routes/credits.mjs";
 import { handleVersionTrashRoutes } from "./routes/versions-trash.mjs";
 import { handleLayerRoutes } from "./routes/layers.mjs";
@@ -99,22 +100,20 @@ import { handlePresetRoutes } from "./routes/presets.mjs";
 import { allowedHostnames, checkApiRequest, hostedConfigError, hostedConfigWarning, openAccessError } from "./guard.mjs";
 import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
 import { send, readBody, httpError } from "./http.mjs";
-import { PACKAGES, checkGenerationRate, creditCost, deductCredits, getBalance, recordFunnelEvent, referralCodeFor, refundCredits, localGpuCreditCost } from "../src/platform/billing.mjs";
+import { checkGenerationRate, creditCost, deductCredits, getBalance, recordFunnelEvent, refundCredits, localGpuCreditCost } from "../src/platform/billing.mjs";
 import { rateLimit } from "../src/platform/ratelimit.mjs";
 import { solPayInfo } from "../src/platform/solpay.mjs";
 import { isAdmin } from "../src/platform/ops.mjs";
 import { providersSnapshot, keyHealth, providerFloatStatus } from "../src/platform/providers.mjs";
 import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs";
-import { publishCollection } from "../src/platform/site.mjs";
-import { isInsideDir, writeJsonAtomic } from "../src/fs-safe.mjs";
+import { writeJsonAtomic } from "../src/fs-safe.mjs";
 import { diskMessage, diskStatus, noteWrite, presetLimitIssues, quotaConfig } from "../src/quota.mjs";
 import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, ensureProjectDirs, isProject, loadProjects, pruneWalletTrash, trashRetentionDays, projectIdOf, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, writeActiveProject } from "../src/projects.mjs";
-import { eraseWalletRecords } from "../src/platform/erase.mjs";
 import { LayersZipError } from "../src/layers-zip.mjs";
 import { listShelved, versionCounts } from "../src/versions.mjs";
 import { containsSecretField } from "../src/secrets.mjs";
 import { pruneTrash, trashFiles } from "../src/trash.mjs";
-import { anonymizeRenderLog, appendRenderLog, capError, spendCap, spentToday } from "../src/spend.mjs";
+import { appendRenderLog, capError, spendCap, spentToday } from "../src/spend.mjs";
 import { applySecurityHeaders } from "../src/security-headers.mjs";
 import { staticResponse } from "../src/static-cache.mjs";
 import { openDb } from "../src/platform/db.mjs";
@@ -1417,103 +1416,12 @@ async function handleApi(req, res, url) {
   }
 
   // ---- "Delete my data" (privacy right). Files + behavioural rows go; the financial trail stays. ----
-  if (pathname === "/api/account/delete-data" && req.method === "POST") {
-    if (!PUBLIC_MODE) return send(res, 400, { error: "public mode only" });
-    const wallet = currentWallet();
-    if (!wallet) return send(res, 401, { error: "Sign in with your wallet first", code: "auth" });
-    const body = await readBody(req);
-    if (String(body.confirm || "") !== "DELETE") {
-      return send(res, 400, { error: "confirmation required", code: "confirm" });
-    }
-    const usersRoot = join(DATA_DIR, "users");
-    const walletRoot = userPaths(wallet).root;
-    let filesRemoved = false;
-    if (isInsideDir(usersRoot, walletRoot) && walletRoot !== resolve(usersRoot)) {
-      rmSync(walletRoot, { recursive: true, force: true });
-      filesRemoved = true;
-    }
-    const rows = eraseWalletRecords(wallet);
-    const logLines = anonymizeRenderLog(renderLog(), wallet);
-    console.warn(`[erase] data erased for ${String(wallet).slice(0, 6)}… (files ${filesRemoved ? "yes" : "no"}, rows ${Object.values(rows).reduce((a, b) => a + b, 0)}, log ${logLines})`);
-    return send(res, 200, { ok: true, filesRemoved, rows, logLines });
-  }
-
-  if (pathname === "/api/me" && req.method === "GET") {
-    const gpu = localGpuPolicy();
-    if (!PUBLIC_MODE) {
-      return send(res, 200, {
-        mode: "local",
-        admin: true,
-        localGpu: gpu,
-        creditCosts: Object.fromEntries(
-          Object.keys(ENGINES).map((e) => [
-            e,
-            creditCost(e, { reference: true, costUsd: ENGINES[e].costUsd }),
-          ]),
-        ),
-      });
-    }
-    const wallet = currentWallet();
-    const code = referralCodeFor(wallet);
-    return send(res, 200, {
-      mode: "public",
-      admin: isAdmin(wallet),
-      wallet,
-      balance: getBalance(wallet),
-      storage: storageInfo(),
-      projects: (() => {
-        const q = projectQuota(walletProjects(), projectsConfig());
-        return isAdmin(wallet) ? { ...q, needsCharge: false, exempt: true } : { ...q, exempt: false };
-      })(),
-      packages: Object.entries(PACKAGES).map(([id, p]) => ({ id, ...p })),
-      solPay: solPayInfo(process.env, { admin: isAdmin(wallet) }),
-      referral: code ? { code, link: `${process.env.AUTH_URI || "https://lab.w3ir.io"}/login?ref=${code}` } : null,
-      localGpu: gpu,
-      creditCosts: Object.fromEntries(
-        Object.keys(ENGINES).map((e) => [
-          e,
-          LOCAL_ONLY_ENGINES.has(e) && !gpu.enabled
-            ? null
-            : creditCost(e, { reference: true, costUsd: ENGINES[e].costUsd }),
-        ]),
-      ),
-    });
-  }
-
-  if (pathname === "/api/local-gpu" && req.method === "GET") {
-    const gpu = localGpuPolicy();
-    const probe = url.searchParams.get("probe") === "1" || url.searchParams.get("probe") === "true";
-    if (!gpu.enabled) {
-      return send(res, 200, {
-        ok: true,
-        ...gpu,
-        probed: false,
-        comfyui: { online: false, available: false },
-        a1111: { online: false, available: false },
-      });
-    }
-    if (!probe) {
-      return send(res, 200, {
-        ok: true,
-        ...gpu,
-        probed: false,
-        comfyui: { online: null, url: gpu.urls.comfyui },
-        a1111: { online: null, url: gpu.urls.a1111 },
-      });
-    }
-    const [comfy, a1111] = await Promise.all([
-      testEngineConnection("comfyui", process.env, globalThis.fetch),
-      testEngineConnection("a1111", process.env, globalThis.fetch),
-    ]);
-    return send(res, 200, {
-      ok: true,
-      ...gpu,
-      probed: true,
-      probed_at: new Date().toISOString(),
-      comfyui: { ...comfy, url: gpu.urls.comfyui, available: true },
-      a1111: { ...a1111, url: gpu.urls.a1111, available: true },
-    });
-  }
+  // platform routes live in server/routes/platform.mjs.
+  if (
+    await handlePlatformRoutes({
+      req, res, url, pathname, DATA_DIR, KEYS_PATH, LOCAL_ONLY_ENGINES, P, PORT, PUBLIC_MODE, baseStatus, currentWallet, listSetImages, localGpuPolicy, readMarks, renderLog, safeSetName, storageInfo, trackFunnel, userPaths, walletProjects,
+    })
+  ) return;
 
   // credits routes live in server/routes/credits.mjs.
   if (
@@ -1530,40 +1438,6 @@ async function handleApi(req, res, url) {
       isAdminNow: () => isAdmin(currentWallet()),
     })
   ) return;
-
-  if (pathname === "/api/publish" && req.method === "POST") {
-    if (!PUBLIC_MODE) return send(res, 404, { error: "public mode only" });
-    const body = await readBody(req);
-    const dir = safeSetName(body.dir);
-    const marks = readMarks(dir);
-    const onlyKeep = body.onlyKeep !== false && Object.values(marks).includes("keep");
-    const images = listSetImages(dir).images
-      .filter((img) => !onlyKeep || marks[String(img.edition)] === "keep")
-      .map((img) => ({ name: img.file, bytes: readFileSync(join(P().out, dir, img.file)) }));
-    const slug = publishCollection(String(body.title || dir), images, { subtitle: body.subtitle || "", wallet: currentWallet() });
-    trackFunnel("publish", { slug, count: images.length });
-    return send(res, 200, { ok: true, slug, url: `https://w3ir.io/c/${slug}`, path: `/c/${slug}` });
-  }
-
-  if (pathname === "/api/health") {
-    return send(res, 200, {
-      ok: true,
-      product: "series-lab",
-      layer: "lab+studio-ui",
-      port: PORT,
-      base: baseStatus(),
-      keysConfigured: Boolean(KEYS_PATH),
-      keysFileName: KEYS_PATH ? basename(KEYS_PATH) : null,
-      engines: {
-        edit: Object.keys(ENGINES),
-        txt2img: Object.keys(TXT2IMG),
-        availableEdit: pickAvailableEngine("kontext", process.env, ENGINES),
-        availableTxt2img: pickAvailableEngine("openai", process.env, TXT2IMG),
-        readyEdit: listSelectableEngines(process.env, ENGINES),
-        readyTxt2img: listSelectableEngines(process.env, TXT2IMG),
-      },
-    });
-  }
 
   // presets routes live in server/routes/presets.mjs.
   if (
@@ -1742,40 +1616,6 @@ async function handleApi(req, res, url) {
       req, res, url, pathname, P, bundlesDir, chargeStage, listArchives, loadArchiveFile, loadPresetFileSafe, loadPresetForArchive, loadSeriesContext, readMarks, rejectSecrets, releaseArchive, resolveLocale, safeSetName, trackFunnel,
     })
   ) return;
-
-  if (pathname === "/api/stages/quotes" && req.method === "GET") {
-    const count = Number(url.searchParams.get("count") || 1);
-    const engine = url.searchParams.get("engine") || "kontext";
-    const provider = url.searchParams.get("provider") || "heuristic";
-    return send(res, 200, {
-      ok: true,
-      quotes: {
-        generation: quoteStage("generation", { engine, count, reference: true }),
-        curation: quoteStage("curation", { provider, count }),
-        archive: quoteStage("archive", { zip: true }),
-        archive_storage: quoteStage("archive", { zip: false, storage: true }),
-        deploy_kit: quoteStage("deploy_kit"),
-        marketplace_kit: quoteStage("marketplace_kit"),
-      },
-    });
-  }
-
-  if (pathname === "/api/stages/quote" && req.method === "GET") {
-    const stage = url.searchParams.get("stage") || "archive";
-    try {
-      const quote = quoteStage(stage, {
-        engine: url.searchParams.get("engine") || "kontext",
-        count: Number(url.searchParams.get("count") || 1),
-        reference: url.searchParams.get("reference") !== "0",
-        provider: url.searchParams.get("provider") || "heuristic",
-        storage: url.searchParams.get("storage") === "1" || url.searchParams.get("ipfs") === "1",
-        zip: url.searchParams.get("zip") !== "0",
-      });
-      return send(res, 200, { ok: true, quote });
-    } catch (e) {
-      return send(res, e.status || 400, { error: String(e.message || e) });
-    }
-  }
 
   // layers routes live in server/routes/layers.mjs.
   if (
