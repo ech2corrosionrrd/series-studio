@@ -759,6 +759,17 @@
             <button type="button" id="g-compose-preview" class="btn" data-i18n="render.layers.preview">Переглянути кадр</button>
             <span id="g-compose-preview-msg" class="small" role="status"></span>
           </div>
+          <div class="actions u-mt-8" id="g-frame-offset-wrap">
+            <label class="small"><span data-i18n="render.layers.frameOffsetX">Зсув цього кадру по X, px</span>
+              <input type="number" id="g-frame-off-x" step="1" autocomplete="off" placeholder="0" style="width:90px">
+            </label>
+            <label class="small"><span data-i18n="render.layers.frameOffsetY">по Y, px</span>
+              <input type="number" id="g-frame-off-y" step="1" autocomplete="off" placeholder="0" style="width:90px">
+            </label>
+            <button type="button" id="g-frame-off-save" class="btn small" disabled data-i18n="render.layers.frameOffsetSave">Зберегти зсув кадру</button>
+            <span id="g-frame-off-msg" class="small" role="status"></span>
+          </div>
+          <p class="muted small" data-i18n="render.layers.frameOffsetHelp"></p>
           <img id="g-compose-preview-img" alt="" hidden style="max-width:100%; width:320px; margin-top:8px; border-radius:8px">
         </div>
       </div>
@@ -826,6 +837,7 @@
       <button type="button" id="v-publish" class="btn small public-only" hidden data-i18n="publish.btn">🌐 Опублікувати колекцію</button>
       <span id="v-publish-status" class="small muted"></span>
     </div>
+    <p id="v-lineage" class="muted small" hidden role="status"></p>
     <div id="v-quality" class="card quality-card" style="margin: 10px 0; padding: 10px 14px">
       <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px">
         <b data-i18n="gallery.quality.title">Якість серії</b>
