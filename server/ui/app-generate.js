@@ -399,6 +399,27 @@ export function setupRender() {
       if (msg) msg.textContent = e.message;
     }
   });
+  const hybridSeen = new Set();
+  function paintHybridSeen() {
+    for (const n of ["1", "2", "3"]) {
+      const btn = document.querySelector(`[data-preview-n="${n}"]`);
+      if (btn) btn.setAttribute("aria-pressed", hybridSeen.has(n) ? "true" : "false");
+    }
+    const done = $("g-hybrid-preview-done");
+    if (!done) return;
+    const left = ["1", "2", "3"].filter((n) => !hybridSeen.has(n));
+    done.textContent = left.length ? t("render.hybridLeft", { n: left.join(", ") }) : t("render.hybridDone");
+  }
+  document.querySelectorAll("[data-preview-n]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = $("g-compose-preview-n");
+      if (input) input.value = btn.dataset.previewN || "1";
+      $("g-compose-preview")?.click();
+    });
+  });
+  window.addEventListener("series-lab:locale", () => {
+    if (hybridSeen.size) paintHybridSeen();
+  });
   $("g-compose-preview")?.addEventListener("click", async () => {
     const msg = $("g-compose-preview-msg");
     const img = $("g-compose-preview-img");
@@ -421,6 +442,10 @@ export function setupRender() {
         img.hidden = false;
       }
       paintFrameOffset(data.over ? data.frameOffset : null, Boolean(data.over));
+      if ([1, 2, 3].includes(Number(data.edition))) {
+        hybridSeen.add(String(data.edition));
+        paintHybridSeen();
+      }
       if (msg) {
         msg.textContent = t("render.layers.previewOk", { n: data.edition, painted: data.layers.length, left: data.skipped.length });
         if (data.align?.skipped) msg.textContent += ` ${t("render.layers.alignSkipped", { reason: t(`render.layers.alignWhy.${data.align.skipped}`) })}`;

@@ -773,7 +773,15 @@
         <div class="card u-mt-12" id="g-layers">
           <h3 data-i18n="render.layers.h">PNG layers</h3>
           <div class="hint"><p data-i18n="render.layers.critical"></p></div>
-          <p id="g-hybrid-preview" class="small" hidden data-i18n="render.hybridPreview"></p>
+          <div id="g-hybrid-preview" class="small" hidden>
+            <p data-i18n="render.hybridPreview"></p>
+            <div class="actions">
+              <button type="button" class="btn small" id="g-preview-1" data-preview-n="1" data-i18n="render.preview1">Кадр 1</button>
+              <button type="button" class="btn small" id="g-preview-2" data-preview-n="2" data-i18n="render.preview2">Кадр 2</button>
+              <button type="button" class="btn small" id="g-preview-3" data-preview-n="3" data-i18n="render.preview3">Кадр 3</button>
+              <span id="g-hybrid-preview-done" class="small" role="status"></span>
+            </div>
+          </div>
           <p class="muted small" data-i18n="render.layers.help"></p>
           <div class="actions">
             <input type="file" id="g-layers-file" accept=".zip,application/zip,application/x-zip-compressed" hidden>
@@ -1116,6 +1124,23 @@
   <section id="tab-deploy" class="tab">
     <h1 data-i18n="deploy.h1">Набір деплою</h1>
     <div class="hint"><p data-i18n="deploy.hint"></p></div>
+    <div class="card" id="d-pc">
+      <h2 data-i18n="deploy.pc.title">Далі на цьому ПК</h2>
+      <p class="muted small" data-i18n="deploy.pc.help"></p>
+      <ol class="guide">
+        <li data-i18n="deploy.pc.li1"></li>
+        <li data-i18n="deploy.pc.li2"></li>
+      </ol>
+      <div id="d-commands" class="card small u-mt-10">
+        <b data-i18n="deploy.commands.title">Готові команди для вашого ПК</b>
+        <p class="muted u-my-4" data-i18n="deploy.commands.help"></p>
+        <pre id="d-commands-text" class="log small" style="white-space:pre-wrap; max-height:340px; overflow:auto"></pre>
+        <div class="actions">
+          <button type="button" id="d-commands-copy" class="btn small" data-i18n="deploy.commands.copy">Копіювати все</button>
+          <span id="d-commands-msg" class="small muted" role="status"></span>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <p class="muted small" data-i18n="deploy.help"></p>
       <p id="d-price" class="small muted"></p>
@@ -1166,15 +1191,6 @@
           <li data-i18n="deploy.keys.li3"></li>
           <li data-i18n="deploy.keys.li4"></li>
         </ul>
-      </div>
-      <div id="d-commands" class="card small u-mt-10">
-        <b data-i18n="deploy.commands.title">Готові команди для вашого ПК</b>
-        <p class="muted u-my-4" data-i18n="deploy.commands.help"></p>
-        <pre id="d-commands-text" class="log small" style="white-space:pre-wrap; max-height:340px; overflow:auto"></pre>
-        <div class="actions">
-          <button type="button" id="d-commands-copy" class="btn small" data-i18n="deploy.commands.copy">Копіювати все</button>
-          <span id="d-commands-msg" class="small muted" role="status"></span>
-        </div>
       </div>
       <div id="d-advisor-card" class="advisor-card adv-only">
         <h2 data-i18n="advisor.h2">Порадник запуску</h2>
