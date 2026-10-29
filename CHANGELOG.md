@@ -9,6 +9,9 @@
 
 ## [Unreleased]
 
+### Внутрішнє: маршрути сховища винесено з `server/index.mjs`
+- `/api/storage/status` і `/api/storage/pin` тепер у `server/routes/storage.mjs` (`handleStorageRoutes`). Без змін поведінки: той самий порядок «списати кредити етапу archive, залити в Irys, повернути кредити при збої»; ключ `IRYS_PRIVATE_KEY` і `src/storage*` не чіпались. `server/index.mjs` скоротився з 2029 до 2008 рядків.
+
 ### Внутрішнє: маршрути акаунта, здоров'я, публікації та цін етапів винесено з `server/index.mjs`
 - `/api/account/delete-data`, `/api/me`, `/api/local-gpu`, `/api/publish`, `/api/health`, `/api/stages/quotes` і `/api/stages/quote` тепер у `server/routes/platform.mjs` (`handlePlatformRoutes`). Без змін поведінки: ті самі маршрути, перевірки й відповіді. `server/index.mjs` скоротився з 2189 до 2029 рядків.
 

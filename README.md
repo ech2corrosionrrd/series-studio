@@ -168,7 +168,7 @@ node bin/series.mjs release-config out/demo-archive.json --profile magiceden -o 
 | `data/` | Леджер, дані гаманців і (у public) `render-log.jsonl` (gitignored) |
 | `workspace/` | Автозбереження UI |
 | `src/` | Ядро + `platform/` (вхід, кредити) |
-| `server/` | HTTP, `/login`, guard; `routes/` (`admin`, `kits`, `review`, `export`, `generate`, `base`, `projects`, `presets`, `recipes`, `layers`, `versions-trash`, `credits`, `platform`); Studio UI: `ui/app.js` (стан, `boot()`) і модулі вкладок `ui/app-*.js` |
+| `server/` | HTTP, `/login`, guard; `routes/` (`admin`, `kits`, `review`, `export`, `generate`, `base`, `projects`, `presets`, `recipes`, `layers`, `versions-trash`, `credits`, `platform`, `storage`); Studio UI: `ui/app.js` (стан, `boot()`) і модулі вкладок `ui/app-*.js` |
 | `deploy/series-lab/` | Staging / бекап (за командою хостингу) |
 | `.github/workflows/` | `health.yml`, `deploy-site.yml` (тестів у GitHub немає: `npm run ci`) |
 | `bin/series.mjs` | CLI |
