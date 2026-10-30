@@ -139,7 +139,27 @@ export async function handleLayerRoutes(ctx) {
     const { items: found, skipped } = traitsFromLayerFiles(layerRelPaths(P().layers));
     if (!found.length) return send(res, 400, { error: "no layer PNGs found: upload a ZIP of <trait>/<value>.png first", code: "no_layers" });
     const merged = mergeTraitItems(body.items || [], found, { overwrite: false });
-    return send(res, 200, { ok: true, items: merged.items, ...merged.stats, skipped: skipped.slice(0, 20), skippedCount: skipped.length });
+    // `replace`: the table becomes what the layers folder holds (typed weights and prompts of the same values stay);
+    // without it, what has no layer is only reported, so a hybrid series keeps the traits the model draws.
+    const files = new Set(layerRelPaths(P().layers));
+    const has = (t, o) => files.has(o.layer || `${t.key}/${o.value}.png`);
+    const without = [];
+    let items = merged.items;
+    let traitsRemoved = 0;
+    let optionsRemoved = 0;
+    if (body.replace === true) {
+      const keep = new Map(found.map((t) => [t.key, new Set(t.options.map((o) => String(o.value)))]));
+      items = items.filter((t) => keep.has(t.key));
+      traitsRemoved = merged.items.length - items.length;
+      for (const t of items) {
+        const before = t.options.length;
+        t.options = t.options.filter((o) => keep.get(t.key).has(String(o.value)) || has(t, o));
+        optionsRemoved += before - t.options.length;
+      }
+    } else {
+      for (const t of items) for (const o of t.options || []) if (!has(t, o)) without.push(`${t.key}/${o.value}`);
+    }
+    return send(res, 200, { ok: true, items, ...merged.stats, traitsRemoved, optionsRemoved, withoutLayers: without.slice(0, 20), withoutLayersCount: without.length, skipped: skipped.slice(0, 20), skippedCount: skipped.length });
   }
 
   if (pathname === "/api/traits/from-csv" && req.method === "POST") {
