@@ -390,7 +390,7 @@ export function setupRender() {
           ? t("render.layers.stopped", { done: fmtNum(data.count), total: fmtNum(data.total), dir: data.dir })
           : data.mode === "overlay"
             ? t("render.layers.okOver", { count: data.count, painted: data.painted, left: data.unpainted, dir: data.dir })
-            : t("render.layers.ok", { count: data.count, dir: data.dir });
+            : t("render.layers.ok", { count: data.count, dir: data.dir }) + (data.resumed ? ` ${t("render.layers.resumed", { n: fmtNum(data.resumed) })}` : "");
       }
       if (data.mode === "overlay") fillComposeOver();
     } catch (e) {

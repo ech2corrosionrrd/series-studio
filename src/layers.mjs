@@ -14,7 +14,7 @@
  * traits that have a layer file are painted over them (the rest stay as the model drew them).
  */
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, resolve, relative } from "node:path";
 import { parseBackdropColor, tintBackdrop } from "./backdrop-tint.mjs";
 import { decodePngRgba } from "./dupes.mjs";
@@ -248,7 +248,45 @@ export function previewEdition({ archive, items, edition, basePng, layerDir, rea
 }
 
 /**
- * Write `<edition>.png` plus `dna.json`. Prompts from the archive are copied, not regenerated.
+ * One hash for what a composed frame depends on besides its recipe: every layer file (path, size, time) and how the traits
+ * map onto them (order, layer names, offsets, alignment, backdrops). Any change makes an earlier run unusable.
+ */
+export function layersSignature(layerDir, items = []) {
+  const h = createHash("sha1");
+  h.update(JSON.stringify((items || []).map((t) => [t.key, t.layerOffset ?? null, t.layerAlign ?? null, (t.options || []).map((o) => [o.value, o.layer ?? null, o.backdrop ?? null])])));
+  const walk = (dir, rel) => {
+    let entries = [];
+    try {
+      entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1));
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p, `${rel}${e.name}/`);
+      else if (e.isFile()) {
+        const st = statSync(p);
+        h.update(`${rel}${e.name}:${st.size}:${Math.round(st.mtimeMs)}\n`);
+      }
+    }
+  };
+  walk(layerDir, "");
+  return h.digest("hex");
+}
+
+/** What an earlier run left in `outDir/dna.json`, if the same base image and the same layers made it; otherwise null. */
+function previousCompose(outDir, baseSha, layersSig) {
+  try {
+    const prev = JSON.parse(readFileSync(join(outDir, "dna.json"), "utf8"));
+    return prev?.source === "layers" && prev.baseSha256 === baseSha && prev.layersSig === layersSig && Array.isArray(prev.editions) ? prev : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * With `resume`, a frame an earlier run already composed (same base, same layers, same recipe, file still there and
+ * unchanged) is kept instead of drawn again, so a stopped or failed run continues where it was.
  */
 export function composeArchive({
   archive,
@@ -261,6 +299,7 @@ export function composeArchive({
   writeFile = writeFileSync,
   onFrame = null,
   shouldStop = null,
+  resume = false,
 } = {}) {
   const recipes = archive?.recipes || [];
   if (!recipes.length) throw new Error("compose: archive has no recipes");
@@ -268,14 +307,34 @@ export function composeArchive({
   mkdirSync(outDir, { recursive: true });
   const editions = [];
   let stopped = false;
+  let resumed = 0;
+  const baseSha256 = createHash("sha256").update(basePng).digest("hex");
+  const layersSig = layersSignature(layerDir, items);
+  const kept = new Map(((resume && previousCompose(outDir, baseSha256, layersSig)) || { editions: [] }).editions.map((e) => [e.edition, e]));
+  const keys = dnaKeysFromItems(items);
   for (const recipe of take) {
     // `shouldStop` / `onFrame` let a worker report progress and be stopped between frames; without them this is the plain loop.
     if (shouldStop?.()) {
       stopped = true;
       break;
     }
-    const frame = composeEdition({ recipe, items, basePng, layerDir, readFile });
     const file = join(outDir, `${recipe.edition}.png`);
+    const old = kept.get(recipe.edition);
+    if (old && old.dna === dna(recipe.line || "", recipe.traits || {}, keys) && old.prompt === (recipe.prompt || "") && existsSync(file)) {
+      let same = false;
+      try {
+        same = createHash("sha256").update(readFileSync(file)).digest("hex") === old.sha256;
+      } catch {
+        same = false;
+      }
+      if (same) {
+        editions.push(old);
+        resumed += 1;
+        onFrame?.({ done: editions.length, total: take.length });
+        continue;
+      }
+    }
+    const frame = composeEdition({ recipe, items, basePng, layerDir, readFile });
     writeFile(file, frame.png);
     editions.push({
       edition: recipe.edition,
@@ -288,10 +347,14 @@ export function composeArchive({
     });
     onFrame?.({ done: editions.length, total: take.length });
   }
+  // the report on disk lists every frame done so far, so a run that was stopped can be continued from it
   const report = {
     source: "layers",
     note: "PNG layers stacked on the base image. Prompt generation is unchanged; each row still carries its prompt.",
+    baseSha256,
+    layersSig,
     count: editions.length,
+    ...(resumed ? { resumed } : {}),
     ...(stopped ? { stopped: true, total: take.length } : {}),
     editions,
   };

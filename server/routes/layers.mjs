@@ -318,9 +318,9 @@ export async function handleLayerRoutes(ctx) {
     const recipeCount = loaded.archive?.recipes?.length || 0;
     return runBulkCompose(
       "compose",
-      { archive: loaded.archive, items, basePng: readFileSync(basePath), layerDir, outDir, limit: body.limit },
+      { archive: loaded.archive, items, basePng: readFileSync(basePath), layerDir, outDir, limit: body.limit, resume: body.resume !== false },
       body.limit ? Math.min(Number(body.limit), recipeCount) : recipeCount,
-      (report) => ({ ok: true, count: report.count, ...(report.stopped ? { stopped: true, total: report.total } : {}), dir: "out/layers", editions: report.editions }),
+      (report) => ({ ok: true, count: report.count, ...(report.resumed ? { resumed: report.resumed } : {}), ...(report.stopped ? { stopped: true, total: report.total } : {}), dir: "out/layers", editions: report.editions }),
       statSync(basePath).size,
     );
   }
