@@ -49,9 +49,12 @@ describe("a new series starts neutral", { skip: CHROME ? false : "no Chrome/Chro
     await page.fill("#o-name", "Нова Тестова Серія");
     await page.fill("#o-id", "nova-testova");
     await page.fill("#o-size", "4");
+    // A new project reloads the studio (the hash changes first, the message arrives after the reload): wait for the reload itself.
+    const loaded = page.waitForEvent("load");
     await page.click("#o-start");
-    await page.waitForFunction(() => /#base/.test(location.hash));
-
+    await loaded;
+    await page.waitForSelector("#o-id", { state: "attached" });
+    await page.waitForFunction(() => /нейтральних налаштувань/.test(document.getElementById("o-msg")?.textContent || ""));
     assert.match(await page.textContent("#o-msg"), /нейтральних налаштувань/, "the author is told what happened");
     await page.click('nav [data-tab="ctor"]');
     const keep = await page.inputValue("#c-keep");
@@ -65,9 +68,9 @@ describe("a new series starts neutral", { skip: CHROME ? false : "no Chrome/Chro
   it("starting the same ID again keeps the author's edits", async () => {
     await page.fill("#c-keep", "Edit this image of a {who}. Keep: my own words");
     await page.click('nav [data-tab="home"]');
+    await page.evaluate(() => { document.getElementById("o-msg").textContent = ""; }); // the old message must not satisfy the wait below
     await page.click("#o-start");
-    await page.waitForFunction(() => /#base/.test(location.hash));
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => /Збережено: nova-testova\.json/.test(document.getElementById("o-msg")?.textContent || ""));
     assert.doesNotMatch(await page.textContent("#o-msg"), /нейтральних налаштувань/, "an edit of the open series is not a fresh start");
     await page.click('nav [data-tab="ctor"]');
     assert.match(await page.inputValue("#c-keep"), /my own words/);
