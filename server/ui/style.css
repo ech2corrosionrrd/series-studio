@@ -1026,6 +1026,8 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .sys-pill.ok { background: #14301c; color: #b6f0c2; }
 .sys-pill.off { background: rgba(255, 255, 255, 0.08); color: var(--muted); }
 .sys-pill.bad { background: #3a1620; color: #ffb3bf; }
+/* A long archive name must not push the page wider than the phone (BETA-REVIEW B12). */
+label, select { max-width: 100%; }
 .sys-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .sys-table th, .sys-table td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .sys-table th:first-child, .sys-table td:first-child { text-align: left; overflow-wrap: anywhere; }
