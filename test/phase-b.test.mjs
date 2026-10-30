@@ -121,7 +121,19 @@ test("archive ZIP has creation.json, OpenRarity, presetSeed, and no seed phrase"
     },
   });
   assert.equal(res.ready, true, res.preflight?.report);
-  const zip = await JSZip.loadAsync(readFileSync(join(bundles, res.file)));
+  const raw = readFileSync(join(bundles, res.file));
+  // R16: images are stored as they are (PNG is compressed already), text is deflated; read the method of every local header
+  const methods = {};
+  for (let i = 0; i + 30 < raw.length; i++) {
+    if (raw.readUInt32LE(i) !== 0x04034b50) continue;
+    const nameLen = raw.readUInt16LE(i + 26);
+    methods[raw.toString("utf8", i + 30, i + 30 + nameLen)] = raw.readUInt16LE(i + 8);
+  }
+  const imageEntries = Object.keys(methods).filter((n) => /\.png$/.test(n));
+  assert.ok(imageEntries.length >= 2, `images in the ZIP: ${Object.keys(methods).join(", ")}`);
+  for (const n of imageEntries) assert.equal(methods[n], 0, `${n} is stored`);
+  assert.equal(methods["collection.json"], 8, "text is deflated");
+  const zip = await JSZip.loadAsync(raw);
   assert.ok(zip.file("creation/1.json"));
   assert.ok(zip.file("creation/2.json"));
   const rarityTxt = await zip.file("rarity.txt").async("string");
