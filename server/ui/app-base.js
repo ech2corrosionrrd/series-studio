@@ -3,6 +3,7 @@
  * Moved out of app.js without a change in behaviour (docs/QUALITY-REVIEW.md, item 6). The module graph is circular on purpose:
  * every import is a function or a binding that is only used after all modules have loaded.
  */
+import { thumbUrl } from "./format.js";
 import { applyTips, t } from "./i18n.js";
 import { paintWishPrompt, relabelEngineSelects, syncWishControls } from "./app-account.js";
 import { $, api, showTab, state, tipAttr } from "./app.js";
@@ -47,7 +48,7 @@ function renderBaseGallery(files) {
     tile.className = `base-tile${f.primary ? " primary" : ""}`;
     const roleLabel = t(`base.role.${f.role}`) || f.role;
     tile.innerHTML = `
-      <img src="/input/${encodeURIComponent(f.file)}?t=${Date.now()}" alt="">
+      <img loading="lazy" decoding="async" src="${thumbUrl(`/input/${encodeURIComponent(f.file)}?t=${Date.now()}`, 256)}" alt="">
       <div class="meta"><b>${escapeHtml(f.file)}</b> ${escapeHtml(roleLabel)}${f.line ? ` · ${escapeHtml(f.line)}` : ""}</div>
       <div class="btns">
         ${f.primary ? "" : `<button type="button" class="btn small" data-act="primary" data-file="${escapeHtml(f.file)}"${tipAttr("base.setPrimary")}>${t("base.setPrimary")}</button>`}

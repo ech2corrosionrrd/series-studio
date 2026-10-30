@@ -3,7 +3,7 @@
  * Moved out of app.js without a change in behaviour (docs/QUALITY-REVIEW.md, item 6). The module graph is circular on purpose:
  * every import is a function or a binding that is only used after all modules have loaded.
  */
-import { fmtDate } from "./format.js";
+import { fmtDate, thumbUrl } from "./format.js";
 import { applyTips, t } from "./i18n.js";
 import { showToast } from "./app-account.js";
 import { $, api, lockGenerate, showTab, state, tipAttr } from "./app.js";
@@ -34,7 +34,7 @@ function renderVersions(data) {
     item.className = `ver-item${v.current ? " current" : ""}`;
     const when = v.at ? fmtDate(v.at) : "—";
     item.innerHTML = `
-      <img src="${escapeHtml(v.url)}" alt="v${v.v}" />
+      <img loading="lazy" decoding="async" src="${escapeHtml(thumbUrl(v.url, 160))}" alt="v${v.v}" />
       <div class="small"><b>v${v.v}</b> ${v.current ? `· ${escapeHtml(t("ver.current"))}` : ""}<br>
         <span class="muted">${escapeHtml(when)}${v.engine ? ` · ${escapeHtml(v.engine)}` : ""}</span></div>
       <div class="btns">${v.current ? "" : `
@@ -156,7 +156,7 @@ export function renderAside() {
     const item = document.createElement("div");
     item.className = "aside-row";
     item.innerHTML = `
-      <img src="${escapeHtml(row.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${row.edition}" />
+      <img loading="lazy" decoding="async" src="${escapeHtml(thumbUrl(row.url, 160))}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${row.edition}" />
       <div class="small"><b>#${row.edition}</b> <span class="muted">v${row.v}</span></div>
       <div class="btns">
         <button type="button" class="btn small b-return"${tipAttr("gallery.return")}>${escapeHtml(t("gallery.return"))}</button>

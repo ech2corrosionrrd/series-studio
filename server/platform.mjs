@@ -165,13 +165,23 @@ async function routes(req, res, url) {
   }
 
   // HEAD answers the same static pages as GET (uptime monitors probe /login with HEAD); it never reaches /auth/nonce and the like.
-  const headStatic = method === "HEAD" && /^\/(login|login\.js|img\/showcase-lion\.jpg|favicon\.ico|sitemap\.xml|robots\.txt)$/.test(path);
+  const headStatic = method === "HEAD" && /^\/(login|login\.js|img\/showcase-lion\.jpg|favicon\.ico|sitemap\.xml|robots\.txt|\.well-known\/security\.txt)$/.test(path);
   if (method === "GET" || headStatic) {
     if (path === "/sitemap.xml" || path === "/robots.txt") {
       const file = siteFile(path.slice(1));
       if (!existsSync(file)) throw new HttpError(404, `${path.slice(1)} not found`);
       const type = { "/sitemap.xml": "application/xml", "/robots.txt": "text/plain" }[path];
       send(res, 200, readFileSync(file), type, { "Cache-Control": CACHE.seo });
+      return true;
+    }
+    if (path === "/.well-known/security.txt") {
+      // RFC 9116: a channel for vulnerability reports. Expires is renewed on every answer, so the file never goes stale.
+      const expires = new Date(Date.now() + 300 * 86_400_000).toISOString();
+      const body = `Contact: mailto:w3ir@pm.me
+Expires: ${expires}
+Preferred-Languages: uk, en
+`;
+      send(res, 200, body, "text/plain; charset=utf-8", { "Cache-Control": CACHE.seo });
       return true;
     }
     if (path === "/favicon.ico") {
