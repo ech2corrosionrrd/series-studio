@@ -257,9 +257,12 @@ function setupTraitsImport() {
     const btn = $("ctor-traits-from-layers");
     try {
       setBusy(btn, true);
-      const res = await api("/api/traits/from-layers", { method: "POST", body: JSON.stringify({ items: ensureDraftTraits().items }) });
+      const res = await api("/api/traits/from-layers", { method: "POST", body: JSON.stringify({ items: ensureDraftTraits().items, replace: document.body.dataset.seriesMode === "layers" }) });
       apply(res);
-      say(t("ctor.import.layersOk", { traits: fmtNum(res.traitsAdded), options: fmtNum(res.optionsAdded), skipped: fmtNum(res.skippedCount || 0) }), "ok");
+      const ok = t("ctor.import.layersOk", { traits: fmtNum(res.traitsAdded), options: fmtNum(res.optionsAdded), skipped: fmtNum(res.skippedCount || 0) });
+      const removed = res.traitsRemoved || res.optionsRemoved ? ` ${t("ctor.import.layersRemoved", { traits: fmtNum(res.traitsRemoved || 0), options: fmtNum(res.optionsRemoved || 0) })}` : "";
+      const bare = res.withoutLayersCount ? ` ${t("ctor.import.layersBare", { n: fmtNum(res.withoutLayersCount), list: (res.withoutLayers || []).slice(0, 5).join(", ") })}` : "";
+      say(ok + removed + bare, bare ? "warn" : "ok");
     } catch (e) {
       say(problem(e), "warn");
     } finally {

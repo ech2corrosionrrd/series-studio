@@ -193,7 +193,7 @@ export function composeEdition({ recipe, items, basePng, layerDir, readFile = re
         skipped.push(`${trait.key}/${value}`);
         continue;
       }
-      throw new Error(`missing layer ${trait.key}=${value} (${file})`);
+      throw new Error(`missing layer ${trait.key}=${value}: the layers folder has no ${relative(layerDir, file).replaceAll("\\", "/")}. A trait with no layers cannot be composed: remove it, or upload its layers`);
     }
     let rgba = decodeLayer(buf, base.width, base.height, `${trait.key}=${value}`);
     if (trait.layerAlign === true) {

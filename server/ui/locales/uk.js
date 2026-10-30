@@ -313,6 +313,8 @@ export default {
   "ctor.import.csvExport": "Скачати таблицю рис (CSV)",
   "ctor.import.csvImport": "Завантажити CSV",
   "ctor.import.layersOk": "Із шарів додано рис: {traits}, варіантів: {options}. Пропущено файлів: {skipped}. Перегляньте й збережіть пресет.",
+  "ctor.import.layersRemoved": "Прибрано те, чого немає серед шарів: рис {traits}, варіантів {options}.",
+  "ctor.import.layersBare": "Без шару лишилось варіантів: {n} ({list}). Складання «лише шари» на них зупиниться: видаліть їх або завантажте шари.",
   "ctor.import.csvOk": "З CSV додано рис: {traits}, варіантів: {options}, оновлено варіантів: {updated}. Перегляньте й збережіть пресет.",
   "ctor.import.csvSaved": "Таблицю рис збережено у файл CSV.",
   "ctor.import.noTraits": "У таблиці ще немає рис.",

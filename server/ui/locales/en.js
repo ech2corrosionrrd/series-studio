@@ -313,6 +313,8 @@ export default {
   "ctor.import.csvExport": "Download trait table (CSV)",
   "ctor.import.csvImport": "Upload CSV",
   "ctor.import.layersOk": "Added from the layers: {traits} traits, {options} options. Skipped files: {skipped}. Review and save the preset.",
+  "ctor.import.layersRemoved": "Removed what the layers do not have: {traits} traits, {options} options.",
+  "ctor.import.layersBare": "Options left with no layer: {n} ({list}). A layers-only compose stops on them: delete them or upload their layers.",
   "ctor.import.csvOk": "Added from the CSV: {traits} traits, {options} options, updated options: {updated}. Review and save the preset.",
   "ctor.import.csvSaved": "The trait table was saved as a CSV file.",
   "ctor.import.noTraits": "The table has no traits yet.",

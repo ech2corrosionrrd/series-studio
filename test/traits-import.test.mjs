@@ -166,4 +166,23 @@ describe("routes", () => {
     assert.deepEqual(hair.options[0], { value: "Bob", weight: 7, prompt: "typed" }, "what was typed survives");
     assert.deepEqual(hair.options[1], { value: "Bun", weight: 25, prompt: "", layer: "hair/Bun#25.png" });
   });
+
+  it("replace: the table becomes what the layers hold; without it what has no layer is only reported", async () => {
+    const stale = [
+      { key: "hair", type: "Hair", options: [{ value: "Bob", weight: 7, prompt: "typed" }, { value: "Mullet", weight: 5, prompt: "no layer" }] },
+      { key: "expression", type: "Expression", options: [{ value: "Smile", weight: 10, prompt: "" }] },
+    ];
+    const keep = await post("/api/traits/from-layers", { items: stale });
+    assert.equal(keep.status, 200, keep.text);
+    assert.equal(keep.json.traitsRemoved, 0);
+    assert.deepEqual(keep.json.withoutLayers.sort(), ["expression/Smile", "hair/Mullet"]);
+    assert.ok(keep.json.items.some((t) => t.key === "expression"), "merge keeps the trait the model draws");
+    const r = await post("/api/traits/from-layers", { items: stale, replace: true });
+    assert.equal(r.status, 200, r.text);
+    assert.deepEqual(r.json.items.map((t) => t.key).sort(), ["hair", "hat"]);
+    assert.deepEqual({ t: r.json.traitsRemoved, o: r.json.optionsRemoved }, { t: 1, o: 1 });
+    assert.deepEqual(r.json.items.find((t) => t.key === "hair").options.map((o) => o.value), ["Bob", "Bun"]);
+    assert.equal(r.json.items.find((t) => t.key === "hair").options[0].prompt, "typed", "typed prompt of a value that has a layer stays");
+    assert.equal(r.json.withoutLayersCount, 0);
+  });
 });
