@@ -22,7 +22,7 @@ const tr = (dict) => ({
 });
 
 // the notes the server really writes: stage notes come from chargeStage (stage name with spaces), the others from the routes
-const SERVER_NOTES = ["image generation", "archive", "arweave upload", "deploy kit", "marketplace kit", "vision assist", "ai triage"];
+const SERVER_NOTES = ["image generation", "archive", "arweave upload", "deploy kit", "marketplace kit", "compose", "vision assist", "ai triage"];
 
 describe("historyLabel", () => {
   it("every note the server writes has a label in both languages", () => {

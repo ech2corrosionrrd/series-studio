@@ -90,6 +90,7 @@ Series Lab допомагає людині створити NFT-колекцію
 | `STAGE_STORAGE_COST_USD` / `STAGE_STORAGE_MARGIN_USD` | Завантаження в Arweave (Irys); старі `STAGE_IPFS_*` ще читаються як запасні | 0.05 / 0.01 |
 | `STAGE_DEPLOY_KIT_COST_USD` / `STAGE_DEPLOY_KIT_MARGIN_USD` | Набір деплою | 0 / 0.06 |
 | `STAGE_MARKET_KIT_COST_USD` / `STAGE_MARKET_KIT_MARGIN_USD` | Набір маркетплейсу | 0 / 0.06 |
+| `STAGE_COMPOSE_COST_PER_1000_USD` / `STAGE_COMPOSE_MARGIN_PER_1000_USD` | Складання шарів за кадр (на 1000 кадрів) | 0.06 / 0.012 |
 | `STAGE_CURATION_COST_USD` / `STAGE_CURATION_MARGIN_USD` | Евристичний відбір | 0 / 0 |
 | `STAGE_CURATION_AI_COST_USD` | Орієнтир собівартості AI triage | 0.02 |
 | `STAGE_PRICING_JSON` | Перебиває пари cost/margin за етапом | — |

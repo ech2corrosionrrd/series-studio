@@ -12,7 +12,7 @@ import { ENGINES } from "../engines.mjs";
 
 export const LIST_USD_PER_CREDIT = 0.03;
 
-export const STAGE_IDS = ["generation", "curation", "archive", "deploy_kit", "marketplace_kit"];
+export const STAGE_IDS = ["generation", "curation", "archive", "deploy_kit", "marketplace_kit", "compose"];
 
 /** Defaults are conservative: local file work has ~$0 marginal infra, so the fee is a small fixed margin. Arweave upload has a real Irys-shaped cost the owner can replace. */
 export const STAGE_DEFAULTS = {
@@ -43,6 +43,13 @@ export const STAGE_DEFAULTS = {
     costUsd: 0,
     marginUsd: 0.06,
   },
+  // Compose layers is priced by the frame: the cost is the disk the frames take for a month (about 1 MB each, ~$0.05 per GB-month)
+  // plus the CPU of the shared VPS ($8 per month, ~0.6 s per frame, ≈ $0.001 per 1000 frames), with ~10% headroom; the margin is a small 20% on top.
+  compose: {
+    label: "Compose layers",
+    costPer1000Usd: 0.06,
+    marginPer1000Usd: 0.012,
+  },
 };
 
 const ENV_KEYS = {
@@ -69,6 +76,14 @@ function jsonOverrides(env) {
   } catch {
     return {};
   }
+}
+
+/** Cost and margin of composing `frames` frames (the per-1000 numbers can be set with STAGE_COMPOSE_COST_PER_1000_USD / STAGE_COMPOSE_MARGIN_PER_1000_USD or STAGE_PRICING_JSON). */
+function composeParts(frames, env) {
+  const over = jsonOverrides(env).compose || {};
+  const cost1000 = over.costPer1000Usd != null ? Number(over.costPer1000Usd) : num(env, "STAGE_COMPOSE_COST_PER_1000_USD", STAGE_DEFAULTS.compose.costPer1000Usd);
+  const margin1000 = over.marginPer1000Usd != null ? Number(over.marginPer1000Usd) : num(env, "STAGE_COMPOSE_MARGIN_PER_1000_USD", STAGE_DEFAULTS.compose.marginPer1000Usd);
+  return { cost1000, margin1000, costUsd: (frames / 1000) * cost1000, marginUsd: (frames / 1000) * margin1000 };
 }
 
 function pair(stage, env) {
@@ -190,6 +205,25 @@ export function quoteStage(stage, opts = {}, env = process.env) {
     }, env);
   }
 
+  if (id === "compose") {
+    const frames = Math.max(0, Math.floor(count));
+    const c = composeParts(frames, env);
+    // a run that composes at least one frame costs at least one credit; nothing to compose costs nothing
+    const credits = frames > 0 ? Math.max(1, creditsForUsd(c.costUsd + c.marginUsd, env)) : 0;
+    return quoteShape(id, {
+      costUsd: c.costUsd,
+      marginUsd: c.marginUsd,
+      credits,
+      count: frames,
+      note: "Priced by the frame: the disk the frames take for a month plus the CPU, with a small margin. Only frames that are really composed are charged; frames kept from an earlier run (resume) are free. A single-frame preview is free.",
+      assumptions: [
+        `costPer1000Usd=${c.cost1000} (STAGE_COMPOSE_COST_PER_1000_USD)`,
+        `marginPer1000Usd=${c.margin1000} (STAGE_COMPOSE_MARGIN_PER_1000_USD)`,
+        `frames=${frames}, usdPerCredit=${rate}`,
+      ],
+    }, env);
+  }
+
   if (id === "archive") {
     // `storage` = upload to Arweave (Irys). `ipfs` is the legacy name of the same option.
     const storage = opts.storage ?? opts.ipfs;
@@ -235,7 +269,7 @@ export function quoteStage(stage, opts = {}, env = process.env) {
 }
 
 export function listStagePrices(env = process.env) {
-  return STAGE_IDS.map((stage) => quoteStage(stage, stage === "generation" ? { engine: "kontext", count: 1, reference: true } : { provider: "heuristic" }, env));
+  return STAGE_IDS.map((stage) => quoteStage(stage, stage === "generation" ? { engine: "kontext", count: 1, reference: true } : stage === "compose" ? { count: 1000 } : { provider: "heuristic" }, env));
 }
 
 export function stageOfDebit(engine, note) {
@@ -300,6 +334,11 @@ export function stageLedgerReport(db, days = null, { apiUsd = () => 0, avgUsdPer
       const note = String(row.note || "").toLowerCase();
       // older ledger rows say "ipfs pin"; new ones "arweave upload"
       bucket.cost_usd += ops * (note.includes("ipfs") || note.includes("arweave") ? storageCost : zip.costUsd);
+    } else if (stage === "compose") {
+      // a debit carries credits, not frames: the cost is the share of the price that is cost (the rest is margin)
+      const c = composeParts(1000, env);
+      const share = c.cost1000 + c.margin1000 > 0 ? c.cost1000 / (c.cost1000 + c.margin1000) : 0;
+      bucket.cost_usd += spent * usdPerCredit(env) * share;
     } else {
       bucket.cost_usd += ops * pair(stage, env).costUsd;
     }

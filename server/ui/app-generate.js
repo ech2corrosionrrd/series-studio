@@ -10,7 +10,7 @@ import { parseSseBuffer, settleGenerateStream } from "./render-stream.js";
 import { formatPlan } from "./plan-text.js";
 import { paintStrengthNote, refreshAccount, renderLocalGpuPanel } from "./app-account.js";
 import { $, api, lockGenerate, playCompletionChime, showTab, state } from "./app.js";
-import { kitArchive, scheduleWorkspaceSave, setBusy } from "./app-export.js";
+import { kitArchive, scheduleWorkspaceSave, setBusy, showStagePrice } from "./app-export.js";
 import { loadGallerySets } from "./app-gallery.js";
 import { ensureDraftTraits, paintGenerateEcho, renderOptionsEditor } from "./app-options.js";
 import { escapeHtml, renderCtorSummary } from "./app-overview.js";
@@ -342,6 +342,10 @@ function setupLayersUpload() {
 async function fillComposeOver(prefer = "") {
   const sel = $("g-compose-over");
   if (!sel) return;
+  // the price of composing every frame of the series: by the frame, shown before the button is pressed
+  const frames = Number(state.recipes?.length || 0);
+  if (frames > 0) showStagePrice("compose", "g-compose-price", { count: frames });
+  else if ($("g-compose-price")) $("g-compose-price").textContent = "";
   const keep = prefer || sel.value;
   try {
     const data = await api("/api/sets");
@@ -391,6 +395,7 @@ export function setupRender() {
           : data.mode === "overlay"
             ? t("render.layers.okOver", { count: data.count, painted: data.painted, left: data.unpainted, dir: data.dir }) + (data.resumed ? ` ${t("render.layers.resumed", { n: fmtNum(data.resumed) })}` : "")
             : t("render.layers.ok", { count: data.count, dir: data.dir }) + (data.resumed ? ` ${t("render.layers.resumed", { n: fmtNum(data.resumed) })}` : "");
+        if (data.charged) msg.textContent += ` ${t("render.layers.charged", { n: fmtNum(data.charged) })}`;
       }
       if (data.mode === "overlay") fillComposeOver();
     } catch (e) {

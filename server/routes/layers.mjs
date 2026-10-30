@@ -16,7 +16,7 @@ const composing = new Set();
 const MAX_COMPOSE_JOBS = 2;
 
 export async function handleLayerRoutes(ctx) {
-  const { req, res, url, pathname, P, assertWalletDisk, forgetDiskUsage, baseStatus, loadPresetByFile, loadSeriesContext, readRawBody, rejectSecrets, safeSetName, toTrash } = ctx;
+  const { req, res, url, pathname, P, assertCanPayStage, chargeStage, assertWalletDisk, forgetDiskUsage, baseStatus, loadPresetByFile, loadSeriesContext, readRawBody, rejectSecrets, safeSetName, toTrash } = ctx;
   const send = (...a) => {
     sendResponse(...a);
     return true;
@@ -41,7 +41,13 @@ export async function handleLayerRoutes(ctx) {
     try {
       assertWalletDisk(total * frameBytes);
     } catch (e) {
-      return send(res, e.status || 413, { error: String(e.message || e), code: e.code || "disk_quota" });
+      return send(res, e.status || 413, { error: String(e.message || e), code: e.extra?.code || "disk_quota", ...(e.extra || {}) });
+    }
+    // the price is by the frame: the wallet must be able to pay for all of them now, the charge follows for what was really composed
+    try {
+      assertCanPayStage("compose", { count: total });
+    } catch (e) {
+      return send(res, e.status || 402, { error: String(e.message || e), code: e.extra?.code || "credits", ...(e.extra || {}) });
     }
     const key = P().root;
     if (composing.has(key)) return send(res, 409, { error: "A compose of this project is already running.", code: "compose_busy" });
@@ -61,7 +67,17 @@ export async function handleLayerRoutes(ctx) {
       stop.signal.addEventListener("abort", () => job.stop());
       const report = await job.promise;
       forgetDiskUsage?.(); // the worker wrote these: the next quota check walks the folder again
-      const payload = finish(report);
+      // frames kept from an earlier run (resume) are not charged, and neither is a run that composed nothing
+      let charged = 0;
+      const composed = Math.max(0, (report.count || 0) - (report.resumed || 0));
+      if (composed > 0) {
+        try {
+          charged = chargeStage("compose", { count: composed }).charge?.amount || 0;
+        } catch (e) {
+          console.error(`[credits] compose charge failed: ${e.message}`);
+        }
+      }
+      const payload = { ...finish(report), ...(charged ? { charged } : {}) };
       if (stream) {
         writeSse(res, { type: "done", ...payload });
         res.end();
