@@ -135,6 +135,38 @@ const PATTERNS = [
   })],
 ];
 
+/** Preset problems: JSON-schema errors ("/size must be integer"), the semantic checks of src/validate.mjs and the quota limits of src/quota.mjs. */
+const PRESET_PATTERNS = [
+  [/^\/size must be integer$/, "api.preset.sizeInteger", () => ({})],
+  [/^\/size must be >= (\d+)$/, "api.preset.sizeMin", (m) => ({ min: m[1] })],
+  [/^\/name must NOT have fewer than \d+ characters$/, "api.preset.nameEmpty", () => ({})],
+  [/^\/seed must NOT have fewer than \d+ characters$/, "api.preset.seedEmpty", () => ({})],
+  [/^\/id must NOT have fewer than \d+ characters$/, "api.preset.idEmpty", () => ({})],
+  [/^\/lines\/(\S+)\/quota must be >= (\d+)$/, "api.preset.quotaMin", (m) => ({ line: m[1], min: m[2] })],
+  [/^\/lines\/(\S+)\/quota must be integer$/, "api.preset.quotaInteger", (m) => ({ line: m[1] })],
+  [/^preset id "(.*)" must use Latin letters/, "api.preset.idFormat", (m) => ({ id: m[1] })],
+  [/^duplicate trait key: (.+)$/, "api.preset.dupTrait", (m) => ({ key: m[1] })],
+  [/^trait (.+) has no options$/, "api.preset.noOptions", (m) => ({ key: m[1] })],
+  [/^trait (.+) has zero total weight$/, "api.preset.zeroWeight", (m) => ({ key: m[1] })],
+  [/^promptTemplate references unknown trait: (.+)$/, "api.preset.unknownTrait", (m) => ({ key: m[1] })],
+  [/^line quotas sum to (\d+), size is (\d+)$/, "api.preset.quotaSum", (m) => ({ sum: m[1], size: m[2] })],
+  [/^size (\d+) is above the limit of (\d+) NFTs per series$/, "api.preset.sizeLimit", (m) => ({ n: m[1], max: m[2] })],
+  [/^(\d+) traits is above the limit of (\d+)$/, "api.preset.traitsLimit", (m) => ({ n: m[1], max: m[2] })],
+  [/^trait (.+) has (\d+) options, the limit is (\d+)$/, "api.preset.optionsLimit", (m) => ({ key: m[1], n: m[2], max: m[3] })],
+  [/^the preset is (\d+) bytes, the limit is (\d+)$/, "api.preset.bytesLimit", (m) => ({ n: m[1], max: m[2] })],
+  [/^(\/\S*) (must .+)$/, "api.preset.field", (m) => ({ path: m[1], msg: m[2] })],
+];
+
+function translatePresetIssue(item, translate) {
+  for (const [re, key, varsOf] of PRESET_PATTERNS) {
+    const m = item.match(re);
+    if (!m) continue;
+    const hit = applyKey(translate, key, varsOf(m));
+    if (hit) return hit;
+  }
+  return "";
+}
+
 const CODE_KEYS = {
   auth: "api.auth",
   secrets: "api.secrets",
@@ -177,6 +209,12 @@ function applyKey(translate, key, vars) {
 
 /** @returns {string} localized message, or "" when nothing was recognized */
 export function translateApiError(data, translate) {
+  // A validation answer is a list of problems (one string, or several joined with "; "): say each in the author's language.
+  if (Array.isArray(data?.errors) && data.errors.length) {
+    const parts = data.errors.flatMap((e) => String(e).split("; ")).map((s) => s.trim()).filter(Boolean);
+    const said = parts.map((p) => translatePresetIssue(p, translate));
+    if (said.some(Boolean)) return said.map((s, i) => s || parts[i]).join(" · ");
+  }
   const raw = rawMessage(data);
   if (raw && EXACT[raw]) {
     const hit = applyKey(translate, EXACT[raw], data);

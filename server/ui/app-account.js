@@ -4,6 +4,7 @@
  * every import is a function or a binding that is only used after all modules have loaded.
  */
 import { fmtDate, fmtNum, fmtUsd as fmtUsdLocale } from "./format.js";
+import { groupHistory, historyLabel } from "./history.js";
 import { applyTips, hasKey, t, tipText } from "./i18n.js";
 import { applyAdminNav } from "./app-admin.js";
 import { $, api, showTab, state } from "./app.js";
@@ -346,8 +347,10 @@ export function renderTopup() {
     if (!box) return;
     const rows = d.transactions || [];
     box.innerHTML = rows.length
-      ? rows.map((tx) =>
-        `<div class="hist-row"><span>${escapeHtml(fmtDate(tx.created_at))}</span><span title="${escapeHtml(tx.note || tx.kind)}">${escapeHtml(tx.note || tx.kind)}</span><b class="${tx.credits < 0 ? "bad" : "ok"}">${tx.credits > 0 ? "+" : ""}${fmtNum(tx.credits)}</b></div>`)
+      ? groupHistory(rows).map((tx) => {
+        const label = historyLabel(tx, t, hasKey) + (tx.count > 1 ? ` ×${tx.count}` : "");
+        return `<div class="hist-row"><span>${escapeHtml(fmtDate(tx.created_at))}</span><span title="${escapeHtml(label)}">${escapeHtml(label)}</span><b class="${tx.credits < 0 ? "bad" : "ok"}">${tx.credits > 0 ? "+" : ""}${fmtNum(tx.credits)}</b></div>`;
+      })
         .join("")
       : `<p class="muted hist-empty">${escapeHtml(t("history.empty"))}</p>`;
   }).catch(() => {});

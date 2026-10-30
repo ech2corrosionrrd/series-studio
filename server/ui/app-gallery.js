@@ -197,6 +197,7 @@ export function renderGallery() {
   const redoBtn = $("v-quick-redo");
   if (redoBtn) {
     redoBtn.removeAttribute("data-i18n");
+    redoBtn.setAttribute("data-i18n-tip", "gallery.redo.btn.tip"); // the text carries a count, the tip is translated by key
     redoBtn.textContent = t("gallery.redo.btn", { count: Object.values(marks).filter((v) => v === "redo").length });
   }
   const dir = state.galleryDir || "";

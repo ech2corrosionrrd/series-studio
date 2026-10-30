@@ -559,9 +559,11 @@ async function boot() {
     state.health = await api("/api/health");
     const me = $("me");
     if (me) {
-      me.dataset.mode = "port";
+      // The port is a developer detail of the local studio; on the public site it only confuses ("lab · :5344").
+      const hosted = state.account?.mode === "public";
+      me.dataset.mode = hosted ? "hosted" : "port";
       me.dataset.port = String(state.health.port || 5344);
-      me.textContent = t("ui.labPort", { port: me.dataset.port });
+      me.textContent = hosted ? "" : t("ui.labPort", { port: me.dataset.port });
     }
   } catch {
     const me = $("me");

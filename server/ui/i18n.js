@@ -175,9 +175,13 @@ export function applyTips(root = document) {
   const labelRoot = scope.querySelectorAll ? scope : document;
   labelRoot.querySelectorAll("label").forEach((label) => {
     if (label.closest?.("[aria-hidden=true]")) return;
-    if (label.getAttribute("data-tip")) return;
+    // A tip that the label has of its own is left alone; one it only borrowed from its control is borrowed again, so it follows a language switch.
+    if (label.getAttribute("data-tip") && label.dataset.tipInherited !== "1") return;
     const child = label.querySelector("[data-tip]");
-    if (child?.getAttribute("data-tip")) setTipAttrs(label, child.getAttribute("data-tip"));
+    if (child?.getAttribute("data-tip")) {
+      setTipAttrs(label, child.getAttribute("data-tip"));
+      label.dataset.tipInherited = "1";
+    }
   });
 }
 
