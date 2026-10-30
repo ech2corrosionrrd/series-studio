@@ -95,3 +95,25 @@ test("edition 0 (the Genesis copy of the base) is not a generated frame and is l
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("onFrame reports every frame; shouldStop ends the walk, keeps the scores found, and the next run reuses them", async () => {
+  const dir = setDir();
+  try {
+    const base = png(7);
+    for (let i = 1; i <= 6; i++) writeFileSync(join(dir, `${i}.png`), png(i * 53));
+    const seen = [];
+    const full = await analyzeSetQuality({ setDir: dir, baseBuf: base, onFrame: (p) => seen.push(`${p.done}/${p.total}`) });
+    assert.deepEqual(seen, ["1/6", "2/6", "3/6", "4/6", "5/6", "6/6"]);
+    assert.equal(full.total, 6);
+    rmSync(join(dir, "quality-cache.json"), { force: true });
+    let calls = 0;
+    const part = await analyzeSetQuality({ setDir: dir, baseBuf: base, shouldStop: () => ++calls > 3 });
+    assert.deepEqual({ s: part.stopped, c: part.checked, t: part.total }, { s: true, c: 3, t: 6 });
+    assert.equal(part.problemFrames, undefined, "a stopped walk is not a report");
+    const again = await analyzeSetQuality({ setDir: dir, baseBuf: base });
+    assert.equal(again.total, 6);
+    assert.deepEqual(again.similarity, full.similarity);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

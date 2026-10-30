@@ -8,7 +8,7 @@ import { editionAssetFiles, shelveCurrent } from "../../src/versions.mjs";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { loadSharp } from "../../src/upscale.mjs";
-import { readBody } from "../http.mjs";
+import { attachStopOnDisconnect, readBody, writeSse } from "../http.mjs";
 import { writeJsonAtomic } from "../../src/fs-safe.mjs";
 import { writeVisibilityAck } from "../../src/trait-visibility.mjs";
 import { send as sendResponse } from "../http.mjs";
@@ -60,7 +60,33 @@ export async function handleReviewRoutes(ctx) {
     const setDir = join(P().out, dirName);
     if (!dirName || !existsSync(setDir) || !statSync(setDir).isDirectory()) return send(res, 400, { error: "set not found" });
     const base = await primaryBasePng();
-    const report = await analyzeSetQuality({ setDir, baseBuf: base.buf, marks: readMarks(dirName) });
+    // `Accept: text/event-stream`: `start`, `progress` for every frame, then `done` (the report) or `stopped`; closing the connection (Stop) ends the walk.
+    const stream = String(req.headers.accept || "").includes("text/event-stream");
+    const stop = new AbortController();
+    if (stream) {
+      res.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no", Connection: "keep-alive" });
+      res.flushHeaders?.();
+      attachStopOnDisconnect(res, stop);
+    }
+    let report;
+    try {
+      report = await analyzeSetQuality({
+        setDir,
+        baseBuf: base.buf,
+        marks: readMarks(dirName),
+        ...(stream ? { onFrame: (p) => writeSse(res, { type: "progress", ...p }), shouldStop: () => stop.signal.aborted } : {}),
+      });
+    } catch (e) {
+      if (!stream) throw e;
+      writeSse(res, { type: "error", error: String(e.message || e) });
+      res.end();
+      return true;
+    }
+    if (stream) {
+      writeSse(res, report.stopped ? { type: "stopped", ...report } : { type: "done", ok: true, dir: dirName, ...report, hasBase: base.exists, baseUnusable: base.exists && (!base.buf || (report.total > 0 && !report.similarity)) });
+      res.end();
+      return true;
+    }
     // A base that exists but cannot be decoded must not read as "all good": say that similarity was not checked.
     return send(res, 200, { ok: true, dir: dirName, ...report, hasBase: base.exists, baseUnusable: base.exists && (!base.buf || (report.total > 0 && !report.similarity)) });
   }

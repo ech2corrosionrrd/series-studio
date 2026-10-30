@@ -93,5 +93,18 @@ describe("compose layers: progress and Stop", { skip: CHROME ? false : "no Chrom
     assert.doesNotMatch(text, /Зупинено|Помилка/);
   });
 
+  it("Check quality (streamed) ends with the report and no Stop button left", async () => {
+    await page.click('nav [data-tab="gallery"]');
+    await page.waitForFunction(() => document.querySelectorAll("#v-dir option").length >= 1);
+    await page.selectOption("#v-dir", "layers");
+    await page.waitForFunction(() => document.querySelectorAll("#v-grid .tile").length >= 1);
+    assert.equal(await page.isHidden("#v-quality-stop"), true);
+    await page.click("#v-quality-run");
+    await page.waitForFunction(() => /\S/.test(document.getElementById("v-quality-out")?.textContent || ""), null, { timeout: 60000 });
+    assert.equal(await page.isHidden("#v-quality-stop"), true, "Stop goes away once the check is over");
+    assert.equal(await page.isEnabled("#v-quality-run"), true);
+    assert.doesNotMatch(await page.textContent("#v-quality-status"), /Перевірено \d+ з/);
+  });
+
   it("no page errors", () => assert.deepEqual(pageErrors, []));
 });

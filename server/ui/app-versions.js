@@ -10,6 +10,7 @@ import { $, api, lockGenerate, showTab, state, tipAttr } from "./app.js";
 import { scheduleWorkspaceSave } from "./app-export.js";
 import { loadGalleryDir, loadGalleryDir2, loadGallerySets, renderGallery, syncCompareSelect } from "./app-gallery.js";
 import { escapeHtml } from "./app-overview.js";
+import { parseSseBuffer } from "./render-stream.js";
 
 /* ---------- Versions (re-renders never overwrite) ---------- */
 export async function openVersions(edition) {
@@ -352,21 +353,69 @@ export function setupAuthorship() {
   }
 }
 
+/** GET /api/quality as a live stream: `onProgress({done, total})` per frame; resolves to the report, or `{ stopped: true, checked, total }`. */
+async function streamQuality(dir, signal, onProgress) {
+  const res = await fetch(`/api/quality?dir=${encodeURIComponent(dir)}`, { headers: { Accept: "text/event-stream" }, signal });
+  if (!String(res.headers.get("content-type") || "").includes("text/event-stream")) {
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    return json;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parsed = parseSseBuffer(buffer);
+    buffer = parsed.rest;
+    for (const ev of parsed.events) {
+      if (ev.type === "progress") onProgress(ev);
+      else if (ev.type === "done" || ev.type === "stopped") result = ev;
+      else if (ev.type === "error") throw new Error(ev.error);
+    }
+  }
+  if (!result) throw new Error(t("api.generic"));
+  return result;
+}
+
 export function setupQuality() {
+  let abort = null;
+  $("v-quality-stop")?.addEventListener("click", () => abort?.abort());
   $("v-quality-run")?.addEventListener("click", async () => {
     const status = $("v-quality-status");
+    const stopBtn = $("v-quality-stop");
     const dir = state.galleryDir;
     if (!dir) {
       if (status) status.textContent = t("gallery.quality.noSet");
       return;
     }
     if (status) status.textContent = t("gallery.quality.running");
+    abort = new AbortController();
+    let last = null;
+    if (stopBtn) stopBtn.hidden = false;
+    $("v-quality-run").disabled = true;
     try {
-      const data = await api(`/api/quality?dir=${encodeURIComponent(dir)}`);
-      renderQuality(data);
-      if (status) status.textContent = "";
+      const data = await streamQuality(dir, abort.signal, (p) => {
+        last = p;
+        if (status) status.textContent = t("gallery.quality.progress", { done: p.done, total: p.total });
+      });
+      if (data.stopped) {
+        if (status) status.textContent = t("gallery.quality.stopped", { done: data.checked, total: data.total });
+      } else {
+        renderQuality(data);
+        if (status) status.textContent = "";
+      }
     } catch (e) {
-      if (status) status.textContent = e.message;
+      if (e?.name === "AbortError") {
+        if (status) status.textContent = t("gallery.quality.stopped", { done: last?.done ?? 0, total: last?.total ?? 0 });
+      } else if (status) status.textContent = e.message;
+    } finally {
+      if (stopBtn) stopBtn.hidden = true;
+      $("v-quality-run").disabled = false;
+      abort = null;
     }
   });
 }
