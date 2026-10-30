@@ -33,9 +33,11 @@ function readCache(setDir) {
 }
 
 /**
- * @param {{ setDir: string, baseBuf?: Buffer|null, marks?: Record<string,string>, limit?: number }} args
+ * `onFrame({ done, total })` is called after every frame; `shouldStop()` ends the walk early: the similarities found so far are
+ * cached (the next run starts from them) and the answer is `{ stopped: true, checked, total }` instead of a report.
+ * @param {{ setDir: string, baseBuf?: Buffer|null, marks?: Record<string,string>, limit?: number, onFrame?: Function|null, shouldStop?: Function|null }} args
  */
-export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, limit = 24 }) {
+export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, limit = 24, onFrame = null, shouldStop = null }) {
   if (!existsSync(setDir) || !statSync(setDir).isDirectory()) throw new Error(`not a folder: ${setDir}`);
   const files = readdirSync(setDir)
     // Edition 0 is the base image itself (the Genesis lot, copied into the set): it is not a generated frame, always matches the base and must not count in "N of M".
@@ -54,7 +56,13 @@ export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, li
     return frames.get(edition);
   };
 
+  let stopped = false;
+  let checked = 0;
   for (const file of files) {
+    if (shouldStop?.()) {
+      stopped = true;
+      break;
+    }
     const edition = parseInt(file, 10);
     const f = frame(edition);
     const path = join(setDir, file);
@@ -67,6 +75,8 @@ export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, li
     if (format !== "png") {
       f.issues.push({ kind: "bad_format", detail: format === "unknown" ? "not an image" : format });
       await tick();
+      checked += 1;
+      onFrame?.({ done: checked, total: files.length });
       continue;
     }
     if (baseBuf) {
@@ -87,7 +97,10 @@ export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, li
         if (score < SIMILARITY_WARN_BELOW) f.issues.push({ kind: "low_similarity", detail: String(score) });
       }
     }
+    checked += 1;
+    onFrame?.({ done: checked, total: files.length });
   }
+  if (stopped) for (const [file, entry] of Object.entries(cache)) nextCache[file] ??= entry; // frames not reached keep their cached score
   if (cacheDirty || Object.keys(cache).length !== Object.keys(nextCache).length) {
     try {
       writeJsonAtomic(join(setDir, CACHE_FILE), nextCache);
@@ -95,6 +108,8 @@ export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, li
       /* the cache is only a speed-up */
     }
   }
+
+  if (stopped) return { stopped: true, checked, total: files.length };
 
   for (const group of byHash.values()) {
     if (group.length < 2) continue;
