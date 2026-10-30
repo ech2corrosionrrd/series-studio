@@ -158,7 +158,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 
 | Method | Path | Опис |
 |--------|------|------|
-| GET | `/api/me` | акаунт сесії: `wallet`, `balance`, `admin`, `packages`, `referral`, `localGpu`, `creditCosts` (кредити за кадр із референсом), `creditCostsTxt` (за кадр без референса: база з побажань), `storage` (як у `/api/projects`), `solPay` (`enabled`, `recipient`, `mint`; `testPack` лише адміну з `SOLANA_PAY_TEST_PACK=1`) |
+| GET | `/api/me` | акаунт сесії: `wallet`, `balance`, `welcome` (`granted`, `requiresBalance`, `minSol`, `minEth`: дали вітальні кредити, інакше студія пояснює причину), `admin`, `packages`, `referral`, `localGpu`, `creditCosts` (кредити за кадр із референсом), `creditCostsTxt` (за кадр без референса: база з побажань), `storage` (як у `/api/projects`), `solPay` (`enabled`, `recipient`, `mint`; `testPack` лише адміну з `SOLANA_PAY_TEST_PACK=1`) |
 | GET | `/api/credits/history` | останні операції кредитів (сесія) |
 | POST | `/api/credits/sol/order` | `{package}` → замовлення оплати USDC (Solana): точна сума з унікальними мікро-центами, адреса, `solana:` URI |
 | POST | `/api/credits/sol/check` | знайти переказ у блокчейні й зарахувати кредити → `{credited, balance, orders, error}` (ліміт `SOLANA_PAY_CHECK_RATE_LIMIT`, типово 20/хв) |

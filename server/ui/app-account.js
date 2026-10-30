@@ -307,6 +307,13 @@ export async function refreshAccount() {
   if ($("acct-balance")) $("acct-balance").textContent = fmtNum(me.balance);
   if ($("topup-balance")) $("topup-balance").textContent = fmtNum(me.balance);
   $("acct-topup")?.classList.toggle("low", Number(me.balance) < LOW_BALANCE);
+  // A wallet below the minimum balance gets no welcome credits: say so, instead of a silent zero (BETA-REVIEW, economy review)
+  const wn = $("welcome-note");
+  if (wn) {
+    const noGrant = me.welcome && !me.welcome.granted && me.welcome.requiresBalance && !me.admin && Number(me.balance) < 1;
+    wn.hidden = !noGrant;
+    if (noGrant) wn.textContent = t("acct.welcome.none", { sol: me.welcome.minSol, eth: me.welcome.minEth });
+  }
   const topupBtn = $("acct-topup");
   if (topupBtn) topupBtn.setAttribute("aria-label", `${t("acct.topup")} · ${me.balance} ${t("acct.credits")}`);
 }

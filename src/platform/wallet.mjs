@@ -183,24 +183,26 @@ async function rpc(url, method, params, timeoutMs = 15_000) {
   return res.json();
 }
 
-/** Native Base balance in wei; any error → 0n (fail-closed). */
-export async function ethBalanceWei(wallet, { fetchImpl } = {}) {
+/** Native Base balance in wei; any error → 0n (fail-closed). `welcomeBalanceOk` tells an empty wallet from a failed lookup via `strict`. */
+export async function ethBalanceWei(wallet, { fetchImpl, strict = false } = {}) {
   try {
     const url = process.env.BASE_RPC_URL || BASE_RPC_DEFAULT;
     const data = fetchImpl ? await fetchImpl(url, "eth_getBalance", [wallet, "latest"]) : await rpc(url, "eth_getBalance", [wallet, "latest"]);
     return BigInt(data.result);
-  } catch {
+  } catch (e) {
+    if (strict) throw e;
     return 0n;
   }
 }
 
 /** Native SOL balance in lamports; any error → 0n (fail-closed). */
-export async function solBalanceLamports(wallet, { fetchImpl } = {}) {
+export async function solBalanceLamports(wallet, { fetchImpl, strict = false } = {}) {
   try {
     const url = resolveSolanaRpcUrl();
     const data = fetchImpl ? await fetchImpl(url, "getBalance", [wallet]) : await rpc(url, "getBalance", [wallet]);
     return BigInt(data.result.value);
-  } catch {
+  } catch (e) {
+    if (strict) throw e;
     return 0n;
   }
 }
@@ -210,8 +212,16 @@ export const welcomeBalanceRequired = () => process.env.WELCOME_REQUIRE_BALANCE 
 /** Sybil guard for welcome credits: non-empty native balance. → {ok, message}. */
 export async function welcomeBalanceOk(wallet, deps = {}) {
   if (!welcomeBalanceRequired()) return { ok: true, message: "" };
+  // A failed lookup (RPC down, timeout) is not an empty wallet: it is reported as `unknown`, so the funnel does not count it as a refusal
+  // and the next sign-in tries again.
+  const unknown = { ok: false, unknown: true, message: "The wallet balance could not be checked; sign in again in a minute." };
   if (isEvmWallet(wallet)) {
-    const bal = await ethBalanceWei(wallet, deps);
+    let bal;
+    try {
+      bal = await ethBalanceWei(wallet, { ...deps, strict: true });
+    } catch {
+      return unknown;
+    }
     if (bal >= MIN_WELCOME_BALANCE_WEI) return { ok: true, message: "" };
     return {
       ok: false,
@@ -219,7 +229,12 @@ export async function welcomeBalanceOk(wallet, deps = {}) {
     };
   }
   if (isSolanaWallet(wallet)) {
-    const bal = await solBalanceLamports(wallet, deps);
+    let bal;
+    try {
+      bal = await solBalanceLamports(wallet, { ...deps, strict: true });
+    } catch {
+      return unknown;
+    }
     if (bal >= MIN_WELCOME_BALANCE_LAMPORTS) return { ok: true, message: "" };
     return {
       ok: false,
