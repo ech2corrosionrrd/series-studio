@@ -13,12 +13,19 @@ import { fillConstructor, fillOverview } from "./app-options.js";
 import { escapeHtml, renderFacts, renderSteps } from "./app-overview.js";
 
 /* ---------- Recipes ---------- */
-function renderRarity(rarity) {
+function renderRarity(rarity, { open = false } = {}) {
   const box = $("r-rarity-table");
   if (!box) return;
+  const card = $("r-rarity");
   if (!rarity?.traits?.length) {
     box.innerHTML = "";
+    if (card) card.hidden = true;
     return;
+  }
+  // the card sits hidden in the page; a report that was drawn into it must also be shown (BETA-REVIEW R17)
+  if (card) {
+    card.hidden = false;
+    if (open) card.open = true;
   }
   let html = `<table class="table"><caption class="visually-hidden">${escapeHtml(t("recipes.rarity.title"))}</caption><thead><tr>
     <th>${t("recipes.rarity.th.trait")}</th><th>${t("recipes.rarity.th.value")}</th>
@@ -276,7 +283,7 @@ export function setupRecipes() {
       if (msg) msg.textContent = t("recipes.simulate.running");
       const file = $("r-preset")?.value;
       const data = await api("/api/simulate", { method: "POST", body: JSON.stringify({ file }) });
-      if (data.rarity) renderRarity(data.rarity);
+      if (data.rarity) renderRarity(data.rarity, { open: true });
       const bits = [t("recipes.simulate.done", { size: data.size, rejected: data.rejectedConflicts ?? 0 })];
       const pairs = (data.conflictExamples || []).map((h) => `${h.a} / ${h.b}`);
       if (pairs.length) bits.push(t("recipes.simulate.conflicts", { list: pairs.join("; ") }));

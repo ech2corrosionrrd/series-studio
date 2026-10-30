@@ -106,5 +106,16 @@ describe("compose layers: progress and Stop", { skip: CHROME ? false : "no Chrom
     assert.doesNotMatch(await page.textContent("#v-quality-status"), /Перевірено \d+ з/);
   });
 
+  it("the rarity simulation shows its table (R17)", async () => {
+    await page.click('nav [data-tab="recipes"]');
+    await page.waitForSelector("#r-simulate");
+    await page.evaluate(() => { document.getElementById("r-rarity").hidden = true; document.getElementById("r-rarity").open = false; });
+    await page.click("#r-simulate");
+    await page.waitForFunction(() => !document.getElementById("r-rarity").hidden, null, { timeout: 30000 });
+    assert.equal(await page.$eval("#r-rarity", (e) => e.open), true, "the card is opened");
+    assert.ok((await page.$$eval("#r-rarity-table tbody tr", (r) => r.length)) >= 6, "a row per option");
+    assert.match(await page.textContent("#r-simulate-msg"), /Сухий прогін/);
+  });
+
   it("no page errors", () => assert.deepEqual(pageErrors, []));
 });
