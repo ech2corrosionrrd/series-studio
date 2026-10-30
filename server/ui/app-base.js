@@ -188,8 +188,9 @@ export function setupBase() {
           makePrimary: Boolean($("base-wish-primary")?.checked),
         }),
       });
+      // The raw answer (ok, stub, costUsd, bytes…) is for whoever debugs; the author gets one sentence and an opt-in "details" block.
       if ($("base-wish-out")) {
-        $("base-wish-out").hidden = false;
+        if ($("base-wish-details")) $("base-wish-details").hidden = false;
         $("base-wish-out").textContent = JSON.stringify(data, null, 2);
       }
       $("base-msg").textContent = data.ok ? t("base.wish.done") : (data.message || t("base.wish.fail"));

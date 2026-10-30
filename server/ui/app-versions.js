@@ -200,6 +200,7 @@ function renderQuality(data) {
       return `<li><b>#${f.edition}</b>${sim} · ${issues}</li>`;
     });
     parts.push(`<ul class="guide">${rows.join("")}</ul>`);
+    if (data.counts.low_similarity) parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.styleNote"))}</p>`);
     if (data.problemFrames > data.weakest.length) {
       parts.push(`<p class="muted">${escapeHtml(t("gallery.quality.more", { shown: data.weakest.length, total: data.problemFrames }))}</p>`);
     }

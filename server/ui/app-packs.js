@@ -104,7 +104,7 @@ export function renderTraitChecklist() {
     const row = document.createElement("div");
     row.className = `pack-key${enabled ? "" : " off"}${selected ? " selected" : ""}`;
     const role = inExtra && !inChange ? t("ctor.packs.roleExtra") : inChange ? t("ctor.packs.roleChange") : t("ctor.packs.roleUnused");
-    row.innerHTML = `<label style="display:flex;align-items:center;gap:6px;flex:1;cursor:pointer;min-width:0">
+    row.innerHTML = `<label class="pack-key-label">
       <input type="checkbox" data-key="${escapeHtml(key)}" ${enabled ? "checked" : ""}>
       <span class="pack-key-name">${escapeHtml(key)}</span>
       <span class="muted small">${escapeHtml(trait.type || "")} · ${opts} ${t("ctor.packs.options")} · ${escapeHtml(role)}</span>

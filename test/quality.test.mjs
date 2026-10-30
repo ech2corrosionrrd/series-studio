@@ -80,3 +80,18 @@ test("similarity to the base is reported, cached, and a redo mark is information
 test("a missing folder is an error", async () => {
   await assert.rejects(() => analyzeSetQuality({ setDir: "no-such-folder-qq" }), /not a folder/);
 });
+
+test("edition 0 (the Genesis copy of the base) is not a generated frame and is left out of the counts", async () => {
+  const dir = setDir();
+  try {
+    const base = png(5);
+    writeFileSync(join(dir, "0.png"), base);
+    for (let i = 1; i <= 3; i++) writeFileSync(join(dir, `${i}.png`), png(i * 211));
+    const r = await analyzeSetQuality({ setDir: dir, baseBuf: base });
+    assert.equal(r.total, 3, "only frames 1–3 are counted");
+    assert.ok(!r.weakest.some((f) => f.edition === 0));
+    assert.ok(r.problemEditions.every((e) => e > 0));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

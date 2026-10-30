@@ -53,6 +53,13 @@ export function renderRecipeTable() {
   table.querySelectorAll("button[data-ed]").forEach((btn) => {
     btn.addEventListener("click", () => openRecipeEditor(Number(btn.dataset.ed)));
   });
+  // The page says "click a row to see the full prompt": the whole row does that (the button stays for the keyboard).
+  table.querySelectorAll("tbody tr[data-i]").forEach((row) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("button, a, input, select, textarea")) return;
+      openRecipeEditor(Number(row.dataset.i));
+    });
+  });
   applyTips(table);
 }
 
@@ -60,7 +67,11 @@ function openRecipeEditor(index) {
   const recipe = state.recipes.find((r) => r.index === index);
   if (!recipe) return;
   state.editingIndex = index;
-  if ($("r-editor")) $("r-editor").hidden = false;
+  if ($("r-editor")) {
+    $("r-editor").hidden = false;
+    // The editor opens under a long table: bring it into view instead of leaving it off screen.
+    $("r-editor").scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }
   if ($("r-ed-title")) $("r-ed-title").textContent = `#${recipe.edition}`;
   if ($("r-prompt")) {
     $("r-prompt").hidden = false;

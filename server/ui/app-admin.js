@@ -9,6 +9,7 @@ import { refreshAccount, relabelEngineSelects, renderTopup } from "./app-account
 import { $, api, renderProjects, showTab, state } from "./app.js";
 import { refreshBaseStatus } from "./app-base.js";
 import { loadLaunchAdvisor, paintDeployCommands, renderPath, repaintExportCopy, showCurationPrice, showStagePrice, updateReleaseHub } from "./app-export.js";
+import { repaintPlan } from "./app-generate.js";
 import { renderGallery, syncCompareSelect } from "./app-gallery.js";
 import { renderHelp } from "./app-help.js";
 import { renderOptionsEditor, repaintWhoLines } from "./app-options.js";
@@ -300,6 +301,7 @@ function refreshDynamicCopy() {
   relabelEngineSelects();
   const stub = $("g-plan-out");
   if (stub && !stub.dataset.dirty) stub.textContent = t("render.stub");
+  repaintPlan();
   const allOpt = $("r-line")?.querySelector('option[value=""]');
   if (allOpt) allOpt.textContent = t("recipes.allLines");
   const active = document.querySelector(".tab.on")?.id?.replace(/^tab-/, "") || "home";

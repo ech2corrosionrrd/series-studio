@@ -6,6 +6,7 @@
 import { fmtNum } from "./format.js";
 import { getLocale, t } from "./i18n.js";
 import { parseSseBuffer, settleGenerateStream } from "./render-stream.js";
+import { formatPlan } from "./plan-text.js";
 import { paintStrengthNote, refreshAccount, renderLocalGpuPanel } from "./app-account.js";
 import { $, api, lockGenerate, playCompletionChime, showTab, state } from "./app.js";
 import { kitArchive, scheduleWorkspaceSave, setBusy } from "./app-export.js";
@@ -493,7 +494,12 @@ export function setupRender() {
   });
   paintStrengthNote("g-strength-note", $("g-engine")?.value);
   paintLicenseWarning();
-  $("g-pilot")?.addEventListener("input", reLockPlan);
+  $("g-pilot")?.addEventListener("input", () => {
+    $("g-pilot").dataset.touched = "1";
+    paintPilotButton();
+    reLockPlan();
+  });
+  paintPilotDefault();
   $("g-first")?.addEventListener("input", reLockPlan);
   $("g-only")?.addEventListener("input", reLockPlan);
   $("g-force")?.addEventListener("change", reLockPlan);
@@ -503,7 +509,7 @@ export function setupRender() {
   $("g-pilots")?.addEventListener("click", () => {
     const radio = document.querySelector('input[name="g-sel"][value="pilot"]');
     if (radio) radio.checked = true;
-    if ($("g-pilot")) $("g-pilot").value = "12";
+    paintPilotDefault();
     $("g-estimate")?.click();
   });
   $("g-estimate")?.addEventListener("click", async () => {
@@ -523,7 +529,8 @@ export function setupRender() {
       });
       if ($("g-plan-out")) {
         $("g-plan-out").dataset.dirty = "1";
-        $("g-plan-out").textContent = data.text || JSON.stringify(data, null, 2);
+        state.lastPlan = data;
+        $("g-plan-out").textContent = formatPlan(data, t) || data.text || JSON.stringify(data, null, 2);
       }
       lockGenerate(false);
     } catch (e) {
@@ -645,4 +652,30 @@ export function setupRender() {
     }
   });
   $("g-open-gallery")?.addEventListener("click", () => showTab("gallery"));
+}
+
+/** A pilot is a few frames to look at before the whole series (the page says 3–5): never more than the series has. */
+export function defaultPilot() {
+  const size = Number($("o-size")?.value) || 0;
+  return size > 0 ? Math.min(5, size) : 5;
+}
+
+/** The pilot field follows the series size until the author types a number of their own. */
+export function paintPilotDefault() {
+  const input = $("g-pilot");
+  if (input && !input.dataset.touched) input.value = String(defaultPilot());
+  paintPilotButton();
+}
+
+/** "Pilot (N) — estimate": the label shows the number that the estimate will use. */
+export function paintPilotButton() {
+  const btn = $("g-pilots");
+  if (btn) btn.textContent = t("render.pilots", { n: Number($("g-pilot")?.value) || defaultPilot() });
+}
+
+/** After a language switch the plan that was drawn is written again, in the new language. */
+export function repaintPlan() {
+  const out = $("g-plan-out");
+  if (out?.dataset.dirty && state.lastPlan) out.textContent = formatPlan(state.lastPlan, t) || state.lastPlan.text || out.textContent;
+  paintPilotButton();
 }

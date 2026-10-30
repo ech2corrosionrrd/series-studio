@@ -10,7 +10,7 @@ import { renderSystem, setupHints, setupLang, setupSystemPane, stopSystemTimer }
 import { refreshBaseStatus, setupBase } from "./app-base.js";
 import { fillExportSets, fillKitSets, paintDeployCommands, renderPath, restoreWorkspace, setupExport, setupKits, setupPath, showCurationPrice, showStagePrice } from "./app-export.js";
 import { loadGalleryDir, loadGallerySets, renderGallery } from "./app-gallery.js";
-import { refreshCtorLayers, refreshLayersStatus, setupRender } from "./app-generate.js";
+import { paintPilotDefault, refreshCtorLayers, refreshLayersStatus, setupRender } from "./app-generate.js";
 import { setupHelp } from "./app-help.js";
 import { fillConstructor, setupConstructor, setupOverview } from "./app-options.js";
 import { escapeHtml, loadPresets, loadTemplates, renderCtorSummary, renderFacts, renderSteps } from "./app-overview.js";
@@ -188,6 +188,7 @@ export function showTab(name) {
   if (name === "recipes") ensureRecipesLoaded();
   if (name === "gallery") ensureGalleryLoaded();
   if (name === "render") {
+    paintPilotDefault();
     lockGenerate(true);
     refreshLayersStatus();
   }

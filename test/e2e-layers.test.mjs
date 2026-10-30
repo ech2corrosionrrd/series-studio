@@ -221,7 +221,7 @@ describe("layers and the hybrid path in a real browser", { skip: CHROME ? false 
     await page.selectOption("#g-engine", "mock");
     await page.fill("#g-pilot", "4");
     await page.click("#g-estimate");
-    await waitFor(async () => /To generate: 4/.test(await text("#g-plan-out")), { what: "estimate" });
+    await waitFor(async () => /Згенерувати: 4/.test(await text("#g-plan-out")), { what: "estimate" });
     await page.click("#g-run");
     await waitFor(async () => /100%/.test(await text("#g-progress-pct")) && (await page.$$("#g-thumbs img")).length === 4, { what: "4 frames" });
 
