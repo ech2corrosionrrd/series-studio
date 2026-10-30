@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### Semgrep пройдено: 0 знахідок у коді (аудит безпеки 31.10.2026)
+
+- Semgrep (через Docker, публічні набори правил, метрики вимкнено) просканував 274 файли без знахідок; запуск описано в `docs/HOSTING.md`.
+
 ### Залежності: закриті середні вразливості `uuid` і `csv-parse` (аудит безпеки 31.10.2026)
 
 - У `package.json` `overrides`: `uuid` 11.1.1 під `jayson` (через `@solana/web3.js`), `csv-parse` 7.0.2 під `@irys/upload`. Тест `test/deps-smoke.test.mjs` перевіряє обмін JSON-RPC через `@solana/web3.js` і парсер CSV. `stream-json` (CVE у `jayson`) не піднято: версія 3 прибрала файли, які `jayson` підключає, а клієнт `@solana/web3.js` цього шляху не завантажує. Чотири високі (`bigint-buffer` через `@solana/spl-token`, `@irys/upload-solana`) без виправлення в постачальників.
