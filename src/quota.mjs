@@ -91,8 +91,11 @@ export function diskStatus(root, extra = 0, cfg = quotaConfig()) {
 
 const mb = (n) => Math.round((n / (1024 * 1024)) * 10) / 10;
 
-export const diskMessage = (s) =>
-  `Disk quota reached: ${mb(s.used)} of ${mb(s.limit)} MB used. Delete old frame sets or projects (or empty the trash), then try again.`;
+/** With `extra` (bytes the write is about to add) the text says what it needs and what is free, so a big job is refused up front with numbers. */
+export const diskMessage = (s, extra = 0) =>
+  extra > 0 && s.used < s.limit
+    ? `Disk quota reached: this needs about ${mb(extra)} MB, only ${mb(s.limit - s.used)} MB of ${mb(s.limit)} MB are free. Delete old frame sets or projects (or empty the trash), or make the series smaller, then try again.`
+    : `Disk quota reached: ${mb(s.used)} of ${mb(s.limit)} MB used. Delete old frame sets or projects (or empty the trash), then try again.`;
 
 /** Human-readable problems with a preset's size; an empty list means it is within the limits. */
 export function presetLimitIssues(preset, cfg = quotaConfig()) {

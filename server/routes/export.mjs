@@ -7,8 +7,19 @@ import { join } from "node:path";
 import { readBody } from "../http.mjs";
 import { send as sendResponse } from "../http.mjs";
 
+/** Bytes of the numbered PNGs of a set: about what the ZIP built from them will weigh. */
+const setImageBytes = (dir) => {
+  let total = 0;
+  try {
+    for (const f of readdirSync(dir)) if (/^\d+\.png$/i.test(f)) total += statSync(join(dir, f)).size;
+  } catch {
+    /* an unreadable set is reported by the bundle itself */
+  }
+  return total;
+};
+
 export async function handleExportRoutes(ctx) {
-  const { req, res, url, pathname, P, bundlesDir, chargeStage, listArchives, loadArchiveFile, loadPresetFileSafe, loadPresetForArchive, loadSeriesContext, readMarks, rejectSecrets, releaseArchive, resolveLocale, safeSetName, trackFunnel } = ctx;
+  const { req, res, url, pathname, P, assertWalletDisk, bundlesDir, chargeStage, listArchives, loadArchiveFile, loadPresetFileSafe, loadPresetForArchive, loadSeriesContext, readMarks, rejectSecrets, releaseArchive, resolveLocale, safeSetName, trackFunnel } = ctx;
   const send = (...a) => {
     sendResponse(...a);
     return true;
@@ -142,6 +153,12 @@ export async function handleExportRoutes(ctx) {
       preset = loadPresetForArchive(archive)?.preset || null;
     } catch {
       preset = loadPresetFileSafe(`${archive.presetId || "x"}.json`)?.preset || null;
+    }
+    // the ZIP holds the frames again (stored, not compressed): refuse now, with numbers, if there is no room for it
+    try {
+      assertWalletDisk(setImageBytes(setDir));
+    } catch (e) {
+      return send(res, e.status || 413, { error: String(e.message || e), code: e.code || "disk_quota" });
     }
     const marks = readMarks(set);
     const locale = resolveLocale(req, body);
