@@ -131,9 +131,9 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     await page.selectOption("#g-engine", "mock");
     await page.fill("#g-pilot", "4");
     await page.click("#g-estimate");
-    await waitFor(async () => /To generate: 4/.test(await page.textContent("#g-plan-out")), { what: "estimate" });
+    await waitFor(async () => /Згенерувати: 4/.test(await page.textContent("#g-plan-out")), { what: "estimate" });
     const plan = await page.textContent("#g-plan-out");
-    const cost = Number(/Cost: (\d+) credits/.exec(plan)[1]);
+    const cost = Number(/Вартість: (\d+) кр/.exec(plan)[1]);
     assert.equal(cost, 8);
     const before = await balance();
     await page.click("#g-run");
@@ -142,10 +142,10 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
 
     await page.check("#g-force");
     await page.click("#g-estimate");
-    await waitFor(async () => /FORCE re-render/.test(await page.textContent("#g-plan-out")), { what: "force estimate" });
+    await waitFor(async () => /ПЕРЕГЕНЕРАЦІЯ/.test(await page.textContent("#g-plan-out")), { what: "force estimate" });
     const forced = await page.textContent("#g-plan-out");
-    assert.match(forced, /To generate: 4/);
-    assert.match(forced, /Cost: 8 credits/, "with the switch on, the estimate shows what a re-render will charge");
+    assert.match(forced, /Згенерувати: 4/);
+    assert.match(forced, /Вартість: 8 кр/, "with the switch on, the estimate shows what a re-render will charge");
     await page.uncheck("#g-force");
   });
 
@@ -163,7 +163,7 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     });
     await page.fill("#g-pilot", "2");
     await page.click("#g-estimate");
-    await waitFor(async () => /To generate: 2/.test(await page.textContent("#g-plan-out")), { what: "second estimate" });
+    await waitFor(async () => /Згенерувати: 2/.test(await page.textContent("#g-plan-out")), { what: "second estimate" });
     await page.click("#g-run");
     await waitFor(async () => /100%/.test(await page.textContent("#g-progress-pct")) && (await page.$$("#g-thumbs img")).length === 2, { what: "second generation" });
 

@@ -38,7 +38,8 @@ function readCache(setDir) {
 export async function analyzeSetQuality({ setDir, baseBuf = null, marks = {}, limit = 24 }) {
   if (!existsSync(setDir) || !statSync(setDir).isDirectory()) throw new Error(`not a folder: ${setDir}`);
   const files = readdirSync(setDir)
-    .filter((f) => /^\d+\.png$/i.test(f))
+    // Edition 0 is the base image itself (the Genesis lot, copied into the set): it is not a generated frame, always matches the base and must not count in "N of M".
+    .filter((f) => /^\d+\.png$/i.test(f) && parseInt(f, 10) > 0)
     .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
   const baseKey = baseBuf ? createHash("sha1").update(baseBuf).digest("hex").slice(0, 12) : null;

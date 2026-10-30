@@ -385,6 +385,9 @@ label .muted.small { display: block; margin-top: 4px; font-weight: 400; }
 .pack-checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 8px; }
 .pack-key { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; cursor: pointer; }
 .pack-key.off { opacity: 0.55; }
+/* The name and its check box on one line, the "Type · N options · role" note on its own line: it used to be squeezed beside them and run under the edit button (BETA-REVIEW round 2, R9). */
+.pack-key-label { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; flex: 1 1 130px; min-width: 0; cursor: pointer; }
+.pack-key-label .muted { flex-basis: 100%; padding-left: 22px; overflow-wrap: anywhere; line-height: 1.35; }
 .pack-key-name { font-weight: 600; font-family: ui-monospace, monospace; font-size: 13px; }
 .pack-key input { margin: 0; }
 
@@ -1028,6 +1031,8 @@ input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
 .sys-pill.bad { background: #3a1620; color: #ffb3bf; }
 /* A long archive name must not push the page wider than the phone (BETA-REVIEW B12). */
 label, select { max-width: 100%; }
+#r-table tbody tr[data-i] { cursor: pointer; }
+#r-table tbody tr[data-i]:hover { background: rgba(255, 255, 255, .04); }
 .sys-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .sys-table th, .sys-table td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .sys-table th:first-child, .sys-table td:first-child { text-align: left; overflow-wrap: anywhere; }

@@ -20,6 +20,7 @@
   <link rel="modulepreload" href="history.js">
   <link rel="modulepreload" href="help-search.js">
   <link rel="modulepreload" href="series-starter.js">
+  <link rel="modulepreload" href="plan-text.js">
   <link rel="modulepreload" href="app-admin.js">
   <link rel="modulepreload" href="app-overview.js">
   <link rel="modulepreload" href="app-packs.js">
@@ -319,7 +320,10 @@
           <button type="button" id="base-wish-save" class="btn" data-i18n="base.wish.save">Зберегти побажання</button>
           <button type="button" id="base-wish-gen" class="btn primary" data-i18n="base.wish.gen">Згенерувати кандидата</button>
         </div>
-        <pre id="base-wish-out" class="log" hidden></pre>
+        <details id="base-wish-details" class="muted small" hidden>
+          <summary data-i18n="base.wish.details">Технічні подробиці</summary>
+          <pre id="base-wish-out" class="log"></pre>
+        </details>
         <p class="muted small" data-i18n="base.wish.note"></p>
       </div>
     </div>
@@ -776,7 +780,7 @@
             <span data-i18n="render.sel.force">Force regenerate even if file exists</span></label>
         </fieldset>
         <div class="actions">
-          <button type="button" id="g-pilots" class="btn primary" data-i18n="render.pilots">12 пілотів — порахувати</button>
+          <button type="button" id="g-pilots" class="btn primary"></button>
           <button type="button" id="g-estimate" class="btn" data-i18n="render.estimate">Estimate (free)</button>
           <button type="button" id="g-run" class="btn" disabled data-i18n="render.run">Generate…</button>
         </div>
