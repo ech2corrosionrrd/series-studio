@@ -108,7 +108,7 @@ import { isAdmin } from "../src/platform/ops.mjs";
 import { providersSnapshot, keyHealth, providerFloatStatus } from "../src/platform/providers.mjs";
 import { checkPromptSafetySync, safetyMessage } from "../src/platform/safety.mjs";
 import { writeJsonAtomic } from "../src/fs-safe.mjs";
-import { diskMessage, diskStatus, noteWrite, presetLimitIssues, quotaConfig } from "../src/quota.mjs";
+import { diskMessage, diskStatus, forgetUsage, noteWrite, presetLimitIssues, quotaConfig } from "../src/quota.mjs";
 import { adoptLegacyAssets, admitProject, convertLegacyProjectTrash, initialActiveProject, deletedProjectFile, ensureProjectDirs, isProject, loadProjects, pruneWalletTrash, trashRetentionDays, projectIdOf, projectPaths, projectQuota, projectsConfig, readActiveProject, registerProject, restoreDeletedProject, saveProjects, writeActiveProject } from "../src/projects.mjs";
 import { LayersZipError } from "../src/layers-zip.mjs";
 import { listShelved, versionCounts } from "../src/versions.mjs";
@@ -746,10 +746,13 @@ const IMAGE_EST_BYTES = 6 * 1024 * 1024; // room kept for one more generated fra
 function assertWalletDisk(extra = 0) {
   if (!quotaApplies()) return;
   const s = diskStatus(P().root, extra);
-  if (!s.ok) throw httpError(413, diskMessage(s), { code: "disk_quota", used: s.used, limit: s.limit });
+  if (!s.ok) throw httpError(413, diskMessage(s, extra), { code: "disk_quota", used: s.used, limit: s.limit, need: extra });
 }
 const noteDiskWrite = (bytes) => {
   if (quotaApplies()) noteWrite(P().root, bytes);
+};
+const forgetDiskUsage = () => {
+  if (quotaApplies()) forgetUsage(P().root);
 };
 const storageInfo = () => {
   const exempt = !quotaApplies();
@@ -1523,14 +1526,14 @@ async function handleApi(req, res, url) {
   // export routes live in server/routes/export.mjs.
   if (
     await handleExportRoutes({
-      req, res, url, pathname, P, bundlesDir, chargeStage, listArchives, loadArchiveFile, loadPresetFileSafe, loadPresetForArchive, loadSeriesContext, readMarks, rejectSecrets, releaseArchive, resolveLocale, safeSetName, trackFunnel,
+      req, res, url, pathname, P, assertWalletDisk, bundlesDir, chargeStage, listArchives, loadArchiveFile, loadPresetFileSafe, loadPresetForArchive, loadSeriesContext, readMarks, rejectSecrets, releaseArchive, resolveLocale, safeSetName, trackFunnel,
     })
   ) return;
 
   // layers routes live in server/routes/layers.mjs.
   if (
     await handleLayerRoutes({
-      req, res, url, pathname, P, assertWalletDisk, baseStatus, loadPresetByFile, loadSeriesContext, readRawBody, rejectSecrets, safeSetName, toTrash,
+      req, res, url, pathname, P, assertWalletDisk, forgetDiskUsage, baseStatus, loadPresetByFile, loadSeriesContext, readRawBody, rejectSecrets, safeSetName, toTrash,
     })
   ) return;
 

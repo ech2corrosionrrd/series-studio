@@ -6,7 +6,7 @@ import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layerRelPat
 import { basename, join, resolve } from "node:path";
 import { previewEdition } from "../../src/layers.mjs";
 import { startLayersJob } from "../../src/layers-job.mjs";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { frameOffsetFor, readFrameOffsets, writeFrameOffset } from "../../src/frame-offsets.mjs";
 import { isInsideDir } from "../../src/fs-safe.mjs";
 import { attachStopOnDisconnect, readBody, send as sendResponse, writeSse } from "../http.mjs";
@@ -16,7 +16,7 @@ const composing = new Set();
 const MAX_COMPOSE_JOBS = 2;
 
 export async function handleLayerRoutes(ctx) {
-  const { req, res, url, pathname, P, assertWalletDisk, baseStatus, loadPresetByFile, loadSeriesContext, readRawBody, rejectSecrets, safeSetName, toTrash } = ctx;
+  const { req, res, url, pathname, P, assertWalletDisk, forgetDiskUsage, baseStatus, loadPresetByFile, loadSeriesContext, readRawBody, rejectSecrets, safeSetName, toTrash } = ctx;
   const send = (...a) => {
     sendResponse(...a);
     return true;
@@ -27,7 +27,22 @@ export async function handleLayerRoutes(ctx) {
    * stream (`start`, `progress`, then `done` or `error`); without it the same work ends in the JSON the old call returned.
    * Closing the connection (the Stop button) stops the job between frames and keeps what was composed.
    */
-  async function runBulkCompose(kind, args, total, finish) {
+  /** Size of the biggest PNG among the first few of a set: what one composed frame will weigh. */
+  const setFrameBytes = (dir) => {
+    try {
+      return Math.max(0, ...readdirSync(dir).filter((f) => /^\d+\.png$/i.test(f)).slice(0, 5).map((f) => statSync(join(dir, f)).size));
+    } catch {
+      return 0;
+    }
+  };
+
+  async function runBulkCompose(kind, args, total, finish, frameBytes = 0) {
+    // every frame is about as large as the picture it is drawn on: refuse now, with numbers, instead of failing half way
+    try {
+      assertWalletDisk(total * frameBytes);
+    } catch (e) {
+      return send(res, e.status || 413, { error: String(e.message || e), code: e.code || "disk_quota" });
+    }
     const key = P().root;
     if (composing.has(key)) return send(res, 409, { error: "A compose of this project is already running.", code: "compose_busy" });
     if (composing.size >= MAX_COMPOSE_JOBS) return send(res, 503, { error: "The server is composing other series now; try again in a minute.", code: "compose_capacity" });
@@ -45,6 +60,7 @@ export async function handleLayerRoutes(ctx) {
       attachStopOnDisconnect(res, stop);
       stop.signal.addEventListener("abort", () => job.stop());
       const report = await job.promise;
+      forgetDiskUsage?.(); // the worker wrote these: the next quota check walks the folder again
       const payload = finish(report);
       if (stream) {
         writeSse(res, { type: "done", ...payload });
@@ -272,6 +288,7 @@ export async function handleLayerRoutes(ctx) {
           dir: `out/${outName}`,
           set: outName,
         }),
+        setFrameBytes(setDir),
       );
     }
     const base = baseStatus();
@@ -304,6 +321,7 @@ export async function handleLayerRoutes(ctx) {
       { archive: loaded.archive, items, basePng: readFileSync(basePath), layerDir, outDir, limit: body.limit },
       body.limit ? Math.min(Number(body.limit), recipeCount) : recipeCount,
       (report) => ({ ok: true, count: report.count, ...(report.stopped ? { stopped: true, total: report.total } : {}), dir: "out/layers", editions: report.editions }),
+      statSync(basePath).size,
     );
   }
 
