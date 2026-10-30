@@ -196,6 +196,7 @@ export async function handleExportRoutes(ctx) {
         upscaled: result.upscaled,
         upscaleSkipped: result.upscaleSkipped || null,
         fallback: result.fallback || null,
+        unmarked: result.unmarked || 0,
         archive: archiveFile,
         set,
         downloadUrl: `/${result.path}`,

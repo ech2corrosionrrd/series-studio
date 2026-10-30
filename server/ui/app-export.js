@@ -228,6 +228,12 @@ export function setupPath() {
 }
 
 /** With the base as edition #0 (Genesis) a series of N ships N + 1 items: say so next to the ZIP button, where "25 шт" appears. */
+/** " · N frames without a Keep mark were left out": the ZIP is built from the Keep-marked frames only, and the rest used to vanish without a word. */
+function unmarkedNote(data) {
+  const n = Number(data?.unmarked) || 0;
+  return n > 0 ? ` · ${t("export.bundle.unmarked", { n: fmtNum(n) })}` : "";
+}
+
 function paintGenesisNote() {
   const note = $("x-genesis-note");
   if (!note) return;
@@ -694,7 +700,7 @@ export function setupExport() {
           locale: getLocale(),
         }),
       });
-      if (msg) msg.textContent = `${t("export.bundle.ok", { n: fmtNum(data.count), missing: fmtNum((data.missing || []).length) })} · ${t("econ.creditsDebited", { n: fmtNum(data.chargedCredits || 0) })}`;
+      if (msg) msg.textContent = `${t("export.bundle.ok", { n: fmtNum(data.count), missing: fmtNum((data.missing || []).length) })} · ${t("econ.creditsDebited", { n: fmtNum(data.chargedCredits || 0) })}${unmarkedNote(data)}`;
       showPreflightReport(data.preflight);
       if (dl && data.downloadUrl) {
         dl.href = data.downloadUrl;
@@ -779,7 +785,7 @@ export function setupExport() {
         msg.textContent = `${t("export.bundle.ok", {
           n: fmtNum(data.count),
           missing: fmtNum((data.missing || []).length),
-        })} · ${t("econ.creditsDebited", { n: fmtNum(data.chargedCredits || 0) })}`;
+        })} · ${t("econ.creditsDebited", { n: fmtNum(data.chargedCredits || 0) })}${unmarkedNote(data)}`;
         msg.className = "small ok-msg";
       }
       showPreflightReport(data.preflight);
