@@ -226,7 +226,13 @@ function guidePage(T, u) {
       <p class="get"><b>${esc(T["help.label.get"])}:</b> ${esc(T[`${p}.get`])}</p>
       <h4>${esc(T["help.label.oops"])}</h4>${ul(list(T, `${p}.oops`))}</details>`;
   }).join("");
+  const plain = (id, tag = "ul") => sec(id, `<p>${esc(T[`help.${id}.desc`])}</p>${ul(list(T, `help.${id}.li`), tag)}`);
+  plain("money");
   sec("steps", `<p>${esc(T["help.steps.desc"])}</p>${steps}`);
+  plain("hybrid", "ol");
+  plain("quality");
+  plain("release", "ol");
+  plain("licence");
   sec("safety", `<p>${esc(T["help.safety.desc"])}</p>${ul(list(T, "help.safety.li"))}`);
   sec("zero", `<p>${esc(T["help.zero.desc"])}</p>${ul(list(T, "help.zero.li"))}`);
   const gl = list(T, "help.gl").map((s) => {

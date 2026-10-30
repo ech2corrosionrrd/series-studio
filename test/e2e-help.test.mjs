@@ -142,6 +142,23 @@ describe("help, captions and sizes in a real browser", { skip: CHROME ? false : 
     assert.equal(await page.isHidden("#o-strength-default"), true, "at the default there is nothing to explain");
   });
 
+  it("the search finds the money, hybrid, genesis, licence and support topics, and a miss points to support", async () => {
+    await tab("help");
+    await page.waitForSelector("#help-search");
+    const search = async (q) => {
+      await page.fill("#help-search", q);
+      await page.dispatchEvent("#help-search", "input");
+      return visibleSections();
+    };
+    for (const [q, id] of [["поповнити", "money"], ["phantom", "money"], ["гібрид", "hybrid"], ["genesis", "release"], ["ліцензія", "licence"], ["підтримка", "support"], ["схожість", "quality"]]) {
+      assert.ok((await search(q)).includes(id), `"${q}" finds the section ${id}`);
+    }
+    assert.deepEqual(await search("нісенітниця-без-збігів"), []);
+    assert.match(await page.textContent("#help-search-count"), /w3ir@pm\.me/, "a miss names the support address");
+    await page.fill("#help-search", "");
+    await page.dispatchEvent("#help-search", "input");
+  });
+
   it("no page errors during the whole session", () => {
     assert.deepEqual(pageErrors, []);
   });

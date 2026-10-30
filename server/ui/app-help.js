@@ -6,6 +6,7 @@
 import { getLocale, t } from "./i18n.js";
 import { $, showTab, state } from "./app.js";
 import { escapeHtml } from "./app-overview.js";
+import { helpMatches } from "./help-search.js";
 
 /* ---------- Help (built from locale keys, works offline) ---------- */
 const HELP_STEPS = [
@@ -125,7 +126,12 @@ function helpSections() {
     ["whatis", `<p>${esc("help.whatis.p1")}</p><p>${esc("help.whatis.p2")}</p>
       <div class="help-cards">${[1, 2, 3].map((n) => `<div class="help-card"><b>${esc(`help.whatis.card${n}.title`)}</b><span>${esc(`help.whatis.card${n}.desc`)}</span></div>`).join("")}</div>`],
     ["quick", `<p>${esc("help.quick.desc")}</p>${helpList("help.quick.li", "ol")}<p class="help-note">${esc("help.quick.tip")}</p>`],
+    ["money", `<p>${esc("help.money.desc")}</p>${helpList("help.money.li")}`],
     ["steps", `<p>${esc("help.steps.desc")}</p>${steps}`],
+    ["hybrid", `<p>${esc("help.hybrid.desc")}</p>${helpList("help.hybrid.li", "ol")}`],
+    ["quality", `<p>${esc("help.quality.desc")}</p>${helpList("help.quality.li")}`],
+    ["release", `<p>${esc("help.release.desc")}</p>${helpList("help.release.li", "ol")}`],
+    ["licence", `<p>${esc("help.licence.desc")}</p>${helpList("help.licence.li")}`],
     ["safety", `<p>${esc("help.safety.desc")}</p>${helpList("help.safety.li")}`],
     ["zero", `<p>${esc("help.zero.desc")}</p>${helpList("help.zero.li")}`],
     ["localgpu", `<p>${esc("help.localgpu.desc")}</p>
@@ -155,7 +161,7 @@ export function renderHelp() {
   const sections = helpSections();
   if (!sections.some(([id]) => id === state.helpActive)) state.helpActive = sections[0]?.[0] || "";
   body.innerHTML = sections.map(([id, html]) =>
-    `<section class="help-sec card" id="help-${id}" data-help-id="${id}"><h2>${esc(`help.${id}.title`)}</h2>${html}</section>`).join("");
+    `<section class="help-sec card" id="help-${id}" data-help-id="${id}" data-keys="${escapeHtml(sectionKeys(id))}"><h2>${esc(`help.${id}.title`)}</h2>${html}</section>`).join("");
   toc.innerHTML = `<b>${esc("help.toc.title")}</b>` + sections.map(([id]) =>
     `<a href="#help-${id}" data-sec="${id}">${esc(`help.${id}.title`)}</a>`).join("");
   body.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
@@ -166,6 +172,13 @@ export function renderHelp() {
     $(`help-${a.dataset.sec}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }));
   filterHelp($("help-search")?.value || "");
+}
+
+/** Search-only words of a section (synonyms the text itself does not use); empty when the section has none. */
+function sectionKeys(id) {
+  const key = `help.${id}.keys`;
+  const s = t(key);
+  return s === key ? "" : s;
 }
 
 function filterHelp(query) {
@@ -181,22 +194,22 @@ function filterHelp(query) {
   }
   document.querySelectorAll("#help-body .help-sec").forEach((sec) => {
     const items = sec.querySelectorAll(".help-item");
-    let secHit = !q || sec.querySelector("h2").textContent.toLowerCase().includes(q);
+    let secHit = !q || helpMatches(`${sec.querySelector("h2").textContent} ${sec.dataset.keys || ""}`, q);
     let itemHits = 0;
     items.forEach((it) => {
-      const hit = !q || it.textContent.toLowerCase().includes(q);
+      const hit = !q || helpMatches(it.textContent, q);
       it.hidden = Boolean(q) && !hit && !secHit;
       if (q && hit) {
         itemHits++;
         if (it.tagName === "DETAILS") it.open = true;
       }
     });
-    const visible = !q || secHit || itemHits > 0 || sec.textContent.toLowerCase().includes(q);
+    const visible = !q || secHit || itemHits > 0 || helpMatches(sec.textContent, q);
     sec.hidden = !visible || (single && sec.dataset.helpId !== state.helpActive);
     if (visible) shown++;
   });
   const count = $("help-search-count");
-  if (count) count.textContent = q ? (shown ? t("help.search.count", { n: shown }) : t("help.search.none")) : "";
+  if (count) count.textContent = q ? (shown ? t("help.search.count", { n: shown }) : t("help.search.none", { email: SUPPORT_EMAIL })) : "";
 }
 
 export function setupHelp() {

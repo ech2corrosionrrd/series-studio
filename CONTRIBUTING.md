@@ -22,7 +22,7 @@ git config core.hooksPath .githooks
 ## Перед комітом
 
 `npm run ci` запускає все одним кроком: тести з порогом покриття `src/`,
-`docs:check`, `audit:i18n`, `audit:ui`, `audit:api`. Усе має бути зеленим.
+`docs:check`, `audit:i18n`, `audit:ui`, `audit:help`, `audit:api`. Усе має бути зеленим.
 Хук `pre-push` запускає цю команду сам.
 
 Тест, що падає «іноді», це дефект: його не перезапускають і не ігнорують
