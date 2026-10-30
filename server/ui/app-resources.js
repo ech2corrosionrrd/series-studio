@@ -494,8 +494,10 @@ export async function renderEconomy() {
         <p class="econ-note">${escapeHtml(t("econ.beLine", {
           contrib: fmtUsd(be.contribution_usd),
           need: be.break_even_count ?? 0,
-          have: be.payments_this_month ?? 0,
-          pct: be.covered_pct != null ? `${be.covered_pct}%` : "—",
+          have: be.payments_this_month_external ?? 0,
+          pct: be.covered_pct_external != null ? `${be.covered_pct_external}%` : "—",
+          all: be.payments_this_month ?? 0,
+          allPct: be.covered_pct != null ? `${be.covered_pct}%` : "—",
         }))}</p>
       </section>
       <section class="econ-section">

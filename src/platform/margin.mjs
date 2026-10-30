@@ -323,6 +323,8 @@ export function breakEvenSummary({
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
   const month = paymentTotals(db, monthStart, "all");
+  // payments of the operator's own wallets are a transfer to oneself, not income: only outside payers cover the fixed costs
+  const monthExt = paymentTotals(db, monthStart, "external");
   return {
     package_price: packagePrice,
     package_credits: packageCredits,
@@ -336,6 +338,10 @@ export function breakEvenSummary({
     revenue_this_month: Math.round(month.usd * 100) / 100,
     remaining: needed > 0 ? Math.max(0, needed - month.count) : 0,
     covered_pct: needed > 0 ? Math.round((100 * month.count) / needed) : null,
+    payments_this_month_external: monthExt.count,
+    revenue_this_month_external: Math.round(monthExt.usd * 100) / 100,
+    remaining_external: needed > 0 ? Math.max(0, needed - monthExt.count) : 0,
+    covered_pct_external: needed > 0 ? Math.round((100 * monthExt.count) / needed) : null,
   };
 }
 

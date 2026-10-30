@@ -99,6 +99,10 @@ describe("margin / unit economics", () => {
     assert.ok(be.contribution_usd > 0);
     assert.ok(be.break_even_count >= 1);
     assert.ok(be.fixed_effective_usd > be.fixed_monthly_usd);
+    // the operator's own payments do not count towards covering costs
+    assert.ok(be.payments_this_month_external <= be.payments_this_month);
+    assert.ok(be.revenue_this_month_external <= be.revenue_this_month);
+    assert.equal(be.remaining_external >= be.remaining, true);
   });
 
   test("estimatedApiCostUsd weights by per-op credits", () => {

@@ -2,11 +2,12 @@
 // `handlePlatformRoutes` answers true when it handled the request, otherwise the caller carries on with its own routes.
 // What lives inside the studio process (the current project's folders, the wallet, the stage charges) arrives in `ctx`.
 import { ENGINES, TXT2IMG, listSelectableEngines, pickAvailableEngine } from "../../src/engines.mjs";
-import { PACKAGES, creditCost, getBalance, referralCodeFor } from "../../src/platform/billing.mjs";
+import { PACKAGES, creditCost, getBalance, hasWelcomeGrant, referralCodeFor, welcomeOffer } from "../../src/platform/billing.mjs";
 import { anonymizeRenderLog } from "../../src/spend.mjs";
 import { basename, join, resolve } from "node:path";
 import { eraseWalletRecords } from "../../src/platform/erase.mjs";
 import { isAdmin } from "../../src/platform/ops.mjs";
+import { openDb } from "../../src/platform/db.mjs";
 import { isInsideDir } from "../../src/fs-safe.mjs";
 import { projectQuota, projectsConfig } from "../../src/projects.mjs";
 import { publishCollection } from "../../src/platform/site.mjs";
@@ -67,6 +68,11 @@ export async function handlePlatformRoutes(ctx) {
       admin: isAdmin(wallet),
       wallet,
       balance: getBalance(wallet),
+      // whether the welcome credits were given; if not, the studio says why (a wallet below the minimum balance gets none)
+      welcome: (() => {
+        const o = welcomeOffer();
+        return { granted: hasWelcomeGrant(openDb(), wallet), requiresBalance: o.requires_balance, minSol: o.min_sol, minEth: o.min_eth };
+      })(),
       storage: storageInfo(),
       projects: (() => {
         const q = projectQuota(walletProjects(), projectsConfig());

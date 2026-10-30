@@ -101,7 +101,7 @@ function welcomeGrant(db) {
   return { amount: welcomeCredits(), note: WELCOME_NOTE };
 }
 
-const hasWelcomeGrant = (db, wallet) =>
+export const hasWelcomeGrant = (db, wallet) =>
   !!db.prepare("SELECT 1 FROM transactions WHERE wallet_address = ? AND kind = 'welcome' LIMIT 1").get(wallet);
 
 export function logTransaction(db, wallet, kind, credits, { engine = "", note = "" } = {}) {
@@ -157,7 +157,7 @@ export async function completeWalletSignIn(wallet, { db = openDb(), balanceCheck
       let granted = 0;
       let denied = false;
       if (!hasWelcomeGrant(db, wallet)) {
-        denied = !check.ok;
+        denied = !check.ok && !check.unknown;
         if (check.ok) {
           const g = welcomeGrant(db);
           granted = g.amount;
@@ -173,9 +173,10 @@ export async function completeWalletSignIn(wallet, { db = openDb(), balanceCheck
     const g = check.ok ? welcomeGrant(db) : { amount: 0, note: WELCOME_NOTE };
     db.prepare("INSERT INTO users (wallet_address, credits_balance, created_at, verified_at) VALUES (?, ?, ?, ?)").run(wallet, g.amount, now, now);
     if (g.amount) logTransaction(db, wallet, "welcome", g.amount, { note: g.note });
-    return { welcomed: true, balance: g.amount, denied: !g.amount };
+    return { welcomed: true, balance: g.amount, denied: !g.amount && !check.unknown };
   });
   if (result.denied) recordFunnelEvent(wallet, "welcome_denied", null, db);
+  else if (check.unknown) recordFunnelEvent(wallet, "welcome_check_failed", null, db);
   return result;
 }
 
