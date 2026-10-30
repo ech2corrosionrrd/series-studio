@@ -49,42 +49,42 @@
           {
             "value": "Round Buddy",
             "weight": 18,
-            "prompt": "flat vector mascot with a round friendly buddy silhouette, bold outline, no photoreal face"
+            "prompt": "mascot with a round friendly buddy silhouette, bold outline"
           },
           {
             "value": "Tall Slim",
             "weight": 14,
-            "prompt": "flat vector mascot with a tall slim silhouette, clean geometric limbs, no photoreal face"
+            "prompt": "mascot with a tall slim silhouette, clean geometric limbs"
           },
           {
             "value": "Chunky Block",
             "weight": 14,
-            "prompt": "flat vector mascot with a chunky blocky silhouette, simple shapes, no photoreal face"
+            "prompt": "mascot with a chunky blocky silhouette, simple shapes"
           },
           {
             "value": "Bean Soft",
             "weight": 12,
-            "prompt": "flat vector mascot with a soft bean-shaped body silhouette, no photoreal face"
+            "prompt": "mascot with a soft bean-shaped body silhouette"
           },
           {
             "value": "Animal Cute",
             "weight": 14,
-            "prompt": "flat vector cute animal mascot silhouette, simplified features, no photoreal face"
+            "prompt": "cute animal mascot silhouette, simplified features"
           },
           {
             "value": "Star Sprite",
             "weight": 10,
-            "prompt": "flat vector star-shaped sprite silhouette, playful and logo-ready, no photoreal face"
+            "prompt": "star-shaped sprite silhouette, playful and logo-ready"
           },
           {
             "value": "Hero Cape",
             "weight": 10,
-            "prompt": "flat vector hero mascot silhouette with a simple cape shape, no photoreal face"
+            "prompt": "hero mascot silhouette with a simple cape shape"
           },
           {
             "value": "Robot Box",
             "weight": 8,
-            "prompt": "flat vector boxy robot mascot silhouette, rounded corners, no photoreal face"
+            "prompt": "boxy robot mascot silhouette, rounded corners"
           }
         ]
       },
@@ -95,42 +95,42 @@
           {
             "value": "Brand Blue",
             "weight": 16,
-            "prompt": "primary fill in solid brand blue, flat vector colour"
+            "prompt": "primary fill in solid brand blue"
           },
           {
             "value": "Sunny Yellow",
             "weight": 14,
-            "prompt": "primary fill in solid sunny yellow, flat vector colour"
+            "prompt": "primary fill in solid sunny yellow"
           },
           {
             "value": "Coral Red",
             "weight": 14,
-            "prompt": "primary fill in solid coral red, flat vector colour"
+            "prompt": "primary fill in solid coral red"
           },
           {
             "value": "Mint Green",
             "weight": 12,
-            "prompt": "primary fill in solid mint green, flat vector colour"
+            "prompt": "primary fill in solid mint green"
           },
           {
             "value": "Violet Pop",
             "weight": 12,
-            "prompt": "primary fill in solid violet, flat vector colour"
+            "prompt": "primary fill in solid violet"
           },
           {
             "value": "Orange Punch",
             "weight": 12,
-            "prompt": "primary fill in solid punchy orange, flat vector colour"
+            "prompt": "primary fill in solid punchy orange"
           },
           {
             "value": "Charcoal",
             "weight": 10,
-            "prompt": "primary fill in solid charcoal grey, flat vector colour"
+            "prompt": "primary fill in solid charcoal grey"
           },
           {
             "value": "Sky Cyan",
             "weight": 10,
-            "prompt": "primary fill in solid sky cyan, flat vector colour"
+            "prompt": "primary fill in solid sky cyan"
           }
         ]
       },
@@ -141,42 +141,42 @@
           {
             "value": "White Trim",
             "weight": 18,
-            "prompt": "white accent trim and highlights on the flat vector mascot"
+            "prompt": "white accent trim and highlights on the mascot"
           },
           {
             "value": "Black Outline",
             "weight": 16,
-            "prompt": "bold black outline accent framing the flat vector mascot"
+            "prompt": "bold black outline accent framing the mascot"
           },
           {
             "value": "Gold Spot",
             "weight": 12,
-            "prompt": "small gold accent spots on the flat vector mascot"
+            "prompt": "small gold accent spots on the mascot"
           },
           {
             "value": "Pink Pop",
             "weight": 12,
-            "prompt": "bright pink accent details on the flat vector mascot"
+            "prompt": "bright pink accent details on the mascot"
           },
           {
             "value": "Teal Edge",
             "weight": 12,
-            "prompt": "teal accent edges on the flat vector mascot"
+            "prompt": "teal accent edges on the mascot"
           },
           {
             "value": "Cream Soft",
             "weight": 14,
-            "prompt": "soft cream accent fills on the flat vector mascot"
+            "prompt": "soft cream accent fills on the mascot"
           },
           {
             "value": "Lime Flash",
             "weight": 8,
-            "prompt": "lime flash accent marks on the flat vector mascot"
+            "prompt": "lime flash accent marks on the mascot"
           },
           {
             "value": "Navy Detail",
             "weight": 8,
-            "prompt": "navy accent details on the flat vector mascot"
+            "prompt": "navy accent details on the mascot"
           }
         ]
       },
@@ -187,42 +187,42 @@
           {
             "value": "Wave Hello",
             "weight": 18,
-            "prompt": "friendly wave-hello pose, flat vector, centered"
+            "prompt": "friendly wave-hello pose, centered"
           },
           {
             "value": "Arms Open",
             "weight": 14,
-            "prompt": "arms-open welcome pose, flat vector, centered"
+            "prompt": "arms-open welcome pose, centered"
           },
           {
             "value": "Thumbs Up",
             "weight": 14,
-            "prompt": "thumbs-up pose, flat vector, centered"
+            "prompt": "thumbs-up pose, centered"
           },
           {
             "value": "Jump Joy",
             "weight": 12,
-            "prompt": "small joyful jump pose, flat vector, centered"
+            "prompt": "small joyful jump pose, centered"
           },
           {
             "value": "Point Forward",
             "weight": 12,
-            "prompt": "pointing-forward pose, flat vector, centered"
+            "prompt": "pointing-forward pose, centered"
           },
           {
             "value": "Sit Cute",
             "weight": 12,
-            "prompt": "cute seated pose, flat vector, centered"
+            "prompt": "cute seated pose, centered"
           },
           {
             "value": "Run Side",
             "weight": 10,
-            "prompt": "side-run pose with simple motion, flat vector, centered"
+            "prompt": "side-run pose with simple motion, centered"
           },
           {
             "value": "Power Stance",
             "weight": 8,
-            "prompt": "confident power stance, flat vector, centered"
+            "prompt": "confident power stance, centered"
           }
         ]
       },
@@ -233,42 +233,42 @@
           {
             "value": "None",
             "weight": 22,
-            "prompt": "no prop, mascot only, flat vector"
+            "prompt": "no prop, mascot only"
           },
           {
             "value": "Star Badge",
             "weight": 14,
-            "prompt": "holding a simple star badge prop, flat vector, no logo text"
+            "prompt": "holding a simple star badge prop, no logo text"
           },
           {
             "value": "Gift Box",
             "weight": 12,
-            "prompt": "holding a small gift box prop, flat vector"
+            "prompt": "holding a small gift box prop"
           },
           {
             "value": "Coffee Cup",
             "weight": 12,
-            "prompt": "holding a plain coffee cup prop, flat vector, no brand marks"
+            "prompt": "holding a plain coffee cup prop, no brand marks"
           },
           {
             "value": "Megaphone",
             "weight": 10,
-            "prompt": "holding a simple megaphone prop, flat vector"
+            "prompt": "holding a simple megaphone prop"
           },
           {
             "value": "Balloon",
             "weight": 12,
-            "prompt": "holding a single round balloon prop, flat vector"
+            "prompt": "holding a single round balloon prop"
           },
           {
             "value": "Flag Pole",
             "weight": 10,
-            "prompt": "holding a blank flag on a pole, flat vector, no text"
+            "prompt": "holding a blank flag on a pole, no text"
           },
           {
             "value": "Spark Wand",
             "weight": 8,
-            "prompt": "holding a sparkle wand prop, flat vector"
+            "prompt": "holding a sparkle wand prop"
           }
         ]
       },
@@ -299,7 +299,7 @@
           {
             "value": "Dot Pattern",
             "weight": 12,
-            "prompt": "subtle sparse dot pattern background, flat vector"
+            "prompt": "subtle sparse dot pattern background"
           },
           {
             "value": "Gradient Soft",
@@ -320,37 +320,37 @@
           {
             "value": "Happy",
             "weight": 22,
-            "prompt": "simple happy face marks (dots and curve), flat vector, not photoreal"
+            "prompt": "simple happy face marks (dots and curve)"
           },
           {
             "value": "Excited",
             "weight": 16,
-            "prompt": "simple excited face marks, flat vector, not photoreal"
+            "prompt": "simple excited face marks"
           },
           {
             "value": "Calm Smile",
             "weight": 16,
-            "prompt": "simple calm smile marks, flat vector, not photoreal"
+            "prompt": "simple calm smile marks"
           },
           {
             "value": "Winky",
             "weight": 12,
-            "prompt": "simple wink expression marks, flat vector, not photoreal"
+            "prompt": "simple wink expression marks"
           },
           {
             "value": "Curious",
             "weight": 12,
-            "prompt": "simple curious expression marks, flat vector, not photoreal"
+            "prompt": "simple curious expression marks"
           },
           {
             "value": "Proud",
             "weight": 12,
-            "prompt": "simple proud expression marks, flat vector, not photoreal"
+            "prompt": "simple proud expression marks"
           },
           {
             "value": "Surprised",
             "weight": 10,
-            "prompt": "simple surprised expression marks, flat vector, not photoreal"
+            "prompt": "simple surprised expression marks"
           }
         ]
       }

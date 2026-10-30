@@ -235,7 +235,9 @@ function selectGeneratedRecipes(recipes, marks, onlyKeep, imageEditionSet) {
             "onlyKeep is set but no keep-marked editions match the archive — mark keep in Review",
         };
       }
-      return { recipes: selected, fallback: null, error: null };
+      // Generated frames that have an image but no Keep mark stay out of the ZIP; the caller says how many (BETA-REVIEW round 2, R4).
+      const unmarked = recipes.filter((r) => imageEditionSet.has(r.edition) && !keepSet.has(r.edition)).length;
+      return { recipes: selected, fallback: null, error: null, unmarked };
     }
     const withImg = recipes.filter((r) => imageEditionSet.has(r.edition));
     if (withImg.length) {
@@ -672,6 +674,7 @@ export async function buildBundleZip(params) {
       preflight,
       provenanceHash: provenance?.provenanceHash || null,
       fallback: sel.fallback,
+      unmarked: sel.unmarked || 0,
     };
   }
 
@@ -698,6 +701,7 @@ export async function buildBundleZip(params) {
     profile: profileKey,
     provenanceHash: provenance?.provenanceHash || null,
     fallback: sel.fallback,
+    unmarked: sel.unmarked || 0,
     upscaled: anyUpscaled,
     upscaleSkipped: upscaleSkippedReason,
     ready: preflight.ready,

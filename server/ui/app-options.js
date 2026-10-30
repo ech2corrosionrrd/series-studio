@@ -5,6 +5,7 @@
  */
 import { t } from "./i18n.js";
 import { ID_PATTERN, slugifyId } from "./slug.js";
+import { newSeriesStarter } from "./series-starter.js";
 import { paintStrengthNote, refreshAccount } from "./app-account.js";
 import { $, api, reloadStudio, rememberRev, renderProjects, saveRevField, showTab, state, tipAttr } from "./app.js";
 import { scheduleWorkspaceSave } from "./app-export.js";
@@ -878,6 +879,28 @@ export function setupOverview() {
   });
   paintStrengthNote("o-strength-note", $("o-engine")?.value);
   paintOverviewStrength();
+  /**
+   * "Start the series" with an ID that is neither the open project nor a saved one is a NEW series: it must not inherit
+   * the prompt, traits, lines and engine of whatever is open in the Constructor (BETA-REVIEW round 2, R1). A bad name or
+   * size is left to the normal validation, so a size of 0 still gets its message instead of turning into 1.
+   * Returns true when the Constructor was reset to the neutral starter. "Spin-off" stays the explicit way to copy a series.
+   */
+  function beginFreshSeries() {
+    syncCtorFromOverview();
+    const id = $("o-id").value.trim() || slugifyId($("o-name").value.trim());
+    if (!id || identityIssues().length) return false;
+    if (state.draftFull?.id === id || state.presets?.some((p) => p.file === `${id}.json`)) return false;
+    fillConstructor(newSeriesStarter({
+      id,
+      name: $("o-name").value.trim(),
+      seed: $("o-seed").value.trim(),
+      size: Number($("o-size").value),
+      genesis: Boolean($("o-genesis")?.checked),
+    }));
+    state.freshSeriesId = id;
+    return true;
+  }
+
   async function saveOverviewPreset() {
     syncCtorFromOverview();
     const name = $("o-name").value.trim();
@@ -943,7 +966,9 @@ export function setupOverview() {
     renderProjects();
     if (data.project?.new && state.assetsPerProject) {
       // the new project is now the active one: its (empty) base, layers and sets replace the previous project's on screen
-      reloadStudio({ msg: `${t("home.msg.saved")}: ${data.file}${charged}`, tab: state.afterSaveTab || "" });
+      // a fresh series says so after the reload too: the page is rebuilt from the saved neutral starter
+      const fresh = state.freshSeriesId === data.id ? ` · ${t("home.start.fresh")}` : "";
+      reloadStudio({ msg: `${t("home.msg.saved")}: ${data.file}${charged}${fresh}`, tab: state.afterSaveTab || "" });
     }
     return data;
   }
@@ -958,7 +983,9 @@ export function setupOverview() {
   $("o-start")?.addEventListener("click", async () => {
     try {
       state.afterSaveTab = "base";
+      const fresh = beginFreshSeries();
       await saveOverviewPreset();
+      if (fresh && $("o-msg")) $("o-msg").textContent = `${$("o-msg").textContent} · ${t("home.start.fresh")}`;
       showTab("base");
     } catch (e) {
       $("o-msg").textContent = e.message;
