@@ -43,6 +43,9 @@ import {
 import { chainForProfile } from "./deploy-kit.mjs";
 import { GENESIS_EDITION, displayEdition, hasGenesis, isGenesisRecipe, withoutGenesis } from "./genesis.mjs";
 
+// PNG, GIF and video are already compressed: DEFLATE spends the time and saves next to nothing (BETA-REVIEW R16)
+const STORED = { compression: "STORE" };
+
 export {
   calculateCollectionProvenance,
   traitsToAttributes,
@@ -467,7 +470,7 @@ export async function buildBundleZip(params) {
           aiSkipped += 1;
         }
       }
-      imagesFolder.file(imgFileName, buf);
+      imagesFolder.file(imgFileName, buf, STORED);
       imageRecords.push({ edition: ed, file: imgFileName, buffer: buf });
     }
 
@@ -477,7 +480,7 @@ export async function buildBundleZip(params) {
       const animBuf = readFileSync(media.animationPath);
       const animExt = extname(media.animationPath).slice(1) || "mp4";
       const animFileName = `${displayEd}.${animExt}`;
-      imagesFolder.file(animFileName, animBuf);
+      imagesFolder.file(animFileName, animBuf, STORED);
       tokenOpts.animationExtension = animExt;
 
       if (!tokenOpts.animationUriPrefix && !tokenOpts.animationUrl && !recipe.animation_url) {
@@ -555,7 +558,7 @@ export async function buildBundleZip(params) {
   const cover = packed[0];
   if (cover?.buffer) {
     const coverExt = extname(cover.filename).replace(/^\./, "") || "png";
-    zip.file(`cover.${coverExt}`, cover.buffer);
+    zip.file(`cover.${coverExt}`, cover.buffer, STORED);
   }
   const rarity = buildRarityReport(preset, withoutGenesis(includedRecipes));
   zip.file("rarity.json", JSON.stringify(rarity, null, 2) + "\n");
