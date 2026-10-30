@@ -117,5 +117,21 @@ describe("compose layers: progress and Stop", { skip: CHROME ? false : "no Chrom
     assert.match(await page.textContent("#r-simulate-msg"), /Сухий прогін/);
   });
 
+  it("messages written once are repainted when the language changes (R10)", async () => {
+    await page.click('nav [data-tab="home"]');
+    await page.waitForSelector("#o-save");
+    await page.evaluate(() => { document.getElementById("o-msg").textContent = ""; });
+    await page.evaluate(() => { const s = document.getElementById("o-strength"); s.value = "0.35"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+    await page.click("#o-save");
+    await page.waitForFunction(() => /Збережено/.test(document.getElementById("o-msg")?.textContent || ""), null, { timeout: 30000 });
+    assert.match(await page.textContent("#o-strength-default"), /0\.45/);
+    await page.click('.lang-btn[data-locale="en"]');
+    await page.waitForFunction(() => /Saved/.test(document.getElementById("o-msg").textContent), null, { timeout: 10000 });
+    assert.doesNotMatch(await page.textContent("#o-msg"), /[А-Яа-яІіЇїЄє]/, "the saved message is English");
+    assert.doesNotMatch(await page.textContent("#o-strength-default"), /[А-Яа-яІіЇїЄє]/, "the strength note is English");
+    await page.click('.lang-btn[data-locale="uk"]');
+    await page.waitForFunction(() => /Збережено/.test(document.getElementById("o-msg").textContent), null, { timeout: 10000 });
+  });
+
   it("no page errors", () => assert.deepEqual(pageErrors, []));
 });

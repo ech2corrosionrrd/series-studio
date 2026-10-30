@@ -4,7 +4,7 @@
  * every import is a function or a binding that is only used after all modules have loaded.
  */
 import { thumbUrl } from "./format.js";
-import { applyTips, t } from "./i18n.js";
+import { applyTips, setMessage, t } from "./i18n.js";
 import { paintWishPrompt, relabelEngineSelects, syncWishControls } from "./app-account.js";
 import { $, api, showTab, state, tipAttr } from "./app.js";
 import { ensureDraftTraits, fillStyleLock, renderOptionsEditor } from "./app-options.js";
@@ -193,7 +193,8 @@ export function setupBase() {
         if ($("base-wish-details")) $("base-wish-details").hidden = false;
         $("base-wish-out").textContent = JSON.stringify(data, null, 2);
       }
-      $("base-msg").textContent = data.ok ? t("base.wish.done") : (data.message || t("base.wish.fail"));
+      if (data.ok) setMessage($("base-msg"), { key: "base.wish.done" });
+      else $("base-msg").textContent = data.message || t("base.wish.fail");
       $("base-msg").className = data.ok ? "small ok-msg" : "small err-msg";
       await refreshBaseStatus();
     } catch (e) {

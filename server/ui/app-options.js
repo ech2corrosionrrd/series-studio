@@ -3,7 +3,7 @@
  * Moved out of app.js without a change in behaviour (docs/QUALITY-REVIEW.md, item 6). The module graph is circular on purpose:
  * every import is a function or a binding that is only used after all modules have loaded.
  */
-import { t } from "./i18n.js";
+import { setMessage, t } from "./i18n.js";
 import { ID_PATTERN, slugifyId } from "./slug.js";
 import { newSeriesStarter } from "./series-starter.js";
 import { paintStrengthNote, refreshAccount } from "./app-account.js";
@@ -782,7 +782,7 @@ function readStyleLock() {
  */
 const DEFAULT_STRENGTH = 0.45;
 
-function paintOverviewStrength() {
+export function paintOverviewStrength() {
   const slider = $("o-strength");
   if (!slider) return;
   const value = Number(slider.value);
@@ -950,7 +950,7 @@ export function setupOverview() {
     rememberRev(data.file, data.rev);
     ctorSnapshot = ctorSnap();
     const charged = data.project?.charged ? ` ${t("projects.charged", { n: data.project.charged })}` : "";
-    $("o-msg").textContent = `${t("home.msg.saved")}: ${data.file}${charged}`;
+    setMessage($("o-msg"), [{ key: "home.msg.saved" }, `: ${data.file}`, ...(data.project?.charged ? [" ", { key: "projects.charged", vars: { n: data.project.charged } }] : [])]);
     $("o-msg").className = "small ok-msg";
     if (data.project?.charged) refreshAccount();
     await loadPresets();
@@ -1115,7 +1115,7 @@ export function setupConstructor() {
     state.projectOverwrite = null;
     rememberRev(data.file, data.rev);
     ctorSnapshot = ctorSnap();
-    $("ctor-msg").textContent = `${t("ctor.msg.saved")}: ${data.file}`;
+    setMessage($("ctor-msg"), [{ key: "ctor.msg.saved" }, `: ${data.file}`]);
     $("ctor-msg").className = "small ok-msg";
     await loadPresets();
     if ($("r-preset")) $("r-preset").value = data.file;

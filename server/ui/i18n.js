@@ -64,6 +64,29 @@ export function listKeys(prefix) {
   return keys;
 }
 
+/**
+ * Show a message that is repainted when the language changes (BETA-REVIEW R10): `parts` is a list of plain strings and
+ * `{ key, vars }` entries, stored with the element instead of only the finished text. A message somebody else has since
+ * written over is left alone.
+ */
+export function setMessage(el, parts) {
+  if (!el) return;
+  const list = Array.isArray(parts) ? parts : [parts];
+  const text = list.map((p) => (typeof p === "string" ? p : t(p.key, p.vars))).join("");
+  el.textContent = text;
+  el.dataset.msgLive = "1";
+  msgs.set(el, { list, text });
+}
+const msgs = new WeakMap();
+function repaintMessages() {
+  document.querySelectorAll("[data-msg-live]").forEach((el) => {
+    const m = msgs.get(el);
+    if (!m || el.textContent !== m.text) return;
+    m.text = m.list.map((p) => (typeof p === "string" ? p : t(p.key, p.vars))).join("");
+    el.textContent = m.text;
+  });
+}
+
 export function setLocale(code) {
   const next = LOCALES[code] ? code : DEFAULT;
   current = next;
@@ -74,6 +97,7 @@ export function setLocale(code) {
     /* ignore */
   }
   applyI18n(document);
+  repaintMessages();
   document.documentElement.lang = next === "uk" ? "uk" : next;
   document.title = t("meta.title");
   window.dispatchEvent(new CustomEvent("series-lab:locale", { detail: { locale: next } }));

@@ -12,7 +12,7 @@ import { loadLaunchAdvisor, paintDeployCommands, renderPath, repaintExportCopy, 
 import { repaintPlan } from "./app-generate.js";
 import { renderGallery, syncCompareSelect } from "./app-gallery.js";
 import { renderHelp } from "./app-help.js";
-import { renderOptionsEditor, repaintWhoLines } from "./app-options.js";
+import { paintOverviewStrength, renderOptionsEditor, repaintWhoLines } from "./app-options.js";
 import { escapeHtml, fillPresetSelects, renderCtorSummary, renderFacts, renderSteps, renderTemplates } from "./app-overview.js";
 import { renderPackSummary, renderPacks, renderTraitChecklist } from "./app-packs.js";
 import { fillArchiveSelect, renderRecipeTable } from "./app-recipes.js";
@@ -282,6 +282,7 @@ function refreshDynamicCopy() {
   renderFacts();
   renderCtorSummary();
   repaintWhoLines();
+  paintOverviewStrength();
   renderTemplates();
   // Lists that were drawn once in the previous language: projects, base pictures, the account (credit history), the export notes.
   renderProjects();

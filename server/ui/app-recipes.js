@@ -4,7 +4,7 @@
  * every import is a function or a binding that is only used after all modules have loaded.
  */
 import { fmtNum } from "./format.js";
-import { applyTips, t } from "./i18n.js";
+import { applyTips, setMessage, t } from "./i18n.js";
 import { showToast } from "./app-account.js";
 import { $, api, lockGenerate, paintGenerateNotice, reloadStudio, rememberRev, setProjectsMsg, showTab, state, tipAttr } from "./app.js";
 import { scheduleWorkspaceSave } from "./app-export.js";
@@ -389,7 +389,7 @@ export function setupRecipes() {
       await api("/api/recipe", { method: "POST", body: JSON.stringify(body) });
       await loadRecipesArchive(state.archiveFile);
       openRecipeEditor(state.editingIndex);
-      if ($("r-ed-msg")) $("r-ed-msg").textContent = t("recipes.saved") || "Saved";
+      setMessage($("r-ed-msg"), { key: "recipes.saved" });
     } catch (e) {
       if ($("r-ed-msg")) $("r-ed-msg").textContent = e.message;
     }
@@ -421,7 +421,7 @@ export function setupRecipes() {
       showTab("render");
       lockGenerate(true);
       if ($("g-plan-out")) $("g-plan-out").textContent = t("render.redoHint", { n: edition });
-      if ($("r-ed-msg")) $("r-ed-msg").textContent = t("recipes.saved") || "Saved";
+      setMessage($("r-ed-msg"), { key: "recipes.saved" });
     } catch (e) {
       if ($("r-ed-msg")) $("r-ed-msg").textContent = e.message;
     }
