@@ -57,7 +57,7 @@ function sysRouteTable(rows, withErrors = false) {
   const body = rows
     .map((r) => `<tr><td><code>${escapeHtml(r.route)}</code></td><td>${fmtNum(r.count)}</td><td>${fmtNum(r.p50)}</td><td>${fmtNum(r.p95)}</td><td>${fmtNum(r.max)}</td>${withErrors ? `<td>${fmtNum(r.errors)}</td>` : ""}</tr>`)
     .join("");
-  return `<table class="sys-table"><caption class="visually-hidden">${escapeHtml(t("table.caption.sysRoutes"))}</caption>${head}${body}</table>`;
+  return `<div class="opt-table-wrap"><table class="sys-table"><caption class="visually-hidden">${escapeHtml(t("table.caption.sysRoutes"))}</caption>${head}${body}</table></div>`;
 }
 
 function renderSystemPayload(j) {
