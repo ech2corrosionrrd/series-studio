@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import JSZip from "jszip";
 import { createMockPng } from "../src/mock-image.mjs";
-import { composeArchive } from "../src/layers.mjs";
+import { composeArchive, overlaySet } from "../src/layers.mjs";
 import { startLayersJob } from "../src/layers-job.mjs";
 import { newSeriesStarter } from "../server/ui/series-starter.js";
 import { startStudio } from "./helpers/studio-server.mjs";
@@ -109,6 +109,49 @@ describe("composeArchive with resume", () => {
       const again = run(f, { resume: false });
       assert.equal(again.resumed, undefined);
       assert.equal(again.count, 12);
+    } finally {
+      rmSync(f.dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("overlaySet with resume (hybrid)", () => {
+  function overlayFixture() {
+    const f = layerFixture(64);
+    const setDir = join(f.dir, "set");
+    mkdirSync(setDir, { recursive: true });
+    for (let i = 1; i <= 12; i++) writeFileSync(join(setDir, `${i}.png`), createMockPng({ width: 64, height: 64, seed: 500 + i }));
+    return { ...f, setDir, outDir: join(f.dir, "set-layers") };
+  }
+  const run = (f, extra = {}) => overlaySet({ archive: { recipes }, items, setDir: f.setDir, layerDir: f.layers, outDir: f.outDir, resume: true, ...extra });
+
+  test("a stopped overlay continues, and the result equals a clean run", () => {
+    const f = overlayFixture();
+    try {
+      let calls = 0;
+      const first = run(f, { shouldStop: () => ++calls > 4 });
+      assert.equal(first.count, 4);
+      const second = run(f);
+      assert.equal(second.count, 12);
+      assert.equal(second.resumed, 4);
+      const clean = overlaySet({ archive: { recipes }, items, setDir: f.setDir, layerDir: f.layers, outDir: join(f.dir, "clean") });
+      for (const file of filesOf(join(f.dir, "clean"))) assert.equal(Buffer.compare(readFileSync(join(f.dir, "clean", file)), readFileSync(join(f.outDir, file))), 0, `${file} equals a clean run`);
+      assert.equal(run(f).resumed, 12, "nothing changed: everything is kept");
+    } finally {
+      rmSync(f.dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a changed source frame, layer, or painted trait list means those frames are painted again", () => {
+    const f = overlayFixture();
+    try {
+      run(f);
+      writeFileSync(join(f.setDir, "5.png"), createMockPng({ width: 64, height: 64, seed: 4242 }));
+      assert.equal(run(f).resumed, 11, "only the redrawn source frame is painted again");
+      assert.equal(run(f, { only: ["hat"] }).resumed, undefined, "another set of painted traits: nothing is trusted");
+      assert.equal(run(f, { only: ["hat"] }).resumed, 12);
+      writeFileSync(join(f.layers, "hat", "v2.png"), createMockPng({ width: 64, height: 64, seed: 777 }));
+      assert.equal(run(f, { only: ["hat"] }).resumed, undefined, "a layer changed: nothing is trusted");
     } finally {
       rmSync(f.dir, { recursive: true, force: true });
     }
