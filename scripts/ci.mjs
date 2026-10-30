@@ -17,6 +17,7 @@ const steps = [
   ["docs:check", ["run", "docs:check"]],
   ["audit:i18n", ["run", "audit:i18n"]],
   ["audit:ui", ["run", "audit:ui"]],
+  ["audit:help", ["run", "audit:help"]],
   ["audit:api", ["run", "audit:api"]],
 ];
 const informational = process.argv.includes("--audit")
