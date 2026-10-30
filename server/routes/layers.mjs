@@ -4,11 +4,16 @@
 import { CSV_LIMITS, mergeTraitItems, traitsFromCsv, traitsFromLayerFiles, traitsToCsv } from "../../src/traits-import.mjs";
 import { LAYER_LIMITS, LayersZipError, clearLayers, importLayersZip, layerRelPaths, layersStatus, listLayerFiles } from "../../src/layers-zip.mjs";
 import { basename, join, resolve } from "node:path";
-import { composeArchive, overlaySet, previewEdition } from "../../src/layers.mjs";
+import { previewEdition } from "../../src/layers.mjs";
+import { startLayersJob } from "../../src/layers-job.mjs";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { frameOffsetFor, readFrameOffsets, writeFrameOffset } from "../../src/frame-offsets.mjs";
 import { isInsideDir } from "../../src/fs-safe.mjs";
-import { readBody, send as sendResponse } from "../http.mjs";
+import { attachStopOnDisconnect, readBody, send as sendResponse, writeSse } from "../http.mjs";
+
+/** Projects that have a bulk compose running, and how many run at all: a thousand frames is minutes of one CPU core. */
+const composing = new Set();
+const MAX_COMPOSE_JOBS = 2;
 
 export async function handleLayerRoutes(ctx) {
   const { req, res, url, pathname, P, assertWalletDisk, baseStatus, loadPresetByFile, loadSeriesContext, readRawBody, rejectSecrets, safeSetName, toTrash } = ctx;
@@ -16,6 +21,50 @@ export async function handleLayerRoutes(ctx) {
     sendResponse(...a);
     return true;
   };
+
+  /**
+   * The bulk compose (every frame of a series) on a worker thread. With `Accept: text/event-stream` the answer is a live
+   * stream (`start`, `progress`, then `done` or `error`); without it the same work ends in the JSON the old call returned.
+   * Closing the connection (the Stop button) stops the job between frames and keeps what was composed.
+   */
+  async function runBulkCompose(kind, args, total, finish) {
+    const key = P().root;
+    if (composing.has(key)) return send(res, 409, { error: "A compose of this project is already running.", code: "compose_busy" });
+    if (composing.size >= MAX_COMPOSE_JOBS) return send(res, 503, { error: "The server is composing other series now; try again in a minute.", code: "compose_capacity" });
+    composing.add(key);
+    const stream = String(req.headers.accept || "").includes("text/event-stream");
+    const stop = new AbortController();
+    let job;
+    try {
+      if (stream) {
+        res.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no", Connection: "keep-alive" });
+        res.flushHeaders?.();
+        writeSse(res, { type: "start", total });
+      }
+      job = startLayersJob(kind, args, { onProgress: (p) => stream && writeSse(res, { type: "progress", ...p }) });
+      attachStopOnDisconnect(res, stop);
+      stop.signal.addEventListener("abort", () => job.stop());
+      const report = await job.promise;
+      const payload = finish(report);
+      if (stream) {
+        writeSse(res, { type: "done", ...payload });
+        res.end();
+      } else {
+        send(res, 200, payload);
+      }
+    } catch (e) {
+      const message = String(e.message || e);
+      if (stream) {
+        writeSse(res, { type: "error", error: message, code: "compose" });
+        res.end();
+      } else {
+        send(res, 400, { error: message, code: "compose" });
+      }
+    } finally {
+      composing.delete(key);
+    }
+    return true;
+  }
 
   // ---- PNG layers as a ZIP (the hosted studio gives the user no file system) ----
   /** Traits that the coverage is measured against: the built archive's preset, or (Constructor, before any recipes) a saved preset. */
@@ -183,12 +232,16 @@ export async function handleLayerRoutes(ctx) {
           return send(res, e.status || 400, { error: String(e.message || e), code: "compose" });
         }
       }
-      try {
-        const report = overlaySet({ archive: loaded.archive, items, setDir, layerDir, outDir: join(P().out, outName), only, limit: body.limit, alignRef });
-        return send(res, 200, {
+      const recipeCount = loaded.archive?.recipes?.length || 0;
+      return runBulkCompose(
+        "overlay",
+        { archive: loaded.archive, items, setDir, layerDir, outDir: join(P().out, outName), only, limit: body.limit, alignRef },
+        body.limit ? Math.min(Number(body.limit), recipeCount) : recipeCount,
+        (report) => ({
           ok: true,
           mode: "overlay",
           count: report.count,
+          ...(report.stopped ? { stopped: true, total: report.total } : {}),
           painted: report.painted,
           unpainted: report.unpainted,
           aligned: report.aligned,
@@ -198,10 +251,8 @@ export async function handleLayerRoutes(ctx) {
           missingFramesCount: report.missingFrames.length,
           dir: `out/${outName}`,
           set: outName,
-        });
-      } catch (e) {
-        return send(res, 400, { error: String(e.message || e), code: "compose" });
-      }
+        }),
+      );
     }
     const base = baseStatus();
     const baseName = body.base ? basename(String(body.base)) : base.file;
@@ -227,19 +278,13 @@ export async function handleLayerRoutes(ctx) {
       }
     }
     const outDir = join(P().out, "layers");
-    try {
-      const report = composeArchive({
-        archive: loaded.archive,
-        items,
-        basePng: readFileSync(basePath),
-        layerDir,
-        outDir,
-        limit: body.limit,
-      });
-      return send(res, 200, { ok: true, count: report.count, dir: "out/layers", editions: report.editions });
-    } catch (e) {
-      return send(res, 400, { error: String(e.message || e), code: "compose" });
-    }
+    const recipeCount = loaded.archive?.recipes?.length || 0;
+    return runBulkCompose(
+      "compose",
+      { archive: loaded.archive, items, basePng: readFileSync(basePath), layerDir, outDir, limit: body.limit },
+      body.limit ? Math.min(Number(body.limit), recipeCount) : recipeCount,
+      (report) => ({ ok: true, count: report.count, ...(report.stopped ? { stopped: true, total: report.total } : {}), dir: "out/layers", editions: report.editions }),
+    );
   }
 
   return false;

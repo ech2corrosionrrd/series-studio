@@ -4,6 +4,7 @@
  * every import is a function or a binding that is only used after all modules have loaded.
  */
 import { fmtNum } from "./format.js";
+import { presentApiError } from "./api-errors.js";
 import { getLocale, t } from "./i18n.js";
 import { parseSseBuffer, settleGenerateStream } from "./render-stream.js";
 import { formatPlan } from "./plan-text.js";
@@ -359,28 +360,48 @@ export function setupRender() {
   $("g-compose-over")?.addEventListener("change", (e) => {
     e.target.dataset.picked = "1";
   });
+  let composeAbort = null;
+  let composeProgress = null;
+  $("g-compose-stop")?.addEventListener("click", () => composeAbort?.abort());
   $("g-compose")?.addEventListener("click", async () => {
     const msg = $("g-compose-msg");
     const btn = $("g-compose");
+    const stopBtn = $("g-compose-stop");
     try {
       const archive = kitArchive();
       if (!archive) throw new Error(t("export.none"));
       setBusy(btn, true);
+      if (stopBtn) stopBtn.hidden = false;
       if (msg) msg.textContent = t("ui.working");
       const over = $("g-compose-over")?.value || "";
-      const data = await api("/api/compose", {
-        method: "POST",
-        body: JSON.stringify({ archive, ...(over ? { over } : {}) }),
+      composeAbort = new AbortController();
+      let last = null;
+      composeProgress = () => last;
+      // A series of a thousand frames takes minutes: the server streams its progress and the Stop button closes the stream.
+      const data = await streamCompose({ archive, ...(over ? { over } : {}) }, composeAbort.signal, (p) => {
+        last = p;
+        if (msg) msg.textContent = t("render.layers.progress", { done: fmtNum(p.done), total: fmtNum(p.total) });
       });
       if (msg) {
-        msg.textContent = data.mode === "overlay"
-          ? t("render.layers.okOver", { count: data.count, painted: data.painted, left: data.unpainted, dir: data.dir })
-          : t("render.layers.ok", { count: data.count, dir: data.dir });
+        msg.textContent = data.stopped
+          ? t("render.layers.stopped", { done: fmtNum(data.count), total: fmtNum(data.total), dir: data.dir })
+          : data.mode === "overlay"
+            ? t("render.layers.okOver", { count: data.count, painted: data.painted, left: data.unpainted, dir: data.dir })
+            : t("render.layers.ok", { count: data.count, dir: data.dir });
       }
       if (data.mode === "overlay") fillComposeOver();
     } catch (e) {
-      if (msg) msg.textContent = e.message;
+      if (msg) {
+        // Stopped by the button: the server keeps the frames composed so far; say how many we saw it finish.
+        const seen = composeProgress?.();
+        const over = $("g-compose-over")?.value || "";
+        msg.textContent = e.name === "AbortError" && seen
+          ? t("render.layers.stopped", { done: fmtNum(seen.done), total: fmtNum(seen.total), dir: over ? `out/${over}-layers` : "out/layers" })
+          : e.name === "AbortError" ? t("render.layers.stoppedShort") : e.message;
+      }
     } finally {
+      composeAbort = null;
+      if (stopBtn) stopBtn.hidden = true;
       setBusy(btn, false);
     }
   });
@@ -678,4 +699,40 @@ export function repaintPlan() {
   const out = $("g-plan-out");
   if (out?.dataset.dirty && state.lastPlan) out.textContent = formatPlan(state.lastPlan, t) || state.lastPlan.text || out.textContent;
   paintPilotButton();
+}
+
+/**
+ * POST /api/compose as a live stream: `onProgress({done, total})` for every frame, the final `done` event as the result.
+ * Stopping (the signal) closes the connection; the server then stops between frames and keeps what it composed.
+ */
+async function streamCompose(body, signal, onProgress) {
+  const res = await fetch("/api/compose", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(presentApiError({ ...json, status: res.status }, t) || `HTTP ${res.status}`);
+  }
+  if (!String(res.headers.get("content-type") || "").includes("text/event-stream")) return res.json();
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parsed = parseSseBuffer(buffer);
+    buffer = parsed.rest;
+    for (const ev of parsed.events) {
+      if (ev.type === "progress") onProgress(ev);
+      else if (ev.type === "done") result = ev;
+      else if (ev.type === "error") throw new Error(presentApiError({ error: ev.error, code: ev.code }, t));
+    }
+  }
+  if (!result) throw new Error(t("api.generic"));
+  return result;
 }

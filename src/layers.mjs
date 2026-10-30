@@ -259,13 +259,21 @@ export function composeArchive({
   limit,
   readFile,
   writeFile = writeFileSync,
+  onFrame = null,
+  shouldStop = null,
 } = {}) {
   const recipes = archive?.recipes || [];
   if (!recipes.length) throw new Error("compose: archive has no recipes");
   const take = limit ? recipes.slice(0, Number(limit)) : recipes;
   mkdirSync(outDir, { recursive: true });
   const editions = [];
+  let stopped = false;
   for (const recipe of take) {
+    // `shouldStop` / `onFrame` let a worker report progress and be stopped between frames; without them this is the plain loop.
+    if (shouldStop?.()) {
+      stopped = true;
+      break;
+    }
     const frame = composeEdition({ recipe, items, basePng, layerDir, readFile });
     const file = join(outDir, `${recipe.edition}.png`);
     writeFile(file, frame.png);
@@ -278,11 +286,13 @@ export function composeArchive({
       layers: frame.layers,
       file: `${recipe.edition}.png`,
     });
+    onFrame?.({ done: editions.length, total: take.length });
   }
   const report = {
     source: "layers",
     note: "PNG layers stacked on the base image. Prompt generation is unchanged; each row still carries its prompt.",
     count: editions.length,
+    ...(stopped ? { stopped: true, total: take.length } : {}),
     editions,
   };
   writeFile(join(outDir, "dna.json"), `${JSON.stringify(report, null, 2)}\n`);
@@ -305,6 +315,8 @@ export function overlaySet({
   alignRef = null,
   readFile = readFileSync,
   writeFile = writeFileSync,
+  onFrame = null,
+  shouldStop = null,
 } = {}) {
   const recipes = archive?.recipes || [];
   if (!recipes.length) throw new Error("overlay: archive has no recipes");
@@ -313,9 +325,14 @@ export function overlaySet({
   mkdirSync(outDir, { recursive: true });
   const editions = [];
   const missingFrames = [];
+  let stopped = false;
   // `<set>/layer-offsets.json`: a correction measured on one frame of this set (see frame-offsets.mjs)
   const frameOffsets = readFrameOffsets(setDir);
   for (const recipe of take) {
+    if (shouldStop?.()) {
+      stopped = true;
+      break;
+    }
     const frameFile = join(setDir, `${recipe.edition}.png`);
     if (!existsSync(frameFile)) {
       missingFrames.push(recipe.edition);
@@ -335,8 +352,9 @@ export function overlaySet({
       ...(frameOffsetFor(frameOffsets, recipe.edition) ? { frameOffset: frameOffsetFor(frameOffsets, recipe.edition) } : {}),
       file: `${recipe.edition}.png`,
     });
+    onFrame?.({ done: editions.length + missingFrames.length, total: take.length });
   }
-  if (!editions.length) throw new Error(`overlay: no frames ${basename(setDir)}/<edition>.png found for this archive`);
+  if (!editions.length && !stopped) throw new Error(`overlay: no frames ${basename(setDir)}/<edition>.png found for this archive`);
   const painted = editions.filter((e) => e.layers.length).length;
   const report = {
     source: "layers-over-set",
@@ -344,6 +362,7 @@ export function overlaySet({
     note: "Hand PNG layers painted over model-drawn frames. Traits without a layer file stay as the model drew them. The source set is untouched.",
     only: Array.isArray(only) && only.length ? only : null,
     count: editions.length,
+    ...(stopped ? { stopped: true, total: take.length } : {}),
     painted,
     unpainted: editions.length - painted,
     frameOffsetFrames: editions.filter((e) => e.frameOffset).length,

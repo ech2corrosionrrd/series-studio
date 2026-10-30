@@ -280,7 +280,7 @@ describe("layers and the hybrid path in a real browser", { skip: CHROME ? false 
     await tab("render");
     await page.selectOption("#g-compose-over", ctx.set);
     await page.click("#g-compose");
-    await waitFor(async () => /\S/.test(await text("#g-compose-msg")) && !/Зачекайте|please wait|working/i.test(await text("#g-compose-msg")), { what: "the compose message" });
+    await waitFor(async () => /\S/.test(await text("#g-compose-msg")) && !/Зачекайте|please wait|working|…$/i.test(await text("#g-compose-msg")), { what: "the compose message (not the progress line)" });
     const msg = await text("#g-compose-msg");
     assert.match(msg, new RegExp(`${ctx.set}-layers`), msg);
     const sets = (await studio.call("GET", "/api/sets")).json.sets.map((s) => s.dir);
