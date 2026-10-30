@@ -57,6 +57,64 @@ describe("composeArchive with onFrame and shouldStop", () => {
   });
 });
 
+describe("composeArchive with resume", () => {
+  const run = (f, extra = {}) => composeArchive({ archive: { recipes }, items, basePng: f.basePng, layerDir: f.layers, outDir: join(f.dir, "out"), resume: true, ...extra });
+
+  test("a stopped run continues where it stopped: finished frames are kept, the report lists them all", () => {
+    const f = layerFixture(64);
+    try {
+      let calls = 0;
+      const first = run(f, { shouldStop: () => ++calls > 5 });
+      assert.equal(first.count, 5);
+      const seen = [];
+      const second = run(f, { onFrame: (p) => seen.push(p.done) });
+      assert.equal(second.count, 12);
+      assert.equal(second.resumed, 5);
+      assert.deepEqual(seen, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+      const onDisk = JSON.parse(readFileSync(join(f.dir, "out", "dna.json"), "utf8"));
+      assert.equal(onDisk.editions.length, 12);
+      assert.equal(filesOf(join(f.dir, "out")).length, 12);
+      const plain = composeArchive({ archive: { recipes }, items, basePng: f.basePng, layerDir: f.layers, outDir: join(f.dir, "plain") });
+      for (const file of filesOf(join(f.dir, "plain"))) assert.equal(Buffer.compare(readFileSync(join(f.dir, "plain", file)), readFileSync(join(f.dir, "out", file))), 0, `${file} equals a clean run`);
+      assert.equal(plain.count, 12);
+    } finally {
+      rmSync(f.dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a changed layer, a changed base, a deleted or edited frame mean that frame is drawn again", () => {
+    const f = layerFixture(64);
+    try {
+      run(f);
+      assert.equal(run(f).resumed, 12, "nothing changed: everything is kept");
+      writeFileSync(join(f.layers, "hat", "v1.png"), createMockPng({ width: 64, height: 64, seed: 999 }));
+      assert.equal(run(f).resumed, undefined, "a layer changed: nothing is trusted");
+      assert.equal(run(f).resumed, 12);
+      assert.equal(composeArchive({ archive: { recipes }, items, basePng: createMockPng({ width: 64, height: 64, seed: 4 }), layerDir: f.layers, outDir: join(f.dir, "out"), resume: true }).resumed, undefined, "another base: nothing is trusted");
+      run(f);
+      rmSync(join(f.dir, "out", "3.png"));
+      writeFileSync(join(f.dir, "out", "4.png"), Buffer.from("edited by hand"));
+      const again = run(f);
+      assert.equal(again.resumed, 10, "the deleted and the edited frame are composed again");
+      assert.equal(readFileSync(join(f.dir, "out", "4.png")).length > 100, true);
+    } finally {
+      rmSync(f.dir, { recursive: true, force: true });
+    }
+  });
+
+  test("without resume it composes everything, as before", () => {
+    const f = layerFixture(64);
+    try {
+      run(f);
+      const again = run(f, { resume: false });
+      assert.equal(again.resumed, undefined);
+      assert.equal(again.count, 12);
+    } finally {
+      rmSync(f.dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("startLayersJob (worker thread)", () => {
   test("its frames are byte-identical to the ones composeArchive writes", async () => {
     const f = layerFixture(64);

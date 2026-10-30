@@ -428,6 +428,7 @@ export default {
   "api.layers.upload_too_large": "Unpacked layers are too large (up to 120 MB per upload). {error}",
   "api.layers.folder_full": "The layers folder would be full (up to 200 MB). Clear the layers or upload less.",
   "api.layers.zip_too_large": "The ZIP is too large (up to 40 MB).",
+  "render.layers.resumed": "{n} of them were already done by an earlier run and were not composed again.",
   "render.layers.stop": "Stop",
   "render.layers.stoppedShort": "Stopped.",
   "render.layers.progress": "Composed {done} of {total}…",

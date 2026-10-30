@@ -428,6 +428,7 @@ export default {
   "api.layers.upload_too_large": "Розпаковані шари завеликі (до 120 МБ за раз). {error}",
   "api.layers.folder_full": "Теки шарів забракне місця (до 200 МБ). Очистіть шари або завантажте менше.",
   "api.layers.zip_too_large": "ZIP завеликий (до 40 МБ).",
+  "render.layers.resumed": "З них {n} уже були готові з минулого запуску й не складались знову.",
   "render.layers.stop": "Зупинити",
   "render.layers.stoppedShort": "Зупинено.",
   "render.layers.progress": "Складено {done} з {total}…",
