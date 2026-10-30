@@ -89,7 +89,24 @@ test("ledger report splits generation cost from stage fees", async () => {
   assert.equal(by.marketplace_kit.ops, 0);
   const full = economyReport(null, db);
   assert.ok(Array.isArray(full.stages.stages));
-  assert.equal(full.stages.stages.length, 5);
+  assert.equal(full.stages.stages.length, 6);
   assert.ok(Array.isArray(full.stage_prices));
   closeAll();
+});
+
+test("compose is priced by the frame: cost plus a small margin, at least one credit, nothing for no frames", () => {
+  const env = {};
+  const one = quoteStage("compose", { count: 1 }, env);
+  assert.equal(one.credits, 1, "a run that composes anything costs at least one credit");
+  assert.equal(quoteStage("compose", { count: 0 }, env).credits, 0);
+  const k = quoteStage("compose", { count: 1000 }, env);
+  assert.equal(k.costUsd, 0.06);
+  assert.equal(k.marginUsd, 0.012);
+  assert.equal(k.credits, 3, "1000 frames: $0.072 at $0.03 a credit, rounded up");
+  assert.ok(k.priceUsd > k.costUsd && k.marginUsd / k.costUsd <= 0.25, "a small margin (20%)");
+  const big = quoteStage("compose", { count: 10_000 }, env);
+  assert.equal(big.credits, 24);
+  assert.ok(big.credits * 0.03 >= big.costUsd * 1.1, "even at the cheapest pack the price stays above the cost");
+  const own = quoteStage("compose", { count: 1000 }, { STAGE_COMPOSE_COST_PER_1000_USD: "0.5", STAGE_COMPOSE_MARGIN_PER_1000_USD: "0.1" });
+  assert.equal(own.credits, 20);
 });

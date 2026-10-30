@@ -158,7 +158,7 @@ export async function handleExportRoutes(ctx) {
     try {
       assertWalletDisk(setImageBytes(setDir));
     } catch (e) {
-      return send(res, e.status || 413, { error: String(e.message || e), code: e.code || "disk_quota" });
+      return send(res, e.status || 413, { error: String(e.message || e), code: e.extra?.code || "disk_quota", ...(e.extra || {}) });
     }
     const marks = readMarks(set);
     const locale = resolveLocale(req, body);

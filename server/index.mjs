@@ -379,6 +379,16 @@ function refundStage(paid) {
   }
 }
 
+/** Refuses before the work starts when the wallet could not pay the stage; the charge itself follows the work (what was really done). */
+function assertCanPayStage(stage, opts = {}) {
+  const quote = quoteStage(stage, opts);
+  if (!PUBLIC_MODE || !quote.credits) return quote;
+  const wallet = currentWallet();
+  if (!wallet) throw httpError(401, "Sign in with your wallet first", { code: "auth" });
+  if (getBalance(wallet) < quote.credits) throw insufficient(wallet, quote.credits);
+  return quote;
+}
+
 function chargeStage(stage, opts = {}) {
   const quote = quoteStage(stage, opts);
   if (!PUBLIC_MODE) return { quote, charge: null };
@@ -1533,7 +1543,7 @@ async function handleApi(req, res, url) {
   // layers routes live in server/routes/layers.mjs.
   if (
     await handleLayerRoutes({
-      req, res, url, pathname, P, assertWalletDisk, forgetDiskUsage, baseStatus, loadPresetByFile, loadSeriesContext, readRawBody, rejectSecrets, safeSetName, toTrash,
+      req, res, url, pathname, P, assertCanPayStage, chargeStage, assertWalletDisk, forgetDiskUsage, baseStatus, loadPresetByFile, loadSeriesContext, readRawBody, rejectSecrets, safeSetName, toTrash,
     })
   ) return;
 

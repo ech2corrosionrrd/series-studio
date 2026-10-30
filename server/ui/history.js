@@ -8,6 +8,7 @@ const NOTES = {
   "arweave upload": "history.note.arweave",
   "deploy kit": "history.note.deployKit",
   "marketplace kit": "history.note.marketKit",
+  compose: "history.note.compose",
   "vision assist": "history.note.vision",
   "ai triage": "history.note.triage",
 };
