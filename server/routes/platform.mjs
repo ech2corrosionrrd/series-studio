@@ -57,6 +57,7 @@ export async function handlePlatformRoutes(ctx) {
             creditCost(e, { reference: true, costUsd: ENGINES[e].costUsd }),
           ]),
         ),
+        creditCostsTxt: Object.fromEntries(Object.keys(ENGINES).map((e) => [e, creditCost(e, { costUsd: ENGINES[e].costUsd })])),
       });
     }
     const wallet = currentWallet();
@@ -81,6 +82,13 @@ export async function handlePlatformRoutes(ctx) {
           LOCAL_ONLY_ENGINES.has(e) && !gpu.enabled
             ? null
             : creditCost(e, { reference: true, costUsd: ENGINES[e].costUsd }),
+        ]),
+      ),
+      // A base image drawn from words alone (no reference picture) costs less than an edit of a reference; the label must match the debit (BETA-REVIEW B16).
+      creditCostsTxt: Object.fromEntries(
+        Object.keys(ENGINES).map((e) => [
+          e,
+          LOCAL_ONLY_ENGINES.has(e) && !gpu.enabled ? null : creditCost(e, { costUsd: ENGINES[e].costUsd }),
         ]),
       ),
     });

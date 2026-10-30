@@ -1461,6 +1461,7 @@ export default {
   "topup.title": "Top up credits",
   "topup.hint": "You work in credits: 1 credit ≈ one frame on a budget engine. Pricier engines cost more — see Estimate. $ here is only the pack price, paid in USDC on Solana.",
   "topup.packages": "Packages",
+  "topup.after": "After \"Pay with USDC\" your wallet asks you to confirm the transfer of the exact amount. Credits arrive on their own, usually within a minute. Nothing after 10 minutes? Open Help, section \"Support and legal pages\". If a frame could not be made, the credits come back on their own.",
   "topup.payVia": "Pay with USDC · Solana network",
   "topup.recommended": "Recommended",
   "topup.buy": "Pay with USDC",

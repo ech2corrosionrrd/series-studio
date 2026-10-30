@@ -4,6 +4,11 @@
  */
 import { getLocale } from "./i18n.js";
 
+/** URL of a server-made thumbnail (`?w=` is rounded up to 160, 256 or 480 px); the full image stays at the plain URL for the lightbox. */
+export function thumbUrl(url, width = 256) {
+  return `${url}${String(url).includes("?") ? "&" : "?"}w=${width}`;
+}
+
 export function localeTag(code = getLocale()) {
   return code === "uk" ? "uk-UA" : "en-GB";
 }

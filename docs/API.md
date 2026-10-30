@@ -158,7 +158,7 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 
 | Method | Path | Опис |
 |--------|------|------|
-| GET | `/api/me` | акаунт сесії: `wallet`, `balance`, `admin`, `packages`, `referral`, `localGpu`, `creditCosts`, `storage` (як у `/api/projects`), `solPay` (`enabled`, `recipient`, `mint`; `testPack` лише адміну з `SOLANA_PAY_TEST_PACK=1`) |
+| GET | `/api/me` | акаунт сесії: `wallet`, `balance`, `admin`, `packages`, `referral`, `localGpu`, `creditCosts` (кредити за кадр із референсом), `creditCostsTxt` (за кадр без референса: база з побажань), `storage` (як у `/api/projects`), `solPay` (`enabled`, `recipient`, `mint`; `testPack` лише адміну з `SOLANA_PAY_TEST_PACK=1`) |
 | GET | `/api/credits/history` | останні операції кредитів (сесія) |
 | POST | `/api/credits/sol/order` | `{package}` → замовлення оплати USDC (Solana): точна сума з унікальними мікро-центами, адреса, `solana:` URI |
 | POST | `/api/credits/sol/check` | знайти переказ у блокчейні й зарахувати кредити → `{credited, balance, orders, error}` (ліміт `SOLANA_PAY_CHECK_RATE_LIMIT`, типово 20/хв) |
@@ -202,8 +202,9 @@ Batch зупиняється після `SERIES_MAX_CONSECUTIVE_FAILURES` (5) п
 |------|------|
 | `/studio/…` | UI (`server/ui/`) |
 | `/studio/docs/…` | сторінки для автора на цьому ПК (uk; англійською `/studio/docs/en/…`): посібник, етапи, вкладки, основа, риси, експорт, короткий пресет. Ті самі тексти, що `scripts/build-site.mjs`. Не `/api` |
-| `/input/…` | базові картинки |
-| `/out/…` | архіви, сети, bundles |
+| `/input/…` | базові картинки; `?w=160\|256\|480` повертає мініатюру PNG (найближчий більший розмір; без `w`, з більшим за 480 або не PNG віддається оригінал) |
+| `/out/…` | архіви, сети, bundles; `?w=…` як у `/input/…`; мініатюра з `?v=` кешується браузером приватно на годину, пам'ять сервера тримає до 300 останніх |
+| `/.well-known/security.txt` | RFC 9116: контакт для повідомлень про вразливості, `Expires` оновлюється з кожною відповіддю; публічний |
 | `/` | редірект/UI |
 
 ## CLI (не HTTP)

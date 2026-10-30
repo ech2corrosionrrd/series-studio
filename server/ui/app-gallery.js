@@ -3,7 +3,7 @@
  * Moved out of app.js without a change in behaviour (docs/QUALITY-REVIEW.md, item 6). The module graph is circular on purpose:
  * every import is a function or a binding that is only used after all modules have loaded.
  */
-import { fmtNum } from "./format.js";
+import { fmtNum, thumbUrl } from "./format.js";
 import { applyTips, t } from "./i18n.js";
 import { $, api, state, tipAttr } from "./app.js";
 import { escapeHtml } from "./app-overview.js";
@@ -277,11 +277,11 @@ export function renderGallery() {
         ? `<span class="sim-badge${sim.warn ? " warn" : ""}" title="${sim.warn ? escapeHtml(t("gallery.similarity.warn")) : ""}">${escapeHtml(t("gallery.similarity.value", { n: sim.similarity }))}</span>`
         : "";
       const thumb = $("v-thumb64")?.checked
-        ? `<img class="thumb64" width="64" height="64" src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.thumb64.alt"))}">`
+        ? `<img class="thumb64" width="64" height="64" loading="lazy" decoding="async" src="${escapeHtml(thumbUrl(img.url, 160))}" alt="${escapeHtml(t("gallery.thumb64.alt"))}">`
         : "";
       tile.innerHTML = `
         <div class="shot">
-          <img src="${escapeHtml(img.url)}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${img.edition}" />
+          <img loading="lazy" decoding="async" src="${escapeHtml(thumbUrl(img.url, 256))}" alt="${escapeHtml(t("gallery.zoom.alt"))} #${img.edition}" />
           ${thumb}
         </div>
         <div class="meta">${Number(img.edition) === 0 ? `<b>${t("gallery.genesis.label")}</b>` : `#${img.edition}`} ${ver}${qa}${triageBadge}${simBadge}</div>

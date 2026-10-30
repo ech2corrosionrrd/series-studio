@@ -206,7 +206,7 @@ describe("studio in a real browser", { skip: CHROME ? false : "no Chrome/Chromiu
     assert.equal((await studio.call("GET", "/api/sets")).json.sets.length, 2, "the first project's frames are back");
     await tab("gallery");
     const srcs = await page.$$eval("#v-grid img", (imgs) => imgs.map((i) => i.getAttribute("src")));
-    assert.ok(srcs.length > 0 && srcs.every((s) => /\?v=\d+$/.test(s)), `frame URLs: ${srcs.slice(0, 2)}`);
+    assert.ok(srcs.length > 0 && srcs.every((s) => /\?v=\d+&w=256$/.test(s)), `frame URLs: ${srcs.slice(0, 2)}`);
   });
 
   it("after a reload the studio reopens on the series the user was working on", async () => {

@@ -82,7 +82,7 @@ function engineOptionLabel(id, mode) {
   }
   if (!me || me.mode !== "public") return base;
   if (id === "comfyui" || id === "a1111") return `${base} · ${t("engine.offline")}`;
-  const c = me.creditCosts?.[id];
+  const c = (mode === "txt" ? me.creditCostsTxt : me.creditCosts)?.[id];
   if (c === 0 || id === "mock") return `${base} · ${t("engine.free")}`;
   if (typeof c === "number" && c > 0) return `${base} · ${t("engine.perImage", { n: c })}`;
   return base;

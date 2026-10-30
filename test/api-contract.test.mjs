@@ -23,7 +23,7 @@ function routeTable() {
 
 const ROUTES = routeTable();
 // Reachable without a session on purpose (pages, health, sign-in, public collection pages).
-const PUBLIC = /^(\/health|\/api\/health|\/login|\/login\.js|\/favicon\.ico|\/sitemap\.xml|\/robots\.txt|\/legal|\/legal\/en|\/studio|\/old|\/auth\/|\/api\/csp-report|\/api\/vault\/status)/;
+const PUBLIC = /^(\/health|\/api\/health|\/login|\/login\.js|\/favicon\.ico|\/sitemap\.xml|\/robots\.txt|\/\.well-known\/security\.txt|\/legal|\/legal\/en|\/studio|\/old|\/auth\/|\/api\/csp-report|\/api\/vault\/status)/;
 // Partner-key routes answer 401 with their own scheme, not the wallet session.
 const PARTNER = /^\/(api\/v1\/|gremlin\/)/;
 // Paid or network-bound: covered by their own tests (engines, solpay, storage, deploy).

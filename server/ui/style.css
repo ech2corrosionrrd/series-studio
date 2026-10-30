@@ -40,7 +40,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 syst
 code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; }
 h1 { font-size: 24px; margin: 0 0 12px; }
 h3 { margin: 0 0 10px; font-size: 16px; display: flex; gap: 10px; align-items: center; }
-.muted { color: var(--muted); } .small { font-size: 13px; }
+.muted { color: var(--muted); } .small { font-size: 14px; }
 
 .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   padding: 10px 16px; background: #0d0811ee; border-bottom: 1px solid var(--line); backdrop-filter: blur(6px); }
@@ -164,7 +164,7 @@ button[data-tip], a.btn[data-tip], label[data-tip], nav button[data-tip],
 .tile .imgs { display: grid; grid-template-columns: 1fr; } .gallery.pair .tile .imgs { grid-template-columns: 1fr 1fr; }
 .tile img { width: 100%; display: block; aspect-ratio: 1; cursor: zoom-in; background: #000; }
 .tile .missing { aspect-ratio: 1; display: grid; place-items: center; color: var(--muted); font-size: 13px; background: #0b070e; }
-.tile .meta { padding: 8px 10px; font-size: 12px; color: var(--muted); }
+.tile .meta { padding: 8px 10px; font-size: 13px; color: var(--muted); }
 .tile .meta b { color: var(--text); }
 .tile .btns { display: flex; gap: 6px; padding: 0 10px 10px; }
 .tile .btns button { flex: 1; }

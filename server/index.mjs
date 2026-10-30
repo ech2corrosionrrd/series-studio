@@ -100,6 +100,7 @@ import { handlePresetRoutes } from "./routes/presets.mjs";
 import { allowedHostnames, checkApiRequest, hostedConfigError, hostedConfigWarning, openAccessError } from "./guard.mjs";
 import { handlePlatform, sessionWallet, startPlatformBackground } from "./platform.mjs";
 import { send, readBody, httpError } from "./http.mjs";
+import { cachedThumbnail, thumbWidth } from "../src/thumbnail.mjs";
 import { checkGenerationRate, creditCost, deductCredits, getBalance, recordFunnelEvent, refundCredits, localGpuCreditCost } from "../src/platform/billing.mjs";
 import { rateLimit } from "../src/platform/ratelimit.mjs";
 import { solPayInfo } from "../src/platform/solpay.mjs";
@@ -1088,7 +1089,7 @@ function resolveGenerateSelection(archive, body, setName) {
   return { mode, force, editions, skippedExisting, recipes: editions.map((e) => byEdition.get(e)) };
 }
 
-function serveOut(res, urlPath) {
+function serveOut(res, urlPath, query) {
   if (!urlPath.startsWith("/out/")) return false;
   const rel = urlPath.slice("/out/".length);
   if (!rel || rel.includes("..")) {
@@ -1100,7 +1101,7 @@ function serveOut(res, urlPath) {
     send(res, 400, { error: "bad path" });
     return true;
   }
-  if (sendFile(res, file)) return true;
+  if (sendFile(res, file, { width: thumbWidth(query?.get("w")), cacheable: query?.has("v") })) return true;
   send(res, 404, { error: "not found" });
   return true;
 }
@@ -1196,9 +1197,18 @@ const MIME = {
   ".csv": "text/csv; charset=utf-8",
 };
 
-function sendFile(res, filePath) {
+/** `width` (from `?w=`) asks for a thumbnail of a PNG; any other file, or a PNG we cannot read, is sent whole. */
+function sendFile(res, filePath, { width = 0, cacheable = false } = {}) {
   if (!existsSync(filePath) || !statSync(filePath).isFile()) return false;
   const ext = extname(filePath).toLowerCase();
+  if (width && ext === ".png") {
+    const thumb = cachedThumbnail(filePath, statSync(filePath), () => readFileSync(filePath), width);
+    if (thumb) {
+      // The gallery URLs carry ?v=<mtime>, so a thumbnail may be kept by the browser; "private" because Cloudflare would otherwise cache a signed-in image.
+      send(res, 200, thumb, "image/png", cacheable ? { "Cache-Control": "private, max-age=3600" } : {});
+      return true;
+    }
+  }
   send(res, 200, readFileSync(filePath), MIME[ext] || "application/octet-stream");
   return true;
 }
@@ -1261,7 +1271,7 @@ function serveUi(req, res, urlPath) {
   return false;
 }
 
-function serveInput(res, urlPath) {
+function serveInput(res, urlPath, query) {
   if (!urlPath.startsWith("/input/")) return false;
   const name = basename(urlPath.split("?")[0]);
   if (!name || name.includes("..")) {
@@ -1273,7 +1283,7 @@ function serveInput(res, urlPath) {
     send(res, 400, { error: "bad path" });
     return true;
   }
-  if (sendFile(res, file)) return true;
+  if (sendFile(res, file, { width: thumbWidth(query?.get("w")) })) return true;
   send(res, 404, { error: "not found" });
   return true;
 }
@@ -1716,8 +1726,8 @@ async function handleRequest(req, res, url) {
       await handleApi(req, res, url);
       return;
     }
-    if (serveInput(res, url.pathname)) return;
-    if (serveOut(res, url.pathname)) return;
+    if (serveInput(res, url.pathname, url.searchParams)) return;
+    if (serveOut(res, url.pathname, url.searchParams)) return;
     if (serveStudioDocs(res, url.pathname)) return;
     if (serveUi(req, res, url.pathname)) return;
     // legacy public redirect page
