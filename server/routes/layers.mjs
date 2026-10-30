@@ -271,12 +271,13 @@ export async function handleLayerRoutes(ctx) {
       const recipeCount = loaded.archive?.recipes?.length || 0;
       return runBulkCompose(
         "overlay",
-        { archive: loaded.archive, items, setDir, layerDir, outDir: join(P().out, outName), only, limit: body.limit, alignRef },
+        { archive: loaded.archive, items, setDir, layerDir, outDir: join(P().out, outName), only, limit: body.limit, alignRef, resume: body.resume !== false },
         body.limit ? Math.min(Number(body.limit), recipeCount) : recipeCount,
         (report) => ({
           ok: true,
           mode: "overlay",
           count: report.count,
+          ...(report.resumed ? { resumed: report.resumed } : {}),
           ...(report.stopped ? { stopped: true, total: report.total } : {}),
           painted: report.painted,
           unpainted: report.unpainted,

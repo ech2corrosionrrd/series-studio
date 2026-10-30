@@ -380,6 +380,7 @@ export function overlaySet({
   writeFile = writeFileSync,
   onFrame = null,
   shouldStop = null,
+  resume = false,
 } = {}) {
   const recipes = archive?.recipes || [];
   if (!recipes.length) throw new Error("overlay: archive has no recipes");
@@ -391,6 +392,23 @@ export function overlaySet({
   let stopped = false;
   // `<set>/layer-offsets.json`: a correction measured on one frame of this set (see frame-offsets.mjs)
   const frameOffsets = readFrameOffsets(setDir);
+  // what the output depends on besides the recipe and the source frame: the layers, which traits are painted, the alignment reference
+  const onlyKey = Array.isArray(only) && only.length ? only.join(",") : "";
+  const alignSha = alignRef ? createHash("sha256").update(alignRef).digest("hex") : "";
+  const layersSig = layersSignature(layerDir, items);
+  const keys = dnaKeysFromItems(items);
+  let resumed = 0;
+  let kept = new Map();
+  if (resume) {
+    try {
+      const prev = JSON.parse(readFileSync(join(outDir, "dna.json"), "utf8"));
+      if (prev?.source === "layers-over-set" && prev.over === basename(setDir) && prev.layersSig === layersSig && (prev.onlyKey || "") === onlyKey && (prev.alignSha || "") === alignSha && Array.isArray(prev.editions)) {
+        kept = new Map(prev.editions.map((e) => [e.edition, e]));
+      }
+    } catch {
+      kept = new Map();
+    }
+  }
   for (const recipe of take) {
     if (shouldStop?.()) {
       stopped = true;
@@ -401,9 +419,30 @@ export function overlaySet({
       missingFrames.push(recipe.edition);
       continue;
     }
-    const frame = composeEdition({ recipe, items, basePng: readFile(frameFile), layerDir, readFile, only, skipMissing: true, alignRef, frameOffset: frameOffsetFor(frameOffsets, recipe.edition) });
-    writeFile(join(outDir, `${recipe.edition}.png`), frame.png);
+    const source = readFile(frameFile);
+    const srcSha256 = createHash("sha256").update(source).digest("hex");
+    const offset = frameOffsetFor(frameOffsets, recipe.edition);
+    const old = kept.get(recipe.edition);
+    const outFile = join(outDir, `${recipe.edition}.png`);
+    if (old && old.srcSha256 === srcSha256 && old.dna === dna(recipe.line || "", recipe.traits || {}, keys) && old.prompt === (recipe.prompt || "")
+      && JSON.stringify(old.frameOffset ?? null) === JSON.stringify(offset ?? null) && existsSync(outFile)) {
+      let same = false;
+      try {
+        same = createHash("sha256").update(readFileSync(outFile)).digest("hex") === old.sha256;
+      } catch {
+        same = false;
+      }
+      if (same) {
+        editions.push(old);
+        resumed += 1;
+        onFrame?.({ done: editions.length + missingFrames.length, total: take.length });
+        continue;
+      }
+    }
+    const frame = composeEdition({ recipe, items, basePng: source, layerDir, readFile, only, skipMissing: true, alignRef, frameOffset: offset });
+    writeFile(outFile, frame.png);
     editions.push({
+      srcSha256,
       edition: recipe.edition,
       line: recipe.line || "",
       dna: frame.dna,
@@ -424,6 +463,10 @@ export function overlaySet({
     over: basename(setDir),
     note: "Hand PNG layers painted over model-drawn frames. Traits without a layer file stay as the model drew them. The source set is untouched.",
     only: Array.isArray(only) && only.length ? only : null,
+    onlyKey,
+    alignSha,
+    layersSig,
+    ...(resumed ? { resumed } : {}),
     count: editions.length,
     ...(stopped ? { stopped: true, total: take.length } : {}),
     painted,
