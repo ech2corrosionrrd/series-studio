@@ -3,7 +3,8 @@
 // проявився б ReferenceError саме на тій вкладці, яку ніхто не відкрив. Рушій mock, 0 кредитів; без Chrome файл пропускається.
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { startStudio } from "./helpers/studio-server.mjs";
 
@@ -72,6 +73,39 @@ describe("every tab opens without errors (real browser)", { skip: CHROME ? false
       await settle();
       assert.equal(await page.$eval(`#admin-${pane}`, (el) => el.classList.contains("on")), true, `admin panel ${pane} is shown`);
     }
+  });
+
+  it("consecutive ZIP bundle downloads succeed in the same session without being blocked", async () => {
+    const bundleDir = join(studio.dir, "out", "bundles");
+    mkdirSync(bundleDir, { recursive: true });
+    writeFileSync(join(bundleDir, "test-bundle-1.zip"), "PK0304test1");
+    writeFileSync(join(bundleDir, "test-bundle-2.zip"), "PK0304test2");
+
+    await page.click('nav [data-tab="export"]');
+    await settle();
+
+    // First download click
+    await page.evaluate(() => {
+      const dl = document.getElementById("x-download");
+      dl.href = "/out/bundles/test-bundle-1.zip";
+      dl.download = "test-bundle-1.zip";
+      dl.hidden = false;
+    });
+    const dlPromise1 = page.waitForEvent("download", { timeout: 4000 });
+    await page.click("#x-download");
+    const dl1 = await dlPromise1;
+    assert.equal(dl1.suggestedFilename(), "test-bundle-1.zip");
+
+    // Second download click in the same session
+    await page.evaluate(() => {
+      const dl = document.getElementById("x-download");
+      dl.href = "/out/bundles/test-bundle-2.zip";
+      dl.download = "test-bundle-2.zip";
+    });
+    const dlPromise2 = page.waitForEvent("download", { timeout: 4000 });
+    await page.click("#x-download");
+    const dl2 = await dlPromise2;
+    assert.equal(dl2.suggestedFilename(), "test-bundle-2.zip");
   });
 
   it("the page produced no exceptions, console errors or server errors", () => {
