@@ -6,7 +6,6 @@
  */
 import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { request } from "node:http";
@@ -15,9 +14,10 @@ import { join } from "node:path";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { createMockPng } from "../src/mock-image.mjs";
+import { spawnServer } from "./helpers/studio-server.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "series-public-"));
-const PORT = 5600 + Math.floor(Math.random() * 300);
+let PORT = 0; // set by spawnServer: a free port, retried if another test file grabs it first
 const env = {
   ...process.env,
   SERIES_MODE: "public",
@@ -79,12 +79,7 @@ const user = evmWallet();
 env.SERIES_ALLOWED_WALLETS = user.address;
 
 before(async () => {
-  server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
-  await new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error("server did not start")), 15_000);
-    server.stdout.on("data", (d) => { if (String(d).includes("Series Lab Studio")) { clearTimeout(t); resolve(); } });
-    server.on("exit", (c) => reject(new Error(`server exited ${c}`)));
-  });
+  ({ server, port: PORT } = await spawnServer(env));
 });
 
 after(async () => {

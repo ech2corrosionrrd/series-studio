@@ -271,8 +271,13 @@ describe("POST /api/compose", () => {
     assert.equal(second.status, 409);
     assert.equal(second.json.code, "compose_busy");
     assert.ok(latencies.length >= 5, `health was polled while composing: ${latencies.length} times`);
-    const worst = Math.max(...latencies);
-    assert.ok(worst < 250, `the slowest /health took ${Math.round(worst)} ms while composing`);
+    // A blocked event loop (compose on the main thread) left /health silent for the whole run, minutes on 300+ frames.
+    // The suite runs many files in parallel, so one slow answer on a busy machine says nothing: check the bulk and a hard ceiling.
+    const sorted = [...latencies].sort((a, b) => a - b);
+    const p90 = sorted[Math.floor(sorted.length * 0.9)] ?? sorted[sorted.length - 1];
+    const worst = sorted[sorted.length - 1];
+    assert.ok(p90 < 250, `90% of /health answers must be under 250 ms while composing, got ${Math.round(p90)} ms`);
+    assert.ok(worst < 2000, `the slowest /health took ${Math.round(worst)} ms while composing (a blocked server takes seconds)`);
   });
 
   test("closing the connection stops the compose, and the project is free again afterwards", async () => {

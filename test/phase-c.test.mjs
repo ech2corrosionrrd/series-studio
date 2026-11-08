@@ -1,6 +1,5 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
@@ -23,6 +22,7 @@ import {
 } from "../src/index.mjs";
 import { createMockPng } from "../src/mock-image.mjs";
 import { imagesDirName } from "../src/reference.mjs";
+import { spawnServer } from "./helpers/studio-server.mjs";
 
 function mini(size, items, extra = {}) {
   return {
@@ -247,7 +247,7 @@ describe("R13 critic keys", () => {
 
 describe("R7 batch base", () => {
   const dir = mkdtempSync(join(tmpdir(), "series-phase-c-"));
-  const PORT = 5900 + Math.floor(Math.random() * 200);
+  let PORT = 0; // set by spawnServer: a free port, retried if another test file grabs it first
   const env = {
     ...process.env,
     SERIES_MODE: "public",
@@ -314,18 +314,7 @@ describe("R7 batch base", () => {
       },
     };
     env.SERIES_ALLOWED_WALLETS = address;
-    server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
-    await new Promise((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error("server did not start")), 15_000);
-      server.stdout.on("data", (d) => {
-        if (String(d).includes("Series Lab Studio")) {
-          clearTimeout(t);
-          resolve();
-        }
-      });
-      server.stderr.on("data", () => {});
-      server.on("exit", (c) => reject(new Error(`server exited ${c}`)));
-    });
+    ({ server, port: PORT } = await spawnServer(env));
   });
 
   after(async () => {

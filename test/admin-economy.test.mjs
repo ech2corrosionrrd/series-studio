@@ -5,7 +5,6 @@
  */
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { request } from "node:http";
@@ -13,9 +12,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
+import { spawnServer } from "./helpers/studio-server.mjs";
 
 const dir = mkdtempSync(join(tmpdir(), "series-admin-econ-"));
-const PORT = 6100 + Math.floor(Math.random() * 400);
+let PORT = 0; // set by spawnServer: a free port, retried if another test file grabs it first
 const BLOCKED = [
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
@@ -127,19 +127,7 @@ function assertNoReferenceError(res, label) {
 }
 
 before(async () => {
-  server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
-  await new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error("server did not start")), 15_000);
-    let err = "";
-    server.stderr.on("data", (d) => { err += d; });
-    server.stdout.on("data", (d) => {
-      if (String(d).includes("Series Lab Studio")) {
-        clearTimeout(t);
-        resolve();
-      }
-    });
-    server.on("exit", (c) => reject(new Error(`server exited ${c}: ${err}`)));
-  });
+  ({ server, port: PORT } = await spawnServer(env));
 });
 
 after(async () => {

@@ -1,6 +1,5 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { request } from "node:http";
@@ -11,6 +10,7 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import JSZip from "jszip";
 import { createMockPng } from "../src/mock-image.mjs";
+import { spawnServer } from "./helpers/studio-server.mjs";
 
 function makeUser() {
   const priv = randomBytes(32);
@@ -30,7 +30,7 @@ function makeUser() {
 
 describe("POST /api/account/delete-data (public mode)", () => {
   const dir = mkdtempSync(join(tmpdir(), "series-delete-data-"));
-  const PORT = 6500 + Math.floor(Math.random() * 300);
+  let PORT = 0; // set by spawnServer: a free port, retried if another test file grabs it first
   const alice = makeUser();
   const bob = makeUser();
   const env = {
@@ -98,18 +98,7 @@ describe("POST /api/account/delete-data (public mode)", () => {
   const usersDirs = () => (existsSync(join(dir, "users")) ? readdirSync(join(dir, "users")) : []);
 
   before(async () => {
-    server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
-    server.stderr.on("data", (d) => { stderr += d; });
-    await new Promise((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error(`server did not start\n${stderr}`)), 15_000);
-      server.stdout.on("data", (d) => {
-        if (String(d).includes("Series Lab Studio")) {
-          clearTimeout(t);
-          resolve();
-        }
-      });
-      server.on("exit", (c) => reject(new Error(`server exited ${c}\n${stderr}`)));
-    });
+    ({ server, port: PORT } = await spawnServer(env, { onStderr: (d) => { stderr += d; } }));
   });
 
   after(async () => {

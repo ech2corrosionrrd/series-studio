@@ -10,6 +10,7 @@ import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { createMockPng } from "../src/mock-image.mjs";
 import { withTimeout } from "../src/engines.mjs";
+import { spawnServer } from "./helpers/studio-server.mjs";
 import { imagesDirName } from "../src/reference.mjs";
 import { parseSseBuffer, settleGenerateStream } from "../server/ui/render-stream.js";
 
@@ -91,7 +92,7 @@ describe("generate stream settle", () => {
 
 describe("POST /api/generate stream when nothing is left", () => {
   const dir = mkdtempSync(join(tmpdir(), "series-render-stream-"));
-  const PORT = 6100 + Math.floor(Math.random() * 300);
+  let PORT = 0; // set by spawnServer: a free port, retried if another test file grabs it first
   const env = {
     ...process.env,
     SERIES_MODE: "public",
@@ -181,18 +182,7 @@ describe("POST /api/generate stream when nothing is left", () => {
       },
     };
     env.SERIES_ALLOWED_WALLETS = address;
-    server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
-    server.stderr.on("data", (d) => { stderr += d; });
-    await new Promise((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error(`server did not start\n${stderr}`)), 15_000);
-      server.stdout.on("data", (d) => {
-        if (String(d).includes("Series Lab Studio")) {
-          clearTimeout(t);
-          resolve();
-        }
-      });
-      server.on("exit", (c) => reject(new Error(`server exited ${c}\n${stderr}`)));
-    });
+    ({ server, port: PORT } = await spawnServer(env, { onStderr: (d) => { stderr += d; } }));
   });
 
   after(async () => {

@@ -84,7 +84,8 @@ describe("compose layers: progress and Stop", { skip: CHROME ? false : "no Chrom
     let text = "";
     for (let i = 0; i < 30; i++) {
       await page.click("#g-compose");
-      await page.waitForFunction(() => !document.getElementById("g-compose").disabled, null, { timeout: 120000 });
+      // ≈ 140 frames of 512 px at ≈ 0.5 s each: about 70 s alone, but the suite runs many files in parallel, so allow 300 s
+      await page.waitForFunction(() => !document.getElementById("g-compose").disabled, null, { timeout: 300000 });
       text = await msg();
       if (!/вже йде/.test(text)) break;
       await page.waitForTimeout(300);

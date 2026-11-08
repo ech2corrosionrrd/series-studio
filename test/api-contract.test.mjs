@@ -29,8 +29,9 @@ const PARTNER = /^\/(api\/v1\/|gremlin\/)/;
 // Paid or network-bound: covered by their own tests (engines, solpay, storage, deploy).
 const SKIP_EMPTY_CALL = /^(POST \/api\/(generate|base\/generate|base\/analyze|engines\/test|storage\/pin|holder\/claim|credits\/sol\/check|deploy-kit|marketplace-kit|v1\/generate\/tma)|POST \/gremlin\/generate)$/;
 const OPERATOR = /^\/api\/(admin\/|spend$|resources$|engines\/status$|notifications\/test$)/;
-// A dormant feature may answer 503 instead of 4xx.
-const MAY_BE_UNAVAILABLE = new Set(["GET /api/vault/status"]);
+// A dormant feature may answer 503 instead of 4xx. The partner routes answer 503 "generator not configured"
+// when GREMLIN_API_KEY is not set (a fresh clone has no .env), and 401 when it is: both are by design.
+const MAY_BE_UNAVAILABLE = new Set(["GET /api/vault/status", "GET /gremlin/holder", "GET /gremlin/activity"]);
 
 describe("route table", () => {
   it("is parsed from the server code and is not trivially small", () => {

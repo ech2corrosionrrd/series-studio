@@ -3,7 +3,7 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
-import { request } from "node:http";
+import { createServer, request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
@@ -22,6 +22,57 @@ export function newEvmWallet() {
       return `0x${Buffer.concat([Buffer.from(sig.subarray(1)), Buffer.from([sig[0] + 27])]).toString("hex")}`;
     },
   };
+}
+
+/** A port the OS reports free right now (it is released at once, so it is only very likely still free). */
+export function freePort() {
+  return new Promise((resolve, reject) => {
+    const s = createServer();
+    s.unref();
+    s.on("error", reject);
+    s.listen(0, "127.0.0.1", () => {
+      const { port } = s.address();
+      s.close(() => resolve(port));
+    });
+  });
+}
+
+/**
+ * Spawns `server/index.mjs` with `env` on a free port and waits for its start line. Test files run in parallel,
+ * so a port can still be taken between the check and the start: a server that exits before it is ready
+ * (EADDRINUSE) is retried on another port instead of failing the whole file. Sets `env.PORT`.
+ * @returns {Promise<{ server: import("node:child_process").ChildProcess, port: number }>}
+ */
+export async function spawnServer(env, { timeoutMs = 20_000, onStderr = () => {}, attempts = 5 } = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    const port = await freePort();
+    env.PORT = String(port);
+    const server = spawn(process.execPath, ["server/index.mjs"], { env, stdio: ["ignore", "pipe", "pipe"] });
+    let stderr = "";
+    server.stderr.on("data", (d) => {
+      stderr += d;
+      onStderr(d);
+    });
+    try {
+      await new Promise((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error(`server did not start\n${stderr}`)), timeoutMs);
+        server.stdout.on("data", (d) => {
+          if (String(d).includes("Series Lab Studio")) {
+            clearTimeout(t);
+            resolve();
+          }
+        });
+        server.on("exit", (c) => {
+          clearTimeout(t);
+          reject(Object.assign(new Error(`server exited ${c}\n${stderr}`), { early: true, inUse: /EADDRINUSE/.test(stderr) }));
+        });
+      });
+      return { server, port };
+    } catch (e) {
+      server.kill();
+      if (!e.inUse || attempt >= attempts) throw e;
+    }
+  }
 }
 
 /**
@@ -44,6 +95,8 @@ export async function startStudio({ mode = "public", adminWallet = false, extraE
     SERIES_MODE: mode,
     SERIES_DATA_DIR: dir,
     SERIES_KEYS_FILE: join(dir, "no-keys.env"),
+    // the developer's own .env (real keys, partner keys, Telegram) must not change what the tests see
+    SERIES_SKIP_DOTENV: "1",
     SERIES_PLATFORM_ENV: "",
     USERS_DB_PATH: join(dir, "users.db"),
     AUTH_SESSION_SECRET: "harness-secret",
