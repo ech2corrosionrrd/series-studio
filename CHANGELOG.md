@@ -11,7 +11,8 @@
 
 ### Надійне завантаження ZIP-архівів (Content-Disposition та MIME)
 
-- `server/index.mjs`: `sendFile` додає заголовок `Content-Disposition: attachment; filename="..."` та `Content-Type: application/zip` для ZIP-файлів, гарантуючи надійне збереження файлів браузером при повторних завантаженнях у тому самому сеансі.
+- `server/index.mjs`: `sendFile` додає заголовок `Content-Disposition: attachment; filename="..."` та `Content-Type: application/zip` для ZIP-файлів.
+- `test/e2e-tabs.test.mjs`: додано e2e-тест у реальному Chrome, який перевіряє послідовне завантаження двох ZIP-файлів поспіль в одному сеансі (подія download перехоплює обидва файли без блокування); `fetch` + `Blob` відхилено для уникнення OOM на великих архівах (~975 МБ).
 - Закрито пункти P3 дорожньої карти: звірка тарифів OpenAI (4 кр текст / 6 кр референс, збігається) та повторне завантаження ZIP.
 
 ### Чесний підпис гібрида (підказка галочки й Довідка)
