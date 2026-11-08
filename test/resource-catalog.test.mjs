@@ -171,7 +171,10 @@ describe("resource catalog: reminder for stale hand-typed balances", () => {
     cat.setAlertThreshold("openai", 5, { db });
     // typing a fresh balance ends the reminders
     setManualBalance("openai", 30, { db });
-    const fresh = await cat.checkAlerts({ db, env: ENV, now: new Date(Date.now() + 3_600_000), send });
+    // one clock only: the typed-in balance and the check both sit on the fixed NOW timeline (the real clock made replicate stale after 01.11.2026)
+    const freshAt = hoursLater(24 * 10);
+    db.prepare("UPDATE resource_balances SET updated_at = ? WHERE provider = 'openai'").run(freshAt.toISOString());
+    const fresh = await cat.checkAlerts({ db, env: ENV, now: freshAt, send });
     assert.deepEqual(fresh.stale, []);
   });
 
