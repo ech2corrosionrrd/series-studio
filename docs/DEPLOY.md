@@ -40,6 +40,8 @@
 
 **Пошта на сторінках.** Cloudflare Email Address Obfuscation замінює адреси на «[email protected]», а CSP сайту не дозволяє скрипт розшифрування. Тому `richText` (`scripts/inline-md.mjs`) обгортає адреси й `mailto:` у `<!--email_off-->`; налаштування в панелі Cloudflare міняти не потрібно.
 
+**Аналітика Cloudflare на сайті.** Якщо для домену ввімкнено Web Analytics з автоматичною вставкою, Cloudflare додає на сторінки скрипт `static.cloudflareinsights.com/beacon.min.js`, а CSP сайту (`default-src 'none'`, без скриптів) його блокує: у консолі браузера помилка, статистика відвідувань не збирається. Сайт навмисно без стороннього коду, тому CSP не послаблюємо: у панелі Cloudflare (Analytics & Logs → Web Analytics) вимкніть автоматичну вставку для `studio.w3ir.io`. Перевірено 08.11.2026: помилка CSP у консолі є, сторінки працюють. Студія `lab.w3ir.io` має власну CSP, яка цей скрипт дозволяє (`docs/HOSTING.md`).
+
 Налаштування репозиторію (GitHub → Settings → Secrets and variables → Actions):
 
 | Назва | Тип | Значення |
