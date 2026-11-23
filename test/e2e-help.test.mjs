@@ -159,6 +159,22 @@ describe("help, captions and sizes in a real browser", { skip: CHROME ? false : 
     await page.dispatchEvent("#help-search", "input");
   });
 
+  it("the hybrid list can be followed, and layers mode has its own list", async () => {
+    await tab("home");
+    const hybrid = await page.textContent("#mode-hybrid-steps");
+    const recipesAt = hybrid.indexOf("Рецепти");
+    const pilotAt = hybrid.indexOf("пілот");
+    assert.ok(recipesAt > 0 && pilotAt > recipesAt, "recipes come before the pilot");
+    assert.match(hybrid, /не блокується/);
+    assert.equal(await page.isHidden("#mode-layers-steps"), true);
+    await page.click("#mode-layers");
+    assert.equal(await page.isHidden("#mode-hybrid-steps"), true);
+    assert.match(await page.textContent("#mode-layers-steps"), /Скласти шари/);
+    assert.match(await page.textContent("#mode-note"), /копійки за кадри/);
+    await page.click("#mode-hybrid");
+    assert.equal(await page.isHidden("#mode-layers-steps"), true);
+  });
+
   it("the hybrid note says outline alignment does not find eyes, in both languages", async () => {
     const sentence = {
       uk: "автопідгонка за контурами очі не знаходить",

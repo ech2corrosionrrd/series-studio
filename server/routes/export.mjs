@@ -214,6 +214,7 @@ export async function handleExportRoutes(ctx) {
         upscaleSkipped: result.upscaleSkipped || null,
         fallback: result.fallback || null,
         unmarked: result.unmarked || 0,
+        excludedRedo: result.excludedRedo || 0,
         archive: archiveFile,
         set,
         downloadUrl: `/${result.path}`,

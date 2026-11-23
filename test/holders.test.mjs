@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test, { after } from "node:test";
+import test, { after, describe } from "node:test";
 import assert from "node:assert/strict";
 
 const dir = mkdtempSync(join(tmpdir(), "series-holders-"));
@@ -29,6 +29,9 @@ const writeMints = (mints, extra = {}) => writeFileSync(process.env.GENESIS_MINT
 const account = (mint, amount = "1", decimals = 0) => ({ account: { data: { parsed: { info: { mint, tokenAmount: { amount, decimals } } } } } });
 const rpc = (result, error) => async () => ({ json: async () => (error ? { error } : { result }) });
 
+// These tests share process.env and one mint file. The runner starts a file's tests at once, so a neighbour
+// can clear SOLANA_RPC_FALLBACKS while this one is still fetching. One at a time.
+describe("genesis holders", { concurrency: false }, () => {
 test("walletGenesisCount: counts only whole genesis NFTs, ignores other tokens and non-Solana wallets", async () => {
   writeMints([MINT_A, MINT_B]);
   const fetchImpl = rpc({ value: [account(MINT_A), account(MINT_B), account("Other"), account(MINT_A, "2"), account(MINT_B, "1", 6)] });
@@ -144,4 +147,5 @@ test("syncGenesisMints: nothing new and RPC failure", async () => {
   const r = await holders.syncGenesisMints({ fetchImpl: down, rpcUrl: "https://rpc.test" });
   assert.equal(r.success, false);
   assert.match(r.error, /getSignaturesForAddress/);
+});
 });

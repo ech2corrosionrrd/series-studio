@@ -48,15 +48,23 @@ async function rpcCall(url, method, params, fetchImpl = fetch) {
   return res.json();
 }
 
-let mintsCache = null;
+let mintsCache = null; // { file, mtime, size, set }
 export function genesisMintSet() {
   const file = mintsFile();
-  let mtime;
-  try { mtime = statSync(file).mtimeMs; } catch { return new Set(); }
-  if (mintsCache?.mtime === mtime) return mintsCache.set;
+  let mtime = 0;
+  let size = -1;
+  try {
+    const st = statSync(file);
+    mtime = st.mtimeMs;
+    size = st.size;
+  } catch {
+    return new Set();
+  }
+  // mtime alone is not enough: two writes in the same millisecond keep the old list, and a count of 0.
+  if (mintsCache && mintsCache.file === file && mintsCache.mtime === mtime && mintsCache.size === size) return mintsCache.set;
   let set;
   try { set = new Set(JSON.parse(readFileSync(file, "utf8")).mints || []); } catch { set = new Set(); }
-  mintsCache = { mtime, set };
+  mintsCache = { file, mtime, size, set };
   return set;
 }
 

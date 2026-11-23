@@ -127,13 +127,22 @@
       <ol id="mode-hybrid-steps" class="guide">
         <li data-i18n="mode.step.base"></li>
         <li data-i18n="mode.step.critical"></li>
+        <li data-i18n="mode.step.recipes"></li>
+        <li data-i18n="mode.step.pilot"></li>
         <li data-i18n="mode.step.frame"></li>
         <li data-i18n="mode.step.preview"></li>
+        <li data-i18n="mode.step.compose"></li>
+      </ol>
+      <ol id="mode-layers-steps" class="guide" hidden>
+        <li data-i18n="mode.layers.step1"></li>
+        <li data-i18n="mode.layers.step2"></li>
+        <li data-i18n="mode.layers.step3"></li>
       </ol>
       <div class="actions">
         <button type="button" id="mode-apply" class="btn" data-i18n="mode.apply">Застосувати рекомендацію гібриду</button>
         <button type="button" class="btn small" data-goto-tab="base" data-i18n="mode.go.base">Основа</button>
         <button type="button" class="btn small" data-goto-tab="ctor" data-i18n="mode.go.ctor">Конструктор</button>
+        <button type="button" class="btn small" data-goto-tab="recipes" data-i18n="mode.go.recipes">Рецепти</button>
         <button type="button" class="btn small" data-goto-tab="render" data-i18n="mode.go.render">Генерація</button>
       </div>
       <p id="mode-note" class="small" role="status"></p>
@@ -814,6 +823,7 @@
           <div class="actions">
             <button type="button" id="g-compose" class="btn" data-i18n="render.layers.run">Compose layers</button>
             <button type="button" id="g-compose-stop" class="btn" hidden data-i18n="render.layers.stop">Зупинити</button>
+            <button type="button" id="g-compose-gallery" class="btn small" hidden data-goto-tab="gallery" data-i18n="render.openGallery">Переглянути у Відборі →</button>
             <span id="g-compose-msg" class="small" role="status"></span>
           </div>
           <p id="g-compose-price" class="muted small" role="status"></p>
