@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### Латка follow-redirects 1.16.2
+
+- Транзитний `follow-redirects` 1.16.1 → 1.16.2 (GHSA-mrwp-f3q8-3g9p, залежність `axios` у `@irys/upload`). `overrides` Solana не змінювались. `npm audit --omit=dev` після латки: 4 високих лишаються в `bigint-buffer`, `@solana/spl-token` і `@irys/upload-solana`.
+
 ### Документація й сайт приведені до коду (08.11.2026)
 
 - Сайт studio.w3ir.io (`scripts/site-pages.mjs`, uk і en): чотири місця казали, що «Скласти шари» кредитів не списує; тепер там ціна за кадри (≈ 3 кредити за 1000, не менше 1 за запуск). Так само `docs/BASE.md`; ціна етапу `compose` додана в `docs/PRODUCT.md` («Економіка етапу»).
