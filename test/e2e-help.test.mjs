@@ -159,6 +159,53 @@ describe("help, captions and sizes in a real browser", { skip: CHROME ? false : 
     await page.dispatchEvent("#help-search", "input");
   });
 
+  it("the hybrid list can be followed, and layers mode has its own list", async () => {
+    await tab("home");
+    const hybrid = await page.textContent("#mode-hybrid-steps");
+    const recipesAt = hybrid.indexOf("Рецепти");
+    const pilotAt = hybrid.indexOf("пілот");
+    assert.ok(recipesAt > 0 && pilotAt > recipesAt, "recipes come before the pilot");
+    assert.match(hybrid, /не блокується/);
+    assert.equal(await page.isHidden("#mode-layers-steps"), true);
+    await page.click("#mode-layers");
+    assert.equal(await page.isHidden("#mode-hybrid-steps"), true);
+    assert.match(await page.textContent("#mode-layers-steps"), /Скласти шари/);
+    assert.match(await page.textContent("#mode-note"), /копійки за кадри/);
+    await page.click("#mode-hybrid");
+    assert.equal(await page.isHidden("#mode-layers-steps"), true);
+  });
+
+  it("the hybrid note says outline alignment does not find eyes, in both languages", async () => {
+    const sentence = {
+      uk: "автопідгонка за контурами очі не знаходить",
+      en: "outline auto-alignment does not find eyes",
+    };
+    const read = async (lang) => {
+      await page.click(`[data-locale="${lang}"]`);
+      await tab("ctor");
+      const byCheckbox = await page.textContent("[data-i18n='ctor.options.layerAlignHelp']");
+      await tab("help");
+      await page.fill("#help-search", lang === "uk" ? "гібрид" : "hybrid");
+      await page.dispatchEvent("#help-search", "input");
+      const help = await page.textContent("[data-help-id='hybrid']");
+      const free = await page.textContent("[data-help-id='zero']");
+      return { byCheckbox, help, free };
+    };
+    const uk = await read("uk");
+    assert.match(uk.byCheckbox, new RegExp(sentence.uk));
+    assert.match(uk.help, new RegExp(sentence.uk));
+    assert.match(uk.free, /«Скласти шари» має свою ціну/);
+    assert.doesNotMatch(uk.free, /складання шарів обходяться/);
+    const en = await read("en");
+    assert.match(en.byCheckbox, new RegExp(sentence.en));
+    assert.match(en.help, new RegExp(sentence.en));
+    assert.match(en.free, /Compose layers has its own price/);
+    assert.doesNotMatch(en.free, /composing layers make no paid calls/);
+    await page.click('[data-locale="uk"]');
+    await page.fill("#help-search", "");
+    await page.dispatchEvent("#help-search", "input");
+  });
+
   it("no page errors during the whole session", () => {
     assert.deepEqual(pageErrors, []);
   });

@@ -86,6 +86,7 @@ const EXACT = {
   "not_configured": "api.notConfigured",
   "Cannot estimate the cost of this run — refused because a daily spend cap is set.": "api.spendEstimate",
   "onlyKeep is set but marks have no keep entries and no images found — mark keep in Review or generate images": "api.onlyKeepEmpty",
+  "onlyKeep is set but every pictured frame is marked redo — mark keep in Review or turn off only keep": "api.onlyKeepRedo",
   "onlyKeep is set but no keep-marked editions match the archive — mark keep in Review": "api.onlyKeepMiss",
   "preset traits are required to compose layers": "api.composeTraits",
   "items must be an array": "api.itemsArray",

@@ -397,6 +397,8 @@ export function setupRender() {
             : t("render.layers.ok", { count: data.count, dir: data.dir }) + (data.resumed ? ` ${t("render.layers.resumed", { n: fmtNum(data.resumed) })}` : "");
         if (data.charged) msg.textContent += ` ${t("render.layers.charged", { n: fmtNum(data.charged) })}`;
       }
+      const gal = $("g-compose-gallery");
+      if (gal) gal.hidden = !(Number(data.count) > 0);
       if (data.mode === "overlay") fillComposeOver();
     } catch (e) {
       if (msg) {

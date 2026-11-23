@@ -230,8 +230,12 @@ export function setupPath() {
 /** With the base as edition #0 (Genesis) a series of N ships N + 1 items: say so next to the ZIP button, where "25 шт" appears. */
 /** " · N frames without a Keep mark were left out": the ZIP is built from the Keep-marked frames only, and the rest used to vanish without a word. */
 function unmarkedNote(data) {
+  const parts = [];
+  if (data?.fallback === "all_with_images") parts.push(t("export.bundle.allImages", { n: fmtNum(data.count) }));
+  if (data?.fallback === "redo_left_out") parts.push(t("export.bundle.redoLeftOut", { n: fmtNum(data.excludedRedo || 0) }));
   const n = Number(data?.unmarked) || 0;
-  return n > 0 ? ` · ${t("export.bundle.unmarked", { n: fmtNum(n) })}` : "";
+  if (n > 0) parts.push(t("export.bundle.unmarked", { n: fmtNum(n) }));
+  return parts.length ? ` · ${parts.join(" · ")}` : "";
 }
 
 function paintGenesisNote() {

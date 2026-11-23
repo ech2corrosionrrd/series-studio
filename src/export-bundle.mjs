@@ -220,12 +220,18 @@ export function selectBundleRecipes(archiveRecipes, marks, onlyKeep, imageEditio
   return { ...core, recipes: [genesis, ...core.recipes] };
 }
 
+function markedEditions(marks, value) {
+  return new Set(
+    Object.entries(marks || {})
+      .filter(([, v]) => v === value)
+      .map(([k]) => Number(k))
+      .filter((n) => Number.isInteger(n) && n > 0),
+  );
+}
+
 function selectGeneratedRecipes(recipes, marks, onlyKeep, imageEditionSet) {
-  const keepKeys = Object.entries(marks || {})
-    .filter(([, v]) => v === "keep")
-    .map(([k]) => Number(k))
-    .filter((n) => Number.isInteger(n) && n > 0);
-  const keepSet = new Set(keepKeys);
+  const keepSet = markedEditions(marks, "keep");
+  const redoSet = markedEditions(marks, "redo");
 
   if (onlyKeep) {
     if (keepSet.size > 0) {
@@ -241,6 +247,20 @@ function selectGeneratedRecipes(recipes, marks, onlyKeep, imageEditionSet) {
       // Generated frames that have an image but no Keep mark stay out of the ZIP; the caller says how many (BETA-REVIEW round 2, R4).
       const unmarked = recipes.filter((r) => imageEditionSet.has(r.edition) && !keepSet.has(r.edition)).length;
       return { recipes: selected, fallback: null, error: null, unmarked };
+    }
+    // Redo marks are a decision. They must not fall through to "no marks, take every picture".
+    const redoPictured = recipes.filter((r) => imageEditionSet.has(r.edition) && redoSet.has(r.edition));
+    if (redoPictured.length) {
+      const selected = recipes.filter((r) => imageEditionSet.has(r.edition) && !redoSet.has(r.edition));
+      if (!selected.length) {
+        return {
+          recipes: [],
+          fallback: null,
+          error:
+            "onlyKeep is set but every pictured frame is marked redo — mark keep in Review or turn off only keep",
+        };
+      }
+      return { recipes: selected, fallback: "redo_left_out", error: null, excludedRedo: redoPictured.length };
     }
     const withImg = recipes.filter((r) => imageEditionSet.has(r.edition));
     if (withImg.length) {
@@ -678,6 +698,7 @@ export async function buildBundleZip(params) {
       provenanceHash: provenance?.provenanceHash || null,
       fallback: sel.fallback,
       unmarked: sel.unmarked || 0,
+      excludedRedo: sel.excludedRedo || 0,
     };
   }
 
@@ -705,6 +726,7 @@ export async function buildBundleZip(params) {
     provenanceHash: provenance?.provenanceHash || null,
     fallback: sel.fallback,
     unmarked: sel.unmarked || 0,
+    excludedRedo: sel.excludedRedo || 0,
     upscaled: anyUpscaled,
     upscaleSkipped: upscaleSkippedReason,
     ready: preflight.ready,

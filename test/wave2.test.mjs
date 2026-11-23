@@ -71,8 +71,28 @@ test("selectBundleRecipes onlyKeep with keep marks", () => {
 test("selectBundleRecipes onlyKeep without marks falls back to images", () => {
   const recipes = archiveFull.recipes.slice(0, 3);
   const sel = selectBundleRecipes(recipes, {}, true, new Set([recipes[0].edition]));
-  assert.ok(["all_with_images","all_with_images","images"].includes(sel.fallback) || sel.recipes.length===1);
+  assert.equal(sel.fallback, "all_with_images");
   assert.equal(sel.recipes.length, 1);
+});
+
+test("selectBundleRecipes onlyKeep with only redo marks leaves those frames out", () => {
+  const recipes = archiveFull.recipes.slice(0, 3);
+  const images = new Set(recipes.map((r) => r.edition));
+  const marks = { [String(recipes[0].edition)]: "redo", [String(recipes[1].edition)]: "redo" };
+  const sel = selectBundleRecipes(recipes, marks, true, images);
+  assert.equal(sel.error, null);
+  assert.equal(sel.fallback, "redo_left_out");
+  assert.deepEqual(sel.recipes.map((r) => r.edition), [recipes[2].edition]);
+  assert.equal(sel.excludedRedo, 2);
+});
+
+test("selectBundleRecipes onlyKeep when every pictured frame is redo is an error", () => {
+  const recipes = archiveFull.recipes.slice(0, 2);
+  const images = new Set(recipes.map((r) => r.edition));
+  const marks = Object.fromEntries(recipes.map((r) => [String(r.edition), "redo"]));
+  const sel = selectBundleRecipes(recipes, marks, true, images);
+  assert.equal(sel.recipes.length, 0);
+  assert.match(sel.error, /marked redo/);
 });
 
 test("runChecklist returns expected ids and levels", () => {

@@ -1208,7 +1208,14 @@ const MIME = {
   ".ico": "image/x-icon",
   ".txt": "text/plain; charset=utf-8",
   ".csv": "text/csv; charset=utf-8",
+  ".zip": "application/zip",
 };
+
+/** Download name for a ZIP: basename only, without quotes or line breaks (those would break the header). */
+function zipDownloadName(filePath) {
+  const name = basename(filePath).replace(/["\r\n]/g, "");
+  return name || "download.zip";
+}
 
 /** `width` (from `?w=`) asks for a thumbnail of a PNG; any other file, or a PNG we cannot read, is sent whole. */
 function sendFile(res, filePath, { width = 0, cacheable = false } = {}) {
@@ -1222,7 +1229,10 @@ function sendFile(res, filePath, { width = 0, cacheable = false } = {}) {
       return true;
     }
   }
-  send(res, 200, readFileSync(filePath), MIME[ext] || "application/octet-stream");
+  const extra = ext === ".zip"
+    ? { "Content-Disposition": `attachment; filename="${zipDownloadName(filePath)}"` }
+    : {};
+  send(res, 200, readFileSync(filePath), MIME[ext] || "application/octet-stream", extra);
   return true;
 }
 

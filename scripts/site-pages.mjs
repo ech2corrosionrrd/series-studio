@@ -22,7 +22,7 @@ export const DOC_PAGES = [
       desc: "Практичний порядок вкладок Series Lab: від пресету до ZIP, мінту Core і розкриття на цьому ПК.",
       blocks: [
         { h2: "Ідіть зліва направо" },
-        { p: "Майстерня працює на вашому комп'ютері. Вкладки йдуть так: 1 → 7, далі «8 · Деплой» і «9 · Маркет». Повернутися назад можна будь-коли. Поля попереднього етапу тут не повторюються: щоб змінити назву, кількість чи зерно, відкрийте «Огляд»." },
+        { p: "Майстерня працює на вашому комп'ютері. Шлях «Лише ШІ» йде вкладками 1 → 7, далі «8 · Деплой» і «9 · Маркет». Сценарій «Гібрид» після пілота повертається малювати шар: список на «1 · Огляд». Повернутися назад можна будь-коли. Поля попереднього етапу тут не повторюються: щоб змінити назву, кількість чи зерно, відкрийте «Огляд»." },
         { h2: "Що зробити" },
         {
           table: {
@@ -64,7 +64,7 @@ export const DOC_PAGES = [
       desc: "The practical tab order in Series Lab: from the preset to the ZIP, a Core mint, and reveal on this PC.",
       blocks: [
         { h2: "Go left to right" },
-        { p: "The studio runs on your computer. The tabs go 1 → 7, then 8 · Deploy and 9 · Market. You can step back at any time. Earlier fields are not repeated: to change the name, supply or seed, open Overview." },
+        { p: "The studio runs on your computer. The AI-only path goes through tabs 1 → 7, then 8 · Deploy and 9 · Market. Hybrid goes back after the pilot to draw a layer: the list is on 1 · Overview. You can step back at any time. Earlier fields are not repeated: to change the name, supply or seed, open Overview." },
         { h2: "What to do" },
         {
           table: {

@@ -583,6 +583,8 @@ export function paintSeriesMode() {
   document.body.dataset.seriesMode = mode;
   const steps = $("mode-hybrid-steps");
   if (steps) steps.hidden = mode !== "hybrid";
+  const layerSteps = $("mode-layers-steps");
+  if (layerSteps) layerSteps.hidden = mode !== "layers";
   const apply = $("mode-apply");
   if (apply) apply.hidden = mode !== "hybrid";
   const preview = $("g-hybrid-preview");
